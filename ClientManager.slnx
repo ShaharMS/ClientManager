@@ -2,4 +2,5 @@
   <Project Path="ClientManager.Api/ClientManager.Api.csproj" />
   <Project Path="ClientManager.Shared/ClientManager.Shared.csproj" />
   <Project Path="ClientManager.DataAccess/ClientManager.DataAccess.csproj" />
+  <Project Path="ClientManager.AdminUI/ClientManager.AdminUI.csproj" />
 </Solution>
