@@ -1,6 +1,8 @@
+using System.Diagnostics;
 using ClientManager.Api.Interfaces;
 using ClientManager.Api.Models.Exceptions;
 using ClientManager.Api.Models.Responses;
+using ClientManager.Api.Services.Instrumentation;
 using ClientManager.DataAccess.Interfaces;
 using ClientManager.Shared.Models.Entities;
 
@@ -17,6 +19,7 @@ public class ResourceAllocationService : IResourceAllocationService
     private readonly IResourceAllocationRepository _allocationRepository;
     private readonly IClientConfigurationRepository _clientConfigRepository;
     private readonly IRateLimitService _rateLimitService;
+    private readonly ClientManagerMetrics _metrics;
 
     /// <summary>
     /// Initializes a new instance of <see cref="ResourceAllocationService"/>.
@@ -26,18 +29,21 @@ public class ResourceAllocationService : IResourceAllocationService
     /// <param name="allocationRepository">Repository for resource allocation state.</param>
     /// <param name="clientConfigRepository">Repository for client configurations.</param>
     /// <param name="rateLimitService">Service for evaluating rate limits.</param>
+    /// <param name="metrics">The metrics instrumentation instance.</param>
     public ResourceAllocationService(
         ILogger<ResourceAllocationService> logger,
         IEntityRepository<ResourcePool> poolRepository,
         IResourceAllocationRepository allocationRepository,
         IClientConfigurationRepository clientConfigRepository,
-        IRateLimitService rateLimitService)
+        IRateLimitService rateLimitService,
+        ClientManagerMetrics metrics)
     {
         _logger = logger;
         _poolRepository = poolRepository;
         _allocationRepository = allocationRepository;
         _clientConfigRepository = clientConfigRepository;
         _rateLimitService = rateLimitService;
+        _metrics = metrics;
     }
 
     /// <inheritdoc />
@@ -69,6 +75,12 @@ public class ResourceAllocationService : IResourceAllocationService
             var clientActiveCount = await _allocationRepository.GetActiveCountByClientAsync(resourcePoolId, clientId, cancellationToken);
             if (clientActiveCount >= poolSettings.MaxSlots)
             {
+                _metrics.ResourceDenied.Add(1, new TagList
+                {
+                    { "clientId", clientId },
+                    { "resourcePoolId", resourcePoolId },
+                    { "reason", ResourceDenialReason.ClientCapReached.ToTagValue() }
+                });
                 throw new RateLimitedException($"Client slot limit reached for pool '{resourcePoolId}'");
             }
         }
@@ -77,6 +89,12 @@ public class ResourceAllocationService : IResourceAllocationService
         var rateLimitResult = await _rateLimitService.CheckGlobalResourcePoolLimitAsync(clientId, resourcePoolId, cancellationToken);
         if (!rateLimitResult.IsAllowed)
         {
+            _metrics.ResourceDenied.Add(1, new TagList
+            {
+                { "clientId", clientId },
+                { "resourcePoolId", resourcePoolId },
+                { "reason", ResourceDenialReason.RateLimited.ToTagValue() }
+            });
             throw new RateLimitedException("Global resource pool rate limit exceeded", rateLimitResult.RetryAfterSeconds);
         }
 
@@ -84,6 +102,12 @@ public class ResourceAllocationService : IResourceAllocationService
         var activeCount = await _allocationRepository.GetActiveCountAsync(resourcePoolId, cancellationToken);
         if (activeCount >= pool.MaxSlots)
         {
+            _metrics.ResourceDenied.Add(1, new TagList
+            {
+                { "clientId", clientId },
+                { "resourcePoolId", resourcePoolId },
+                { "reason", ResourceDenialReason.NoSlots.ToTagValue() }
+            });
             throw new RateLimitedException($"No slots available in pool '{resourcePoolId}'");
         }
 
@@ -102,6 +126,12 @@ public class ResourceAllocationService : IResourceAllocationService
         };
 
         await _allocationRepository.CreateAsync(allocation, cancellationToken);
+
+        _metrics.ResourceAcquired.Add(1, new TagList
+        {
+            { "clientId", clientId },
+            { "resourcePoolId", resourcePoolId }
+        });
 
         _logger.LogInformation("Resource acquired | ClientId={ClientId}, ResourcePoolId={ResourcePoolId}, AllocationId={AllocationId}, ExpiresAt={ExpiresAt}",
             clientId, resourcePoolId, allocationId, expiresAt);
@@ -129,6 +159,11 @@ public class ResourceAllocationService : IResourceAllocationService
 
         await _allocationRepository.MarkReleasedAsync(allocationId, cancellationToken);
 
+        _metrics.ResourceReleased.Add(1, new TagList
+        {
+            { "allocationId", allocationId }
+        });
+
         _logger.LogInformation("Resource released | AllocationId={AllocationId}", allocationId);
 
         return true;
@@ -141,6 +176,7 @@ public class ResourceAllocationService : IResourceAllocationService
 
         if (cleanedUp > 0)
         {
+            _metrics.ResourceExpired.Add(cleanedUp);
             _logger.LogInformation("Expired allocations cleaned up | Count={Count}", cleanedUp);
         }
     }

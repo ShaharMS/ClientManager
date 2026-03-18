@@ -11,6 +11,9 @@
     <PackageReference Include="NLog" Version="5.*" />
     <PackageReference Include="NLog.Web.AspNetCore" Version="5.*" />
     <PackageReference Include="NLog.Targets.ElasticSearch" Version="7.*" />
+    <PackageReference Include="OpenTelemetry.Api" Version="1.*" />
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.*" />
+    <PackageReference Include="OpenTelemetry.Exporter.Prometheus.AspNetCore" Version="1.*-*" />
   </ItemGroup>
 
   <ItemGroup>

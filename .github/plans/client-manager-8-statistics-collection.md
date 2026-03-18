@@ -1,6 +1,6 @@
 # Plan: ClientManager — Step 8: Statistics Collection
 
-> **Status**: 🔲 Not started
+> **Status**: ✅ Completed
 > **Prerequisite**: [client-manager-7-logging.md](client-manager-7-logging.md)
 > **Next**: [client-manager-9-middlewares.md](client-manager-9-middlewares.md)
 > **Parent**: [client-manager-overview.md](client-manager-overview.md)

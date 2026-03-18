@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using ClientManager.Api.Services.Instrumentation;
 using NLog;
 using NLog.Web;
 
@@ -22,6 +23,8 @@ try
         });
     // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
     builder.Services.AddOpenApi();
+
+    builder.Services.AddSingleton<ClientManagerMetrics>();
 
     var app = builder.Build();
 

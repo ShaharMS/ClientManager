@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using ClientManager.Api.Interfaces;
+using ClientManager.Api.Services.Instrumentation;
 using ClientManager.DataAccess.Interfaces;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Enums;
@@ -17,6 +19,7 @@ public class RateLimitService : IRateLimitService
     private readonly IClientConfigurationRepository _clientConfigRepository;
     private readonly IGlobalRateLimitRepository _globalRateLimitRepository;
     private readonly RateLimitStrategyResolver _strategyResolver;
+    private readonly ClientManagerMetrics _metrics;
 
     /// <summary>
     /// Initializes a new instance of <see cref="RateLimitService"/>.
@@ -25,16 +28,19 @@ public class RateLimitService : IRateLimitService
     /// <param name="clientConfigRepository">Repository for client configurations.</param>
     /// <param name="globalRateLimitRepository">Repository for global rate limits.</param>
     /// <param name="strategyResolver">Resolver for rate limit strategy implementations.</param>
+    /// <param name="metrics">The metrics instrumentation instance.</param>
     public RateLimitService(
         ILogger<RateLimitService> logger,
         IClientConfigurationRepository clientConfigRepository,
         IGlobalRateLimitRepository globalRateLimitRepository,
-        RateLimitStrategyResolver strategyResolver)
+        RateLimitStrategyResolver strategyResolver,
+        ClientManagerMetrics metrics)
     {
         _logger = logger;
         _clientConfigRepository = clientConfigRepository;
         _globalRateLimitRepository = globalRateLimitRepository;
         _strategyResolver = strategyResolver;
+        _metrics = metrics;
     }
 
     /// <inheritdoc />
@@ -68,6 +74,19 @@ public class RateLimitService : IRateLimitService
         }
 
         var result = CombineResults(serviceResult, globalResult);
+
+        if (result.IsAllowed)
+            _metrics.RateLimitAllowed.Add(1, new TagList
+            {
+                { "clientId", clientId },
+                { "serviceId", serviceId }
+            });
+        else
+            _metrics.RateLimitDenied.Add(1, new TagList
+            {
+                { "clientId", clientId },
+                { "serviceId", serviceId }
+            });
 
         _logger.LogDebug("Rate limit evaluated | ClientId={ClientId}, ServiceId={ServiceId}, Allowed={Allowed}, Remaining={Remaining}",
             clientId, serviceId, result.IsAllowed, result.RemainingRequests);
@@ -134,6 +153,11 @@ public class RateLimitService : IRateLimitService
             if (!result.IsAllowed)
             {
                 result = result with { IsGlobalLimitHit = true };
+                _metrics.GlobalRateLimitHits.Add(1, new TagList
+                {
+                    { "clientId", clientId },
+                    { "serviceId", serviceId }
+                });
             }
         }
 
@@ -186,6 +210,11 @@ public class RateLimitService : IRateLimitService
             if (!result.IsAllowed)
             {
                 result = result with { IsGlobalLimitHit = true };
+                _metrics.GlobalRateLimitHits.Add(1, new TagList
+                {
+                    { "clientId", clientId },
+                    { "resourcePoolId", resourcePoolId }
+                });
             }
         }
 

@@ -1,6 +1,8 @@
+using System.Diagnostics;
 using ClientManager.Api.Interfaces;
 using ClientManager.Api.Models.Exceptions;
 using ClientManager.Api.Models.Responses;
+using ClientManager.Api.Services.Instrumentation;
 using ClientManager.DataAccess.Interfaces;
 using ClientManager.Shared.Models.Entities;
 
@@ -16,6 +18,7 @@ public class AccessControlService : IAccessControlService
     private readonly IClientConfigurationRepository _clientConfigRepository;
     private readonly IEntityRepository<Service> _serviceRepository;
     private readonly IRateLimitService _rateLimitService;
+    private readonly ClientManagerMetrics _metrics;
 
     /// <summary>
     /// Initializes a new instance of <see cref="AccessControlService"/>.
@@ -24,16 +27,19 @@ public class AccessControlService : IAccessControlService
     /// <param name="clientConfigRepository">Repository for client configurations.</param>
     /// <param name="serviceRepository">Repository for service definitions.</param>
     /// <param name="rateLimitService">Service for evaluating rate limits.</param>
+    /// <param name="metrics">The metrics instrumentation instance.</param>
     public AccessControlService(
         ILogger<AccessControlService> logger,
         IClientConfigurationRepository clientConfigRepository,
         IEntityRepository<Service> serviceRepository,
-        IRateLimitService rateLimitService)
+        IRateLimitService rateLimitService,
+        ClientManagerMetrics metrics)
     {
         _logger = logger;
         _clientConfigRepository = clientConfigRepository;
         _serviceRepository = serviceRepository;
         _rateLimitService = rateLimitService;
+        _metrics = metrics;
     }
 
     /// <inheritdoc />
@@ -50,6 +56,12 @@ public class AccessControlService : IAccessControlService
 
         if (!config.IsEnabled)
         {
+            _metrics.AccessDenied.Add(1, new TagList
+            {
+                { "clientId", clientId },
+                { "serviceId", serviceId },
+                { "reason", AccessDenialReason.ClientDisabled.ToTagValue() }
+            });
             throw new ClientDisabledException(clientId);
         }
 
@@ -66,6 +78,12 @@ public class AccessControlService : IAccessControlService
 
         if (!config.Services.TryGetValue(serviceId, out var serviceSettings) || !serviceSettings.IsAllowed)
         {
+            _metrics.AccessDenied.Add(1, new TagList
+            {
+                { "clientId", clientId },
+                { "serviceId", serviceId },
+                { "reason", AccessDenialReason.NotAllowed.ToTagValue() }
+            });
             throw new AccessDeniedException(clientId, serviceId);
         }
 
@@ -73,6 +91,12 @@ public class AccessControlService : IAccessControlService
         var globalResult = await _rateLimitService.CheckGlobalServiceLimitAsync(clientId, serviceId, cancellationToken);
         if (!globalResult.IsAllowed)
         {
+            _metrics.AccessDenied.Add(1, new TagList
+            {
+                { "clientId", clientId },
+                { "serviceId", serviceId },
+                { "reason", AccessDenialReason.GlobalRateLimited.ToTagValue() }
+            });
             throw new RateLimitedException("Global service rate limit exceeded", globalResult.RetryAfterSeconds);
         }
 
@@ -80,11 +104,23 @@ public class AccessControlService : IAccessControlService
         var result = await _rateLimitService.CheckAndIncrementAsync(clientId, serviceId, cancellationToken);
         if (!result.IsAllowed)
         {
+            _metrics.AccessDenied.Add(1, new TagList
+            {
+                { "clientId", clientId },
+                { "serviceId", serviceId },
+                { "reason", AccessDenialReason.RateLimited.ToTagValue() }
+            });
             throw new RateLimitedException("Rate limit exceeded", result.RetryAfterSeconds);
         }
 
         _logger.LogInformation("Access granted | ClientId={ClientId}, ServiceId={ServiceId}",
             clientId, serviceId);
+
+        _metrics.AccessGranted.Add(1, new TagList
+        {
+            { "clientId", clientId },
+            { "serviceId", serviceId }
+        });
 
         return new AccessCheckResponse
         {
