@@ -8,6 +8,13 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.14" />
+    <PackageReference Include="NLog" Version="5.*" />
+    <PackageReference Include="NLog.Web.AspNetCore" Version="5.*" />
+    <PackageReference Include="NLog.Targets.ElasticSearch" Version="7.*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Update="nlog.config" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

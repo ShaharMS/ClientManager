@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using ClientManager.Api.Interfaces;
 
 namespace ClientManager.Api.Services;
@@ -29,6 +30,8 @@ public class AllocationCleanupService : BackgroundService
     {
         while (!stoppingToken.IsCancellationRequested)
         {
+            using var activity = new Activity("AllocationCleanup").Start();
+
             try
             {
                 using var scope = _scopeFactory.CreateScope();
