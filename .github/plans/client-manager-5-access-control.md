@@ -1,6 +1,6 @@
 # Plan: ClientManager — Step 5: Access Control Service
 
-> **Status**: 🔲 Not started
+> **Status**: ✅ Completed
 > **Prerequisite**: [client-manager-4-resource-allocation.md](client-manager-4-resource-allocation.md)
 > **Next**: [client-manager-6-api-endpoints.md](client-manager-6-api-endpoints.md)
 > **Parent**: [client-manager-overview.md](client-manager-overview.md)

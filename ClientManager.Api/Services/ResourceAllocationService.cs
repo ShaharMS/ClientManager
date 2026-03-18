@@ -1,0 +1,147 @@
+using ClientManager.Api.Interfaces;
+using ClientManager.Api.Models.Exceptions;
+using ClientManager.Api.Models.Responses;
+using ClientManager.DataAccess.Interfaces;
+using ClientManager.Shared.Models.Entities;
+
+namespace ClientManager.Api.Services;
+
+/// <summary>
+/// Manages resource pool slot acquisition, release, and TTL-based cleanup.
+/// Enforces both system-wide and per-client slot caps, and checks global resource pool rate limits.
+/// </summary>
+public class ResourceAllocationService : IResourceAllocationService
+{
+    private readonly ILogger<ResourceAllocationService> _logger;
+    private readonly IEntityRepository<ResourcePool> _poolRepository;
+    private readonly IResourceAllocationRepository _allocationRepository;
+    private readonly IClientConfigurationRepository _clientConfigRepository;
+    private readonly IRateLimitService _rateLimitService;
+
+    /// <summary>
+    /// Initializes a new instance of <see cref="ResourceAllocationService"/>.
+    /// </summary>
+    /// <param name="logger">The logger instance.</param>
+    /// <param name="poolRepository">Repository for resource pool definitions.</param>
+    /// <param name="allocationRepository">Repository for resource allocation state.</param>
+    /// <param name="clientConfigRepository">Repository for client configurations.</param>
+    /// <param name="rateLimitService">Service for evaluating rate limits.</param>
+    public ResourceAllocationService(
+        ILogger<ResourceAllocationService> logger,
+        IEntityRepository<ResourcePool> poolRepository,
+        IResourceAllocationRepository allocationRepository,
+        IClientConfigurationRepository clientConfigRepository,
+        IRateLimitService rateLimitService)
+    {
+        _logger = logger;
+        _poolRepository = poolRepository;
+        _allocationRepository = allocationRepository;
+        _clientConfigRepository = clientConfigRepository;
+        _rateLimitService = rateLimitService;
+    }
+
+    /// <inheritdoc />
+    public async Task<ResourceAcquireResponse> AcquireAsync(
+        string clientId,
+        string resourcePoolId,
+        CancellationToken cancellationToken = default)
+    {
+        var pool = await _poolRepository.GetByIdAsync(resourcePoolId, cancellationToken);
+        if (pool is null)
+        {
+            throw new NotFoundException($"Resource pool '{resourcePoolId}' not found");
+        }
+
+        var config = await _clientConfigRepository.GetByIdAsync(clientId, cancellationToken);
+        if (config is null)
+        {
+            throw new NotFoundException($"Client '{clientId}' not found");
+        }
+
+        if (!config.IsEnabled)
+        {
+            throw new ClientDisabledException(clientId);
+        }
+
+        // Check per-client pool quota if configured
+        if (config.ResourcePools.TryGetValue(resourcePoolId, out var poolSettings))
+        {
+            var clientActiveCount = await _allocationRepository.GetActiveCountByClientAsync(resourcePoolId, clientId, cancellationToken);
+            if (clientActiveCount >= poolSettings.MaxSlots)
+            {
+                throw new RateLimitedException($"Client slot limit reached for pool '{resourcePoolId}'");
+            }
+        }
+
+        // Check global resource pool rate limit
+        var rateLimitResult = await _rateLimitService.CheckGlobalResourcePoolLimitAsync(clientId, resourcePoolId, cancellationToken);
+        if (!rateLimitResult.IsAllowed)
+        {
+            throw new RateLimitedException("Global resource pool rate limit exceeded", rateLimitResult.RetryAfterSeconds);
+        }
+
+        // Check system-wide pool capacity
+        var activeCount = await _allocationRepository.GetActiveCountAsync(resourcePoolId, cancellationToken);
+        if (activeCount >= pool.MaxSlots)
+        {
+            throw new RateLimitedException($"No slots available in pool '{resourcePoolId}'");
+        }
+
+        var allocationId = Guid.NewGuid().ToString();
+        var now = DateTime.UtcNow;
+        var expiresAt = now + pool.AllocationTtl;
+
+        var allocation = new ResourceAllocation
+        {
+            Id = allocationId,
+            ResourcePoolId = resourcePoolId,
+            ClientId = clientId,
+            AcquiredAt = now,
+            ExpiresAt = expiresAt,
+            IsReleased = false
+        };
+
+        await _allocationRepository.CreateAsync(allocation, cancellationToken);
+
+        _logger.LogInformation("Resource acquired | ClientId={ClientId}, ResourcePoolId={ResourcePoolId}, AllocationId={AllocationId}, ExpiresAt={ExpiresAt}",
+            clientId, resourcePoolId, allocationId, expiresAt);
+
+        return new ResourceAcquireResponse
+        {
+            AllocationId = allocationId,
+            ExpiresAt = expiresAt
+        };
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> ReleaseAsync(string allocationId, CancellationToken cancellationToken = default)
+    {
+        var allocation = await _allocationRepository.GetByIdAsync(allocationId, cancellationToken);
+        if (allocation is null)
+        {
+            throw new NotFoundException($"Allocation '{allocationId}' not found");
+        }
+
+        if (allocation.IsReleased)
+        {
+            return false;
+        }
+
+        await _allocationRepository.MarkReleasedAsync(allocationId, cancellationToken);
+
+        _logger.LogInformation("Resource released | AllocationId={AllocationId}", allocationId);
+
+        return true;
+    }
+
+    /// <inheritdoc />
+    public async Task CleanupExpiredAllocationsAsync(CancellationToken cancellationToken = default)
+    {
+        var cleanedUp = await _allocationRepository.CleanupExpiredAsync(cancellationToken);
+
+        if (cleanedUp > 0)
+        {
+            _logger.LogInformation("Expired allocations cleaned up | Count={Count}", cleanedUp);
+        }
+    }
+}
