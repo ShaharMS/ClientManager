@@ -1,6 +1,6 @@
 # Plan: ClientManager — Step 6: API Endpoints
 
-> **Status**: 🔲 Not started
+> **Status**: ✅ Completed
 > **Prerequisite**: [client-manager-5-access-control.md](client-manager-5-access-control.md)
 > **Next**: [client-manager-7-logging.md](client-manager-7-logging.md)
 > **Parent**: [client-manager-overview.md](client-manager-overview.md)
