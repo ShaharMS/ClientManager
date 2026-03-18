@@ -1,0 +1,108 @@
+@page "/services/new"
+@page "/services/{Id}"
+@inject ServiceApiService ServiceApi
+@inject NavigationManager Nav
+
+<h1>@(_isNew ? "Create Service" : $"Edit Service: {Id}")</h1>
+
+@if (_loading)
+{
+    <p>Loading...</p>
+}
+else if (_error is not null)
+{
+    <div class="alert alert-danger">@_error</div>
+}
+else
+{
+    <EditForm Model="_model" OnValidSubmit="SaveAsync" FormName="serviceForm">
+        <DataAnnotationsValidator />
+
+        <div class="mb-3">
+            <label class="form-label">ID</label>
+            <InputText class="form-control" @bind-Value="_model.Id" disabled="@(!_isNew)" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Name</label>
+            <InputText class="form-control" @bind-Value="_model.Name" />
+        </div>
+        <div class="mb-3 form-check">
+            <InputCheckbox class="form-check-input" @bind-Value="_model.IsEnabled" />
+            <label class="form-check-label">Enabled</label>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Save</button>
+        <button type="button" class="btn btn-secondary" @onclick="Cancel">Cancel</button>
+    </EditForm>
+}
+
+@code {
+    [Parameter] public string? Id { get; set; }
+    private bool _isNew => string.IsNullOrEmpty(Id) || Id == "new";
+    private bool _loading = true;
+    private string? _error;
+    private ServiceFormModel _model = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            if (!_isNew)
+            {
+                var svc = await ServiceApi.GetByIdAsync(Id!);
+                if (svc is null)
+                {
+                    _error = $"Service '{Id}' not found.";
+                    return;
+                }
+                _model = new ServiceFormModel
+                {
+                    Id = svc.Id,
+                    Name = svc.Name,
+                    IsEnabled = svc.IsEnabled
+                };
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            _error = $"Unable to connect to the API: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        var service = new Service
+        {
+            Id = _model.Id,
+            Name = _model.Name,
+            IsEnabled = _model.IsEnabled
+        };
+
+        try
+        {
+            if (_isNew)
+                await ServiceApi.CreateAsync(service);
+            else
+                await ServiceApi.UpdateAsync(Id!, service);
+
+            Nav.NavigateTo("/services");
+        }
+        catch (HttpRequestException ex)
+        {
+            _error = $"Save failed: {ex.Message}";
+        }
+    }
+
+    private void Cancel() => Nav.NavigateTo("/services");
+
+    private class ServiceFormModel
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public bool IsEnabled { get; set; } = true;
+    }
+}

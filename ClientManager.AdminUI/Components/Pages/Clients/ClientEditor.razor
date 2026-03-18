@@ -1,0 +1,373 @@
+@page "/clients/new"
+@page "/clients/{Id}"
+@inject ClientApiService ClientApi
+@inject NavigationManager Nav
+
+<h1>@(_isNew ? "Create Client" : $"Edit Client: {Id}")</h1>
+
+@if (_loading)
+{
+    <p>Loading...</p>
+}
+else if (_error is not null)
+{
+    <div class="alert alert-danger">@_error</div>
+}
+else
+{
+    <EditForm Model="_model" OnValidSubmit="SaveAsync" FormName="clientForm">
+        <DataAnnotationsValidator />
+
+        <div class="mb-3">
+            <label class="form-label">ID</label>
+            <InputText class="form-control" @bind-Value="_model.Id" disabled="@(!_isNew)" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Name</label>
+            <InputText class="form-control" @bind-Value="_model.Name" />
+        </div>
+        <div class="mb-3 form-check">
+            <InputCheckbox class="form-check-input" @bind-Value="_model.IsEnabled" />
+            <label class="form-check-label">Enabled</label>
+        </div>
+        <div class="mb-3 form-check">
+            <InputCheckbox class="form-check-input" @bind-Value="_model.ContributesToGlobalLimits" />
+            <label class="form-check-label">Contributes to Global Limits</label>
+        </div>
+        <div class="mb-3 form-check">
+            <InputCheckbox class="form-check-input" @bind-Value="_model.ExemptFromGlobalLimits" />
+            <label class="form-check-label">Exempt from Global Limits</label>
+        </div>
+
+        @* Global Rate Limit Section *@
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Global Rate Limit</span>
+                @if (_hasGlobalRateLimit)
+                {
+                    <button type="button" class="btn btn-sm btn-outline-danger" @onclick="RemoveGlobalRateLimit">Remove</button>
+                }
+                else
+                {
+                    <button type="button" class="btn btn-sm btn-outline-primary" @onclick="AddGlobalRateLimit">Add</button>
+                }
+            </div>
+            @if (_hasGlobalRateLimit)
+            {
+                <div class="card-body">
+                    <div class="row g-2">
+                        <div class="col-md-4">
+                            <label class="form-label">Strategy</label>
+                            <InputSelect class="form-select" @bind-Value="_globalRateLimit.Strategy">
+                                @foreach (var strategy in Enum.GetValues<RateLimitStrategy>())
+                                {
+                                    <option value="@strategy">@strategy</option>
+                                }
+                            </InputSelect>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Max Requests</label>
+                            <InputNumber class="form-control" @bind-Value="_globalRateLimit.MaxRequests" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Window (seconds)</label>
+                            <InputNumber class="form-control" @bind-Value="_globalRateLimitWindowSeconds" />
+                        </div>
+                        @if (_globalRateLimit.Strategy == RateLimitStrategy.TokenBucket)
+                        {
+                            <div class="col-md-4">
+                                <label class="form-label">Tokens Per Refill</label>
+                                <InputNumber class="form-control" @bind-Value="_globalRateLimit.TokensPerRefill" />
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+
+        @* Services Section *@
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Service Access (@_serviceEntries.Count)</span>
+                <button type="button" class="btn btn-sm btn-outline-primary" @onclick="AddServiceEntry">Add Service</button>
+            </div>
+            <div class="card-body">
+                @if (_serviceEntries.Count == 0)
+                {
+                    <p class="text-muted">No service access entries configured.</p>
+                }
+                @foreach (var entry in _serviceEntries)
+                {
+                    <div class="border rounded p-2 mb-2">
+                        <div class="row g-2 align-items-end">
+                            <div class="col-md-3">
+                                <label class="form-label">Service ID</label>
+                                <InputText class="form-control" @bind-Value="entry.ServiceId" />
+                            </div>
+                            <div class="col-md-2">
+                                <div class="form-check mt-4">
+                                    <InputCheckbox class="form-check-input" @bind-Value="entry.IsAllowed" />
+                                    <label class="form-check-label">Allowed</label>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="form-check mt-4">
+                                    <InputCheckbox class="form-check-input" @bind-Value="entry.HasRateLimit" />
+                                    <label class="form-check-label">Rate Limit</label>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <button type="button" class="btn btn-sm btn-outline-danger" @onclick="() => RemoveServiceEntry(entry)">Remove</button>
+                            </div>
+                        </div>
+                        @if (entry.HasRateLimit)
+                        {
+                            <div class="row g-2 mt-1">
+                                <div class="col-md-3">
+                                    <label class="form-label">Strategy</label>
+                                    <InputSelect class="form-select" @bind-Value="entry.RateLimitStrategy">
+                                        @foreach (var strategy in Enum.GetValues<RateLimitStrategy>())
+                                        {
+                                            <option value="@strategy">@strategy</option>
+                                        }
+                                    </InputSelect>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Max Requests</label>
+                                    <InputNumber class="form-control" @bind-Value="entry.RateLimitMaxRequests" />
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Window (seconds)</label>
+                                    <InputNumber class="form-control" @bind-Value="entry.RateLimitWindowSeconds" />
+                                </div>
+                                @if (entry.RateLimitStrategy == RateLimitStrategy.TokenBucket)
+                                {
+                                    <div class="col-md-3">
+                                        <label class="form-label">Tokens Per Refill</label>
+                                        <InputNumber class="form-control" @bind-Value="entry.RateLimitTokensPerRefill" />
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+
+        @* Resource Pools Section *@
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Resource Pools (@_poolEntries.Count)</span>
+                <button type="button" class="btn btn-sm btn-outline-primary" @onclick="AddPoolEntry">Add Pool</button>
+            </div>
+            <div class="card-body">
+                @if (_poolEntries.Count == 0)
+                {
+                    <p class="text-muted">No resource pool entries configured.</p>
+                }
+                @foreach (var entry in _poolEntries)
+                {
+                    <div class="row g-2 mb-2 align-items-end">
+                        <div class="col-md-5">
+                            <label class="form-label">Pool ID</label>
+                            <InputText class="form-control" @bind-Value="entry.PoolId" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Max Slots</label>
+                            <InputNumber class="form-control" @bind-Value="entry.MaxSlots" />
+                        </div>
+                        <div class="col-md-3">
+                            <button type="button" class="btn btn-sm btn-outline-danger" @onclick="() => RemovePoolEntry(entry)">Remove</button>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Save</button>
+        <button type="button" class="btn btn-secondary" @onclick="Cancel">Cancel</button>
+    </EditForm>
+}
+
+@code {
+    [Parameter] public string? Id { get; set; }
+    private bool _isNew => string.IsNullOrEmpty(Id) || Id == "new";
+    private bool _loading = true;
+    private string? _error;
+
+    private ClientFormModel _model = new();
+    private bool _hasGlobalRateLimit;
+    private RateLimitFormModel _globalRateLimit = new();
+    private double _globalRateLimitWindowSeconds = 60;
+    private List<ServiceEntryModel> _serviceEntries = [];
+    private List<PoolEntryModel> _poolEntries = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            if (!_isNew)
+            {
+                var config = await ClientApi.GetByIdAsync(Id!);
+                if (config is null)
+                {
+                    _error = $"Client '{Id}' not found.";
+                    return;
+                }
+                _model = new ClientFormModel
+                {
+                    Id = config.Id,
+                    Name = config.Name,
+                    IsEnabled = config.IsEnabled,
+                    ContributesToGlobalLimits = config.ContributesToGlobalLimits,
+                    ExemptFromGlobalLimits = config.ExemptFromGlobalLimits
+                };
+
+                if (config.GlobalRateLimit is not null)
+                {
+                    _hasGlobalRateLimit = true;
+                    _globalRateLimit = new RateLimitFormModel
+                    {
+                        Strategy = config.GlobalRateLimit.Strategy,
+                        MaxRequests = config.GlobalRateLimit.MaxRequests,
+                        TokensPerRefill = config.GlobalRateLimit.TokensPerRefill
+                    };
+                    _globalRateLimitWindowSeconds = config.GlobalRateLimit.Window.TotalSeconds;
+                }
+
+                _serviceEntries = config.Services.Select(kvp => new ServiceEntryModel
+                {
+                    ServiceId = kvp.Key,
+                    IsAllowed = kvp.Value.IsAllowed,
+                    ContributesToGlobalLimit = kvp.Value.ContributesToGlobalLimit,
+                    ExemptFromGlobalLimit = kvp.Value.ExemptFromGlobalLimit,
+                    HasRateLimit = kvp.Value.RateLimit is not null,
+                    RateLimitStrategy = kvp.Value.RateLimit?.Strategy ?? RateLimitStrategy.FixedWindow,
+                    RateLimitMaxRequests = kvp.Value.RateLimit?.MaxRequests ?? 100,
+                    RateLimitWindowSeconds = kvp.Value.RateLimit?.Window.TotalSeconds ?? 60,
+                    RateLimitTokensPerRefill = kvp.Value.RateLimit?.TokensPerRefill
+                }).ToList();
+
+                _poolEntries = config.ResourcePools.Select(kvp => new PoolEntryModel
+                {
+                    PoolId = kvp.Key,
+                    MaxSlots = kvp.Value.MaxSlots
+                }).ToList();
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            _error = $"Unable to connect to the API: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        var config = new ClientConfiguration
+        {
+            Id = _model.Id,
+            Name = _model.Name,
+            IsEnabled = _model.IsEnabled,
+            ContributesToGlobalLimits = _model.ContributesToGlobalLimits,
+            ExemptFromGlobalLimits = _model.ExemptFromGlobalLimits,
+            GlobalRateLimit = _hasGlobalRateLimit
+                ? new ClientRateLimit
+                {
+                    Strategy = _globalRateLimit.Strategy,
+                    MaxRequests = _globalRateLimit.MaxRequests,
+                    Window = TimeSpan.FromSeconds(_globalRateLimitWindowSeconds),
+                    TokensPerRefill = _globalRateLimit.Strategy == RateLimitStrategy.TokenBucket
+                        ? _globalRateLimit.TokensPerRefill : null
+                }
+                : null,
+            Services = _serviceEntries.ToDictionary(
+                e => e.ServiceId,
+                e => new ServiceAccessSettings
+                {
+                    IsAllowed = e.IsAllowed,
+                    ContributesToGlobalLimit = e.ContributesToGlobalLimit,
+                    ExemptFromGlobalLimit = e.ExemptFromGlobalLimit,
+                    RateLimit = e.HasRateLimit
+                        ? new ClientRateLimit
+                        {
+                            Strategy = e.RateLimitStrategy,
+                            MaxRequests = e.RateLimitMaxRequests,
+                            Window = TimeSpan.FromSeconds(e.RateLimitWindowSeconds),
+                            TokensPerRefill = e.RateLimitStrategy == RateLimitStrategy.TokenBucket
+                                ? e.RateLimitTokensPerRefill : null
+                        }
+                        : null
+                }),
+            ResourcePools = _poolEntries.ToDictionary(
+                e => e.PoolId,
+                e => new ResourcePoolSettings(e.MaxSlots))
+        };
+
+        try
+        {
+            if (_isNew)
+                await ClientApi.CreateAsync(config);
+            else
+                await ClientApi.UpdateAsync(Id!, config);
+
+            Nav.NavigateTo("/clients");
+        }
+        catch (HttpRequestException ex)
+        {
+            _error = $"Save failed: {ex.Message}";
+        }
+    }
+
+    private void AddGlobalRateLimit()
+    {
+        _hasGlobalRateLimit = true;
+        _globalRateLimit = new RateLimitFormModel();
+        _globalRateLimitWindowSeconds = 60;
+    }
+
+    private void RemoveGlobalRateLimit() => _hasGlobalRateLimit = false;
+    private void AddServiceEntry() => _serviceEntries.Add(new ServiceEntryModel());
+    private void RemoveServiceEntry(ServiceEntryModel entry) => _serviceEntries.Remove(entry);
+    private void AddPoolEntry() => _poolEntries.Add(new PoolEntryModel());
+    private void RemovePoolEntry(PoolEntryModel entry) => _poolEntries.Remove(entry);
+    private void Cancel() => Nav.NavigateTo("/clients");
+
+    private class ClientFormModel
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public bool IsEnabled { get; set; } = true;
+        public bool ContributesToGlobalLimits { get; set; } = true;
+        public bool ExemptFromGlobalLimits { get; set; }
+    }
+
+    private class RateLimitFormModel
+    {
+        public RateLimitStrategy Strategy { get; set; }
+        public int MaxRequests { get; set; } = 100;
+        public int? TokensPerRefill { get; set; }
+    }
+
+    private class ServiceEntryModel
+    {
+        public string ServiceId { get; set; } = string.Empty;
+        public bool IsAllowed { get; set; } = true;
+        public bool? ContributesToGlobalLimit { get; set; }
+        public bool? ExemptFromGlobalLimit { get; set; }
+        public bool HasRateLimit { get; set; }
+        public RateLimitStrategy RateLimitStrategy { get; set; }
+        public int RateLimitMaxRequests { get; set; } = 100;
+        public double RateLimitWindowSeconds { get; set; } = 60;
+        public int? RateLimitTokensPerRefill { get; set; }
+    }
+
+    private class PoolEntryModel
+    {
+        public string PoolId { get; set; } = string.Empty;
+        public uint MaxSlots { get; set; } = 1;
+    }
+}

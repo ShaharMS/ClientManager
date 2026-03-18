@@ -1,0 +1,102 @@
+@page "/"
+@inject StatisticsApiService StatsService
+
+<h1>Dashboard</h1>
+
+@if (_loading)
+{
+    <p>Loading...</p>
+}
+else if (_error is not null)
+{
+    <div class="alert alert-danger">@_error</div>
+}
+else
+{
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">Clients</h5>
+                    <p class="display-6">@_overview?.EnabledClients / @_overview?.TotalClients</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">Services</h5>
+                    <p class="display-6">@_overview?.EnabledServices / @_overview?.TotalServices</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">Resource Pools</h5>
+                    <p class="display-6">@_overview?.TotalResourcePools</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">Active Allocations</h5>
+                    <p class="display-6">@_overview?.ActiveAllocations</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <h3>Resource Pool Utilization</h3>
+    @if (_poolStats.Count == 0)
+    {
+        <p class="text-muted">No resource pools configured.</p>
+    }
+    else
+    {
+        <table class="table">
+            <thead>
+                <tr><th>Pool</th><th>Usage</th><th>Active / Max</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var pool in _poolStats)
+                {
+                    <tr>
+                        <td>@pool.Name</td>
+                        <td>
+                            <div class="progress">
+                                <div class="progress-bar" style="width: @(pool.MaxSlots > 0 ? pool.ActiveAllocations * 100 / pool.MaxSlots : 0)%"></div>
+                            </div>
+                        </td>
+                        <td>@pool.ActiveAllocations / @pool.MaxSlots</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+
+@code {
+    private bool _loading = true;
+    private string? _error;
+    private SystemOverview? _overview;
+    private List<ResourcePoolStatistics> _poolStats = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _overview = await StatsService.GetOverviewAsync();
+            _poolStats = await StatsService.GetResourcePoolStatsAsync();
+        }
+        catch (HttpRequestException ex)
+        {
+            _error = $"Unable to connect to the API: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}

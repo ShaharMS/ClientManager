@@ -1,0 +1,150 @@
+@page "/global-rate-limits/new"
+@page "/global-rate-limits/{Id}"
+@inject GlobalRateLimitApiService RateLimitApi
+@inject NavigationManager Nav
+
+<h1>@(_isNew ? "Create Global Rate Limit" : $"Edit Global Rate Limit: {Id}")</h1>
+
+@if (_loading)
+{
+    <p>Loading...</p>
+}
+else if (_error is not null)
+{
+    <div class="alert alert-danger">@_error</div>
+}
+else
+{
+    <EditForm Model="_model" OnValidSubmit="SaveAsync" FormName="rateLimitForm">
+        <DataAnnotationsValidator />
+
+        <div class="mb-3">
+            <label class="form-label">ID</label>
+            <InputText class="form-control" @bind-Value="_model.Id" disabled="@(!_isNew)" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Target ID</label>
+            <InputText class="form-control" @bind-Value="_model.TargetId" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Target Type</label>
+            <InputSelect class="form-select" @bind-Value="_model.TargetType">
+                @foreach (var target in Enum.GetValues<GlobalRateLimitTarget>())
+                {
+                    <option value="@target">@target</option>
+                }
+            </InputSelect>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Strategy</label>
+            <InputSelect class="form-select" @bind-Value="_model.Strategy">
+                @foreach (var strategy in Enum.GetValues<RateLimitStrategy>())
+                {
+                    <option value="@strategy">@strategy</option>
+                }
+            </InputSelect>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Max Requests</label>
+            <InputNumber class="form-control" @bind-Value="_model.MaxRequests" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Window (seconds)</label>
+            <InputNumber class="form-control" @bind-Value="_model.WindowSeconds" />
+        </div>
+        @if (_model.Strategy == RateLimitStrategy.TokenBucket)
+        {
+            <div class="mb-3">
+                <label class="form-label">Tokens Per Refill</label>
+                <InputNumber class="form-control" @bind-Value="_model.TokensPerRefill" />
+            </div>
+        }
+
+        <button type="submit" class="btn btn-primary">Save</button>
+        <button type="button" class="btn btn-secondary" @onclick="Cancel">Cancel</button>
+    </EditForm>
+}
+
+@code {
+    [Parameter] public string? Id { get; set; }
+    private bool _isNew => string.IsNullOrEmpty(Id) || Id == "new";
+    private bool _loading = true;
+    private string? _error;
+    private RateLimitFormModel _model = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            if (!_isNew)
+            {
+                var limit = await RateLimitApi.GetByIdAsync(Id!);
+                if (limit is null)
+                {
+                    _error = $"Global rate limit '{Id}' not found.";
+                    return;
+                }
+                _model = new RateLimitFormModel
+                {
+                    Id = limit.Id,
+                    TargetId = limit.TargetId,
+                    TargetType = limit.TargetType,
+                    Strategy = limit.Strategy,
+                    MaxRequests = limit.MaxRequests,
+                    WindowSeconds = limit.Window.TotalSeconds,
+                    TokensPerRefill = limit.TokensPerRefill
+                };
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            _error = $"Unable to connect to the API: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        var limit = new GlobalRateLimit
+        {
+            Id = _model.Id,
+            TargetId = _model.TargetId,
+            TargetType = _model.TargetType,
+            Strategy = _model.Strategy,
+            MaxRequests = _model.MaxRequests,
+            Window = TimeSpan.FromSeconds(_model.WindowSeconds),
+            TokensPerRefill = _model.Strategy == RateLimitStrategy.TokenBucket
+                ? _model.TokensPerRefill : null
+        };
+
+        try
+        {
+            if (_isNew)
+                await RateLimitApi.CreateAsync(limit);
+            else
+                await RateLimitApi.UpdateAsync(Id!, limit);
+
+            Nav.NavigateTo("/global-rate-limits");
+        }
+        catch (HttpRequestException ex)
+        {
+            _error = $"Save failed: {ex.Message}";
+        }
+    }
+
+    private void Cancel() => Nav.NavigateTo("/global-rate-limits");
+
+    private class RateLimitFormModel
+    {
+        public string Id { get; set; } = string.Empty;
+        public string TargetId { get; set; } = string.Empty;
+        public GlobalRateLimitTarget TargetType { get; set; }
+        public RateLimitStrategy Strategy { get; set; }
+        public int MaxRequests { get; set; } = 100;
+        public double WindowSeconds { get; set; } = 60;
+        public int? TokensPerRefill { get; set; }
+    }
+}

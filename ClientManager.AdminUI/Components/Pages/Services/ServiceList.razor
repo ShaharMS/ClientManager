@@ -1,0 +1,73 @@
+@page "/services"
+@inject ServiceApiService ServiceApi
+@inject NavigationManager Nav
+
+<h1>Services</h1>
+<button class="btn btn-primary mb-3" @onclick="Create">Create Service</button>
+
+@if (_loading)
+{
+    <p>Loading...</p>
+}
+else if (_error is not null)
+{
+    <div class="alert alert-danger">@_error</div>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>ID</th><th>Name</th><th>Enabled</th><th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var svc in _services)
+            {
+                <tr>
+                    <td>@svc.Id</td>
+                    <td>@svc.Name</td>
+                    <td>@(svc.IsEnabled ? "Yes" : "No")</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" @onclick="() => Edit(svc.Id)">Edit</button>
+                        <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteAsync(svc.Id)">Delete</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private bool _loading = true;
+    private string? _error;
+    private List<Service> _services = [];
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            _services = await ServiceApi.GetAllAsync();
+            _error = null;
+        }
+        catch (HttpRequestException ex)
+        {
+            _error = $"Unable to connect to the API: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void Create() => Nav.NavigateTo("/services/new");
+    private void Edit(string id) => Nav.NavigateTo($"/services/{id}");
+
+    private async Task DeleteAsync(string id)
+    {
+        await ServiceApi.DeleteAsync(id);
+        await LoadAsync();
+    }
+}

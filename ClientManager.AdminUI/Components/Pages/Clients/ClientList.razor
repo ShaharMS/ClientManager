@@ -1,0 +1,79 @@
+@page "/clients"
+@inject ClientApiService ClientApi
+@inject NavigationManager Nav
+
+<h1>Clients</h1>
+<button class="btn btn-primary mb-3" @onclick="Create">Create Client</button>
+
+@if (_loading)
+{
+    <p>Loading...</p>
+}
+else if (_error is not null)
+{
+    <div class="alert alert-danger">@_error</div>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>ID</th><th>Name</th><th>Enabled</th>
+                <th>Services</th><th>Pools</th><th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var client in _clients)
+            {
+                <tr>
+                    <td>@client.Id</td>
+                    <td>@client.Name</td>
+                    <td>@(client.IsEnabled ? "Yes" : "No")</td>
+                    <td>@client.Services.Count</td>
+                    <td>@client.ResourcePools.Count</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" @onclick="() => Edit(client.Id)">Edit</button>
+                        <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteAsync(client.Id)">Delete</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private bool _loading = true;
+    private string? _error;
+    private List<ClientConfiguration> _clients = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            _clients = await ClientApi.GetAllAsync();
+            _error = null;
+        }
+        catch (HttpRequestException ex)
+        {
+            _error = $"Unable to connect to the API: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void Create() => Nav.NavigateTo("/clients/new");
+    private void Edit(string id) => Nav.NavigateTo($"/clients/{id}");
+
+    private async Task DeleteAsync(string id)
+    {
+        await ClientApi.DeleteAsync(id);
+        await LoadAsync();
+    }
+}

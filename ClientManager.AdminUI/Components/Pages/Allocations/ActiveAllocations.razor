@@ -1,0 +1,69 @@
+@page "/allocations"
+@inject StatisticsApiService StatsService
+@implements IDisposable
+
+<h1>Active Allocations</h1>
+<p class="text-muted">Auto-refreshes every 10 seconds</p>
+
+@if (_error is not null)
+{
+    <div class="alert alert-danger">@_error</div>
+}
+
+<table class="table">
+    <thead>
+        <tr><th>Pool</th><th>Active</th><th>Max</th><th>Available</th><th>Utilization</th></tr>
+    </thead>
+    <tbody>
+        @foreach (var pool in _pools)
+        {
+            <tr>
+                <td>@pool.Name</td>
+                <td>@pool.ActiveAllocations</td>
+                <td>@pool.MaxSlots</td>
+                <td>@pool.AvailableSlots</td>
+                <td>
+                    <div class="progress">
+                        <div class="progress-bar @(pool.AvailableSlots == 0 ? "bg-danger" : "")"
+                             style="width: @(pool.MaxSlots > 0 ? pool.ActiveAllocations * 100 / pool.MaxSlots : 0)%">
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    private List<ResourcePoolStatistics> _pools = [];
+    private string? _error;
+    private Timer? _timer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshAsync();
+        _timer = new Timer(async _ =>
+        {
+            await RefreshAsync();
+            await InvokeAsync(StateHasChanged);
+        }, null, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
+    }
+
+    private async Task RefreshAsync()
+    {
+        try
+        {
+            _pools = await StatsService.GetResourcePoolStatsAsync();
+            _error = null;
+        }
+        catch (HttpRequestException ex)
+        {
+            _error = $"Unable to connect to the API: {ex.Message}";
+        }
+    }
+
+    public void Dispose()
+    {
+        _timer?.Dispose();
+    }
+}

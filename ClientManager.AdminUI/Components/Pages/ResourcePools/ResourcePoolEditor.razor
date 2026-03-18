@@ -1,0 +1,115 @@
+@page "/resource-pools/new"
+@page "/resource-pools/{Id}"
+@inject ResourcePoolApiService PoolApi
+@inject NavigationManager Nav
+
+<h1>@(_isNew ? "Create Resource Pool" : $"Edit Resource Pool: {Id}")</h1>
+
+@if (_loading)
+{
+    <p>Loading...</p>
+}
+else if (_error is not null)
+{
+    <div class="alert alert-danger">@_error</div>
+}
+else
+{
+    <EditForm Model="_model" OnValidSubmit="SaveAsync" FormName="poolForm">
+        <DataAnnotationsValidator />
+
+        <div class="mb-3">
+            <label class="form-label">ID</label>
+            <InputText class="form-control" @bind-Value="_model.Id" disabled="@(!_isNew)" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Name</label>
+            <InputText class="form-control" @bind-Value="_model.Name" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Max Slots</label>
+            <InputNumber class="form-control" @bind-Value="_model.MaxSlots" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Allocation TTL (seconds)</label>
+            <InputNumber class="form-control" @bind-Value="_model.AllocationTtlSeconds" />
+        </div>
+
+        <button type="submit" class="btn btn-primary">Save</button>
+        <button type="button" class="btn btn-secondary" @onclick="Cancel">Cancel</button>
+    </EditForm>
+}
+
+@code {
+    [Parameter] public string? Id { get; set; }
+    private bool _isNew => string.IsNullOrEmpty(Id) || Id == "new";
+    private bool _loading = true;
+    private string? _error;
+    private PoolFormModel _model = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            if (!_isNew)
+            {
+                var pool = await PoolApi.GetByIdAsync(Id!);
+                if (pool is null)
+                {
+                    _error = $"Resource pool '{Id}' not found.";
+                    return;
+                }
+                _model = new PoolFormModel
+                {
+                    Id = pool.Id,
+                    Name = pool.Name,
+                    MaxSlots = pool.MaxSlots,
+                    AllocationTtlSeconds = pool.AllocationTtl.TotalSeconds
+                };
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            _error = $"Unable to connect to the API: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        var pool = new ResourcePool
+        {
+            Id = _model.Id,
+            Name = _model.Name,
+            MaxSlots = _model.MaxSlots,
+            AllocationTtl = TimeSpan.FromSeconds(_model.AllocationTtlSeconds)
+        };
+
+        try
+        {
+            if (_isNew)
+                await PoolApi.CreateAsync(pool);
+            else
+                await PoolApi.UpdateAsync(Id!, pool);
+
+            Nav.NavigateTo("/resource-pools");
+        }
+        catch (HttpRequestException ex)
+        {
+            _error = $"Save failed: {ex.Message}";
+        }
+    }
+
+    private void Cancel() => Nav.NavigateTo("/resource-pools");
+
+    private class PoolFormModel
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public uint MaxSlots { get; set; } = 10;
+        public double AllocationTtlSeconds { get; set; } = 300;
+    }
+}

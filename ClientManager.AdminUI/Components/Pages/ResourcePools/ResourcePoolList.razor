@@ -1,0 +1,74 @@
+@page "/resource-pools"
+@inject ResourcePoolApiService PoolApi
+@inject NavigationManager Nav
+
+<h1>Resource Pools</h1>
+<button class="btn btn-primary mb-3" @onclick="Create">Create Resource Pool</button>
+
+@if (_loading)
+{
+    <p>Loading...</p>
+}
+else if (_error is not null)
+{
+    <div class="alert alert-danger">@_error</div>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>ID</th><th>Name</th><th>Max Slots</th><th>Allocation TTL</th><th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var pool in _pools)
+            {
+                <tr>
+                    <td>@pool.Id</td>
+                    <td>@pool.Name</td>
+                    <td>@pool.MaxSlots</td>
+                    <td>@pool.AllocationTtl.TotalSeconds s</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" @onclick="() => Edit(pool.Id)">Edit</button>
+                        <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteAsync(pool.Id)">Delete</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private bool _loading = true;
+    private string? _error;
+    private List<ResourcePool> _pools = [];
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            _pools = await PoolApi.GetAllAsync();
+            _error = null;
+        }
+        catch (HttpRequestException ex)
+        {
+            _error = $"Unable to connect to the API: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void Create() => Nav.NavigateTo("/resource-pools/new");
+    private void Edit(string id) => Nav.NavigateTo($"/resource-pools/{id}");
+
+    private async Task DeleteAsync(string id)
+    {
+        await PoolApi.DeleteAsync(id);
+        await LoadAsync();
+    }
+}
