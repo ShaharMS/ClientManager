@@ -1,6 +1,6 @@
 # Plan: ClientManager — Step 10: Statistics Endpoints
 
-> **Status**: 🔲 Not started
+> **Status**: ✅ Completed
 > **Prerequisite**: [client-manager-9-middlewares.md](client-manager-9-middlewares.md)
 > **Next**: [client-manager-11-startup-config.md](client-manager-11-startup-config.md)
 > **Parent**: [client-manager-overview.md](client-manager-overview.md)

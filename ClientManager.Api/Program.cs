@@ -3,6 +3,7 @@ using ClientManager.Api.Middleware;
 using ClientManager.Api.Services.Instrumentation;
 using NLog;
 using NLog.Web;
+using OpenTelemetry.Metrics;
 
 var logger = LogManager.Setup()
     .LoadConfigurationFromAppSettings()
@@ -27,6 +28,14 @@ try
 
     builder.Services.AddSingleton<ClientManagerMetrics>();
 
+    builder.Services.AddOpenTelemetry()
+        .WithMetrics(metrics =>
+        {
+            metrics.AddAspNetCoreInstrumentation();
+            metrics.AddMeter(ClientManagerMetrics.MeterName);
+            metrics.AddPrometheusExporter();
+        });
+
     var app = builder.Build();
 
     // Configure the HTTP request pipeline.
@@ -43,6 +52,8 @@ try
     app.UseAuthorization();
 
     app.MapControllers();
+
+    app.MapPrometheusScrapingEndpoint("/metrics");
 
     app.Run();
 }
