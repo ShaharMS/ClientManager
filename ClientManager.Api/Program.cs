@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using ClientManager.Api.Middleware;
 using ClientManager.Api.Services.Instrumentation;
 using NLog;
 using NLog.Web;
@@ -35,6 +36,9 @@ try
     }
 
     app.UseHttpsRedirection();
+
+    app.UseMiddleware<RequestTrackingMiddleware>();
+    app.UseMiddleware<ErrorHandlingMiddleware>();
 
     app.UseAuthorization();
 

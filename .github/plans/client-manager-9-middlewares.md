@@ -1,6 +1,6 @@
 # Plan: ClientManager — Step 9: Middlewares
 
-> **Status**: 🔲 Not started
+> **Status**: ✅ Completed
 > **Prerequisite**: [client-manager-8-statistics-collection.md](client-manager-8-statistics-collection.md)
 > **Next**: [client-manager-10-statistics-endpoints.md](client-manager-10-statistics-endpoints.md)
 > **Parent**: [client-manager-overview.md](client-manager-overview.md)
