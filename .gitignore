@@ -40,3 +40,5 @@ Thumbs.db
 ## Application data
 data/
 logs/
+
+TempBlazor/
