@@ -1,6 +1,6 @@
 # Plan: ClientManager — Step 13: Admin UI Pages
 
-> **Status**: 🔲 Not started
+> **Status**: ✅ Completed
 > **Prerequisite**: [client-manager-12-admin-ui-foundation.md](client-manager-12-admin-ui-foundation.md)
 > **Next**: None — this is the final step.
 > **Parent**: [client-manager-overview.md](client-manager-overview.md)

@@ -1,6 +1,6 @@
 # Plan: ClientManager — Step 12: Admin UI Foundation
 
-> **Status**: 🔲 Not started
+> **Status**: ✅ Completed
 > **Prerequisite**: [client-manager-11-startup-config.md](client-manager-11-startup-config.md)
 > **Next**: [client-manager-13-admin-ui-pages.md](client-manager-13-admin-ui-pages.md)
 > **Parent**: [client-manager-overview.md](client-manager-overview.md)
