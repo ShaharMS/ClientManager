@@ -3,6 +3,7 @@ using ClientManager.Api.Models.Responses;
 using ClientManager.DataAccess.Interfaces;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Enums;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ClientManager.Api.Controllers;
@@ -13,6 +14,7 @@ namespace ClientManager.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/statistics")]
+[Tags("Statistics")]
 public class StatisticsController : ControllerBase
 {
     private readonly IClientConfigurationRepository _clientConfigRepository;

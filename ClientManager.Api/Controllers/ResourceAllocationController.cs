@@ -1,6 +1,7 @@
 using ClientManager.Api.Interfaces;
 using ClientManager.Api.Models.Requests;
 using ClientManager.Api.Models.Responses;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ClientManager.Api.Controllers;
@@ -10,6 +11,7 @@ namespace ClientManager.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/resources")]
+[Tags("Resource Allocation")]
 public class ResourceAllocationController : ControllerBase
 {
     private readonly IResourceAllocationService _allocationService;

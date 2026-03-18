@@ -2,6 +2,7 @@ using ClientManager.Api.Models.Exceptions;
 using ClientManager.DataAccess.Interfaces;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Enums;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ClientManager.Api.Controllers;
@@ -11,6 +12,7 @@ namespace ClientManager.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/global-rate-limits")]
+[Tags("Global Rate Limits")]
 public class GlobalRateLimitsController : ControllerBase
 {
     private readonly IGlobalRateLimitRepository _repository;

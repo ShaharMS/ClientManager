@@ -1,7 +1,9 @@
+using System.Reflection;
 using System.Text.Json.Serialization;
 using ClientManager.Api.Extensions;
 using ClientManager.Api.Middleware;
 using ClientManager.Api.Services.Instrumentation;
+using ClientManager.Api.Swagger;
 using NLog;
 using NLog.Web;
 using OpenTelemetry.Metrics;
@@ -23,7 +25,13 @@ try
             options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
         });
 
-    builder.Services.AddOpenApi();
+    builder.Services.AddSwaggerGen(options =>
+    {
+        var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+        var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+        options.IncludeXmlComments(xmlPath);
+        options.DocumentFilter<TagDescriptionsDocumentFilter>();
+    });
 
     // Application services, persistence, rate limiting, etc.
     builder.Services.AddClientManager(builder.Configuration);
@@ -46,13 +54,31 @@ try
 
     if (app.Environment.IsDevelopment())
     {
-        app.MapOpenApi();
+        app.UseSwagger();
+        app.UseSwaggerUI(options =>
+        {
+            options.SwaggerEndpoint("/swagger/v1/swagger.json", "ClientManager API");
+            options.RoutePrefix = "docs";
+        });
     }
 
     app.UseHttpsRedirection();
     app.UseAuthorization();
     app.MapControllers();
     app.MapPrometheusScrapingEndpoint("/metrics");
+
+    app.Lifetime.ApplicationStarted.Register(() =>
+    {
+        var urls = app.Urls;
+        foreach (var url in urls)
+        {
+            logger.Info("API listening on {Url}", url);
+            if (app.Environment.IsDevelopment())
+            {
+                logger.Info("Swagger docs available at {DocsUrl}", $"{url}/docs");
+            }
+        }
+    });
 
     app.Run();
 }

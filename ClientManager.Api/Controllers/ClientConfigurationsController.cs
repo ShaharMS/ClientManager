@@ -1,6 +1,7 @@
 using ClientManager.Api.Models.Exceptions;
 using ClientManager.DataAccess.Interfaces;
 using ClientManager.Shared.Models.Entities;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ClientManager.Api.Controllers;
@@ -10,6 +11,7 @@ namespace ClientManager.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/clients")]
+[Tags("Client Configurations")]
 public class ClientConfigurationsController : ControllerBase
 {
     private readonly IClientConfigurationRepository _repository;
