@@ -36,3 +36,7 @@ Thumbs.db
 ## Rider / JetBrains
 .idea/
 *.sln.iml
+
+## Application data
+data/
+logs/

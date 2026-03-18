@@ -1,6 +1,6 @@
 # Plan: ClientManager — Step 11: Startup, DI Wiring & Configuration
 
-> **Status**: 🔲 Not started
+> **Status**: ✅ Completed
 > **Prerequisite**: [client-manager-10-statistics-endpoints.md](client-manager-10-statistics-endpoints.md)
 > **Next**: [client-manager-12-admin-ui-foundation.md](client-manager-12-admin-ui-foundation.md)
 > **Parent**: [client-manager-overview.md](client-manager-overview.md)
