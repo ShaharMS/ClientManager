@@ -89,4 +89,12 @@ public class RedisDocumentStore : IDocumentStore
         var redisKey = $"{CounterPrefix}{key}";
         await Database.KeyDeleteAsync(redisKey);
     }
+
+    /// <inheritdoc />
+    public async Task SetCounterAsync(string key, long value, TimeSpan window, CancellationToken cancellationToken = default)
+    {
+        var redisKey = $"{CounterPrefix}{key}";
+        var db = Database;
+        await db.StringSetAsync(redisKey, value, window);
+    }
 }

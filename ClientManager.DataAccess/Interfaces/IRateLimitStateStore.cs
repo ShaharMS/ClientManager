@@ -23,6 +23,15 @@ public interface IRateLimitStateStore
     Task<long> GetCountAsync(string key, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Sets the counter for the given key to a specific value.
+    /// </summary>
+    /// <param name="key">The rate limit counter key.</param>
+    /// <param name="value">The value to set.</param>
+    /// <param name="window">The time window after which the counter expires.</param>
+    /// <param name="cancellationToken">Optional cancellation token.</param>
+    Task SetCountAsync(string key, long value, TimeSpan window, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Resets the counter for the given key to zero.
     /// </summary>
     /// <param name="key">The rate limit counter key to reset.</param>

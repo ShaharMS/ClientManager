@@ -28,6 +28,10 @@ public class RateLimitStateStore : IRateLimitStateStore
         _store.GetCounterAsync(key, cancellationToken);
 
     /// <inheritdoc />
+    public Task SetCountAsync(string key, long value, TimeSpan window, CancellationToken cancellationToken = default) =>
+        _store.SetCounterAsync(key, value, window, cancellationToken);
+
+    /// <inheritdoc />
     public Task ResetAsync(string key, CancellationToken cancellationToken = default) =>
         _store.ResetCounterAsync(key, cancellationToken);
 }

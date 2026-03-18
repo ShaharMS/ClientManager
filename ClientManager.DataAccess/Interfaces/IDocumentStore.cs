@@ -62,6 +62,15 @@ public interface IDocumentStore
     Task<long> GetCounterAsync(string key, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Sets a counter to the specified value with an expiry window.
+    /// </summary>
+    /// <param name="key">The counter key.</param>
+    /// <param name="value">The value to set the counter to.</param>
+    /// <param name="window">The time window after which the counter expires.</param>
+    /// <param name="cancellationToken">Optional cancellation token.</param>
+    Task SetCounterAsync(string key, long value, TimeSpan window, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Resets a counter to zero.
     /// </summary>
     /// <param name="key">The counter key.</param>

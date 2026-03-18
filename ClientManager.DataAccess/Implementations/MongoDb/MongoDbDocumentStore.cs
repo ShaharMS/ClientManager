@@ -118,6 +118,19 @@ public class MongoDbDocumentStore : IDocumentStore
         await CounterCollection.DeleteOneAsync(filter, cancellationToken);
     }
 
+    /// <inheritdoc />
+    public async Task SetCounterAsync(string key, long value, TimeSpan window, CancellationToken cancellationToken = default)
+    {
+        var filter = Builders<BsonDocument>.Filter.Eq("_id", key);
+        var doc = new BsonDocument
+        {
+            { "_id", key },
+            { "Count", value },
+            { "WindowStart", DateTime.UtcNow }
+        };
+        await CounterCollection.ReplaceOneAsync(filter, doc, new ReplaceOptions { IsUpsert = true }, cancellationToken);
+    }
+
     private static T DeserializeDocument<T>(BsonDocument doc)
     {
         doc.Remove("_id");

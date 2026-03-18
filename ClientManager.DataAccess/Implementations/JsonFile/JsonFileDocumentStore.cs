@@ -152,6 +152,22 @@ public class JsonFileDocumentStore : IDocumentStore
         }
     }
 
+    /// <inheritdoc />
+    public async Task SetCounterAsync(string key, long value, TimeSpan window, CancellationToken cancellationToken = default)
+    {
+        await _lock.WaitAsync(cancellationToken);
+        try
+        {
+            var counters = await LoadCountersAsync(cancellationToken);
+            counters[key] = new CounterEntry(value, DateTime.UtcNow);
+            await SaveCountersAsync(counters, cancellationToken);
+        }
+        finally
+        {
+            _lock.Release();
+        }
+    }
+
     private async Task<Dictionary<string, T>> LoadCollectionAsync<T>(string collection, CancellationToken cancellationToken)
     {
         var path = CollectionPath(collection);
