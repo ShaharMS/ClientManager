@@ -2,8 +2,10 @@
 @inject ServiceApiService ServiceApi
 @inject NavigationManager Nav
 
-<h1>Services</h1>
-<button class="btn btn-primary mb-3" @onclick="Create">Create Service</button>
+<div class="cm-page-header">
+    <h1>Services</h1>
+    <p>Manage service definitions and availability.</p>
+</div>
 
 @if (_loading)
 {
@@ -15,33 +17,58 @@ else if (_error is not null)
 }
 else
 {
-    <table class="table table-striped">
-        <thead>
-            <tr>
-                <th>ID</th><th>Name</th><th>Enabled</th><th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var svc in _services)
-            {
-                <tr>
-                    <td>@svc.Id</td>
-                    <td>@svc.Name</td>
-                    <td>@(svc.IsEnabled ? "Yes" : "No")</td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-primary" @onclick="() => Edit(svc.Id)">Edit</button>
-                        <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteAsync(svc.Id)">Delete</button>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
+    <div class="cm-list-page__table-card">
+        <div class="cm-list-page__header">
+            <RadzenTextBox Placeholder="Search services..." @bind-Value="_search"
+                Change="@OnSearchChanged" Style="width: 280px;" />
+            <RadzenButton Text="Create Service" Icon="add" Click="@(() => Nav.NavigateTo("/services/new"))"
+                ButtonStyle="ButtonStyle.Primary" />
+        </div>
+
+        <RadzenDataGrid Data="@_filteredServices" TItem="Service"
+            AllowSorting="true" AllowPaging="true" PageSize="15"
+            PagerHorizontalAlign="HorizontalAlign.Center">
+            <Columns>
+                <RadzenDataGridColumn TItem="Service" Property="Id" Title="ID" Width="200px" />
+                <RadzenDataGridColumn TItem="Service" Property="Name" Title="Name" />
+                <RadzenDataGridColumn TItem="Service" Title="Status" Width="100px">
+                    <Template Context="svc">
+                        @if (svc.IsEnabled)
+                        {
+                            <span class="cm-badge cm-badge--success">Enabled</span>
+                        }
+                        else
+                        {
+                            <span class="cm-badge cm-badge--muted">Disabled</span>
+                        }
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="Service" Title="Actions" Width="160px" Sortable="false">
+                    <Template Context="svc">
+                        <RadzenButton Icon="edit" Size="ButtonSize.Small" Variant="Variant.Text"
+                            Click="@(() => Nav.NavigateTo($"/services/{svc.Id}"))" />
+                        <RadzenButton Icon="delete" Size="ButtonSize.Small" Variant="Variant.Text"
+                            ButtonStyle="ButtonStyle.Danger"
+                            Click="@(() => DeleteAsync(svc.Id))" />
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    </div>
 }
 
 @code {
     private bool _loading = true;
     private string? _error;
+    private string? _search;
     private List<Service> _services = [];
+
+    private IEnumerable<Service> _filteredServices =>
+        string.IsNullOrWhiteSpace(_search)
+            ? _services
+            : _services.Where(s =>
+                s.Id.Contains(_search, StringComparison.OrdinalIgnoreCase) ||
+                s.Name.Contains(_search, StringComparison.OrdinalIgnoreCase));
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
 
@@ -62,8 +89,7 @@ else
         }
     }
 
-    private void Create() => Nav.NavigateTo("/services/new");
-    private void Edit(string id) => Nav.NavigateTo($"/services/{id}");
+    private void OnSearchChanged() => StateHasChanged();
 
     private async Task DeleteAsync(string id)
     {

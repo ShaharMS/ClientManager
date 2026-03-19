@@ -2,37 +2,50 @@
 @inject StatisticsApiService StatsService
 @implements IDisposable
 
-<h1>Active Allocations</h1>
-<p class="text-muted">Auto-refreshes every 10 seconds</p>
+<div class="cm-page-header">
+    <h1>Active Allocations</h1>
+    <p>Live resource pool utilization — auto-refreshes every 10 seconds.</p>
+</div>
 
 @if (_error is not null)
 {
     <div class="alert alert-danger">@_error</div>
 }
 
-<table class="table">
-    <thead>
-        <tr><th>Pool</th><th>Active</th><th>Max</th><th>Available</th><th>Utilization</th></tr>
-    </thead>
-    <tbody>
-        @foreach (var pool in _pools)
-        {
-            <tr>
-                <td>@pool.Name</td>
-                <td>@pool.ActiveAllocations</td>
-                <td>@pool.MaxSlots</td>
-                <td>@pool.AvailableSlots</td>
-                <td>
-                    <div class="progress">
-                        <div class="progress-bar @(pool.AvailableSlots == 0 ? "bg-danger" : "")"
-                             style="width: @(pool.MaxSlots > 0 ? pool.ActiveAllocations * 100 / pool.MaxSlots : 0)%">
-                        </div>
-                    </div>
-                </td>
-            </tr>
-        }
-    </tbody>
-</table>
+<div class="cm-list-page__table-card">
+    <RadzenDataGrid Data="@_pools" TItem="ResourcePoolStatistics"
+        AllowSorting="true" AllowPaging="true" PageSize="15"
+        PagerHorizontalAlign="HorizontalAlign.Center">
+        <Columns>
+            <RadzenDataGridColumn TItem="ResourcePoolStatistics" Property="Name" Title="Pool" />
+            <RadzenDataGridColumn TItem="ResourcePoolStatistics" Property="ActiveAllocations" Title="Active" Width="100px" />
+            <RadzenDataGridColumn TItem="ResourcePoolStatistics" Property="MaxSlots" Title="Max" Width="100px" />
+            <RadzenDataGridColumn TItem="ResourcePoolStatistics" Property="AvailableSlots" Title="Available" Width="100px" />
+            <RadzenDataGridColumn TItem="ResourcePoolStatistics" Title="Utilization" Width="200px">
+                <Template Context="pool">
+                    @{
+                        var pct = pool.MaxSlots > 0 ? (int)(pool.ActiveAllocations * 100.0 / pool.MaxSlots) : 0;
+                        var style = pct >= 100 ? ProgressBarStyle.Danger : pct >= 75 ? ProgressBarStyle.Warning : ProgressBarStyle.Success;
+                    }
+                    <RadzenProgressBar Value="@pct" Max="100" ShowValue="true"
+                        ProgressBarStyle="@style" Style="height: 20px;" />
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="ResourcePoolStatistics" Title="Status" Width="110px" Sortable="false">
+                <Template Context="pool">
+                    @if (pool.AvailableSlots == 0)
+                    {
+                        <span class="cm-badge" style="background: #fee2e2; color: #991b1b;">At Capacity</span>
+                    }
+                    else
+                    {
+                        <span class="cm-badge cm-badge--success">Available</span>
+                    }
+                </Template>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
+</div>
 
 @code {
     private List<ResourcePoolStatistics> _pools = [];

@@ -1,6 +1,6 @@
 # Plan: AdminUI Redesign — Metric-Style Dashboard
 
-## Status: � In progress
+## Status: ✅ All steps completed
 
 ## Overview
 
@@ -28,8 +28,8 @@ Key design elements from the reference:
 | 2 | [adminui-redesign-2-layout-nav.md](adminui-redesign-2-layout-nav.md) | ✅ Redesign MainLayout and NavMenu to match Metric sidebar style |
 | 3 | [adminui-redesign-3-dashboard.md](adminui-redesign-3-dashboard.md) | ✅ Rebuild Dashboard with 5 stat cards, filtered charts, and summary table |
 | 4 | [adminui-redesign-4-api-endpoints.md](adminui-redesign-4-api-endpoints.md) | ✅ Add new Statistics API endpoints for chart/table data |
-| 5 | [adminui-redesign-5-list-pages.md](adminui-redesign-5-list-pages.md) | Restyle all list pages (Clients, Services, Resource Pools, etc.) with Radzen DataGrid |
-| 6 | [adminui-redesign-6-editor-pages.md](adminui-redesign-6-editor-pages.md) | Restyle all editor/form pages with Radzen form components |
+| 5 | [adminui-redesign-5-list-pages.md](adminui-redesign-5-list-pages.md) | ✅ Restyle all list pages (Clients, Services, Resource Pools, etc.) with Radzen DataGrid |
+| 6 | [adminui-redesign-6-editor-pages.md](adminui-redesign-6-editor-pages.md) | ✅ Restyle all editor/form pages with Radzen form components |
 
 ## Key Decisions
 

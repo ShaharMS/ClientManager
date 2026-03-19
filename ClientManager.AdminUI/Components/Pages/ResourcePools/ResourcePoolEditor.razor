@@ -3,7 +3,14 @@
 @inject ResourcePoolApiService PoolApi
 @inject NavigationManager Nav
 
-<h1>@(_isNew ? "Create Resource Pool" : $"Edit Resource Pool: {Id}")</h1>
+<div style="margin-bottom: var(--space-md);">
+    <RadzenLink Path="resource-pools" Text="← Back to Resource Pools" Style="font-size: var(--font-size-sm);" />
+</div>
+
+<div class="cm-page-header">
+    <h1>@(_isNew ? "Create Resource Pool" : $"Edit Resource Pool: {Id}")</h1>
+    <p>@(_isNew ? "Define a new resource pool." : "Update resource pool configuration.")</p>
+</div>
 
 @if (_loading)
 {
@@ -15,29 +22,35 @@ else if (_error is not null)
 }
 else
 {
-    <EditForm Model="_model" OnValidSubmit="SaveAsync" FormName="poolForm">
-        <DataAnnotationsValidator />
+    <div class="cm-editor">
+        <EditForm Model="_model" OnValidSubmit="SaveAsync" FormName="poolForm">
+            <DataAnnotationsValidator />
 
-        <div class="mb-3">
-            <label class="form-label">ID</label>
-            <InputText class="form-control" @bind-Value="_model.Id" disabled="@(!_isNew)" />
-        </div>
-        <div class="mb-3">
-            <label class="form-label">Name</label>
-            <InputText class="form-control" @bind-Value="_model.Name" />
-        </div>
-        <div class="mb-3">
-            <label class="form-label">Max Slots</label>
-            <InputNumber class="form-control" @bind-Value="_model.MaxSlots" />
-        </div>
-        <div class="mb-3">
-            <label class="form-label">Allocation TTL (seconds)</label>
-            <InputNumber class="form-control" @bind-Value="_model.AllocationTtlSeconds" />
-        </div>
+            <div class="cm-editor__card">
+                <div class="cm-editor__field">
+                    <label>Pool ID</label>
+                    <RadzenTextBox @bind-Value="_model.Id" Disabled="@(!_isNew)" Style="width: 100%;" />
+                </div>
+                <div class="cm-editor__field">
+                    <label>Name</label>
+                    <RadzenTextBox @bind-Value="_model.Name" Style="width: 100%;" />
+                </div>
+                <div class="cm-editor__field">
+                    <label>Max Slots</label>
+                    <RadzenNumeric TValue="uint" @bind-Value="_model.MaxSlots" Style="width: 100%;" />
+                </div>
+                <div class="cm-editor__field">
+                    <label>Allocation TTL (seconds)</label>
+                    <RadzenNumeric TValue="double" @bind-Value="_model.AllocationTtlSeconds" Style="width: 100%;" />
+                </div>
+            </div>
 
-        <button type="submit" class="btn btn-primary">Save</button>
-        <button type="button" class="btn btn-secondary" @onclick="Cancel">Cancel</button>
-    </EditForm>
+            <div class="cm-editor__actions">
+                <RadzenButton Text="Save" ButtonType="ButtonType.Submit" ButtonStyle="ButtonStyle.Primary" />
+                <RadzenButton Text="Cancel" Variant="Variant.Outlined" Click="@(() => Nav.NavigateTo("/resource-pools"))" />
+            </div>
+        </EditForm>
+    </div>
 }
 
 @code {
@@ -102,8 +115,6 @@ else
             _error = $"Save failed: {ex.Message}";
         }
     }
-
-    private void Cancel() => Nav.NavigateTo("/resource-pools");
 
     private class PoolFormModel
     {

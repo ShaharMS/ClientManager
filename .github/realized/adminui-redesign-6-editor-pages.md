@@ -1,6 +1,6 @@
 # Plan: AdminUI Redesign — Step 6: Editor Pages
 
-> **Status**: 🔲 Not started
+> **Status**: ✅ Completed
 > **Prerequisite**: [adminui-redesign-5-list-pages.md](adminui-redesign-5-list-pages.md)
 > **Next**: None — this is the final step.
 > **Parent**: [adminui-redesign-overview.md](adminui-redesign-overview.md)

@@ -2,8 +2,10 @@
 @inject ResourcePoolApiService PoolApi
 @inject NavigationManager Nav
 
-<h1>Resource Pools</h1>
-<button class="btn btn-primary mb-3" @onclick="Create">Create Resource Pool</button>
+<div class="cm-page-header">
+    <h1>Resource Pools</h1>
+    <p>Manage resource pool definitions, slot limits, and TTL settings.</p>
+</div>
 
 @if (_loading)
 {
@@ -15,34 +17,50 @@ else if (_error is not null)
 }
 else
 {
-    <table class="table table-striped">
-        <thead>
-            <tr>
-                <th>ID</th><th>Name</th><th>Max Slots</th><th>Allocation TTL</th><th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var pool in _pools)
-            {
-                <tr>
-                    <td>@pool.Id</td>
-                    <td>@pool.Name</td>
-                    <td>@pool.MaxSlots</td>
-                    <td>@pool.AllocationTtl.TotalSeconds s</td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-primary" @onclick="() => Edit(pool.Id)">Edit</button>
-                        <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteAsync(pool.Id)">Delete</button>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
+    <div class="cm-list-page__table-card">
+        <div class="cm-list-page__header">
+            <RadzenTextBox Placeholder="Search pools..." @bind-Value="_search"
+                Change="@OnSearchChanged" Style="width: 280px;" />
+            <RadzenButton Text="Create Resource Pool" Icon="add" Click="@(() => Nav.NavigateTo("/resource-pools/new"))"
+                ButtonStyle="ButtonStyle.Primary" />
+        </div>
+
+        <RadzenDataGrid Data="@_filteredPools" TItem="ResourcePool"
+            AllowSorting="true" AllowPaging="true" PageSize="15"
+            PagerHorizontalAlign="HorizontalAlign.Center">
+            <Columns>
+                <RadzenDataGridColumn TItem="ResourcePool" Property="Id" Title="ID" Width="200px" />
+                <RadzenDataGridColumn TItem="ResourcePool" Property="Name" Title="Name" />
+                <RadzenDataGridColumn TItem="ResourcePool" Property="MaxSlots" Title="Max Slots" Width="120px" />
+                <RadzenDataGridColumn TItem="ResourcePool" Title="Allocation TTL" Width="150px">
+                    <Template Context="pool">@FormatTtl(pool.AllocationTtl)</Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="ResourcePool" Title="Actions" Width="160px" Sortable="false">
+                    <Template Context="pool">
+                        <RadzenButton Icon="edit" Size="ButtonSize.Small" Variant="Variant.Text"
+                            Click="@(() => Nav.NavigateTo($"/resource-pools/{pool.Id}"))" />
+                        <RadzenButton Icon="delete" Size="ButtonSize.Small" Variant="Variant.Text"
+                            ButtonStyle="ButtonStyle.Danger"
+                            Click="@(() => DeleteAsync(pool.Id))" />
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    </div>
 }
 
 @code {
     private bool _loading = true;
     private string? _error;
+    private string? _search;
     private List<ResourcePool> _pools = [];
+
+    private IEnumerable<ResourcePool> _filteredPools =>
+        string.IsNullOrWhiteSpace(_search)
+            ? _pools
+            : _pools.Where(p =>
+                p.Id.Contains(_search, StringComparison.OrdinalIgnoreCase) ||
+                p.Name.Contains(_search, StringComparison.OrdinalIgnoreCase));
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
 
@@ -63,12 +81,18 @@ else
         }
     }
 
-    private void Create() => Nav.NavigateTo("/resource-pools/new");
-    private void Edit(string id) => Nav.NavigateTo($"/resource-pools/{id}");
+    private void OnSearchChanged() => StateHasChanged();
 
     private async Task DeleteAsync(string id)
     {
         await PoolApi.DeleteAsync(id);
         await LoadAsync();
+    }
+
+    private static string FormatTtl(TimeSpan ttl)
+    {
+        if (ttl.TotalHours >= 1) return $"{ttl.TotalHours:0.#}h";
+        if (ttl.TotalMinutes >= 1) return $"{ttl.TotalMinutes:0.#}m";
+        return $"{ttl.TotalSeconds:0.#}s";
     }
 }

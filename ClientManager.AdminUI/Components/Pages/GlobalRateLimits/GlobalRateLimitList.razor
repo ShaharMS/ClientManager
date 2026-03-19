@@ -2,8 +2,10 @@
 @inject GlobalRateLimitApiService RateLimitApi
 @inject NavigationManager Nav
 
-<h1>Global Rate Limits</h1>
-<button class="btn btn-primary mb-3" @onclick="Create">Create Global Rate Limit</button>
+<div class="cm-page-header">
+    <h1>Global Rate Limits</h1>
+    <p>Manage system-wide rate limits for services and resource pools.</p>
+</div>
 
 @if (_loading)
 {
@@ -15,37 +17,60 @@ else if (_error is not null)
 }
 else
 {
-    <table class="table table-striped">
-        <thead>
-            <tr>
-                <th>ID</th><th>Target ID</th><th>Target Type</th>
-                <th>Strategy</th><th>Max Requests</th><th>Window</th><th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var limit in _limits)
-            {
-                <tr>
-                    <td>@limit.Id</td>
-                    <td>@limit.TargetId</td>
-                    <td>@limit.TargetType</td>
-                    <td>@limit.Strategy</td>
-                    <td>@limit.MaxRequests</td>
-                    <td>@limit.Window.TotalSeconds s</td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-primary" @onclick="() => Edit(limit.Id)">Edit</button>
-                        <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteAsync(limit.Id)">Delete</button>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
+    <div class="cm-list-page__table-card">
+        <div class="cm-list-page__header">
+            <RadzenTextBox Placeholder="Search rate limits..." @bind-Value="_search"
+                Change="@OnSearchChanged" Style="width: 280px;" />
+            <RadzenButton Text="Create Rate Limit" Icon="add" Click="@(() => Nav.NavigateTo("/global-rate-limits/new"))"
+                ButtonStyle="ButtonStyle.Primary" />
+        </div>
+
+        <RadzenDataGrid Data="@_filteredLimits" TItem="GlobalRateLimit"
+            AllowSorting="true" AllowPaging="true" PageSize="15"
+            PagerHorizontalAlign="HorizontalAlign.Center">
+            <Columns>
+                <RadzenDataGridColumn TItem="GlobalRateLimit" Property="Id" Title="ID" Width="150px" />
+                <RadzenDataGridColumn TItem="GlobalRateLimit" Property="TargetId" Title="Target ID" />
+                <RadzenDataGridColumn TItem="GlobalRateLimit" Title="Target Type" Width="130px">
+                    <Template Context="limit">
+                        <span class="cm-badge cm-badge--muted">@limit.TargetType</span>
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="GlobalRateLimit" Title="Strategy" Width="130px">
+                    <Template Context="limit">
+                        <span class="cm-badge cm-badge--success">@limit.Strategy</span>
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="GlobalRateLimit" Property="MaxRequests" Title="Max Requests" Width="130px" />
+                <RadzenDataGridColumn TItem="GlobalRateLimit" Title="Window" Width="100px">
+                    <Template Context="limit">@FormatWindow(limit.Window)</Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="GlobalRateLimit" Title="Actions" Width="160px" Sortable="false">
+                    <Template Context="limit">
+                        <RadzenButton Icon="edit" Size="ButtonSize.Small" Variant="Variant.Text"
+                            Click="@(() => Nav.NavigateTo($"/global-rate-limits/{limit.Id}"))" />
+                        <RadzenButton Icon="delete" Size="ButtonSize.Small" Variant="Variant.Text"
+                            ButtonStyle="ButtonStyle.Danger"
+                            Click="@(() => DeleteAsync(limit.Id))" />
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    </div>
 }
 
 @code {
     private bool _loading = true;
     private string? _error;
+    private string? _search;
     private List<GlobalRateLimit> _limits = [];
+
+    private IEnumerable<GlobalRateLimit> _filteredLimits =>
+        string.IsNullOrWhiteSpace(_search)
+            ? _limits
+            : _limits.Where(l =>
+                l.Id.Contains(_search, StringComparison.OrdinalIgnoreCase) ||
+                l.TargetId.Contains(_search, StringComparison.OrdinalIgnoreCase));
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
 
@@ -66,12 +91,18 @@ else
         }
     }
 
-    private void Create() => Nav.NavigateTo("/global-rate-limits/new");
-    private void Edit(string id) => Nav.NavigateTo($"/global-rate-limits/{id}");
+    private void OnSearchChanged() => StateHasChanged();
 
     private async Task DeleteAsync(string id)
     {
         await RateLimitApi.DeleteAsync(id);
         await LoadAsync();
+    }
+
+    private static string FormatWindow(TimeSpan window)
+    {
+        if (window.TotalHours >= 1) return $"{window.TotalHours:0.#}h";
+        if (window.TotalMinutes >= 1) return $"{window.TotalMinutes:0.#}m";
+        return $"{window.TotalSeconds:0.#}s";
     }
 }

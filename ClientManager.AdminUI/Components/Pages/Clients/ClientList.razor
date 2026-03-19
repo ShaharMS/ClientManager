@@ -2,8 +2,10 @@
 @inject ClientApiService ClientApi
 @inject NavigationManager Nav
 
-<h1>Clients</h1>
-<button class="btn btn-primary mb-3" @onclick="Create">Create Client</button>
+<div class="cm-page-header">
+    <h1>Clients</h1>
+    <p>Manage client configurations and access control.</p>
+</div>
 
 @if (_loading)
 {
@@ -15,36 +17,64 @@ else if (_error is not null)
 }
 else
 {
-    <table class="table table-striped">
-        <thead>
-            <tr>
-                <th>ID</th><th>Name</th><th>Enabled</th>
-                <th>Services</th><th>Pools</th><th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var client in _clients)
-            {
-                <tr>
-                    <td>@client.Id</td>
-                    <td>@client.Name</td>
-                    <td>@(client.IsEnabled ? "Yes" : "No")</td>
-                    <td>@client.Services.Count</td>
-                    <td>@client.ResourcePools.Count</td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-primary" @onclick="() => Edit(client.Id)">Edit</button>
-                        <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteAsync(client.Id)">Delete</button>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
+    <div class="cm-list-page__table-card">
+        <div class="cm-list-page__header">
+            <RadzenTextBox Placeholder="Search clients..." @bind-Value="_search"
+                Change="@OnSearchChanged" Style="width: 280px;" />
+            <RadzenButton Text="Create Client" Icon="add" Click="@(() => Nav.NavigateTo("/clients/new"))"
+                ButtonStyle="ButtonStyle.Primary" />
+        </div>
+
+        <RadzenDataGrid Data="@_filteredClients" TItem="ClientConfiguration"
+            AllowSorting="true" AllowPaging="true" PageSize="15"
+            PagerHorizontalAlign="HorizontalAlign.Center">
+            <Columns>
+                <RadzenDataGridColumn TItem="ClientConfiguration" Property="Id" Title="ID" Width="150px" />
+                <RadzenDataGridColumn TItem="ClientConfiguration" Property="Name" Title="Name" />
+                <RadzenDataGridColumn TItem="ClientConfiguration" Title="Status" Width="100px">
+                    <Template Context="client">
+                        @if (client.IsEnabled)
+                        {
+                            <span class="cm-badge cm-badge--success">Enabled</span>
+                        }
+                        else
+                        {
+                            <span class="cm-badge cm-badge--muted">Disabled</span>
+                        }
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="ClientConfiguration" Title="Services" Width="100px">
+                    <Template Context="client">@client.Services.Count</Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="ClientConfiguration" Title="Pools" Width="100px">
+                    <Template Context="client">@client.ResourcePools.Count</Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="ClientConfiguration" Title="Actions" Width="160px" Sortable="false">
+                    <Template Context="client">
+                        <RadzenButton Icon="edit" Size="ButtonSize.Small" Variant="Variant.Text"
+                            Click="@(() => Nav.NavigateTo($"/clients/{client.Id}"))" />
+                        <RadzenButton Icon="delete" Size="ButtonSize.Small" Variant="Variant.Text"
+                            ButtonStyle="ButtonStyle.Danger"
+                            Click="@(() => DeleteAsync(client.Id))" />
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    </div>
 }
 
 @code {
     private bool _loading = true;
     private string? _error;
+    private string? _search;
     private List<ClientConfiguration> _clients = [];
+
+    private IEnumerable<ClientConfiguration> _filteredClients =>
+        string.IsNullOrWhiteSpace(_search)
+            ? _clients
+            : _clients.Where(c =>
+                c.Id.Contains(_search, StringComparison.OrdinalIgnoreCase) ||
+                c.Name.Contains(_search, StringComparison.OrdinalIgnoreCase));
 
     protected override async Task OnInitializedAsync()
     {
@@ -68,8 +98,7 @@ else
         }
     }
 
-    private void Create() => Nav.NavigateTo("/clients/new");
-    private void Edit(string id) => Nav.NavigateTo($"/clients/{id}");
+    private void OnSearchChanged() => StateHasChanged();
 
     private async Task DeleteAsync(string id)
     {

@@ -3,7 +3,14 @@
 @inject ServiceApiService ServiceApi
 @inject NavigationManager Nav
 
-<h1>@(_isNew ? "Create Service" : $"Edit Service: {Id}")</h1>
+<div style="margin-bottom: var(--space-md);">
+    <RadzenLink Path="services" Text="← Back to Services" Style="font-size: var(--font-size-sm);" />
+</div>
+
+<div class="cm-page-header">
+    <h1>@(_isNew ? "Create Service" : $"Edit Service: {Id}")</h1>
+    <p>@(_isNew ? "Define a new service." : "Update service configuration.")</p>
+</div>
 
 @if (_loading)
 {
@@ -15,25 +22,31 @@ else if (_error is not null)
 }
 else
 {
-    <EditForm Model="_model" OnValidSubmit="SaveAsync" FormName="serviceForm">
-        <DataAnnotationsValidator />
+    <div class="cm-editor">
+        <EditForm Model="_model" OnValidSubmit="SaveAsync" FormName="serviceForm">
+            <DataAnnotationsValidator />
 
-        <div class="mb-3">
-            <label class="form-label">ID</label>
-            <InputText class="form-control" @bind-Value="_model.Id" disabled="@(!_isNew)" />
-        </div>
-        <div class="mb-3">
-            <label class="form-label">Name</label>
-            <InputText class="form-control" @bind-Value="_model.Name" />
-        </div>
-        <div class="mb-3 form-check">
-            <InputCheckbox class="form-check-input" @bind-Value="_model.IsEnabled" />
-            <label class="form-check-label">Enabled</label>
-        </div>
+            <div class="cm-editor__card">
+                <div class="cm-editor__field">
+                    <label>Service ID</label>
+                    <RadzenTextBox @bind-Value="_model.Id" Disabled="@(!_isNew)" Style="width: 100%;" />
+                </div>
+                <div class="cm-editor__field">
+                    <label>Name</label>
+                    <RadzenTextBox @bind-Value="_model.Name" Style="width: 100%;" />
+                </div>
+                <div class="cm-editor__field">
+                    <label>Enabled</label>
+                    <RadzenSwitch @bind-Value="_model.IsEnabled" />
+                </div>
+            </div>
 
-        <button type="submit" class="btn btn-primary">Save</button>
-        <button type="button" class="btn btn-secondary" @onclick="Cancel">Cancel</button>
-    </EditForm>
+            <div class="cm-editor__actions">
+                <RadzenButton Text="Save" ButtonType="ButtonType.Submit" ButtonStyle="ButtonStyle.Primary" />
+                <RadzenButton Text="Cancel" Variant="Variant.Outlined" Click="@(() => Nav.NavigateTo("/services"))" />
+            </div>
+        </EditForm>
+    </div>
 }
 
 @code {
@@ -96,8 +109,6 @@ else
             _error = $"Save failed: {ex.Message}";
         }
     }
-
-    private void Cancel() => Nav.NavigateTo("/services");
 
     private class ServiceFormModel
     {

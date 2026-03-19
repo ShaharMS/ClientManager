@@ -1,6 +1,6 @@
 # Plan: AdminUI Redesign — Step 5: List Pages
 
-> **Status**: 🔲 Not started
+> **Status**: ✅ Completed
 > **Prerequisite**: [adminui-redesign-4-api-endpoints.md](adminui-redesign-4-api-endpoints.md)
 > **Next**: [adminui-redesign-6-editor-pages.md](adminui-redesign-6-editor-pages.md)
 > **Parent**: [adminui-redesign-overview.md](adminui-redesign-overview.md)

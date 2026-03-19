@@ -3,7 +3,14 @@
 @inject ClientApiService ClientApi
 @inject NavigationManager Nav
 
-<h1>@(_isNew ? "Create Client" : $"Edit Client: {Id}")</h1>
+<div style="margin-bottom: var(--space-md);">
+    <RadzenLink Path="clients" Text="← Back to Clients" Style="font-size: var(--font-size-sm);" />
+</div>
+
+<div class="cm-page-header">
+    <h1>@(_isNew ? "Create Client" : $"Edit Client: {Id}")</h1>
+    <p>@(_isNew ? "Configure a new client." : "Update client configuration.")</p>
+</div>
 
 @if (_loading)
 {
@@ -15,178 +22,172 @@ else if (_error is not null)
 }
 else
 {
-    <EditForm Model="_model" OnValidSubmit="SaveAsync" FormName="clientForm">
-        <DataAnnotationsValidator />
+    <div class="cm-editor">
+        <EditForm Model="_model" OnValidSubmit="SaveAsync" FormName="clientForm">
+            <DataAnnotationsValidator />
 
-        <div class="mb-3">
-            <label class="form-label">ID</label>
-            <InputText class="form-control" @bind-Value="_model.Id" disabled="@(!_isNew)" />
-        </div>
-        <div class="mb-3">
-            <label class="form-label">Name</label>
-            <InputText class="form-control" @bind-Value="_model.Name" />
-        </div>
-        <div class="mb-3 form-check">
-            <InputCheckbox class="form-check-input" @bind-Value="_model.IsEnabled" />
-            <label class="form-check-label">Enabled</label>
-        </div>
-        <div class="mb-3 form-check">
-            <InputCheckbox class="form-check-input" @bind-Value="_model.ContributesToGlobalLimits" />
-            <label class="form-check-label">Contributes to Global Limits</label>
-        </div>
-        <div class="mb-3 form-check">
-            <InputCheckbox class="form-check-input" @bind-Value="_model.ExemptFromGlobalLimits" />
-            <label class="form-check-label">Exempt from Global Limits</label>
-        </div>
+            @* Card 1 — Basic Configuration *@
+            <div class="cm-editor__card">
+                <div class="cm-editor__section-title">Basic Configuration</div>
+                <div class="cm-editor__field">
+                    <label>Client ID</label>
+                    <RadzenTextBox @bind-Value="_model.Id" Disabled="@(!_isNew)" Style="width: 100%;" />
+                </div>
+                <div class="cm-editor__field">
+                    <label>Name</label>
+                    <RadzenTextBox @bind-Value="_model.Name" Style="width: 100%;" />
+                </div>
+                <div class="cm-editor__field">
+                    <label>Enabled</label>
+                    <RadzenSwitch @bind-Value="_model.IsEnabled" />
+                </div>
+                <div class="cm-editor__field">
+                    <label>Contributes to Global Limits</label>
+                    <RadzenSwitch @bind-Value="_model.ContributesToGlobalLimits" />
+                </div>
+                <div class="cm-editor__field">
+                    <label>Exempt from Global Limits</label>
+                    <RadzenSwitch @bind-Value="_model.ExemptFromGlobalLimits" />
+                </div>
+            </div>
 
-        @* Global Rate Limit Section *@
-        <div class="card mb-3">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span>Global Rate Limit</span>
+            @* Card 2 — Global Rate Limit *@
+            <div class="cm-editor__card">
+                <div class="cm-editor__nested-header">
+                    <div class="cm-editor__section-title" style="margin-bottom: 0; border-bottom: none; padding-bottom: 0;">Global Rate Limit</div>
+                    @if (_hasGlobalRateLimit)
+                    {
+                        <RadzenButton Text="Remove" Icon="delete" Size="ButtonSize.Small" Variant="Variant.Text"
+                            ButtonStyle="ButtonStyle.Danger" Click="@(() => RemoveGlobalRateLimit())" />
+                    }
+                    else
+                    {
+                        <RadzenButton Text="Add" Icon="add" Size="ButtonSize.Small" Variant="Variant.Outlined"
+                            Click="@(() => AddGlobalRateLimit())" />
+                    }
+                </div>
                 @if (_hasGlobalRateLimit)
                 {
-                    <button type="button" class="btn btn-sm btn-outline-danger" @onclick="RemoveGlobalRateLimit">Remove</button>
-                }
-                else
-                {
-                    <button type="button" class="btn btn-sm btn-outline-primary" @onclick="AddGlobalRateLimit">Add</button>
-                }
-            </div>
-            @if (_hasGlobalRateLimit)
-            {
-                <div class="card-body">
-                    <div class="row g-2">
-                        <div class="col-md-4">
-                            <label class="form-label">Strategy</label>
-                            <InputSelect class="form-select" @bind-Value="_globalRateLimit.Strategy">
-                                @foreach (var strategy in Enum.GetValues<RateLimitStrategy>())
-                                {
-                                    <option value="@strategy">@strategy</option>
-                                }
-                            </InputSelect>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Max Requests</label>
-                            <InputNumber class="form-control" @bind-Value="_globalRateLimit.MaxRequests" />
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Window (seconds)</label>
-                            <InputNumber class="form-control" @bind-Value="_globalRateLimitWindowSeconds" />
-                        </div>
-                        @if (_globalRateLimit.Strategy == RateLimitStrategy.TokenBucket)
-                        {
-                            <div class="col-md-4">
-                                <label class="form-label">Tokens Per Refill</label>
-                                <InputNumber class="form-control" @bind-Value="_globalRateLimit.TokensPerRefill" />
-                            </div>
-                        }
+                    <div class="cm-editor__field">
+                        <label>Strategy</label>
+                        <RadzenDropDown TValue="RateLimitStrategy" @bind-Value="_globalRateLimit.Strategy"
+                            Data="@(Enum.GetValues<RateLimitStrategy>())" Style="width: 100%;"
+                            Change="@(_ => StateHasChanged())" />
                     </div>
-                </div>
-            }
-        </div>
-
-        @* Services Section *@
-        <div class="card mb-3">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span>Service Access (@_serviceEntries.Count)</span>
-                <button type="button" class="btn btn-sm btn-outline-primary" @onclick="AddServiceEntry">Add Service</button>
+                    <div class="cm-editor__field">
+                        <label>Max Requests</label>
+                        <RadzenNumeric TValue="int" @bind-Value="_globalRateLimit.MaxRequests" Style="width: 100%;" />
+                    </div>
+                    <div class="cm-editor__field">
+                        <label>Window (seconds)</label>
+                        <RadzenNumeric TValue="double" @bind-Value="_globalRateLimitWindowSeconds" Style="width: 100%;" />
+                    </div>
+                    @if (_globalRateLimit.Strategy == RateLimitStrategy.TokenBucket)
+                    {
+                        <div class="cm-editor__field">
+                            <label>Tokens Per Refill</label>
+                            <RadzenNumeric TValue="int?" @bind-Value="_globalRateLimit.TokensPerRefill" Style="width: 100%;" />
+                        </div>
+                    }
+                }
             </div>
-            <div class="card-body">
+
+            @* Card 3 — Service Access *@
+            <div class="cm-editor__card">
+                <div class="cm-editor__nested-header">
+                    <div class="cm-editor__section-title" style="margin-bottom: 0; border-bottom: none; padding-bottom: 0;">Service Access (@_serviceEntries.Count)</div>
+                    <RadzenButton Text="Add Service" Icon="add" Size="ButtonSize.Small" Variant="Variant.Outlined"
+                        Click="@(() => AddServiceEntry())" />
+                </div>
                 @if (_serviceEntries.Count == 0)
                 {
-                    <p class="text-muted">No service access entries configured.</p>
+                    <p style="color: var(--color-text-muted);">No service access entries configured.</p>
                 }
                 @foreach (var entry in _serviceEntries)
                 {
-                    <div class="border rounded p-2 mb-2">
-                        <div class="row g-2 align-items-end">
-                            <div class="col-md-3">
-                                <label class="form-label">Service ID</label>
-                                <InputText class="form-control" @bind-Value="entry.ServiceId" />
-                            </div>
-                            <div class="col-md-2">
-                                <div class="form-check mt-4">
-                                    <InputCheckbox class="form-check-input" @bind-Value="entry.IsAllowed" />
-                                    <label class="form-check-label">Allowed</label>
-                                </div>
-                            </div>
-                            <div class="col-md-2">
-                                <div class="form-check mt-4">
-                                    <InputCheckbox class="form-check-input" @bind-Value="entry.HasRateLimit" />
-                                    <label class="form-check-label">Rate Limit</label>
-                                </div>
-                            </div>
-                            <div class="col-md-2">
-                                <button type="button" class="btn btn-sm btn-outline-danger" @onclick="() => RemoveServiceEntry(entry)">Remove</button>
-                            </div>
+                    <div class="cm-editor__nested-item">
+                        <div class="cm-editor__nested-header">
+                            <strong style="font-size: var(--font-size-sm);">@(string.IsNullOrEmpty(entry.ServiceId) ? "New Service" : entry.ServiceId)</strong>
+                            <RadzenButton Icon="delete" Size="ButtonSize.Small" Variant="Variant.Text"
+                                ButtonStyle="ButtonStyle.Danger" Click="@(() => RemoveServiceEntry(entry))" />
+                        </div>
+                        <div class="cm-editor__field">
+                            <label>Service ID</label>
+                            <RadzenTextBox @bind-Value="entry.ServiceId" Style="width: 100%;" />
+                        </div>
+                        <div class="cm-editor__field">
+                            <label>Allowed</label>
+                            <RadzenSwitch @bind-Value="entry.IsAllowed" />
+                        </div>
+                        <div class="cm-editor__field">
+                            <label>Has Rate Limit</label>
+                            <RadzenSwitch @bind-Value="entry.HasRateLimit" />
                         </div>
                         @if (entry.HasRateLimit)
                         {
-                            <div class="row g-2 mt-1">
-                                <div class="col-md-3">
-                                    <label class="form-label">Strategy</label>
-                                    <InputSelect class="form-select" @bind-Value="entry.RateLimitStrategy">
-                                        @foreach (var strategy in Enum.GetValues<RateLimitStrategy>())
-                                        {
-                                            <option value="@strategy">@strategy</option>
-                                        }
-                                    </InputSelect>
-                                </div>
-                                <div class="col-md-3">
-                                    <label class="form-label">Max Requests</label>
-                                    <InputNumber class="form-control" @bind-Value="entry.RateLimitMaxRequests" />
-                                </div>
-                                <div class="col-md-3">
-                                    <label class="form-label">Window (seconds)</label>
-                                    <InputNumber class="form-control" @bind-Value="entry.RateLimitWindowSeconds" />
-                                </div>
-                                @if (entry.RateLimitStrategy == RateLimitStrategy.TokenBucket)
-                                {
-                                    <div class="col-md-3">
-                                        <label class="form-label">Tokens Per Refill</label>
-                                        <InputNumber class="form-control" @bind-Value="entry.RateLimitTokensPerRefill" />
-                                    </div>
-                                }
+                            <div class="cm-editor__field">
+                                <label>Strategy</label>
+                                <RadzenDropDown TValue="RateLimitStrategy" @bind-Value="entry.RateLimitStrategy"
+                                    Data="@(Enum.GetValues<RateLimitStrategy>())" Style="width: 100%;"
+                                    Change="@(_ => StateHasChanged())" />
                             </div>
+                            <div class="cm-editor__field">
+                                <label>Max Requests</label>
+                                <RadzenNumeric TValue="int" @bind-Value="entry.RateLimitMaxRequests" Style="width: 100%;" />
+                            </div>
+                            <div class="cm-editor__field">
+                                <label>Window (seconds)</label>
+                                <RadzenNumeric TValue="double" @bind-Value="entry.RateLimitWindowSeconds" Style="width: 100%;" />
+                            </div>
+                            @if (entry.RateLimitStrategy == RateLimitStrategy.TokenBucket)
+                            {
+                                <div class="cm-editor__field">
+                                    <label>Tokens Per Refill</label>
+                                    <RadzenNumeric TValue="int?" @bind-Value="entry.RateLimitTokensPerRefill" Style="width: 100%;" />
+                                </div>
+                            }
                         }
                     </div>
                 }
             </div>
-        </div>
 
-        @* Resource Pools Section *@
-        <div class="card mb-3">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span>Resource Pools (@_poolEntries.Count)</span>
-                <button type="button" class="btn btn-sm btn-outline-primary" @onclick="AddPoolEntry">Add Pool</button>
-            </div>
-            <div class="card-body">
+            @* Card 4 — Resource Pools *@
+            <div class="cm-editor__card">
+                <div class="cm-editor__nested-header">
+                    <div class="cm-editor__section-title" style="margin-bottom: 0; border-bottom: none; padding-bottom: 0;">Resource Pools (@_poolEntries.Count)</div>
+                    <RadzenButton Text="Add Pool" Icon="add" Size="ButtonSize.Small" Variant="Variant.Outlined"
+                        Click="@(() => AddPoolEntry())" />
+                </div>
                 @if (_poolEntries.Count == 0)
                 {
-                    <p class="text-muted">No resource pool entries configured.</p>
+                    <p style="color: var(--color-text-muted);">No resource pool entries configured.</p>
                 }
                 @foreach (var entry in _poolEntries)
                 {
-                    <div class="row g-2 mb-2 align-items-end">
-                        <div class="col-md-5">
-                            <label class="form-label">Pool ID</label>
-                            <InputText class="form-control" @bind-Value="entry.PoolId" />
+                    <div class="cm-editor__nested-item">
+                        <div class="cm-editor__nested-header">
+                            <strong style="font-size: var(--font-size-sm);">@(string.IsNullOrEmpty(entry.PoolId) ? "New Pool" : entry.PoolId)</strong>
+                            <RadzenButton Icon="delete" Size="ButtonSize.Small" Variant="Variant.Text"
+                                ButtonStyle="ButtonStyle.Danger" Click="@(() => RemovePoolEntry(entry))" />
                         </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Max Slots</label>
-                            <InputNumber class="form-control" @bind-Value="entry.MaxSlots" />
+                        <div class="cm-editor__field">
+                            <label>Pool ID</label>
+                            <RadzenTextBox @bind-Value="entry.PoolId" Style="width: 100%;" />
                         </div>
-                        <div class="col-md-3">
-                            <button type="button" class="btn btn-sm btn-outline-danger" @onclick="() => RemovePoolEntry(entry)">Remove</button>
+                        <div class="cm-editor__field">
+                            <label>Max Slots</label>
+                            <RadzenNumeric TValue="uint" @bind-Value="entry.MaxSlots" Style="width: 100%;" />
                         </div>
                     </div>
                 }
             </div>
-        </div>
 
-        <button type="submit" class="btn btn-primary">Save</button>
-        <button type="button" class="btn btn-secondary" @onclick="Cancel">Cancel</button>
-    </EditForm>
+            <div class="cm-editor__actions">
+                <RadzenButton Text="Save" ButtonType="ButtonType.Submit" ButtonStyle="ButtonStyle.Primary" />
+                <RadzenButton Text="Cancel" Variant="Variant.Outlined" Click="@(() => Nav.NavigateTo("/clients"))" />
+            </div>
+        </EditForm>
+    </div>
 }
 
 @code {
@@ -334,7 +335,6 @@ else
     private void RemoveServiceEntry(ServiceEntryModel entry) => _serviceEntries.Remove(entry);
     private void AddPoolEntry() => _poolEntries.Add(new PoolEntryModel());
     private void RemovePoolEntry(PoolEntryModel entry) => _poolEntries.Remove(entry);
-    private void Cancel() => Nav.NavigateTo("/clients");
 
     private class ClientFormModel
     {

@@ -3,7 +3,14 @@
 @inject GlobalRateLimitApiService RateLimitApi
 @inject NavigationManager Nav
 
-<h1>@(_isNew ? "Create Global Rate Limit" : $"Edit Global Rate Limit: {Id}")</h1>
+<div style="margin-bottom: var(--space-md);">
+    <RadzenLink Path="global-rate-limits" Text="← Back to Global Rate Limits" Style="font-size: var(--font-size-sm);" />
+</div>
+
+<div class="cm-page-header">
+    <h1>@(_isNew ? "Create Global Rate Limit" : $"Edit Global Rate Limit: {Id}")</h1>
+    <p>@(_isNew ? "Define a new system-wide rate limit." : "Update rate limit configuration.")</p>
+</div>
 
 @if (_loading)
 {
@@ -15,54 +22,53 @@ else if (_error is not null)
 }
 else
 {
-    <EditForm Model="_model" OnValidSubmit="SaveAsync" FormName="rateLimitForm">
-        <DataAnnotationsValidator />
+    <div class="cm-editor">
+        <EditForm Model="_model" OnValidSubmit="SaveAsync" FormName="rateLimitForm">
+            <DataAnnotationsValidator />
 
-        <div class="mb-3">
-            <label class="form-label">ID</label>
-            <InputText class="form-control" @bind-Value="_model.Id" disabled="@(!_isNew)" />
-        </div>
-        <div class="mb-3">
-            <label class="form-label">Target ID</label>
-            <InputText class="form-control" @bind-Value="_model.TargetId" />
-        </div>
-        <div class="mb-3">
-            <label class="form-label">Target Type</label>
-            <InputSelect class="form-select" @bind-Value="_model.TargetType">
-                @foreach (var target in Enum.GetValues<GlobalRateLimitTarget>())
+            <div class="cm-editor__card">
+                <div class="cm-editor__field">
+                    <label>Rate Limit ID</label>
+                    <RadzenTextBox @bind-Value="_model.Id" Disabled="@(!_isNew)" Style="width: 100%;" />
+                </div>
+                <div class="cm-editor__field">
+                    <label>Target ID</label>
+                    <RadzenTextBox @bind-Value="_model.TargetId" Style="width: 100%;" />
+                </div>
+                <div class="cm-editor__field">
+                    <label>Target Type</label>
+                    <RadzenDropDown TValue="GlobalRateLimitTarget" @bind-Value="_model.TargetType"
+                        Data="@(Enum.GetValues<GlobalRateLimitTarget>())" Style="width: 100%;" />
+                </div>
+                <div class="cm-editor__field">
+                    <label>Strategy</label>
+                    <RadzenDropDown TValue="RateLimitStrategy" @bind-Value="_model.Strategy"
+                        Data="@(Enum.GetValues<RateLimitStrategy>())" Style="width: 100%;"
+                        Change="@(_ => StateHasChanged())" />
+                </div>
+                <div class="cm-editor__field">
+                    <label>Max Requests</label>
+                    <RadzenNumeric TValue="int" @bind-Value="_model.MaxRequests" Style="width: 100%;" />
+                </div>
+                <div class="cm-editor__field">
+                    <label>Window (seconds)</label>
+                    <RadzenNumeric TValue="double" @bind-Value="_model.WindowSeconds" Style="width: 100%;" />
+                </div>
+                @if (_model.Strategy == RateLimitStrategy.TokenBucket)
                 {
-                    <option value="@target">@target</option>
+                    <div class="cm-editor__field">
+                        <label>Tokens Per Refill</label>
+                        <RadzenNumeric TValue="int?" @bind-Value="_model.TokensPerRefill" Style="width: 100%;" />
+                    </div>
                 }
-            </InputSelect>
-        </div>
-        <div class="mb-3">
-            <label class="form-label">Strategy</label>
-            <InputSelect class="form-select" @bind-Value="_model.Strategy">
-                @foreach (var strategy in Enum.GetValues<RateLimitStrategy>())
-                {
-                    <option value="@strategy">@strategy</option>
-                }
-            </InputSelect>
-        </div>
-        <div class="mb-3">
-            <label class="form-label">Max Requests</label>
-            <InputNumber class="form-control" @bind-Value="_model.MaxRequests" />
-        </div>
-        <div class="mb-3">
-            <label class="form-label">Window (seconds)</label>
-            <InputNumber class="form-control" @bind-Value="_model.WindowSeconds" />
-        </div>
-        @if (_model.Strategy == RateLimitStrategy.TokenBucket)
-        {
-            <div class="mb-3">
-                <label class="form-label">Tokens Per Refill</label>
-                <InputNumber class="form-control" @bind-Value="_model.TokensPerRefill" />
             </div>
-        }
 
-        <button type="submit" class="btn btn-primary">Save</button>
-        <button type="button" class="btn btn-secondary" @onclick="Cancel">Cancel</button>
-    </EditForm>
+            <div class="cm-editor__actions">
+                <RadzenButton Text="Save" ButtonType="ButtonType.Submit" ButtonStyle="ButtonStyle.Primary" />
+                <RadzenButton Text="Cancel" Variant="Variant.Outlined" Click="@(() => Nav.NavigateTo("/global-rate-limits"))" />
+            </div>
+        </EditForm>
+    </div>
 }
 
 @code {
@@ -134,8 +140,6 @@ else
             _error = $"Save failed: {ex.Message}";
         }
     }
-
-    private void Cancel() => Nav.NavigateTo("/global-rate-limits");
 
     private class RateLimitFormModel
     {
