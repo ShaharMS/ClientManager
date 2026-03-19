@@ -80,6 +80,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IGlobalRateLimitRepository, GlobalRateLimitRepository>();
         services.AddSingleton<IRateLimitStateStore, RateLimitStateStore>();
         services.AddSingleton<IResourceAllocationRepository, ResourceAllocationRepository>();
+        services.AddSingleton<IUsageSnapshotRepository, UsageSnapshotRepository>();
     }
 
     private static void RegisterRateLimiting(IServiceCollection services)
