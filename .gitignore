@@ -41,4 +41,7 @@ Thumbs.db
 data/
 logs/
 
+## Dev scripts
+_scripts/
+
 TempBlazor/

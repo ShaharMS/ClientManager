@@ -1,6 +1,6 @@
 # Plan: AdminUI Redesign — Step 3: Dashboard Page
 
-> **Status**: 🔲 Not started
+> **Status**: ✅ Completed
 > **Prerequisite**: [adminui-redesign-2-layout-nav.md](adminui-redesign-2-layout-nav.md)
 > **Next**: [adminui-redesign-4-api-endpoints.md](adminui-redesign-4-api-endpoints.md)
 > **Parent**: [adminui-redesign-overview.md](adminui-redesign-overview.md)

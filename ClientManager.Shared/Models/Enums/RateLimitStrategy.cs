@@ -1,8 +1,11 @@
+using System.Text.Json.Serialization;
+
 namespace ClientManager.Shared.Models.Enums;
 
 /// <summary>
 /// Defines the algorithm used to enforce rate limits.
 /// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum RateLimitStrategy
 {
     /// <summary>

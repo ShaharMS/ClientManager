@@ -1,8 +1,11 @@
+using System.Text.Json.Serialization;
+
 namespace ClientManager.Shared.Models.Enums;
 
 /// <summary>
 /// Specifies the type of entity that a global rate limit applies to.
 /// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum GlobalRateLimitTarget
 {
     /// <summary>

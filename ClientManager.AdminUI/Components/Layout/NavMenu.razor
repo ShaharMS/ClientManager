@@ -1,35 +1,54 @@
-<nav class="bg-dark text-white p-3" style="width: 250px; min-height: 100vh;">
-    <h5 class="text-white mb-4">ClientManager</h5>
-    <ul class="nav flex-column">
-        <li class="nav-item">
-            <NavLink class="nav-link text-white" href="" Match="NavLinkMatch.All">
+<aside class="cm-sidebar">
+    <div class="cm-sidebar__brand">
+        <div class="cm-sidebar__brand-icon">CM</div>
+        <span class="cm-sidebar__brand-name">ClientManager</span>
+    </div>
+
+    <ul class="cm-sidebar__nav">
+        <li class="cm-sidebar__nav-item">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                <RadzenIcon Icon="dashboard" class="cm-sidebar__nav-icon" />
                 Dashboard
             </NavLink>
         </li>
-        <li class="nav-item">
-            <NavLink class="nav-link text-white" href="clients">
+        <li class="cm-sidebar__nav-item">
+            <NavLink class="nav-link" href="clients">
+                <RadzenIcon Icon="people" class="cm-sidebar__nav-icon" />
                 Clients
             </NavLink>
         </li>
-        <li class="nav-item">
-            <NavLink class="nav-link text-white" href="services">
+        <li class="cm-sidebar__nav-item">
+            <NavLink class="nav-link" href="services">
+                <RadzenIcon Icon="build" class="cm-sidebar__nav-icon" />
                 Services
             </NavLink>
         </li>
-        <li class="nav-item">
-            <NavLink class="nav-link text-white" href="resource-pools">
+        <li class="cm-sidebar__nav-item">
+            <NavLink class="nav-link" href="resource-pools">
+                <RadzenIcon Icon="hub" class="cm-sidebar__nav-icon" />
                 Resource Pools
             </NavLink>
         </li>
-        <li class="nav-item">
-            <NavLink class="nav-link text-white" href="global-rate-limits">
+        <li class="cm-sidebar__nav-item">
+            <NavLink class="nav-link" href="global-rate-limits">
+                <RadzenIcon Icon="speed" class="cm-sidebar__nav-icon" />
                 Global Rate Limits
             </NavLink>
         </li>
-        <li class="nav-item">
-            <NavLink class="nav-link text-white" href="allocations">
+        <li class="cm-sidebar__nav-item">
+            <NavLink class="nav-link" href="allocations">
+                <RadzenIcon Icon="swap_horiz" class="cm-sidebar__nav-icon" />
                 Active Allocations
             </NavLink>
         </li>
     </ul>
-</nav>
+
+    <div class="cm-sidebar__footer">
+        <div class="cm-sidebar__nav-item">
+            <a href="#" class="nav-link">
+                <RadzenIcon Icon="settings" class="cm-sidebar__nav-icon" />
+                Settings
+            </a>
+        </div>
+    </div>
+</aside>

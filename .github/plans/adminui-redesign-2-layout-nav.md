@@ -1,6 +1,6 @@
 # Plan: AdminUI Redesign — Step 2: Layout & Navigation
 
-> **Status**: 🔲 Not started
+> **Status**: ✅ Completed
 > **Prerequisite**: [adminui-redesign-1-foundation.md](adminui-redesign-1-foundation.md)
 > **Next**: [adminui-redesign-3-dashboard.md](adminui-redesign-3-dashboard.md)
 > **Parent**: [adminui-redesign-overview.md](adminui-redesign-overview.md)

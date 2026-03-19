@@ -1,94 +1,167 @@
 @page "/"
 @inject StatisticsApiService StatsService
+@inject ClientApiService ClientService
+@inject ServiceApiService ServiceService
+@inject ResourcePoolApiService PoolService
 
-<h1>Dashboard</h1>
+<div class="cm-page-header">
+    <h1>Welcome</h1>
+    <p>Your system's performance at a glance.</p>
+</div>
 
 @if (_loading)
 {
-    <p>Loading...</p>
+    <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
 }
 else if (_error is not null)
 {
-    <div class="alert alert-danger">@_error</div>
+    <RadzenAlert AlertStyle="AlertStyle.Danger" Shade="Shade.Light">@_error</RadzenAlert>
 }
 else
 {
-    <div class="row g-3 mb-4">
-        <div class="col-md-3">
-            <div class="card text-center">
-                <div class="card-body">
-                    <h5 class="card-title">Clients</h5>
-                    <p class="display-6">@_overview?.EnabledClients / @_overview?.TotalClients</p>
-                </div>
-            </div>
+    <div class="cm-dashboard__stats">
+        <div class="cm-stat-card cm-stat-card--primary">
+            <div class="cm-stat-card__value">@_overview?.TotalClients</div>
+            <div class="cm-stat-card__label">Clients</div>
         </div>
-        <div class="col-md-3">
-            <div class="card text-center">
-                <div class="card-body">
-                    <h5 class="card-title">Services</h5>
-                    <p class="display-6">@_overview?.EnabledServices / @_overview?.TotalServices</p>
-                </div>
-            </div>
+        <div class="cm-stat-card">
+            <div class="cm-stat-card__value">@_overview?.TotalServices</div>
+            <div class="cm-stat-card__label">Services</div>
         </div>
-        <div class="col-md-3">
-            <div class="card text-center">
-                <div class="card-body">
-                    <h5 class="card-title">Resource Pools</h5>
-                    <p class="display-6">@_overview?.TotalResourcePools</p>
-                </div>
-            </div>
+        <div class="cm-stat-card">
+            <div class="cm-stat-card__value">@_overview?.TotalResourcePools</div>
+            <div class="cm-stat-card__label">Resource Pools</div>
         </div>
-        <div class="col-md-3">
-            <div class="card text-center">
-                <div class="card-body">
-                    <h5 class="card-title">Active Allocations</h5>
-                    <p class="display-6">@_overview?.ActiveAllocations</p>
-                </div>
-            </div>
+        <div class="cm-stat-card">
+            <div class="cm-stat-card__value">@_globalUsage</div>
+            <div class="cm-stat-card__label">Requests / min</div>
+        </div>
+        <div class="cm-stat-card">
+            <div class="cm-stat-card__value">@(_acquisitionPct)%</div>
+            <div class="cm-stat-card__label">Pool Acquisition</div>
         </div>
     </div>
 
-    <h3>Resource Pool Utilization</h3>
-    @if (_poolStats.Count == 0)
-    {
-        <p class="text-muted">No resource pools configured.</p>
-    }
-    else
-    {
-        <table class="table">
-            <thead>
-                <tr><th>Pool</th><th>Usage</th><th>Active / Max</th></tr>
-            </thead>
-            <tbody>
-                @foreach (var pool in _poolStats)
-                {
-                    <tr>
-                        <td>@pool.Name</td>
-                        <td>
-                            <div class="progress">
-                                <div class="progress-bar" style="width: @(pool.MaxSlots > 0 ? pool.ActiveAllocations * 100 / pool.MaxSlots : 0)%"></div>
-                            </div>
-                        </td>
-                        <td>@pool.ActiveAllocations / @pool.MaxSlots</td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    }
+    <div class="cm-dashboard__charts">
+        <div class="cm-dashboard__chart-card">
+            <div class="cm-dashboard__chart-header">
+                <span class="cm-dashboard__chart-title">Usage Over Time</span>
+                <div class="cm-dashboard__filters">
+                    <RadzenDropDown @bind-Value="_selectedFilterType"
+                        Data="@_filterTypes" TextProperty="Label" ValueProperty="Value"
+                        Placeholder="Filter by..." Change="@OnFilterChanged" Style="width:160px;" />
+                    <RadzenDropDown @bind-Value="_selectedTargetId"
+                        Data="@_filterTargets" TextProperty="Name" ValueProperty="Id"
+                        Placeholder="Select target..." Change="@OnFilterChanged" Style="width:180px;" />
+                    <RadzenDropDown @bind-Value="_selectedClientIds" Multiple="true"
+                        Data="@_clients" TextProperty="Name" ValueProperty="Id"
+                        Placeholder="All clients" Style="width:200px;"
+                        Change="@OnFilterChanged" />
+                </div>
+            </div>
+            <RadzenChart Style="height: 300px;">
+                <RadzenLineSeries Data="@_usageOverTime" CategoryProperty="Timestamp"
+                    ValueProperty="Value" Title="Usage" />
+                <RadzenLineSeries Data="@_capOverTime" CategoryProperty="Timestamp"
+                    ValueProperty="Value" Title="Limit" LineType="LineType.Dashed" />
+                <RadzenCategoryAxis FormatString="{0:HH:mm}" />
+                <RadzenValueAxis />
+                <RadzenLegend Position="LegendPosition.Bottom" />
+            </RadzenChart>
+        </div>
+
+        <div class="cm-dashboard__chart-card">
+            <div class="cm-dashboard__chart-header">
+                <span class="cm-dashboard__chart-title">Usage Per Client</span>
+            </div>
+            <RadzenChart Style="height: 300px;">
+                <RadzenDonutSeries Data="@_perClientUsage" CategoryProperty="ClientName"
+                    ValueProperty="Value" Title="Per Client" />
+                <RadzenLegend Position="LegendPosition.Bottom" />
+            </RadzenChart>
+        </div>
+    </div>
+
+    <div class="cm-dashboard__table-card">
+        <div class="cm-dashboard__chart-header">
+            <span class="cm-dashboard__chart-title">Client Overview</span>
+            <RadzenTextBox Placeholder="Search clients..." @bind-Value="_tableSearch"
+                Change="@OnTableSearchChanged" Style="width: 250px;" />
+        </div>
+
+        <RadzenDataGrid Data="@_filteredClientSummaries" TItem="ClientSummaryRow"
+            AllowSorting="true" AllowPaging="true" PageSize="10"
+            PagerHorizontalAlign="HorizontalAlign.Center">
+            <Columns>
+                <RadzenDataGridColumn TItem="ClientSummaryRow" Property="ClientId" Title="Client ID" Width="150px" />
+                <RadzenDataGridColumn TItem="ClientSummaryRow" Property="DisplayName" Title="Who Am I?" Width="150px" />
+                <RadzenDataGridColumn TItem="ClientSummaryRow" Property="AccessibleServices" Title="Services" Width="100px" />
+                <RadzenDataGridColumn TItem="ClientSummaryRow" Property="TotalRateLimitCap" Title="Rate Limit Cap" Width="140px" />
+                <RadzenDataGridColumn TItem="ClientSummaryRow" Property="AccessiblePools" Title="Pools" Width="100px" />
+                <RadzenDataGridColumn TItem="ClientSummaryRow" Property="SlotsDisplay" Title="Slots (Used/Total)" Width="160px" />
+            </Columns>
+        </RadzenDataGrid>
+    </div>
 }
 
 @code {
     private bool _loading = true;
     private string? _error;
     private SystemOverview? _overview;
-    private List<ResourcePoolStatistics> _poolStats = [];
+
+    private string _globalUsage = "—";
+    private int _acquisitionPct;
+
+    private string _selectedFilterType = "Service";
+    private string? _selectedTargetId;
+    private IEnumerable<string>? _selectedClientIds;
+    private string? _tableSearch;
+
+    private List<FilterOption> _filterTypes = new()
+    {
+        new("Service", "Service"),
+        new("Resource Pool", "ResourcePool")
+    };
+    private List<NamedItem> _filterTargets = new();
+    private List<NamedItem> _clients = new();
+
+    private List<TimeSeriesPoint> _usageOverTime = new();
+    private List<TimeSeriesPoint> _capOverTime = new();
+    private List<ClientUsagePoint> _perClientUsage = new();
+
+    private List<ClientSummaryRow> _clientSummaries = new();
+    private List<ClientSummaryRow> _filteredClientSummaries = new();
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
             _overview = await StatsService.GetOverviewAsync();
-            _poolStats = await StatsService.GetResourcePoolStatsAsync();
+
+            var services = await ServiceService.GetAllAsync();
+            var pools = await PoolService.GetAllAsync();
+            var clients = await ClientService.GetAllAsync();
+
+            _clients = clients.Select(c => new NamedItem(c.Id, c.Name)).ToList();
+            _filterTargets = services.Select(s => new NamedItem(s.Id, s.Name)).ToList();
+
+            _clientSummaries = clients.Select(c => new ClientSummaryRow(
+                c.Id,
+                c.Name,
+                c.Services.Count,
+                "—",
+                c.ResourcePools.Count,
+                "—"
+            )).ToList();
+            _filteredClientSummaries = _clientSummaries;
+
+            var poolStats = await StatsService.GetResourcePoolStatsAsync();
+            if (poolStats.Count > 0)
+            {
+                var totalSlots = poolStats.Sum(p => p.MaxSlots);
+                var usedSlots = poolStats.Sum(p => p.ActiveAllocations);
+                _acquisitionPct = totalSlots > 0 ? (int)Math.Round(usedSlots * 100.0 / totalSlots) : 0;
+            }
         }
         catch (HttpRequestException ex)
         {
@@ -99,4 +172,38 @@ else
             _loading = false;
         }
     }
+
+    private void OnFilterChanged()
+    {
+        if (_selectedFilterType == "Service")
+        {
+            // Placeholder: will load usage-over-time from API in step 4
+        }
+        else
+        {
+            // Placeholder: will load slot-acquisition-over-time from API in step 4
+        }
+    }
+
+    private void OnTableSearchChanged()
+    {
+        if (string.IsNullOrWhiteSpace(_tableSearch))
+        {
+            _filteredClientSummaries = _clientSummaries;
+        }
+        else
+        {
+            _filteredClientSummaries = _clientSummaries
+                .Where(c => c.ClientId.Contains(_tableSearch, StringComparison.OrdinalIgnoreCase)
+                    || c.DisplayName.Contains(_tableSearch, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+    }
+
+    private record FilterOption(string Label, string Value);
+    private record NamedItem(string Id, string Name);
+    private record TimeSeriesPoint(DateTime Timestamp, double Value);
+    private record ClientUsagePoint(string ClientName, double Value);
+    private record ClientSummaryRow(string ClientId, string DisplayName, int AccessibleServices,
+        string TotalRateLimitCap, int AccessiblePools, string SlotsDisplay);
 }
