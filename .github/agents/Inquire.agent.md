@@ -138,6 +138,42 @@ snippets when the exact shape matters.}
 - **Verification must be concrete** — prefer compilation checks, importability checks, and behavioral checks. No vague statements like "it should work."
 - **Each sub-plan should touch one layer or concern** — don't mix DAL and UI in the same sub-plan.
 - **Each sub-plan must be completable in a single agent session** — if it's too big, split it.
+- **Browser-based UI verification is mandatory for web projects** — see the "Browser Testing in Verification" section below.
+
+---
+
+## Browser Testing in Verification (Web Projects)
+
+When writing plans for a web-based project (web applications, websites, projects with a web UI such as Blazor, React, Angular, etc.), you **MUST** include browser-based UI testing instructions in the **Verification** section of every sub-plan — not just UI sub-plans.
+
+### Why backend sub-plans need UI verification too
+
+Backend changes (API endpoints, services, DTOs, data access, middleware, configuration) directly affect what the UI displays and how it behaves. A passing compilation check does not mean the UI still works. The `@Implement` agent has access to a shared browser and must use it.
+
+### What to include in Verification sections
+
+For **every sub-plan** in a web project, add browser verification items after the standard compilation/import checks. Be specific about what to test:
+
+- **Name the UI page(s) or URL(s)** that should be checked (e.g., "Navigate to the Clients page at `/clients`").
+- **Describe what to look for** — expected data, correct rendering, no error states, proper formatting.
+- **Describe interactions to perform** — click a button, submit a form, filter a table, expand a detail view — whatever exercises the changed code path through the UI.
+- **Mention negative cases** when relevant — e.g., "Verify the page does not show an error toast after saving."
+
+Example verification items for a backend sub-plan:
+
+```markdown
+## Verification
+
+- Project compiles without errors
+- New endpoint returns expected data via Swagger / HTTP file
+- **UI: Navigate to the Resource Pools page — verify the new column appears and displays correct values**
+- **UI: Click a resource pool row to open its detail view — verify the new field is rendered**
+- **UI: Take a screenshot to confirm no layout breakage or error banners**
+```
+
+### Guidance for the executing agent
+
+If certain UI pages are particularly important for a plan, call them out in the overview's Key Decisions or in the sub-plan's TL;DR so the `@Implement` agent knows where to focus its browser testing. The more specific you are about which pages and interactions to verify, the more thorough the testing will be.
 
 ---
 
@@ -158,22 +194,10 @@ This ensures each step can compile and be verified before the next step begins.
 
 When writing plans for this codebase, ensure steps conform to these rules:
 
-- Shared types go in `@music-app/core`
-- Helper functions go in `@music-app/helpers`
-- Hardcoded values go in `@music-app/configuration`
-- Logging uses `@music-app/logger` — never `console.log`
-- Database initialization goes in `@music-app/databases`
-- Error handling uses `@music-app/errors` — never throw raw `Error`
-- API projects use `src/library/` for types, `src/services/` for logic, `src/routes/` for handlers
-- Route file structure: `src/routes/<url-path>/<http-method>.ts`
 - Max 2 levels of nesting; use early returns
 - Functions > 30 lines should be split; files > 200 lines should be split
 - Types and implementations in separate files
 - No abbreviations in names (use `context` not `ctx`, `request` not `req`)
-- Use `type` over `interface` unless defining class shapes or public APIs
-- Never use `any` — use `unknown` or a specific type
-- Always `const`; never `var`
-- Imports must start with a package name, `@music-app/`, `./`, `../`, or a `#`-prefixed project root alias
 
 ---
 
@@ -183,6 +207,6 @@ When writing plans for this codebase, ensure steps conform to these rules:
 - **Always confirm the approach with the user before writing files.** Present the overview structure and key decisions first.
 - **Always write all plan files to disk.** Do not just output plans in chat — they must be persisted under `.github/plans/`.
 - **Search extensively before proposing.** Read the relevant source files, find reference patterns, understand the dependency graph. A plan that doesn't reference existing patterns is a bad plan.
-- **Ask, don't assume.** If the user's request is ambiguous about scope, naming, or ordering, ask. Propose a sensible default so they can confirm quickly.
+- **Ask, don't assume.** If the user's request is ambiguous about scope, naming, or ordering, ask. Propose a sensible default so they can confirm quickly, and use #tool:vscode/askQuestions to gather input from the user.
 - **Keep plans recoverable.** Each sub-plan should be a checkpoint. If an executing agent loses context mid-plan, it should be able to pick up from any sub-plan file.
 - **After writing a plan, summarize it in chat.** List the files created and their one-line summaries so the user can review.

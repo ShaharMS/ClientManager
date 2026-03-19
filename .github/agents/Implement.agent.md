@@ -125,22 +125,48 @@ Check if the plan has a **next step** (the `**Next**` field in the sub-plan head
 
 ---
 
+## Browser-Based UI Testing (Mandatory for Web Projects)
+
+When the project has a web-based UI and a shared browser is available (browser tools are listed in your tool set), you **MUST** test your changes through the browser after completing each sub-plan step. This is not optional.
+
+### When does this apply?
+
+- The project is a web application, website, or has a web-based admin UI (e.g., Blazor, React, Angular, etc.).
+- Browser interaction tools are available to you (e.g., `openBrowserPage`, `navigatePage`, `clickElement`, `screenshotPage`, `readPage`, etc.).
+- This applies to **both frontend AND backend changes**. Backend changes (API endpoints, services, data access) can affect what the UI displays or how it behaves — you must verify the UI still works correctly after any change.
+
+### What to do
+
+1. **After implementing a step**, open or navigate to the relevant UI page(s) in the shared browser.
+2. **Take a screenshot** to visually confirm the UI renders correctly.
+3. **Interact with the UI** — click buttons, navigate between pages, submit forms, or perform the actions that exercise the code you just changed.
+4. **Read page content** when needed to verify data is displayed correctly (especially after backend/API changes).
+5. **If the UI is broken or behaves unexpectedly**, debug and fix the issue before marking the step as done. Do not proceed with a broken UI.
+6. **If the sub-plan's Verification section includes specific UI checks**, follow those. If it doesn't but the change could affect the UI, test the relevant UI flows anyway.
+
+### What counts as "could affect the UI"
+
+- Any API endpoint change (new, modified, or removed) — the UI likely calls it.
+- Any DTO or model change — the UI likely renders its fields.
+- Any service logic change — the UI may display results differently.
+- Any configuration or middleware change — could affect responses the UI depends on.
+- Any database or data access change — the UI may show stale or incorrect data.
+
+### How to test
+
+- Use `screenshotPage` to capture visual state.
+- Use `readPage` to inspect rendered text and structure.
+- Use `clickElement`, `typeInPage`, `navigatePage` to interact.
+- Use `runPlaywrightCode` for more complex interaction sequences.
+- If the page shows errors, empty states, or missing data — that's a bug. Fix it before continuing.
+
+---
+
 ## Repository Conventions Reference
 
-These are the conventions from `.github/copilot-instructions.md` that you must follow when implementing:
+These are the conventions that you must follow when implementing:
 
-- Shared types → `@music-app/core`
-- Helpers → `@music-app/helpers`
-- Config values → `@music-app/configuration`
-- Logging → `@music-app/logger` (never `console.log`)
-- Databases → `@music-app/databases`
-- Errors → `@music-app/errors` (never throw raw `Error`)
-- API structure: `src/library/` types, `src/services/` logic, `src/routes/<path>/<method>.ts`
 - Max 2 nesting levels; use early returns
 - Functions ≤ 30 lines; files ≤ 200 lines
 - Types and implementations in separate files
 - No abbreviations (`context` not `ctx`, `request` not `req`)
-- `type` over `interface` (unless class shape / public API)
-- Never `any` — use `unknown` or specific types
-- `const` over `let`; never `var`
-- Imports: package name, `@music-app/`, `./`, `../`, or `#`-prefixed root alias
