@@ -5,6 +5,7 @@ using ClientManager.Api.Models.Responses;
 using ClientManager.Api.Services.Instrumentation;
 using ClientManager.DataAccess.Interfaces;
 using ClientManager.Shared.Models.Entities;
+using ClientManager.Shared.Models.Enums;
 
 namespace ClientManager.Api.Services;
 
@@ -20,6 +21,7 @@ public class ResourceAllocationService : IResourceAllocationService
     private readonly IClientConfigurationRepository _clientConfigRepository;
     private readonly IRateLimitService _rateLimitService;
     private readonly ClientManagerMetrics _metrics;
+    private readonly IUsageRecorder _usageRecorder;
 
     /// <summary>
     /// Initializes a new instance of <see cref="ResourceAllocationService"/>.
@@ -30,13 +32,15 @@ public class ResourceAllocationService : IResourceAllocationService
     /// <param name="clientConfigRepository">Repository for client configurations.</param>
     /// <param name="rateLimitService">Service for evaluating rate limits.</param>
     /// <param name="metrics">The metrics instrumentation instance.</param>
+    /// <param name="usageRecorder">The usage event recorder.</param>
     public ResourceAllocationService(
         ILogger<ResourceAllocationService> logger,
         IEntityRepository<ResourcePool> poolRepository,
         IResourceAllocationRepository allocationRepository,
         IClientConfigurationRepository clientConfigRepository,
         IRateLimitService rateLimitService,
-        ClientManagerMetrics metrics)
+        ClientManagerMetrics metrics,
+        IUsageRecorder usageRecorder)
     {
         _logger = logger;
         _poolRepository = poolRepository;
@@ -44,6 +48,7 @@ public class ResourceAllocationService : IResourceAllocationService
         _clientConfigRepository = clientConfigRepository;
         _rateLimitService = rateLimitService;
         _metrics = metrics;
+        _usageRecorder = usageRecorder;
     }
 
     /// <inheritdoc />
@@ -81,6 +86,7 @@ public class ResourceAllocationService : IResourceAllocationService
                     { "resourcePoolId", resourcePoolId },
                     { "reason", ResourceDenialReason.ClientCapReached.ToTagValue() }
                 });
+                _usageRecorder.RecordAllocationEvent(clientId, resourcePoolId, UsageEventType.Denied);
                 throw new RateLimitedException($"Client slot limit reached for pool '{resourcePoolId}'");
             }
         }
@@ -95,6 +101,7 @@ public class ResourceAllocationService : IResourceAllocationService
                 { "resourcePoolId", resourcePoolId },
                 { "reason", ResourceDenialReason.RateLimited.ToTagValue() }
             });
+            _usageRecorder.RecordAllocationEvent(clientId, resourcePoolId, UsageEventType.Denied);
             throw new RateLimitedException("Global resource pool rate limit exceeded", rateLimitResult.RetryAfterSeconds);
         }
 
@@ -108,6 +115,7 @@ public class ResourceAllocationService : IResourceAllocationService
                 { "resourcePoolId", resourcePoolId },
                 { "reason", ResourceDenialReason.NoSlots.ToTagValue() }
             });
+            _usageRecorder.RecordAllocationEvent(clientId, resourcePoolId, UsageEventType.Denied);
             throw new RateLimitedException($"No slots available in pool '{resourcePoolId}'");
         }
 
@@ -132,6 +140,7 @@ public class ResourceAllocationService : IResourceAllocationService
             { "clientId", clientId },
             { "resourcePoolId", resourcePoolId }
         });
+        _usageRecorder.RecordAllocationEvent(clientId, resourcePoolId, UsageEventType.Granted);
 
         _logger.LogInformation("Resource acquired | ClientId={ClientId}, ResourcePoolId={ResourcePoolId}, AllocationId={AllocationId}, ExpiresAt={ExpiresAt}",
             clientId, resourcePoolId, allocationId, expiresAt);

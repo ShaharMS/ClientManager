@@ -17,6 +17,7 @@ public class StatisticsService : IStatisticsService
     private readonly IEntityRepository<ResourcePool> _poolRepository;
     private readonly IResourceAllocationRepository _allocationRepository;
     private readonly IGlobalRateLimitRepository _globalRateLimitRepository;
+    private readonly IUsageSnapshotRepository _usageSnapshotRepository;
 
     /// <summary>
     /// Initializes a new instance of <see cref="StatisticsService"/>.
@@ -26,18 +27,21 @@ public class StatisticsService : IStatisticsService
     /// <param name="poolRepository">Repository for resource pool definitions.</param>
     /// <param name="allocationRepository">Repository for resource allocation state.</param>
     /// <param name="globalRateLimitRepository">Repository for global rate limits.</param>
+    /// <param name="usageSnapshotRepository">Repository for usage snapshot data.</param>
     public StatisticsService(
         IClientConfigurationRepository clientConfigRepository,
         IEntityRepository<Service> serviceRepository,
         IEntityRepository<ResourcePool> poolRepository,
         IResourceAllocationRepository allocationRepository,
-        IGlobalRateLimitRepository globalRateLimitRepository)
+        IGlobalRateLimitRepository globalRateLimitRepository,
+        IUsageSnapshotRepository usageSnapshotRepository)
     {
         _clientConfigRepository = clientConfigRepository;
         _serviceRepository = serviceRepository;
         _poolRepository = poolRepository;
         _allocationRepository = allocationRepository;
         _globalRateLimitRepository = globalRateLimitRepository;
+        _usageSnapshotRepository = usageSnapshotRepository;
     }
 
     /// <inheritdoc />
@@ -59,10 +63,21 @@ public class StatisticsService : IStatisticsService
             ? Math.Round(acquiredSlots * 100.0 / totalSlots, 1)
             : 0;
 
-        // Request rate tracking is not yet persisted — return 0 for now.
-        // A follow-up plan can add proper metrics storage.
+        // Compute request rate from the most recent complete 5-minute bucket
+        var latestBucketTime = RoundDownToFiveMinutes(DateTime.UtcNow).AddMinutes(-5);
+        var allServiceSnapshots = await _usageSnapshotRepository
+            .GetAllByGranularityAsync(BucketGranularity.FiveMinute, cancellationToken);
+
+        var recentRequests = allServiceSnapshots
+            .Where(s => s.TargetType == GlobalRateLimitTarget.Service)
+            .SelectMany(s => s.Buckets)
+            .Where(b => b.Timestamp == latestBucketTime)
+            .Sum(b => b.GrantedCount);
+
+        var requestsPerMinute = Math.Round(recentRequests / 5.0, 1);
+
         return new GlobalUsageStatsResponse(
-            RequestsPerMinute: 0,
+            RequestsPerMinute: requestsPerMinute,
             TotalPoolSlots: totalSlots,
             AcquiredPoolSlots: acquiredSlots,
             AcquisitionPercentage: acquisitionPercentage);
@@ -70,35 +85,57 @@ public class StatisticsService : IStatisticsService
 
     /// <inheritdoc />
     public async Task<UsageTimeSeriesResponse> GetUsageTimeSeriesAsync(
-        string filterType, string targetId, IEnumerable<string>? clientIds,
+        GlobalRateLimitTarget targetType, string targetId, IEnumerable<string>? clientIds,
         CancellationToken cancellationToken = default)
     {
-        // Historical request/allocation data is not yet persisted.
-        // Return an empty series with a constant cap line based on current configuration.
-
         double capValue = 0;
 
-        if (string.Equals(filterType, "Service", StringComparison.OrdinalIgnoreCase))
+        if (targetType == GlobalRateLimitTarget.Service)
         {
             var globalLimit = await _globalRateLimitRepository.GetByTargetAsync(
                 targetId, GlobalRateLimitTarget.Service, cancellationToken);
             capValue = globalLimit?.MaxRequests ?? 0;
         }
-        else if (string.Equals(filterType, "ResourcePool", StringComparison.OrdinalIgnoreCase))
+        else
         {
             var pool = await _poolRepository.GetByIdAsync(targetId, cancellationToken);
             capValue = pool?.MaxSlots ?? 0;
         }
 
-        // Generate empty time-series points for the last hour with the cap as a constant line
+        // Load 5-minute snapshots for the target
+        var snapshots = await _usageSnapshotRepository.GetByTargetAsync(
+            targetId, targetType, BucketGranularity.FiveMinute, cancellationToken);
+
+        // Filter by client IDs if specified
+        var clientIdSet = clientIds?.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (clientIdSet is not null)
+        {
+            snapshots = snapshots.Where(s => clientIdSet.Contains(s.ClientId)).ToList();
+        }
+
+        // Aggregate across all clients
+        var aggregated = new SortedDictionary<DateTime, double>();
+        foreach (var snapshot in snapshots)
+        {
+            foreach (var bucket in snapshot.Buckets)
+            {
+                if (aggregated.TryGetValue(bucket.Timestamp, out var existing))
+                    aggregated[bucket.Timestamp] = existing + bucket.GrantedCount;
+                else
+                    aggregated[bucket.Timestamp] = bucket.GrantedCount;
+            }
+        }
+
+        // Generate time-series for the last hour, filling in zeros for missing slots
         var now = DateTime.UtcNow;
         var usagePoints = new List<TimeSeriesPoint>();
         var capPoints = new List<TimeSeriesPoint>();
 
         for (var i = 12; i >= 0; i--)
         {
-            var timestamp = now.AddMinutes(-i * 5);
-            usagePoints.Add(new TimeSeriesPoint(timestamp, 0));
+            var timestamp = RoundDownToFiveMinutes(now).AddMinutes(-i * 5);
+            var value = aggregated.TryGetValue(timestamp, out var v) ? v : 0;
+            usagePoints.Add(new TimeSeriesPoint(timestamp, value));
             capPoints.Add(new TimeSeriesPoint(timestamp, capValue));
         }
 
@@ -107,42 +144,34 @@ public class StatisticsService : IStatisticsService
 
     /// <inheritdoc />
     public async Task<ClientUsageBreakdownResponse> GetClientUsageBreakdownAsync(
-        string filterType, string targetId, IEnumerable<string>? clientIds,
+        GlobalRateLimitTarget targetType, string targetId, IEnumerable<string>? clientIds,
         CancellationToken cancellationToken = default)
     {
         var clients = await _clientConfigRepository.GetAllAsync(cancellationToken);
         var clientIdSet = clientIds?.ToHashSet(StringComparer.OrdinalIgnoreCase);
 
+        // Use the most recent complete 5-minute bucket for per-client breakdown
+        var latestBucketTime = RoundDownToFiveMinutes(DateTime.UtcNow).AddMinutes(-5);
+        var snapshots = await _usageSnapshotRepository.GetByTargetAsync(
+            targetId, targetType, BucketGranularity.FiveMinute, cancellationToken);
+
         var entries = new List<ClientUsageEntry>();
 
-        if (string.Equals(filterType, "Service", StringComparison.OrdinalIgnoreCase))
+        foreach (var client in clients)
         {
-            // For services: show which clients have access (no historical request data yet)
-            foreach (var client in clients)
-            {
-                if (clientIdSet is not null && !clientIdSet.Contains(client.Id))
-                    continue;
+            if (clientIdSet is not null && !clientIdSet.Contains(client.Id))
+                continue;
 
-                if (client.Services.TryGetValue(targetId, out var settings) && settings.IsAllowed)
-                {
-                    entries.Add(new ClientUsageEntry(client.Id, client.Name, 1));
-                }
-            }
-        }
-        else if (string.Equals(filterType, "ResourcePool", StringComparison.OrdinalIgnoreCase))
-        {
-            // For pools: show active slot allocations per client
-            foreach (var client in clients)
-            {
-                if (clientIdSet is not null && !clientIdSet.Contains(client.Id))
-                    continue;
+            var snapshot = snapshots.FirstOrDefault(s =>
+                string.Equals(s.ClientId, client.Id, StringComparison.OrdinalIgnoreCase));
 
-                if (client.ResourcePools.ContainsKey(targetId))
-                {
-                    var activeCount = await _allocationRepository.GetActiveCountByClientAsync(
-                        targetId, client.Id, cancellationToken);
-                    entries.Add(new ClientUsageEntry(client.Id, client.Name, activeCount));
-                }
+            var recentCount = snapshot?.Buckets
+                .Where(b => b.Timestamp == latestBucketTime)
+                .Sum(b => b.GrantedCount) ?? 0;
+
+            if (recentCount > 0)
+            {
+                entries.Add(new ClientUsageEntry(client.Id, client.Name, recentCount));
             }
         }
 
@@ -191,5 +220,63 @@ public class StatisticsService : IStatisticsService
         }
 
         return new ClientSummariesResponse(rows);
+    }
+
+    /// <inheritdoc />
+    public async Task<HistoricalUsageResponse> GetHistoricalUsageAsync(
+        string targetId,
+        GlobalRateLimitTarget targetType,
+        string? clientId,
+        DateTime from,
+        DateTime to,
+        BucketGranularity granularity,
+        CancellationToken cancellationToken = default)
+    {
+        IReadOnlyList<UsageSnapshot> snapshots;
+
+        if (clientId is not null)
+        {
+            var snapshot = await _usageSnapshotRepository.GetByClientAndTargetAsync(
+                clientId, targetId, targetType, granularity, cancellationToken);
+            snapshots = snapshot is not null ? [snapshot] : [];
+        }
+        else
+        {
+            snapshots = await _usageSnapshotRepository.GetByTargetAsync(
+                targetId, targetType, granularity, cancellationToken);
+        }
+
+        var aggregated = new SortedDictionary<DateTime, (long granted, long denied)>();
+
+        foreach (var snapshot in snapshots)
+        {
+            foreach (var bucket in snapshot.Buckets)
+            {
+                if (bucket.Timestamp < from || bucket.Timestamp > to)
+                    continue;
+
+                if (aggregated.TryGetValue(bucket.Timestamp, out var existing))
+                {
+                    aggregated[bucket.Timestamp] = (
+                        existing.granted + bucket.GrantedCount,
+                        existing.denied + bucket.DeniedCount);
+                }
+                else
+                {
+                    aggregated[bucket.Timestamp] = (bucket.GrantedCount, bucket.DeniedCount);
+                }
+            }
+        }
+
+        var points = aggregated
+            .Select(kvp => new HistoricalUsagePoint(kvp.Key, kvp.Value.granted, kvp.Value.denied))
+            .ToList();
+
+        return new HistoricalUsageResponse(targetId, targetType, granularity, points);
+    }
+
+    private static DateTime RoundDownToFiveMinutes(DateTime utc)
+    {
+        return new DateTime(utc.Year, utc.Month, utc.Day, utc.Hour, utc.Minute / 5 * 5, 0, DateTimeKind.Utc);
     }
 }

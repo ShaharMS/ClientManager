@@ -1,6 +1,6 @@
 # Plan: Timed Statistics — Step 4: Event Integration
 
-> **Status**: 🔲 Not started
+> **Status**: ✅ Completed
 > **Prerequisite**: [timed-statistics-3-collection.md](timed-statistics-3-collection.md)
 > **Next**: [timed-statistics-5-background-service.md](timed-statistics-5-background-service.md)
 > **Parent**: [timed-statistics-overview.md](timed-statistics-overview.md)

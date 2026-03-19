@@ -2,6 +2,7 @@ using ClientManager.Api.Interfaces;
 using ClientManager.Api.Models;
 using ClientManager.Api.Services;
 using ClientManager.Api.Services.RateLimiting;
+using ClientManager.Api.Services.UsageTracking;
 using ClientManager.DataAccess.Implementations;
 using ClientManager.DataAccess.Implementations.JsonFile;
 using ClientManager.DataAccess.Implementations.MongoDb;
@@ -37,6 +38,9 @@ public static class ServiceCollectionExtensions
         RegisterApplicationServices(services);
         RegisterBackgroundServices(services);
         RegisterSeeding(services, configuration);
+
+        services.Configure<UsageTrackingOptions>(
+            configuration.GetSection(UsageTrackingOptions.SectionName));
 
         return services;
     }
@@ -97,11 +101,14 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IResourceAllocationService, ResourceAllocationService>();
         services.AddScoped<IAccessControlService, AccessControlService>();
         services.AddScoped<IStatisticsService, StatisticsService>();
+        services.AddSingleton<UsageBuffer>();
+        services.AddSingleton<IUsageRecorder, UsageRecorder>();
     }
 
     private static void RegisterBackgroundServices(IServiceCollection services)
     {
         services.AddHostedService<AllocationCleanupService>();
+        services.AddHostedService<UsagePersistenceService>();
     }
 
     private static void RegisterSeeding(IServiceCollection services, IConfiguration configuration)

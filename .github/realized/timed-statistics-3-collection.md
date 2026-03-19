@@ -1,6 +1,6 @@
 # Plan: Timed Statistics — Step 3: Collection Layer
 
-> **Status**: 🔲 Not started
+> **Status**: ✅ Completed
 > **Prerequisite**: [timed-statistics-2-data-layer.md](timed-statistics-2-data-layer.md)
 > **Next**: [timed-statistics-4-event-integration.md](timed-statistics-4-event-integration.md)
 > **Parent**: [timed-statistics-overview.md](timed-statistics-overview.md)

@@ -1,6 +1,6 @@
 # Plan: Timed Statistics — Step 6: API Endpoints
 
-> **Status**: 🔲 Not started
+> **Status**: ✅ Completed
 > **Prerequisite**: [timed-statistics-5-background-service.md](timed-statistics-5-background-service.md)
 > **Next**: None — this is the final step.
 > **Parent**: [timed-statistics-overview.md](timed-statistics-overview.md)

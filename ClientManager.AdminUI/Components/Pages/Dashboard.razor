@@ -60,10 +60,12 @@ else
                 </div>
             </div>
             <RadzenChart Style="height: 300px;">
-                <RadzenLineSeries Data="@_usageOverTime" CategoryProperty="Label"
-                    ValueProperty="Value" Title="Usage" />
-                <RadzenLineSeries Data="@_capOverTime" CategoryProperty="Label"
-                    ValueProperty="Value" Title="Limit" LineType="LineType.Dashed" />
+                @foreach (var series in _chartSeries)
+                {
+                    <RadzenLineSeries Data="@series.Points" CategoryProperty="Label"
+                        ValueProperty="Value" Title="@series.Name"
+                        LineType="@(series.IsDashed ? LineType.Dashed : LineType.Solid)" />
+                }
                 <RadzenCategoryAxis />
                 <RadzenValueAxis />
                 <RadzenLegend Position="LegendPosition.Bottom" />
@@ -127,9 +129,10 @@ else
     private List<NamedItem> _allPools = new();
     private List<NamedItem> _clients = new();
 
-    private List<TimeSeriesPoint> _usageOverTime = new();
-    private List<TimeSeriesPoint> _capOverTime = new();
+    private List<ChartSeries> _chartSeries = new();
     private List<ClientUsagePoint> _perClientUsage = new();
+
+    private const string AllTargetsId = "__all__";
 
     private List<ClientSummaryRow> _clientSummaries = new();
     private List<ClientSummaryRow> _filteredClientSummaries = new();
@@ -145,9 +148,11 @@ else
             var clients = await ClientService.GetAllAsync();
 
             _clients = clients.Select(c => new NamedItem(c.Id, c.Name)).ToList();
-            _filterTargets = services.Select(s => new NamedItem(s.Id, s.Name)).ToList();
-            _allServices = _filterTargets;
-            _allPools = pools.Select(p => new NamedItem(p.Id, p.Name)).ToList();
+            _allServices = new List<NamedItem> { new(AllTargetsId, "All Services") }
+                .Concat(services.Select(s => new NamedItem(s.Id, s.Name))).ToList();
+            _allPools = new List<NamedItem> { new(AllTargetsId, "All Resource Pools") }
+                .Concat(pools.Select(p => new NamedItem(p.Id, p.Name))).ToList();
+            _filterTargets = _allServices;
 
             // Load global usage stats
             var globalUsage = await StatsService.GetGlobalUsageStatsAsync();
@@ -214,28 +219,92 @@ else
 
         try
         {
-            var timeSeries = await StatsService.GetUsageTimeSeriesAsync(
-                _selectedFilterType, _selectedTargetId, _selectedClientIds);
-            if (timeSeries is not null)
+            _chartSeries.Clear();
+
+            if (_selectedTargetId == AllTargetsId)
             {
-                _usageOverTime = timeSeries.UsagePoints
-                    .Select(p => new TimeSeriesPoint(p.Timestamp.ToLocalTime().ToString("HH:mm"), p.Value)).ToList();
-                _capOverTime = timeSeries.CapPoints
-                    .Select(p => new TimeSeriesPoint(p.Timestamp.ToLocalTime().ToString("HH:mm"), p.Value)).ToList();
+                await LoadAllTargetsChartDataAsync();
+            }
+            else
+            {
+                await LoadSingleTargetChartDataAsync();
             }
 
-            var breakdown = await StatsService.GetClientUsageBreakdownAsync(
-                _selectedFilterType, _selectedTargetId, _selectedClientIds);
-            if (breakdown is not null)
+            // Donut: aggregate across all visible targets when "All" is selected
+            if (_selectedTargetId == AllTargetsId)
             {
-                _perClientUsage = breakdown.Entries
-                    .Where(e => e.Value > 0)
-                    .Select(e => new ClientUsagePoint(e.ClientName, e.Value)).ToList();
+                var allEntries = new Dictionary<string, (string Name, double Value)>();
+                var targets = _selectedFilterType == "Service"
+                    ? _allServices.Where(t => t.Id != AllTargetsId)
+                    : _allPools.Where(t => t.Id != AllTargetsId);
+
+                foreach (var target in targets)
+                {
+                    var breakdown = await StatsService.GetClientUsageBreakdownAsync(
+                        _selectedFilterType, target.Id, _selectedClientIds);
+                    if (breakdown?.Entries is null) continue;
+
+                    foreach (var entry in breakdown.Entries.Where(e => e.Value > 0))
+                    {
+                        if (allEntries.TryGetValue(entry.ClientId, out var existing))
+                            allEntries[entry.ClientId] = (existing.Name, existing.Value + entry.Value);
+                        else
+                            allEntries[entry.ClientId] = (entry.ClientName, entry.Value);
+                    }
+                }
+                _perClientUsage = allEntries.Values
+                    .Select(e => new ClientUsagePoint(e.Name, e.Value)).ToList();
+            }
+            else
+            {
+                var breakdown = await StatsService.GetClientUsageBreakdownAsync(
+                    _selectedFilterType, _selectedTargetId, _selectedClientIds);
+                if (breakdown is not null)
+                {
+                    _perClientUsage = breakdown.Entries
+                        .Where(e => e.Value > 0)
+                        .Select(e => new ClientUsagePoint(e.ClientName, e.Value)).ToList();
+                }
             }
         }
         catch (HttpRequestException)
         {
             // Chart data load failed — leave current data in place
+        }
+    }
+
+    private async Task LoadSingleTargetChartDataAsync()
+    {
+        var timeSeries = await StatsService.GetUsageTimeSeriesAsync(
+            _selectedFilterType, _selectedTargetId!, _selectedClientIds);
+        if (timeSeries is null) return;
+
+        _chartSeries.Add(new ChartSeries("Usage", timeSeries.UsagePoints
+            .Select(p => new TimeSeriesPoint(p.Timestamp.ToLocalTime().ToString("HH:mm"), p.Value))
+            .ToList(), false));
+        _chartSeries.Add(new ChartSeries("Limit", timeSeries.CapPoints
+            .Select(p => new TimeSeriesPoint(p.Timestamp.ToLocalTime().ToString("HH:mm"), p.Value))
+            .ToList(), true));
+    }
+
+    private async Task LoadAllTargetsChartDataAsync()
+    {
+        var targets = _selectedFilterType == "Service"
+            ? _allServices.Where(t => t.Id != AllTargetsId)
+            : _allPools.Where(t => t.Id != AllTargetsId);
+
+        foreach (var target in targets)
+        {
+            var timeSeries = await StatsService.GetUsageTimeSeriesAsync(
+                _selectedFilterType, target.Id, _selectedClientIds);
+            if (timeSeries is null) continue;
+
+            var hasUsage = timeSeries.UsagePoints.Any(p => p.Value > 0);
+            if (!hasUsage) continue;
+
+            _chartSeries.Add(new ChartSeries(target.Name, timeSeries.UsagePoints
+                .Select(p => new TimeSeriesPoint(p.Timestamp.ToLocalTime().ToString("HH:mm"), p.Value))
+                .ToList(), false));
         }
     }
 
@@ -257,6 +326,7 @@ else
     private record FilterOption(string Label, string Value);
     private record NamedItem(string Id, string Name);
     private record TimeSeriesPoint(string Label, double Value);
+    private record ChartSeries(string Name, List<TimeSeriesPoint> Points, bool IsDashed);
     private record ClientUsagePoint(string ClientName, double Value);
     private record ClientSummaryRow(string ClientId, string DisplayName, int AccessibleServices,
         string TotalRateLimitCap, int AccessiblePools, string SlotsDisplay);
