@@ -1,6 +1,6 @@
 # Plan: Timed Statistics (Historical Usage Tracking)
 
-## Status: 🔲 Not started
+## Status: � In progress
 
 ## Overview
 

@@ -1,6 +1,6 @@
 # Plan: Timed Statistics — Step 1: Foundation
 
-> **Status**: 🔲 Not started
+> **Status**: ✅ Completed
 > **Prerequisite**: None — this is the first step.
 > **Next**: [timed-statistics-2-data-layer.md](timed-statistics-2-data-layer.md)
 > **Parent**: [timed-statistics-overview.md](timed-statistics-overview.md)
