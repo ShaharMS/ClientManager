@@ -60,11 +60,11 @@ else
                 </div>
             </div>
             <RadzenChart Style="height: 300px;">
-                <RadzenLineSeries Data="@_usageOverTime" CategoryProperty="Timestamp"
+                <RadzenLineSeries Data="@_usageOverTime" CategoryProperty="Label"
                     ValueProperty="Value" Title="Usage" />
-                <RadzenLineSeries Data="@_capOverTime" CategoryProperty="Timestamp"
+                <RadzenLineSeries Data="@_capOverTime" CategoryProperty="Label"
                     ValueProperty="Value" Title="Limit" LineType="LineType.Dashed" />
-                <RadzenCategoryAxis FormatString="{0:HH:mm}" />
+                <RadzenCategoryAxis />
                 <RadzenValueAxis />
                 <RadzenLegend Position="LegendPosition.Bottom" />
             </RadzenChart>
@@ -77,7 +77,7 @@ else
             <RadzenChart Style="height: 300px;">
                 <RadzenDonutSeries Data="@_perClientUsage" CategoryProperty="ClientName"
                     ValueProperty="Value" Title="Per Client" />
-                <RadzenLegend Position="LegendPosition.Bottom" />
+                <RadzenLegend Position="LegendPosition.Right" />
             </RadzenChart>
         </div>
     </div>
@@ -123,6 +123,8 @@ else
         new("Resource Pool", "ResourcePool")
     };
     private List<NamedItem> _filterTargets = new();
+    private List<NamedItem> _allServices = new();
+    private List<NamedItem> _allPools = new();
     private List<NamedItem> _clients = new();
 
     private List<TimeSeriesPoint> _usageOverTime = new();
@@ -144,23 +146,36 @@ else
 
             _clients = clients.Select(c => new NamedItem(c.Id, c.Name)).ToList();
             _filterTargets = services.Select(s => new NamedItem(s.Id, s.Name)).ToList();
+            _allServices = _filterTargets;
+            _allPools = pools.Select(p => new NamedItem(p.Id, p.Name)).ToList();
 
-            _clientSummaries = clients.Select(c => new ClientSummaryRow(
-                c.Id,
-                c.Name,
-                c.Services.Count,
-                "—",
-                c.ResourcePools.Count,
-                "—"
-            )).ToList();
+            // Load global usage stats
+            var globalUsage = await StatsService.GetGlobalUsageStatsAsync();
+            if (globalUsage is not null)
+            {
+                _globalUsage = globalUsage.RequestsPerMinute > 0
+                    ? globalUsage.RequestsPerMinute.ToString("N0")
+                    : "—";
+                _acquisitionPct = (int)Math.Round(globalUsage.AcquisitionPercentage);
+            }
+
+            // Load client summaries from dedicated endpoint
+            var summaries = await StatsService.GetClientSummariesAsync();
+            if (summaries is not null)
+            {
+                _clientSummaries = summaries.Rows.Select(r => new ClientSummaryRow(
+                    r.ClientId, r.DisplayName, r.AccessibleServices,
+                    r.TotalRateLimitCap, r.AccessiblePools,
+                    $"{r.UsedSlots}/{r.TotalAccessibleSlots}"
+                )).ToList();
+            }
             _filteredClientSummaries = _clientSummaries;
 
-            var poolStats = await StatsService.GetResourcePoolStatsAsync();
-            if (poolStats.Count > 0)
+            // Load initial chart data if a target is available
+            if (_filterTargets.Count > 0)
             {
-                var totalSlots = poolStats.Sum(p => p.MaxSlots);
-                var usedSlots = poolStats.Sum(p => p.ActiveAllocations);
-                _acquisitionPct = totalSlots > 0 ? (int)Math.Round(usedSlots * 100.0 / totalSlots) : 0;
+                _selectedTargetId = _filterTargets[0].Id;
+                await LoadChartDataAsync();
             }
         }
         catch (HttpRequestException ex)
@@ -173,15 +188,54 @@ else
         }
     }
 
-    private void OnFilterChanged()
+    private async Task OnFilterChanged(object? _)
     {
+        // Update targets list when filter type changes
         if (_selectedFilterType == "Service")
         {
-            // Placeholder: will load usage-over-time from API in step 4
+            _filterTargets = _allServices;
         }
         else
         {
-            // Placeholder: will load slot-acquisition-over-time from API in step 4
+            _filterTargets = _allPools;
+        }
+
+        if (_filterTargets.Count > 0 && (_selectedTargetId is null || !_filterTargets.Any(t => t.Id == _selectedTargetId)))
+        {
+            _selectedTargetId = _filterTargets[0].Id;
+        }
+
+        await LoadChartDataAsync();
+    }
+
+    private async Task LoadChartDataAsync()
+    {
+        if (_selectedTargetId is null) return;
+
+        try
+        {
+            var timeSeries = await StatsService.GetUsageTimeSeriesAsync(
+                _selectedFilterType, _selectedTargetId, _selectedClientIds);
+            if (timeSeries is not null)
+            {
+                _usageOverTime = timeSeries.UsagePoints
+                    .Select(p => new TimeSeriesPoint(p.Timestamp.ToLocalTime().ToString("HH:mm"), p.Value)).ToList();
+                _capOverTime = timeSeries.CapPoints
+                    .Select(p => new TimeSeriesPoint(p.Timestamp.ToLocalTime().ToString("HH:mm"), p.Value)).ToList();
+            }
+
+            var breakdown = await StatsService.GetClientUsageBreakdownAsync(
+                _selectedFilterType, _selectedTargetId, _selectedClientIds);
+            if (breakdown is not null)
+            {
+                _perClientUsage = breakdown.Entries
+                    .Where(e => e.Value > 0)
+                    .Select(e => new ClientUsagePoint(e.ClientName, e.Value)).ToList();
+            }
+        }
+        catch (HttpRequestException)
+        {
+            // Chart data load failed — leave current data in place
         }
     }
 
@@ -202,7 +256,7 @@ else
 
     private record FilterOption(string Label, string Value);
     private record NamedItem(string Id, string Name);
-    private record TimeSeriesPoint(DateTime Timestamp, double Value);
+    private record TimeSeriesPoint(string Label, double Value);
     private record ClientUsagePoint(string ClientName, double Value);
     private record ClientSummaryRow(string ClientId, string DisplayName, int AccessibleServices,
         string TotalRateLimitCap, int AccessiblePools, string SlotsDisplay);

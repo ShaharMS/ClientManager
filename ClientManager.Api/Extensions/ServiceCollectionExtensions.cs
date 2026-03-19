@@ -95,6 +95,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IRateLimitService, RateLimitService>();
         services.AddScoped<IResourceAllocationService, ResourceAllocationService>();
         services.AddScoped<IAccessControlService, AccessControlService>();
+        services.AddScoped<IStatisticsService, StatisticsService>();
     }
 
     private static void RegisterBackgroundServices(IServiceCollection services)

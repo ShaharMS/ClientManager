@@ -1,3 +1,4 @@
+using ClientManager.Api.Interfaces;
 using ClientManager.Api.Models.Exceptions;
 using ClientManager.Api.Models.Responses;
 using ClientManager.DataAccess.Interfaces;
@@ -22,6 +23,7 @@ public class StatisticsController : ControllerBase
     private readonly IEntityRepository<ResourcePool> _poolRepository;
     private readonly IResourceAllocationRepository _allocationRepository;
     private readonly IGlobalRateLimitRepository _globalRateLimitRepository;
+    private readonly IStatisticsService _statisticsService;
 
     /// <summary>
     /// Initializes a new instance of <see cref="StatisticsController"/>.
@@ -31,18 +33,21 @@ public class StatisticsController : ControllerBase
     /// <param name="poolRepository">Repository for resource pool definitions.</param>
     /// <param name="allocationRepository">Repository for resource allocation state.</param>
     /// <param name="globalRateLimitRepository">Repository for global rate limits.</param>
+    /// <param name="statisticsService">Service for aggregated dashboard statistics.</param>
     public StatisticsController(
         IClientConfigurationRepository clientConfigRepository,
         IEntityRepository<Service> serviceRepository,
         IEntityRepository<ResourcePool> poolRepository,
         IResourceAllocationRepository allocationRepository,
-        IGlobalRateLimitRepository globalRateLimitRepository)
+        IGlobalRateLimitRepository globalRateLimitRepository,
+        IStatisticsService statisticsService)
     {
         _clientConfigRepository = clientConfigRepository;
         _serviceRepository = serviceRepository;
         _poolRepository = poolRepository;
         _allocationRepository = allocationRepository;
         _globalRateLimitRepository = globalRateLimitRepository;
+        _statisticsService = statisticsService;
     }
 
     /// <summary>
@@ -313,5 +318,107 @@ public class StatisticsController : ControllerBase
             hasGlobalRateLimit = globalLimit is not null,
             clients = clientDetails
         });
+    }
+
+    /// <summary>
+    /// Retrieves global usage statistics including request rate and pool acquisition.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Global usage statistics.</returns>
+    /// <response code="200">Returns global usage statistics.</response>
+    [HttpGet("global-usage")]
+    [ProducesResponseType(typeof(GlobalUsageStatsResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetGlobalUsageStats(CancellationToken cancellationToken)
+    {
+        var result = await _statisticsService.GetGlobalUsageStatsAsync(cancellationToken);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Retrieves usage over time for a specific service or resource pool.
+    /// </summary>
+    /// <param name="filterType">Either "Service" or "ResourcePool".</param>
+    /// <param name="targetId">The ID of the service or resource pool.</param>
+    /// <param name="clientIds">Optional comma-separated client IDs to filter by.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Time-series data for usage and capacity.</returns>
+    /// <response code="200">Returns usage time-series data.</response>
+    /// <response code="400">Invalid filter type provided.</response>
+    [HttpGet("usage-timeseries")]
+    [ProducesResponseType(typeof(UsageTimeSeriesResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetUsageTimeSeries(
+        [FromQuery] string filterType,
+        [FromQuery] string targetId,
+        [FromQuery] string? clientIds,
+        CancellationToken cancellationToken)
+    {
+        if (!IsValidFilterType(filterType))
+        {
+            return BadRequest("filterType must be 'Service' or 'ResourcePool'.");
+        }
+
+        var clientIdList = ParseClientIds(clientIds);
+        var result = await _statisticsService.GetUsageTimeSeriesAsync(
+            filterType, targetId, clientIdList, cancellationToken);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Retrieves per-client usage breakdown for a specific service or resource pool.
+    /// </summary>
+    /// <param name="filterType">Either "Service" or "ResourcePool".</param>
+    /// <param name="targetId">The ID of the service or resource pool.</param>
+    /// <param name="clientIds">Optional comma-separated client IDs to filter by.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Per-client usage breakdown.</returns>
+    /// <response code="200">Returns per-client usage breakdown.</response>
+    /// <response code="400">Invalid filter type provided.</response>
+    [HttpGet("client-usage-breakdown")]
+    [ProducesResponseType(typeof(ClientUsageBreakdownResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetClientUsageBreakdown(
+        [FromQuery] string filterType,
+        [FromQuery] string targetId,
+        [FromQuery] string? clientIds,
+        CancellationToken cancellationToken)
+    {
+        if (!IsValidFilterType(filterType))
+        {
+            return BadRequest("filterType must be 'Service' or 'ResourcePool'.");
+        }
+
+        var clientIdList = ParseClientIds(clientIds);
+        var result = await _statisticsService.GetClientUsageBreakdownAsync(
+            filterType, targetId, clientIdList, cancellationToken);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Retrieves a summary of all clients with their service and pool access statistics.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Client summary data for the dashboard table.</returns>
+    /// <response code="200">Returns client summaries.</response>
+    [HttpGet("client-summaries")]
+    [ProducesResponseType(typeof(ClientSummariesResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetClientSummaries(CancellationToken cancellationToken)
+    {
+        var result = await _statisticsService.GetClientSummariesAsync(cancellationToken);
+        return Ok(result);
+    }
+
+    private static bool IsValidFilterType(string filterType)
+    {
+        return string.Equals(filterType, "Service", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(filterType, "ResourcePool", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static IEnumerable<string>? ParseClientIds(string? clientIds)
+    {
+        if (string.IsNullOrWhiteSpace(clientIds))
+            return null;
+
+        return clientIds.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
     }
 }

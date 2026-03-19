@@ -1,6 +1,6 @@
 # Plan: AdminUI Redesign — Step 4: New Statistics API Endpoints
 
-> **Status**: 🔲 Not started
+> **Status**: ✅ Completed
 > **Prerequisite**: [adminui-redesign-3-dashboard.md](adminui-redesign-3-dashboard.md)
 > **Next**: [adminui-redesign-5-list-pages.md](adminui-redesign-5-list-pages.md)
 > **Parent**: [adminui-redesign-overview.md](adminui-redesign-overview.md)
