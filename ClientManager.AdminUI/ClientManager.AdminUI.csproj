@@ -10,4 +10,8 @@
     <ProjectReference Include="..\ClientManager.Shared\ClientManager.Shared.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Radzen.Blazor" Version="10.0.5" />
+  </ItemGroup>
+
 </Project>

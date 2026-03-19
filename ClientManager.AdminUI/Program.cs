@@ -1,5 +1,6 @@
 using ClientManager.AdminUI.Components;
 using ClientManager.AdminUI.Services;
+using Radzen;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -27,6 +28,7 @@ builder.Services.AddScoped<ServiceApiService>();
 builder.Services.AddScoped<ResourcePoolApiService>();
 builder.Services.AddScoped<GlobalRateLimitApiService>();
 builder.Services.AddScoped<StatisticsApiService>();
+builder.Services.AddRadzenComponents();
 
 var app = builder.Build();
 
