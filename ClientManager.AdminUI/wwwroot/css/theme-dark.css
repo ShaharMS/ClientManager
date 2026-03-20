@@ -1,0 +1,74 @@
+html[data-theme="dark"] {
+    /* Primary palette — keep hues, adjust lightness */
+    --color-primary: #818cf8;
+    --color-primary-light: #a5b4fc;
+    --color-primary-lighter: #3730a3;
+    --color-primary-lightest: #1e1b4b;
+    --color-primary-dark: #6366f1;
+
+    /* Accent */
+    --color-accent: #fbbf24;
+    --color-accent-light: #fcd34d;
+
+    /* Semantic */
+    --color-success: #4ade80;
+    --color-warning: #fbbf24;
+    --color-danger: #f87171;
+    --color-info: #60a5fa;
+
+    /* Neutrals — inverted */
+    --color-bg: #0f172a;
+    --color-bg-card: #1e293b;
+    --color-bg-sidebar: #1e293b;
+    --color-text-primary: #f1f5f9;
+    --color-text-secondary: #94a3b8;
+    --color-text-muted: #64748b;
+    --color-border: #334155;
+
+    /* Shadows — darker, more subtle */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
+}
+
+/* Override Radzen component backgrounds in dark mode */
+html[data-theme="dark"] .rz-datatable,
+html[data-theme="dark"] .rz-grid-table,
+html[data-theme="dark"] .rz-data-grid {
+    background: var(--color-bg-card);
+    color: var(--color-text-primary);
+}
+
+html[data-theme="dark"] .rz-datatable .rz-cell,
+html[data-theme="dark"] .rz-data-grid .rz-cell {
+    border-color: var(--color-border);
+}
+
+html[data-theme="dark"] .rz-pager {
+    background: var(--color-bg-card);
+    color: var(--color-text-secondary);
+}
+
+html[data-theme="dark"] .rz-dropdown,
+html[data-theme="dark"] .rz-multiselect,
+html[data-theme="dark"] .rz-textbox {
+    background: var(--color-bg);
+    color: var(--color-text-primary);
+    border-color: var(--color-border);
+}
+
+html[data-theme="dark"] .rz-dropdown-panel,
+html[data-theme="dark"] .rz-multiselect-panel {
+    background: var(--color-bg-card);
+    color: var(--color-text-primary);
+    border-color: var(--color-border);
+}
+
+html[data-theme="dark"] .rz-state-highlight {
+    background: var(--color-primary);
+    color: #ffffff;
+}
+
+html[data-theme="dark"] .rz-switch .rz-switch-circle {
+    background: var(--color-bg-card);
+}

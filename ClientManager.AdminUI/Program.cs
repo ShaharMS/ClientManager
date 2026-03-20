@@ -29,6 +29,7 @@ builder.Services.AddScoped<ResourcePoolApiService>();
 builder.Services.AddScoped<GlobalRateLimitApiService>();
 builder.Services.AddScoped<StatisticsApiService>();
 builder.Services.AddSingleton<EntityColorService>();
+builder.Services.AddScoped<UserPreferencesService>();
 builder.Services.AddRadzenComponents();
 
 var app = builder.Build();

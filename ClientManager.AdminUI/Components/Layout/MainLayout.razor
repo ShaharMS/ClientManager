@@ -1,7 +1,18 @@
 @inherits LayoutComponentBase
+@inject UserPreferencesService PreferencesService
 
 <NavMenu />
 <div class="cm-main">
     @Body
 </div>
 <RadzenComponents />
+
+@code {
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await PreferencesService.ApplyCurrentThemeAsync();
+        }
+    }
+}

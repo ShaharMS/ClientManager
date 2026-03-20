@@ -1,6 +1,6 @@
 # Plan: Time Range Filtering & Settings — Step 1: Foundation
 
-> **Status**: 🔲 Not started
+> **Status**: ✅ Completed
 > **Prerequisite**: None — this is the first step.
 > **Next**: [time-range-settings-2-settings-page.md](time-range-settings-2-settings-page.md)
 > **Parent**: [time-range-settings-overview.md](time-range-settings-overview.md)
