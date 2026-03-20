@@ -1,6 +1,6 @@
 # Plan: UI Polish — Step 5: Dashboard Stacked Area Chart
 
-> **Status**: 🔲 Not started
+> **Status**: ✅ Completed
 > **Prerequisite**: [ui-polish-4-deterministic-colors.md](ui-polish-4-deterministic-colors.md)
 > **Next**: [ui-polish-6-chart-declutter.md](ui-polish-6-chart-declutter.md)
 > **Parent**: [ui-polish-overview.md](ui-polish-overview.md)
