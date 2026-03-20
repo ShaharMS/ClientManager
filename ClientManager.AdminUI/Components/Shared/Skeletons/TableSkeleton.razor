@@ -1,0 +1,15 @@
+@* Skeleton placeholder for a data table *@
+<div class="cm-list-page__table-card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-lg);">
+        <SkeletonBlock CssClass="cm-skeleton--text" Style="width: 280px;" />
+        <SkeletonBlock CssClass="cm-skeleton--text" Style="width: 140px;" />
+    </div>
+    @for (var i = 0; i < RowCount; i++)
+    {
+        <SkeletonBlock CssClass="cm-skeleton--table-row" />
+    }
+</div>
+
+@code {
+    [Parameter] public int RowCount { get; set; } = 8;
+}

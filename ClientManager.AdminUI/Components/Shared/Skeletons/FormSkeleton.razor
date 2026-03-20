@@ -1,0 +1,17 @@
+@* Skeleton placeholder for an editor form *@
+<div class="cm-editor" style="max-width: 800px;">
+    <div class="cm-editor__card">
+        <SkeletonBlock CssClass="cm-skeleton--heading" Style="margin-bottom: var(--space-md);" />
+        @for (var i = 0; i < FieldCount; i++)
+        {
+            <div style="margin-bottom: var(--space-md);">
+                <SkeletonBlock CssClass="cm-skeleton--text cm-skeleton--text-short" Style="height: 0.75rem; margin-bottom: 0.5rem;" />
+                <SkeletonBlock CssClass="cm-skeleton--text" Style="height: 2.25rem;" />
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public int FieldCount { get; set; } = 5;
+}
