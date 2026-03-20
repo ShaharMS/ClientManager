@@ -29,8 +29,7 @@
 
 @if (_loading)
 {
-    <RadzenProgressBar Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate"
-        Style="height: 3px; margin-bottom: var(--space-sm);" />
+    <SkeletonBlock CssClass="cm-skeleton--text" Style="height: 3px; margin-bottom: var(--space-sm);" />
 }
 
 <div class="cm-monitor__chart-card">
@@ -60,9 +59,7 @@
     }
     else
     {
-        <div style="height: 340px; display: flex; align-items: center; justify-content: center;">
-            <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
-        </div>
+        <ChartSkeleton />
     }
 </div>
 

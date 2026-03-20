@@ -1,6 +1,6 @@
 # Plan: UI Polish — Step 3: Skeleton Loaders on Dashboard, Monitor & Allocations
 
-> **Status**: 🔲 Not started
+> **Status**: ✅ Completed
 > **Prerequisite**: [ui-polish-2-skeleton-crud-pages.md](ui-polish-2-skeleton-crud-pages.md)
 > **Next**: [ui-polish-4-deterministic-colors.md](ui-polish-4-deterministic-colors.md)
 > **Parent**: [ui-polish-overview.md](ui-polish-overview.md)

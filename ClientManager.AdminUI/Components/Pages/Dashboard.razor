@@ -12,7 +12,12 @@
 
 @if (_loading)
 {
-    <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+    <StatCardsSkeleton Count="5" />
+    <div class="cm-dashboard__charts" style="margin-top: var(--space-xl);">
+        <ChartSkeleton />
+        <ChartSkeleton />
+    </div>
+    <TableSkeleton RowCount="6" />
 }
 else if (_error is not null)
 {
