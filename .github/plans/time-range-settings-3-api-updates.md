@@ -1,6 +1,6 @@
 # Plan: Time Range Filtering & Settings — Step 3: API Updates
 
-> **Status**: 🔲 Not started
+> **Status**: ✅ Completed
 > **Prerequisite**: [time-range-settings-2-settings-page.md](time-range-settings-2-settings-page.md)
 > **Next**: [time-range-settings-4-selector-component.md](time-range-settings-4-selector-component.md)
 > **Parent**: [time-range-settings-overview.md](time-range-settings-overview.md)

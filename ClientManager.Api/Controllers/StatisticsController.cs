@@ -340,6 +340,9 @@ public class StatisticsController : ControllerBase
     /// <param name="filterType">The target type: Service or ResourcePool.</param>
     /// <param name="targetId">The ID of the service or resource pool.</param>
     /// <param name="clientIds">Optional comma-separated client IDs to filter by.</param>
+    /// <param name="from">Optional start of the time range (UTC, ISO 8601).</param>
+    /// <param name="to">Optional end of the time range (UTC, ISO 8601).</param>
+    /// <param name="granularity">Optional bucket granularity: FiveMinute, Hour, or Day.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Time-series data for usage and capacity.</returns>
     /// <response code="200">Returns usage time-series data.</response>
@@ -349,11 +352,14 @@ public class StatisticsController : ControllerBase
         [FromQuery] GlobalRateLimitTarget filterType,
         [FromQuery] string targetId,
         [FromQuery] string? clientIds,
+        [FromQuery] DateTime? from,
+        [FromQuery] DateTime? to,
+        [FromQuery] BucketGranularity? granularity,
         CancellationToken cancellationToken)
     {
         var clientIdList = ParseClientIds(clientIds);
         var result = await _statisticsService.GetUsageTimeSeriesAsync(
-            filterType, targetId, clientIdList, cancellationToken);
+            filterType, targetId, clientIdList, from, to, granularity, cancellationToken);
         return Ok(result);
     }
 
@@ -363,6 +369,9 @@ public class StatisticsController : ControllerBase
     /// <param name="filterType">The target type: Service or ResourcePool.</param>
     /// <param name="targetId">The ID of the service or resource pool.</param>
     /// <param name="clientIds">Optional comma-separated client IDs to filter by.</param>
+    /// <param name="from">Optional start of the time range (UTC, ISO 8601).</param>
+    /// <param name="to">Optional end of the time range (UTC, ISO 8601).</param>
+    /// <param name="granularity">Optional bucket granularity: FiveMinute, Hour, or Day.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Per-client usage breakdown.</returns>
     /// <response code="200">Returns per-client usage breakdown.</response>
@@ -372,11 +381,14 @@ public class StatisticsController : ControllerBase
         [FromQuery] GlobalRateLimitTarget filterType,
         [FromQuery] string targetId,
         [FromQuery] string? clientIds,
+        [FromQuery] DateTime? from,
+        [FromQuery] DateTime? to,
+        [FromQuery] BucketGranularity? granularity,
         CancellationToken cancellationToken)
     {
         var clientIdList = ParseClientIds(clientIds);
         var result = await _statisticsService.GetClientUsageBreakdownAsync(
-            filterType, targetId, clientIdList, cancellationToken);
+            filterType, targetId, clientIdList, from, to, granularity, cancellationToken);
         return Ok(result);
     }
 

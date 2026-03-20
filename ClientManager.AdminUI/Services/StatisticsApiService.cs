@@ -28,24 +28,40 @@ public class StatisticsApiService
     }
 
     public async Task<UsageTimeSeries?> GetUsageTimeSeriesAsync(
-        string filterType, string targetId, IEnumerable<string>? clientIds)
+        string filterType, string targetId, IEnumerable<string>? clientIds,
+        DateTime? from = null, DateTime? to = null, string? granularity = null)
     {
         var url = $"api/statistics/usage-timeseries?filterType={Uri.EscapeDataString(filterType)}&targetId={Uri.EscapeDataString(targetId)}";
         if (clientIds?.Any() == true)
         {
             url += $"&clientIds={Uri.EscapeDataString(string.Join(",", clientIds))}";
         }
+        if (from is not null)
+            url += $"&from={from.Value:O}";
+        if (to is not null)
+            url += $"&to={to.Value:O}";
+        if (granularity is not null)
+            url += $"&granularity={Uri.EscapeDataString(granularity)}";
+
         return await _httpClient.GetFromJsonAsync<UsageTimeSeries>(url);
     }
 
     public async Task<ClientUsageBreakdown?> GetClientUsageBreakdownAsync(
-        string filterType, string targetId, IEnumerable<string>? clientIds)
+        string filterType, string targetId, IEnumerable<string>? clientIds,
+        DateTime? from = null, DateTime? to = null, string? granularity = null)
     {
         var url = $"api/statistics/client-usage-breakdown?filterType={Uri.EscapeDataString(filterType)}&targetId={Uri.EscapeDataString(targetId)}";
         if (clientIds?.Any() == true)
         {
             url += $"&clientIds={Uri.EscapeDataString(string.Join(",", clientIds))}";
         }
+        if (from is not null)
+            url += $"&from={from.Value:O}";
+        if (to is not null)
+            url += $"&to={to.Value:O}";
+        if (granularity is not null)
+            url += $"&granularity={Uri.EscapeDataString(granularity)}";
+
         return await _httpClient.GetFromJsonAsync<ClientUsageBreakdown>(url);
     }
 

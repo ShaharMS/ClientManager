@@ -86,8 +86,14 @@ public class StatisticsService : IStatisticsService
     /// <inheritdoc />
     public async Task<UsageTimeSeriesResponse> GetUsageTimeSeriesAsync(
         GlobalRateLimitTarget targetType, string targetId, IEnumerable<string>? clientIds,
+        DateTime? from = null, DateTime? to = null, BucketGranularity? granularity = null,
         CancellationToken cancellationToken = default)
     {
+        var effectiveGranularity = granularity ?? BucketGranularity.FiveMinute;
+        var now = DateTime.UtcNow;
+        var effectiveTo = to ?? now;
+        var effectiveFrom = from ?? RoundDownToFiveMinutes(now).AddMinutes(-60);
+
         double capValue = 0;
 
         if (targetType == GlobalRateLimitTarget.Service)
@@ -102,23 +108,23 @@ public class StatisticsService : IStatisticsService
             capValue = pool?.MaxSlots ?? 0;
         }
 
-        // Load 5-minute snapshots for the target
         var snapshots = await _usageSnapshotRepository.GetByTargetAsync(
-            targetId, targetType, BucketGranularity.FiveMinute, cancellationToken);
+            targetId, targetType, effectiveGranularity, cancellationToken);
 
-        // Filter by client IDs if specified
         var clientIdSet = clientIds?.ToHashSet(StringComparer.OrdinalIgnoreCase);
         if (clientIdSet is not null)
         {
             snapshots = snapshots.Where(s => clientIdSet.Contains(s.ClientId)).ToList();
         }
 
-        // Aggregate across all clients
         var aggregated = new SortedDictionary<DateTime, double>();
         foreach (var snapshot in snapshots)
         {
             foreach (var bucket in snapshot.Buckets)
             {
+                if (bucket.Timestamp < effectiveFrom || bucket.Timestamp > effectiveTo)
+                    continue;
+
                 if (aggregated.TryGetValue(bucket.Timestamp, out var existing))
                     aggregated[bucket.Timestamp] = existing + bucket.GrantedCount;
                 else
@@ -126,18 +132,10 @@ public class StatisticsService : IStatisticsService
             }
         }
 
-        // Generate time-series for the last hour, filling in zeros for missing slots
-        var now = DateTime.UtcNow;
-        var usagePoints = new List<TimeSeriesPoint>();
-        var capPoints = new List<TimeSeriesPoint>();
-
-        for (var i = 12; i >= 0; i--)
-        {
-            var timestamp = RoundDownToFiveMinutes(now).AddMinutes(-i * 5);
-            var value = aggregated.TryGetValue(timestamp, out var v) ? v : 0;
-            usagePoints.Add(new TimeSeriesPoint(timestamp, value));
-            capPoints.Add(new TimeSeriesPoint(timestamp, capValue));
-        }
+        var usagePoints = aggregated
+            .Select(kvp => new TimeSeriesPoint(kvp.Key, kvp.Value)).ToList();
+        var capPoints = usagePoints
+            .Select(p => new TimeSeriesPoint(p.Timestamp, capValue)).ToList();
 
         return new UsageTimeSeriesResponse(usagePoints, capPoints);
     }
@@ -145,15 +143,17 @@ public class StatisticsService : IStatisticsService
     /// <inheritdoc />
     public async Task<ClientUsageBreakdownResponse> GetClientUsageBreakdownAsync(
         GlobalRateLimitTarget targetType, string targetId, IEnumerable<string>? clientIds,
+        DateTime? from = null, DateTime? to = null, BucketGranularity? granularity = null,
         CancellationToken cancellationToken = default)
     {
+        var effectiveGranularity = granularity ?? BucketGranularity.FiveMinute;
+        var now = DateTime.UtcNow;
+
         var clients = await _clientConfigRepository.GetAllAsync(cancellationToken);
         var clientIdSet = clientIds?.ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        // Use the most recent complete 5-minute bucket for per-client breakdown
-        var latestBucketTime = RoundDownToFiveMinutes(DateTime.UtcNow).AddMinutes(-5);
         var snapshots = await _usageSnapshotRepository.GetByTargetAsync(
-            targetId, targetType, BucketGranularity.FiveMinute, cancellationToken);
+            targetId, targetType, effectiveGranularity, cancellationToken);
 
         var entries = new List<ClientUsageEntry>();
 
@@ -164,14 +164,26 @@ public class StatisticsService : IStatisticsService
 
             var snapshot = snapshots.FirstOrDefault(s =>
                 string.Equals(s.ClientId, client.Id, StringComparison.OrdinalIgnoreCase));
+            if (snapshot is null) continue;
 
-            var recentCount = snapshot?.Buckets
-                .Where(b => b.Timestamp == latestBucketTime)
-                .Sum(b => b.GrantedCount) ?? 0;
-
-            if (recentCount > 0)
+            double count;
+            if (from is not null && to is not null)
             {
-                entries.Add(new ClientUsageEntry(client.Id, client.Name, recentCount));
+                count = snapshot.Buckets
+                    .Where(b => b.Timestamp >= from && b.Timestamp <= to)
+                    .Sum(b => b.GrantedCount);
+            }
+            else
+            {
+                var latestBucketTime = RoundDownToFiveMinutes(now).AddMinutes(-5);
+                count = snapshot.Buckets
+                    .Where(b => b.Timestamp == latestBucketTime)
+                    .Sum(b => b.GrantedCount);
+            }
+
+            if (count > 0)
+            {
+                entries.Add(new ClientUsageEntry(client.Id, client.Name, count));
             }
         }
 
