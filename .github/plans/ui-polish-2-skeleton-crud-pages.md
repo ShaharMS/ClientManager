@@ -1,6 +1,6 @@
 # Plan: UI Polish — Step 2: Skeleton Loaders on CRUD Pages
 
-> **Status**: 🔲 Not started
+> **Status**: ✅ Completed
 > **Prerequisite**: [ui-polish-1-skeleton-foundation.md](ui-polish-1-skeleton-foundation.md)
 > **Next**: [ui-polish-3-skeleton-dashboard-monitor.md](ui-polish-3-skeleton-dashboard-monitor.md)
 > **Parent**: [ui-polish-overview.md](ui-polish-overview.md)
