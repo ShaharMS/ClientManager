@@ -1,6 +1,6 @@
 # Plan: Split Global Rate Limits into Rate Limits & Quotas
 
-## Status: 🔲 Not started
+## Status: ✅ All steps completed
 
 ## Overview
 
@@ -17,7 +17,7 @@ The existing `GlobalRateLimitsController` API and `GlobalRateLimitApiService` al
 |-------|-----------|---------|
 | 1 | [ratelimit-split-1-pages.md](ratelimit-split-1-pages.md) | Create Rate Limits and Quotas list + editor pages, update nav, remove old pages |
 
-**Continued by**: [dashboard-drilldowns-overview.md](dashboard-drilldowns-overview.md) — Dashboard stat card arrows, Monitor page, and Active Allocations redesign
+**Continued by**: [dashboard-drilldowns-overview.md](../realized/dashboard-drilldowns-overview.md) — Dashboard stat card arrows, Monitor page, and Active Allocations redesign
 
 ## Key Decisions
 

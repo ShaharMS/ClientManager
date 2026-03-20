@@ -1,10 +1,10 @@
-@page "/global-rate-limits"
+@page "/rate-limits"
 @inject GlobalRateLimitApiService RateLimitApi
 @inject NavigationManager Nav
 
 <div class="cm-page-header">
-    <h1>Global Rate Limits</h1>
-    <p>Manage system-wide rate limits for services and resource pools.</p>
+    <h1>Rate Limits</h1>
+    <p>Manage rate limits applied to service endpoints.</p>
 </div>
 
 @if (_loading)
@@ -21,7 +21,7 @@ else
         <div class="cm-list-page__header">
             <RadzenTextBox Placeholder="Search rate limits..." @bind-Value="_search"
                 Change="@OnSearchChanged" Style="width: 280px;" />
-            <RadzenButton Text="Create Rate Limit" Icon="add" Click="@(() => Nav.NavigateTo("/global-rate-limits/new"))"
+            <RadzenButton Text="Create Rate Limit" Icon="add" Click="@(() => Nav.NavigateTo("/rate-limits/new"))"
                 ButtonStyle="ButtonStyle.Primary" />
         </div>
 
@@ -30,12 +30,7 @@ else
             PagerHorizontalAlign="HorizontalAlign.Center">
             <Columns>
                 <RadzenDataGridColumn TItem="GlobalRateLimit" Property="Id" Title="ID" Width="150px" />
-                <RadzenDataGridColumn TItem="GlobalRateLimit" Property="TargetId" Title="Target ID" />
-                <RadzenDataGridColumn TItem="GlobalRateLimit" Title="Target Type" Width="130px">
-                    <Template Context="limit">
-                        <span class="cm-badge cm-badge--muted">@limit.TargetType</span>
-                    </Template>
-                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="GlobalRateLimit" Property="TargetId" Title="Service" />
                 <RadzenDataGridColumn TItem="GlobalRateLimit" Title="Strategy" Width="130px">
                     <Template Context="limit">
                         <span class="cm-badge cm-badge--success">@limit.Strategy</span>
@@ -48,7 +43,7 @@ else
                 <RadzenDataGridColumn TItem="GlobalRateLimit" Title="Actions" Width="160px" Sortable="false">
                     <Template Context="limit">
                         <RadzenButton Icon="edit" Size="ButtonSize.Small" Variant="Variant.Text"
-                            Click="@(() => Nav.NavigateTo($"/global-rate-limits/{limit.Id}"))" />
+                            Click="@(() => Nav.NavigateTo($"/rate-limits/{limit.Id}"))" />
                         <RadzenButton Icon="delete" Size="ButtonSize.Small" Variant="Variant.Text"
                             ButtonStyle="ButtonStyle.Danger"
                             Click="@(() => DeleteAsync(limit.Id))" />
@@ -78,7 +73,7 @@ else
     {
         try
         {
-            _limits = await RateLimitApi.GetAllAsync();
+            _limits = await RateLimitApi.GetByTargetTypeAsync(GlobalRateLimitTarget.Service);
             _error = null;
         }
         catch (HttpRequestException ex)

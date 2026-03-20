@@ -5,6 +5,7 @@
     </div>
 
     <ul class="cm-sidebar__nav">
+        <!-- Section 1: Overview -->
         <li class="cm-sidebar__nav-item">
             <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
                 <RadzenIcon Icon="dashboard" class="cm-sidebar__nav-icon" />
@@ -17,6 +18,10 @@
                 Clients
             </NavLink>
         </li>
+
+        <li class="cm-sidebar__divider"></li>
+
+        <!-- Section 2: Services -->
         <li class="cm-sidebar__nav-item">
             <NavLink class="nav-link" href="services">
                 <RadzenIcon Icon="build" class="cm-sidebar__nav-icon" />
@@ -24,15 +29,31 @@
             </NavLink>
         </li>
         <li class="cm-sidebar__nav-item">
+            <NavLink class="nav-link" href="rate-limits">
+                <RadzenIcon Icon="speed" class="cm-sidebar__nav-icon" />
+                Rate Limits
+            </NavLink>
+        </li>
+        <li class="cm-sidebar__nav-item">
+            <NavLink class="nav-link" href="monitor">
+                <RadzenIcon Icon="monitoring" class="cm-sidebar__nav-icon" />
+                Monitor
+            </NavLink>
+        </li>
+
+        <li class="cm-sidebar__divider"></li>
+
+        <!-- Section 3: Resources -->
+        <li class="cm-sidebar__nav-item">
             <NavLink class="nav-link" href="resource-pools">
                 <RadzenIcon Icon="hub" class="cm-sidebar__nav-icon" />
                 Resource Pools
             </NavLink>
         </li>
         <li class="cm-sidebar__nav-item">
-            <NavLink class="nav-link" href="global-rate-limits">
-                <RadzenIcon Icon="speed" class="cm-sidebar__nav-icon" />
-                Global Rate Limits
+            <NavLink class="nav-link" href="quotas">
+                <RadzenIcon Icon="tune" class="cm-sidebar__nav-icon" />
+                Quotas
             </NavLink>
         </li>
         <li class="cm-sidebar__nav-item">

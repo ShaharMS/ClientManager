@@ -81,6 +81,14 @@
     flex-shrink: 0;
 }
 
+.cm-sidebar__divider {
+    height: 1px;
+    background: var(--color-border);
+    opacity: 0.5;
+    margin: var(--space-sm) var(--space-md);
+    list-style: none;
+}
+
 .cm-sidebar__footer {
     margin-top: auto;
     padding-top: var(--space-md);

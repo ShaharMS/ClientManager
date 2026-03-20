@@ -1,8 +1,8 @@
 # Plan: Split Global Rate Limits — Step 1: Rate Limits & Quotas Pages
 
-> **Status**: 🔲 Not started
+> **Status**: ✅ Completed
 > **Prerequisite**: [timed-statistics-6-api-endpoints.md](../realized/timed-statistics-6-api-endpoints.md)
-> **Next**: [dashboard-drilldowns-1-card-arrows.md](dashboard-drilldowns-1-card-arrows.md)
+> **Next**: [dashboard-drilldowns-1-card-arrows.md](../realized/dashboard-drilldowns-1-card-arrows.md)
 > **Parent**: [ratelimit-split-overview.md](ratelimit-split-overview.md)
 
 ## TL;DR

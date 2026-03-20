@@ -1,15 +1,15 @@
-@page "/global-rate-limits/new"
-@page "/global-rate-limits/{Id}"
+@page "/quotas/new"
+@page "/quotas/{Id}"
 @inject GlobalRateLimitApiService RateLimitApi
 @inject NavigationManager Nav
 
 <div style="margin-bottom: var(--space-md);">
-    <RadzenLink Path="global-rate-limits" Text="← Back to Global Rate Limits" Style="font-size: var(--font-size-sm);" />
+    <RadzenLink Path="quotas" Text="← Back to Quotas" Style="font-size: var(--font-size-sm);" />
 </div>
 
 <div class="cm-page-header">
-    <h1>@(_isNew ? "Create Global Rate Limit" : $"Edit Global Rate Limit: {Id}")</h1>
-    <p>@(_isNew ? "Define a new system-wide rate limit." : "Update rate limit configuration.")</p>
+    <h1>@(_isNew ? "Create Quota" : $"Edit Quota: {Id}")</h1>
+    <p>@(_isNew ? "Define a request quota for a resource pool." : "Update quota configuration.")</p>
 </div>
 
 @if (_loading)
@@ -23,22 +23,17 @@ else if (_error is not null)
 else
 {
     <div class="cm-editor">
-        <EditForm Model="_model" OnValidSubmit="SaveAsync" FormName="rateLimitForm">
+        <EditForm Model="_model" OnValidSubmit="SaveAsync" FormName="quotaForm">
             <DataAnnotationsValidator />
 
             <div class="cm-editor__card">
                 <div class="cm-editor__field">
-                    <label>Rate Limit ID</label>
+                    <label>Quota ID</label>
                     <RadzenTextBox @bind-Value="_model.Id" Disabled="@(!_isNew)" Style="width: 100%;" />
                 </div>
                 <div class="cm-editor__field">
-                    <label>Target ID</label>
+                    <label>Resource Pool</label>
                     <RadzenTextBox @bind-Value="_model.TargetId" Style="width: 100%;" />
-                </div>
-                <div class="cm-editor__field">
-                    <label>Target Type</label>
-                    <RadzenDropDown TValue="GlobalRateLimitTarget" @bind-Value="_model.TargetType"
-                        Data="@(Enum.GetValues<GlobalRateLimitTarget>())" Style="width: 100%;" />
                 </div>
                 <div class="cm-editor__field">
                     <label>Strategy</label>
@@ -65,7 +60,7 @@ else
 
             <div class="cm-editor__actions">
                 <RadzenButton Text="Save" ButtonType="ButtonType.Submit" ButtonStyle="ButtonStyle.Primary" />
-                <RadzenButton Text="Cancel" Variant="Variant.Outlined" Click="@(() => Nav.NavigateTo("/global-rate-limits"))" />
+                <RadzenButton Text="Cancel" Variant="Variant.Outlined" Click="@(() => Nav.NavigateTo("/quotas"))" />
             </div>
         </EditForm>
     </div>
@@ -76,7 +71,7 @@ else
     private bool _isNew => string.IsNullOrEmpty(Id) || Id == "new";
     private bool _loading = true;
     private string? _error;
-    private RateLimitFormModel _model = new();
+    private RateLimitFormModel _model = new() { TargetType = GlobalRateLimitTarget.ResourcePool };
 
     protected override async Task OnInitializedAsync()
     {
@@ -87,14 +82,14 @@ else
                 var limit = await RateLimitApi.GetByIdAsync(Id!);
                 if (limit is null)
                 {
-                    _error = $"Global rate limit '{Id}' not found.";
+                    _error = $"Quota '{Id}' not found.";
                     return;
                 }
                 _model = new RateLimitFormModel
                 {
                     Id = limit.Id,
                     TargetId = limit.TargetId,
-                    TargetType = limit.TargetType,
+                    TargetType = GlobalRateLimitTarget.ResourcePool,
                     Strategy = limit.Strategy,
                     MaxRequests = limit.MaxRequests,
                     WindowSeconds = limit.Window.TotalSeconds,
@@ -118,7 +113,7 @@ else
         {
             Id = _model.Id,
             TargetId = _model.TargetId,
-            TargetType = _model.TargetType,
+            TargetType = GlobalRateLimitTarget.ResourcePool,
             Strategy = _model.Strategy,
             MaxRequests = _model.MaxRequests,
             Window = TimeSpan.FromSeconds(_model.WindowSeconds),
@@ -133,7 +128,7 @@ else
             else
                 await RateLimitApi.UpdateAsync(Id!, limit);
 
-            Nav.NavigateTo("/global-rate-limits");
+            Nav.NavigateTo("/quotas");
         }
         catch (HttpRequestException ex)
         {
@@ -145,7 +140,7 @@ else
     {
         public string Id { get; set; } = string.Empty;
         public string TargetId { get; set; } = string.Empty;
-        public GlobalRateLimitTarget TargetType { get; set; }
+        public GlobalRateLimitTarget TargetType { get; set; } = GlobalRateLimitTarget.ResourcePool;
         public RateLimitStrategy Strategy { get; set; }
         public int MaxRequests { get; set; } = 100;
         public double WindowSeconds { get; set; } = 60;

@@ -1,0 +1,149 @@
+@page "/rate-limits/new"
+@page "/rate-limits/{Id}"
+@inject GlobalRateLimitApiService RateLimitApi
+@inject NavigationManager Nav
+
+<div style="margin-bottom: var(--space-md);">
+    <RadzenLink Path="rate-limits" Text="← Back to Rate Limits" Style="font-size: var(--font-size-sm);" />
+</div>
+
+<div class="cm-page-header">
+    <h1>@(_isNew ? "Create Rate Limit" : $"Edit Rate Limit: {Id}")</h1>
+    <p>@(_isNew ? "Define a rate limit for a service endpoint." : "Update rate limit configuration.")</p>
+</div>
+
+@if (_loading)
+{
+    <p>Loading...</p>
+}
+else if (_error is not null)
+{
+    <div class="alert alert-danger">@_error</div>
+}
+else
+{
+    <div class="cm-editor">
+        <EditForm Model="_model" OnValidSubmit="SaveAsync" FormName="rateLimitForm">
+            <DataAnnotationsValidator />
+
+            <div class="cm-editor__card">
+                <div class="cm-editor__field">
+                    <label>Rate Limit ID</label>
+                    <RadzenTextBox @bind-Value="_model.Id" Disabled="@(!_isNew)" Style="width: 100%;" />
+                </div>
+                <div class="cm-editor__field">
+                    <label>Service</label>
+                    <RadzenTextBox @bind-Value="_model.TargetId" Style="width: 100%;" />
+                </div>
+                <div class="cm-editor__field">
+                    <label>Strategy</label>
+                    <RadzenDropDown TValue="RateLimitStrategy" @bind-Value="_model.Strategy"
+                        Data="@(Enum.GetValues<RateLimitStrategy>())" Style="width: 100%;"
+                        Change="@(_ => StateHasChanged())" />
+                </div>
+                <div class="cm-editor__field">
+                    <label>Max Requests</label>
+                    <RadzenNumeric TValue="int" @bind-Value="_model.MaxRequests" Style="width: 100%;" />
+                </div>
+                <div class="cm-editor__field">
+                    <label>Window (seconds)</label>
+                    <RadzenNumeric TValue="double" @bind-Value="_model.WindowSeconds" Style="width: 100%;" />
+                </div>
+                @if (_model.Strategy == RateLimitStrategy.TokenBucket)
+                {
+                    <div class="cm-editor__field">
+                        <label>Tokens Per Refill</label>
+                        <RadzenNumeric TValue="int?" @bind-Value="_model.TokensPerRefill" Style="width: 100%;" />
+                    </div>
+                }
+            </div>
+
+            <div class="cm-editor__actions">
+                <RadzenButton Text="Save" ButtonType="ButtonType.Submit" ButtonStyle="ButtonStyle.Primary" />
+                <RadzenButton Text="Cancel" Variant="Variant.Outlined" Click="@(() => Nav.NavigateTo("/rate-limits"))" />
+            </div>
+        </EditForm>
+    </div>
+}
+
+@code {
+    [Parameter] public string? Id { get; set; }
+    private bool _isNew => string.IsNullOrEmpty(Id) || Id == "new";
+    private bool _loading = true;
+    private string? _error;
+    private RateLimitFormModel _model = new() { TargetType = GlobalRateLimitTarget.Service };
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            if (!_isNew)
+            {
+                var limit = await RateLimitApi.GetByIdAsync(Id!);
+                if (limit is null)
+                {
+                    _error = $"Rate limit '{Id}' not found.";
+                    return;
+                }
+                _model = new RateLimitFormModel
+                {
+                    Id = limit.Id,
+                    TargetId = limit.TargetId,
+                    TargetType = GlobalRateLimitTarget.Service,
+                    Strategy = limit.Strategy,
+                    MaxRequests = limit.MaxRequests,
+                    WindowSeconds = limit.Window.TotalSeconds,
+                    TokensPerRefill = limit.TokensPerRefill
+                };
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            _error = $"Unable to connect to the API: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        var limit = new GlobalRateLimit
+        {
+            Id = _model.Id,
+            TargetId = _model.TargetId,
+            TargetType = GlobalRateLimitTarget.Service,
+            Strategy = _model.Strategy,
+            MaxRequests = _model.MaxRequests,
+            Window = TimeSpan.FromSeconds(_model.WindowSeconds),
+            TokensPerRefill = _model.Strategy == RateLimitStrategy.TokenBucket
+                ? _model.TokensPerRefill : null
+        };
+
+        try
+        {
+            if (_isNew)
+                await RateLimitApi.CreateAsync(limit);
+            else
+                await RateLimitApi.UpdateAsync(Id!, limit);
+
+            Nav.NavigateTo("/rate-limits");
+        }
+        catch (HttpRequestException ex)
+        {
+            _error = $"Save failed: {ex.Message}";
+        }
+    }
+
+    private class RateLimitFormModel
+    {
+        public string Id { get; set; } = string.Empty;
+        public string TargetId { get; set; } = string.Empty;
+        public GlobalRateLimitTarget TargetType { get; set; } = GlobalRateLimitTarget.Service;
+        public RateLimitStrategy Strategy { get; set; }
+        public int MaxRequests { get; set; } = 100;
+        public double WindowSeconds { get; set; } = 60;
+        public int? TokensPerRefill { get; set; }
+    }
+}
