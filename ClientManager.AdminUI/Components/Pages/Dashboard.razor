@@ -3,6 +3,7 @@
 @inject ClientApiService ClientService
 @inject ServiceApiService ServiceService
 @inject ResourcePoolApiService PoolService
+@inject EntityColorService Colors
 @inject NavigationManager Nav
 
 <div class="cm-page-header">
@@ -99,7 +100,8 @@ else
             </div>
             <RadzenChart Style="height: 300px;">
                 <RadzenDonutSeries Data="@_perClientUsage" CategoryProperty="ClientName"
-                    ValueProperty="Value" Title="Per Client" />
+                    ValueProperty="Value" Title="Per Client"
+                    Fills="@_perClientUsage.Select(p => Colors.GetColor(p.ClientId)).ToArray()" />
                 <RadzenLegend Position="LegendPosition.Right" />
             </RadzenChart>
         </div>
@@ -273,8 +275,8 @@ else
                             allEntries[entry.ClientId] = (entry.ClientName, entry.Value);
                     }
                 }
-                _perClientUsage = allEntries.Values
-                    .Select(e => new ClientUsagePoint(e.Name, e.Value)).ToList();
+                _perClientUsage = allEntries
+                    .Select(e => new ClientUsagePoint(e.Key, e.Value.Name, e.Value.Value)).ToList();
             }
             else
             {
@@ -284,7 +286,7 @@ else
                 {
                     _perClientUsage = breakdown.Entries
                         .Where(e => e.Value > 0)
-                        .Select(e => new ClientUsagePoint(e.ClientName, e.Value)).ToList();
+                        .Select(e => new ClientUsagePoint(e.ClientId, e.ClientName, e.Value)).ToList();
                 }
             }
         }
@@ -348,7 +350,7 @@ else
     private record NamedItem(string Id, string Name);
     private record TimeSeriesPoint(string Label, double Value);
     private record ChartSeries(string Name, List<TimeSeriesPoint> Points, bool IsDashed);
-    private record ClientUsagePoint(string ClientName, double Value);
+    private record ClientUsagePoint(string ClientId, string ClientName, double Value);
     private record ClientSummaryRow(string ClientId, string DisplayName, int AccessibleServices,
         string TotalRateLimitCap, int AccessiblePools, string SlotsDisplay);
 }

@@ -3,6 +3,7 @@
 @inject ServiceApiService ServiceService
 @inject ClientApiService ClientService
 @inject GlobalRateLimitApiService RateLimitApi
+@inject EntityColorService Colors
 @implements IDisposable
 
 <div class="cm-page-header">
@@ -44,7 +45,9 @@
                 {
                     <RadzenStackedAreaSeries Data="@clientArea.Points"
                         CategoryProperty="Label" ValueProperty="Value"
-                        Title="@clientArea.ClientName" />
+                        Title="@clientArea.ClientName"
+                        Fill="@Colors.GetColor(clientArea.ClientId)"
+                        Stroke="@Colors.GetColor(clientArea.ClientId)" />
                 }
                 <RadzenLineSeries Data="@targetChart.CapSeries"
                     CategoryProperty="Label" ValueProperty="Value"
@@ -283,7 +286,7 @@
                     .ToList();
 
                 charts.Add(new TargetChartData("All Services",
-                    new List<ClientAreaSeries> { new("Total", sortedPoints) },
+                    new List<ClientAreaSeries> { new("total", "Total", sortedPoints) },
                     capPoints));
             }
             else
@@ -336,7 +339,7 @@
                             .Select(t => new ChartPoint(t, lookup.GetValueOrDefault(t, 0)))
                             .ToList();
 
-                        clientAreas.Add(new ClientAreaSeries(entry.ClientName, points));
+                        clientAreas.Add(new ClientAreaSeries(entry.ClientId, entry.ClientName, points));
 
                         var granted = clientRecents[i]?.Points.Sum(p => p.GrantedCount) ?? 0;
                         var denied = clientRecents[i]?.Points.Sum(p => p.DeniedCount) ?? 0;
@@ -391,7 +394,7 @@
     private record NamedItem(string Id, string Name);
     private record ChartPoint(string Label, double Value);
     private record ClientOption(string Id, string Name);
-    private record ClientAreaSeries(string ClientName, List<ChartPoint> Points);
+    private record ClientAreaSeries(string ClientId, string ClientName, List<ChartPoint> Points);
     private record TargetChartData(
         string TargetName, List<ClientAreaSeries> ClientSeries,
         List<ChartPoint> CapSeries);
