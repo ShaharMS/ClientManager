@@ -1,6 +1,6 @@
 # Plan: Dashboard Drilldowns — Step 2: Monitor Page
 
-> **Status**: 🔲 Not started
+> **Status**: ✅ Completed
 > **Prerequisite**: [dashboard-drilldowns-1-card-arrows.md](dashboard-drilldowns-1-card-arrows.md)
 > **Next**: [dashboard-drilldowns-3-allocations-redesign.md](dashboard-drilldowns-3-allocations-redesign.md)
 > **Parent**: [dashboard-drilldowns-overview.md](dashboard-drilldowns-overview.md)

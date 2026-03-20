@@ -1,7 +1,7 @@
 # Plan: Dashboard Drilldowns — Step 1: Stat Card Arrows
 
-> **Status**: 🔲 Not started
-> **Prerequisite**: [ratelimit-split-1-pages.md](ratelimit-split-1-pages.md)
+> **Status**: ✅ Completed
+> **Prerequisite**: [ratelimit-split-1-pages.md](../realized/ratelimit-split-1-pages.md)
 > **Next**: [dashboard-drilldowns-2-monitor-page.md](dashboard-drilldowns-2-monitor-page.md)
 > **Parent**: [dashboard-drilldowns-overview.md](dashboard-drilldowns-overview.md)
 

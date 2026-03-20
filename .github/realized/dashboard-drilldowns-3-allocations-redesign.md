@@ -1,6 +1,6 @@
 # Plan: Dashboard Drilldowns — Step 3: Active Allocations Redesign
 
-> **Status**: 🔲 Not started
+> **Status**: ✅ Completed
 > **Prerequisite**: [dashboard-drilldowns-2-monitor-page.md](dashboard-drilldowns-2-monitor-page.md)
 > **Next**: None — this is the final step.
 > **Parent**: [dashboard-drilldowns-overview.md](dashboard-drilldowns-overview.md)

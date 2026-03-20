@@ -53,6 +53,21 @@ public class StatisticsApiService
     {
         return await _httpClient.GetFromJsonAsync<ClientSummaries>("api/statistics/client-summaries");
     }
+
+    public async Task<HistoricalUsageData?> GetHistoricalUsageAsync(
+        string filterType, string targetId, string? clientId,
+        DateTime from, DateTime to, string granularity)
+    {
+        var url = $"api/statistics/historical-usage?filterType={Uri.EscapeDataString(filterType)}"
+            + $"&targetId={Uri.EscapeDataString(targetId)}"
+            + $"&from={from:O}&to={to:O}"
+            + $"&granularity={Uri.EscapeDataString(granularity)}";
+        if (clientId is not null)
+        {
+            url += $"&clientId={Uri.EscapeDataString(clientId)}";
+        }
+        return await _httpClient.GetFromJsonAsync<HistoricalUsageData>(url);
+    }
 }
 
 public record SystemOverview(
@@ -85,3 +100,10 @@ public record ClientSummaryItem(
     string ClientId, string DisplayName,
     int AccessibleServices, string TotalRateLimitCap,
     int AccessiblePools, int UsedSlots, int TotalAccessibleSlots);
+
+public record HistoricalUsageData(
+    string TargetId, string TargetType, string Granularity,
+    List<HistoricalUsagePoint> Points);
+
+public record HistoricalUsagePoint(
+    DateTime Timestamp, long GrantedCount, long DeniedCount);

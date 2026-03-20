@@ -1,19 +1,50 @@
 @page "/allocations"
 @inject StatisticsApiService StatsService
+@inject ClientApiService ClientService
+@inject ResourcePoolApiService PoolService
 @implements IDisposable
 
 <div class="cm-page-header">
     <h1>Active Allocations</h1>
-    <p>Live resource pool utilization — auto-refreshes every 10 seconds.</p>
+    <p>Real-time resource pool utilization — refreshes every 10 seconds.</p>
+</div>
+
+<div class="cm-monitor__filters">
+    <RadzenDropDown TValue="string?" @bind-Value="_selectedPoolId"
+        Data="@_poolOptions" TextProperty="Name" ValueProperty="Id"
+        Placeholder="All pools" AllowClear="true"
+        Change="@(async _ => await RefreshAsync())" Style="width: 220px;" />
+    <span class="cm-badge cm-badge--success" style="margin-left: auto;">
+        <RadzenIcon Icon="fiber_manual_record" Style="font-size: 10px;" /> Auto-refreshing
+    </span>
 </div>
 
 @if (_error is not null)
 {
-    <div class="alert alert-danger">@_error</div>
+    <RadzenAlert AlertStyle="AlertStyle.Danger" Shade="Shade.Light">@_error</RadzenAlert>
+}
+
+@if (_clientSlotSeries.Count > 0)
+{
+    <div class="cm-monitor__chart-card">
+        <div class="cm-dashboard__chart-header">
+            <span class="cm-dashboard__chart-title">Slot Usage by Client</span>
+        </div>
+        <RadzenChart Style="height: 300px;">
+            @foreach (var clientSeries in _clientSlotSeries)
+            {
+                <RadzenBarSeries Data="@clientSeries.Data" CategoryProperty="PoolName"
+                    ValueProperty="Slots" Title="@clientSeries.ClientName" />
+            }
+            <RadzenCategoryAxis />
+            <RadzenValueAxis />
+            <RadzenLegend Position="LegendPosition.Bottom" />
+        </RadzenChart>
+    </div>
 }
 
 <div class="cm-list-page__table-card">
-    <RadzenDataGrid Data="@_pools" TItem="ResourcePoolStatistics"
+    <RadzenDataGrid Data="@_filteredPools" TItem="ResourcePoolStatistics"
         AllowSorting="true" AllowPaging="true" PageSize="15"
         PagerHorizontalAlign="HorizontalAlign.Center">
         <Columns>
@@ -25,10 +56,10 @@
                 <Template Context="pool">
                     @{
                         var pct = pool.MaxSlots > 0 ? (int)(pool.ActiveAllocations * 100.0 / pool.MaxSlots) : 0;
-                        var style = pct >= 100 ? ProgressBarStyle.Danger : pct >= 75 ? ProgressBarStyle.Warning : ProgressBarStyle.Success;
+                        var barStyle = pct >= 100 ? ProgressBarStyle.Danger : pct >= 75 ? ProgressBarStyle.Warning : ProgressBarStyle.Success;
                     }
                     <RadzenProgressBar Value="@pct" Max="100" ShowValue="true"
-                        ProgressBarStyle="@style" Style="height: 20px;" />
+                        ProgressBarStyle="@barStyle" Style="height: 20px;" />
                 </Template>
             </RadzenDataGridColumn>
             <RadzenDataGridColumn TItem="ResourcePoolStatistics" Title="Status" Width="110px" Sortable="false">
@@ -47,10 +78,62 @@
     </RadzenDataGrid>
 </div>
 
+<div class="cm-list-page__table-card">
+    <div class="cm-dashboard__chart-header">
+        <span class="cm-dashboard__chart-title">Client Allocation Detail</span>
+    </div>
+    <RadzenDataGrid Data="@_clientDetailRows" TItem="AllocationClientRow"
+        AllowSorting="true" AllowPaging="true" PageSize="15"
+        PagerHorizontalAlign="HorizontalAlign.Center">
+        <Columns>
+            <RadzenDataGridColumn TItem="AllocationClientRow" Property="ClientName" Title="Client" />
+            <RadzenDataGridColumn TItem="AllocationClientRow" Property="PoolName" Title="Pool" />
+            <RadzenDataGridColumn TItem="AllocationClientRow" Property="ActiveSlots" Title="Active" Width="90px" />
+            <RadzenDataGridColumn TItem="AllocationClientRow" Property="MaxSlots" Title="Max" Width="80px" />
+            <RadzenDataGridColumn TItem="AllocationClientRow" Title="Utilization" Width="180px">
+                <Template Context="row">
+                    @{
+                        var pct = row.MaxSlots > 0 ? (int)(row.ActiveSlots * 100.0 / row.MaxSlots) : 0;
+                        var barStyle = pct >= 100 ? ProgressBarStyle.Danger : pct >= 75 ? ProgressBarStyle.Warning : ProgressBarStyle.Success;
+                    }
+                    <RadzenProgressBar Value="@pct" Max="100" ShowValue="true"
+                        ProgressBarStyle="@barStyle" Style="height: 18px;" />
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="AllocationClientRow" Property="DeniedLast5Min" Title="Denied (5m)" Width="110px" />
+            <RadzenDataGridColumn TItem="AllocationClientRow" Title="Status" Width="120px" Sortable="false">
+                <Template Context="row">
+                    @if (row.ActiveSlots >= row.MaxSlots && row.MaxSlots > 0)
+                    {
+                        <span class="cm-badge" style="background: #fee2e2; color: #991b1b;">At Capacity</span>
+                    }
+                    else if (row.DeniedLast5Min > 0)
+                    {
+                        <span class="cm-badge" style="background: #fef3c7; color: #92400e;">Contention</span>
+                    }
+                    else
+                    {
+                        <span class="cm-badge cm-badge--success">Available</span>
+                    }
+                </Template>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
+</div>
+
 @code {
     private List<ResourcePoolStatistics> _pools = [];
+    private List<PoolOption> _poolOptions = [];
+    private string? _selectedPoolId;
     private string? _error;
     private Timer? _timer;
+    private List<ClientBarSeries> _clientSlotSeries = [];
+    private List<AllocationClientRow> _clientDetailRows = [];
+
+    private IEnumerable<ResourcePoolStatistics> _filteredPools =>
+        _selectedPoolId is null
+            ? _pools
+            : _pools.Where(p => p.ResourcePoolId == _selectedPoolId);
 
     protected override async Task OnInitializedAsync()
     {
@@ -67,6 +150,61 @@
         try
         {
             _pools = await StatsService.GetResourcePoolStatsAsync();
+            _poolOptions = _pools.Select(p => new PoolOption(p.ResourcePoolId, p.Name)).ToList();
+
+            var targetPools = _selectedPoolId is null
+                ? _pools
+                : _pools.Where(p => p.ResourcePoolId == _selectedPoolId).ToList();
+
+            var clientSeriesMap = new Dictionary<string, List<PoolSlotPoint>>();
+            var detailRows = new List<AllocationClientRow>();
+            var now = DateTime.UtcNow;
+            var recentFrom = now.AddMinutes(-5);
+
+            foreach (var pool in targetPools)
+            {
+                var breakdown = await StatsService.GetClientUsageBreakdownAsync(
+                    "ResourcePool", pool.ResourcePoolId, null);
+
+                if (breakdown?.Entries is null)
+                    continue;
+
+                foreach (var entry in breakdown.Entries)
+                {
+                    var slots = (int)entry.Value;
+                    if (!clientSeriesMap.ContainsKey(entry.ClientName))
+                        clientSeriesMap[entry.ClientName] = [];
+
+                    clientSeriesMap[entry.ClientName].Add(
+                        new PoolSlotPoint(pool.Name, slots));
+
+                    long denied = 0;
+                    if (slots > 0)
+                    {
+                        try
+                        {
+                            var history = await StatsService.GetHistoricalUsageAsync(
+                                "ResourcePool", pool.ResourcePoolId, entry.ClientId,
+                                recentFrom, now, "FiveMinute");
+                            denied = history?.Points.Sum(p => p.DeniedCount) ?? 0;
+                        }
+                        catch
+                        {
+                            // Historical data may not exist yet
+                        }
+                    }
+
+                    detailRows.Add(new AllocationClientRow(
+                        entry.ClientId, entry.ClientName, pool.Name,
+                        slots, pool.MaxSlots, denied));
+                }
+            }
+
+            _clientSlotSeries = clientSeriesMap
+                .Select(kvp => new ClientBarSeries(kvp.Key, kvp.Value))
+                .ToList();
+
+            _clientDetailRows = detailRows;
             _error = null;
         }
         catch (HttpRequestException ex)
@@ -79,4 +217,11 @@
     {
         _timer?.Dispose();
     }
+
+    private record PoolOption(string Id, string Name);
+    private record ClientBarSeries(string ClientName, List<PoolSlotPoint> Data);
+    private record PoolSlotPoint(string PoolName, int Slots);
+    private record AllocationClientRow(
+        string ClientId, string ClientName, string PoolName,
+        int ActiveSlots, int MaxSlots, long DeniedLast5Min);
 }

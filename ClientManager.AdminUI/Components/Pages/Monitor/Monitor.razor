@@ -1,0 +1,218 @@
+@page "/monitor"
+@inject StatisticsApiService StatsService
+@inject ServiceApiService ServiceService
+@inject ClientApiService ClientService
+@inject GlobalRateLimitApiService RateLimitApi
+@implements IDisposable
+
+<div class="cm-page-header">
+    <h1>Monitor</h1>
+    <p>Real-time request analytics across services and clients.</p>
+</div>
+
+<div class="cm-monitor__filters">
+    <RadzenDropDown TValue="string" @bind-Value="_selectedServiceId"
+        Data="@_services" TextProperty="Name" ValueProperty="Id"
+        Placeholder="Select service..." Style="width: 220px;"
+        Change="@OnFilterChanged" />
+    <RadzenDropDown TValue="string?" @bind-Value="_selectedClientId"
+        Data="@_clientOptions" TextProperty="Name" ValueProperty="Id"
+        Placeholder="All clients" Style="width: 200px;" AllowClear="true"
+        Change="@OnFilterChanged" />
+</div>
+
+@if (_error is not null)
+{
+    <RadzenAlert AlertStyle="AlertStyle.Danger" Shade="Shade.Light">@_error</RadzenAlert>
+}
+
+@if (_loading)
+{
+    <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+}
+else if (_selectedServiceId is not null)
+{
+    <div class="cm-monitor__chart-card">
+        <div class="cm-dashboard__chart-header">
+            <span class="cm-dashboard__chart-title">Request Traffic</span>
+        </div>
+        <RadzenChart Style="height: 350px;">
+            <RadzenLineSeries Data="@_grantedSeries" CategoryProperty="Label"
+                ValueProperty="Value" Title="Granted" />
+            <RadzenLineSeries Data="@_deniedSeries" CategoryProperty="Label"
+                ValueProperty="Value" Title="Denied" Stroke="var(--color-danger)" />
+            <RadzenLineSeries Data="@_capSeries" CategoryProperty="Label"
+                ValueProperty="Value" Title="Cap" LineType="LineType.Dashed"
+                Stroke="var(--color-text-secondary)" />
+            <RadzenCategoryAxis />
+            <RadzenValueAxis />
+            <RadzenLegend Position="LegendPosition.Bottom" />
+        </RadzenChart>
+    </div>
+
+    <div class="cm-list-page__table-card">
+        <div class="cm-dashboard__chart-header">
+            <span class="cm-dashboard__chart-title">Client Breakdown</span>
+        </div>
+        <RadzenDataGrid Data="@_clientRows" TItem="MonitorClientRow"
+            AllowSorting="true" AllowPaging="true" PageSize="15"
+            PagerHorizontalAlign="HorizontalAlign.Center">
+            <Columns>
+                <RadzenDataGridColumn TItem="MonitorClientRow" Property="ClientName" Title="Client" />
+                <RadzenDataGridColumn TItem="MonitorClientRow" Property="ServiceName" Title="Service" Width="150px" />
+                <RadzenDataGridColumn TItem="MonitorClientRow" Property="GrantedLast5Min" Title="Req (5m)" Width="100px" />
+                <RadzenDataGridColumn TItem="MonitorClientRow" Property="DeniedLast5Min" Title="Denied (5m)" Width="110px" />
+                <RadzenDataGridColumn TItem="MonitorClientRow" Property="RateLimitCap" Title="Cap" Width="80px" />
+                <RadzenDataGridColumn TItem="MonitorClientRow" Property="Remaining" Title="Remaining" Width="110px" />
+                <RadzenDataGridColumn TItem="MonitorClientRow" Title="Status" Width="120px" Sortable="false">
+                    <Template Context="row">
+                        @if (row.DeniedLast5Min > 0)
+                        {
+                            <span class="cm-badge" style="background: #fee2e2; color: #991b1b;">Hitting Limit</span>
+                        }
+                        else if (row.RateLimitCap > 0 && row.Remaining <= row.RateLimitCap * 0.1)
+                        {
+                            <span class="cm-badge" style="background: #fef3c7; color: #92400e;">Near Limit</span>
+                        }
+                        else
+                        {
+                            <span class="cm-badge cm-badge--success">Healthy</span>
+                        }
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    </div>
+}
+
+@code {
+    private List<Service> _services = [];
+    private List<ClientOption> _clientOptions = [];
+    private string? _selectedServiceId;
+    private string? _selectedClientId;
+
+    private bool _loading;
+    private string? _error;
+    private Timer? _timer;
+
+    private List<ChartPoint> _grantedSeries = [];
+    private List<ChartPoint> _deniedSeries = [];
+    private List<ChartPoint> _capSeries = [];
+    private List<MonitorClientRow> _clientRows = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _services = await ServiceService.GetAllAsync();
+            var clients = await ClientService.GetAllAsync();
+            _clientOptions = clients
+                .Select(c => new ClientOption(c.Id, c.Name))
+                .ToList();
+
+            if (_services.Count > 0)
+            {
+                _selectedServiceId = _services[0].Id;
+                await LoadDataAsync();
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            _error = $"Unable to connect to the API: {ex.Message}";
+        }
+
+        _timer = new Timer(async _ =>
+        {
+            if (_selectedServiceId is not null)
+            {
+                await LoadDataAsync();
+                await InvokeAsync(StateHasChanged);
+            }
+        }, null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
+    }
+
+    private async Task OnFilterChanged()
+    {
+        if (_selectedServiceId is not null)
+        {
+            _loading = true;
+            StateHasChanged();
+            await LoadDataAsync();
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadDataAsync()
+    {
+        try
+        {
+            var now = DateTime.UtcNow;
+            var from = now.AddHours(-1);
+
+            var usage = await StatsService.GetHistoricalUsageAsync(
+                "Service", _selectedServiceId!, _selectedClientId, from, now, "FiveMinute");
+
+            var rateLimits = await RateLimitApi.GetByTargetTypeAsync(
+                ClientManager.Shared.Models.Enums.GlobalRateLimitTarget.Service);
+            var cap = rateLimits
+                .FirstOrDefault(r => r.TargetId == _selectedServiceId)?.MaxRequests ?? 0;
+
+            _grantedSeries = usage?.Points
+                .Select(p => new ChartPoint(p.Timestamp.ToString("HH:mm"), (double)p.GrantedCount))
+                .ToList() ?? [];
+
+            _deniedSeries = usage?.Points
+                .Select(p => new ChartPoint(p.Timestamp.ToString("HH:mm"), (double)p.DeniedCount))
+                .ToList() ?? [];
+
+            _capSeries = usage?.Points
+                .Select(p => new ChartPoint(p.Timestamp.ToString("HH:mm"), (double)cap))
+                .ToList() ?? [];
+
+            var breakdown = await StatsService.GetClientUsageBreakdownAsync(
+                "Service", _selectedServiceId!, null);
+
+            var recentFrom = now.AddMinutes(-5);
+            var rows = new List<MonitorClientRow>();
+
+            if (breakdown?.Entries is not null)
+            {
+                foreach (var entry in breakdown.Entries)
+                {
+                    var clientUsage = await StatsService.GetHistoricalUsageAsync(
+                        "Service", _selectedServiceId!, entry.ClientId, recentFrom, now, "FiveMinute");
+
+                    var granted = clientUsage?.Points.Sum(p => p.GrantedCount) ?? 0;
+                    var denied = clientUsage?.Points.Sum(p => p.DeniedCount) ?? 0;
+                    var remaining = cap > 0 ? Math.Max(0, cap - (int)granted) : 0;
+
+                    rows.Add(new MonitorClientRow(
+                        entry.ClientId, entry.ClientName, _selectedServiceId!,
+                        granted, denied, cap, remaining));
+                }
+            }
+
+            _clientRows = rows;
+            _error = null;
+        }
+        catch (HttpRequestException ex)
+        {
+            _error = $"Unable to load data: {ex.Message}";
+        }
+    }
+
+    public void Dispose()
+    {
+        _timer?.Dispose();
+    }
+
+    private record ChartPoint(string Label, double Value);
+
+    private record ClientOption(string Id, string Name);
+
+    private record MonitorClientRow(
+        string ClientId, string ClientName, string ServiceName,
+        long GrantedLast5Min, long DeniedLast5Min,
+        int RateLimitCap, int Remaining);
+}

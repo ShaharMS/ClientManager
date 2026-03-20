@@ -55,6 +55,46 @@ html, body {
     margin-top: var(--space-xs);
 }
 
+/* Stat card clickable variant */
+.cm-stat-card--clickable {
+    cursor: pointer;
+    position: relative;
+}
+
+.cm-stat-card__arrow {
+    position: absolute;
+    top: var(--space-sm);
+    right: var(--space-sm);
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.06);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.5;
+    transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+.cm-stat-card__arrow .rzi {
+    font-size: 16px;
+}
+
+.cm-stat-card--clickable:hover .cm-stat-card__arrow {
+    opacity: 1;
+    background: rgba(0, 0, 0, 0.1);
+}
+
+/* Arrow on primary card uses lighter colors */
+.cm-stat-card--primary .cm-stat-card__arrow {
+    background: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+}
+
+.cm-stat-card--primary:hover .cm-stat-card__arrow {
+    background: rgba(255, 255, 255, 0.35);
+}
+
 /* Page header */
 .cm-page-header {
     margin-bottom: var(--space-xl);

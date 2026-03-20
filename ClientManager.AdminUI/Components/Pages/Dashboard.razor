@@ -3,6 +3,7 @@
 @inject ClientApiService ClientService
 @inject ServiceApiService ServiceService
 @inject ResourcePoolApiService PoolService
+@inject NavigationManager Nav
 
 <div class="cm-page-header">
     <h1>Welcome</h1>
@@ -20,23 +21,38 @@ else if (_error is not null)
 else
 {
     <div class="cm-dashboard__stats">
-        <div class="cm-stat-card cm-stat-card--primary">
+        <div class="cm-stat-card cm-stat-card--primary cm-stat-card--clickable" @onclick='() => Nav.NavigateTo("/clients")'>
+            <div class="cm-stat-card__arrow">
+                <RadzenIcon Icon="north_east" />
+            </div>
             <div class="cm-stat-card__value">@_overview?.TotalClients</div>
             <div class="cm-stat-card__label">Clients</div>
         </div>
-        <div class="cm-stat-card">
+        <div class="cm-stat-card cm-stat-card--clickable" @onclick='() => Nav.NavigateTo("/services")'>
+            <div class="cm-stat-card__arrow">
+                <RadzenIcon Icon="north_east" />
+            </div>
             <div class="cm-stat-card__value">@_overview?.TotalServices</div>
             <div class="cm-stat-card__label">Services</div>
         </div>
-        <div class="cm-stat-card">
+        <div class="cm-stat-card cm-stat-card--clickable" @onclick='() => Nav.NavigateTo("/resource-pools")'>
+            <div class="cm-stat-card__arrow">
+                <RadzenIcon Icon="north_east" />
+            </div>
             <div class="cm-stat-card__value">@_overview?.TotalResourcePools</div>
             <div class="cm-stat-card__label">Resource Pools</div>
         </div>
-        <div class="cm-stat-card">
+        <div class="cm-stat-card cm-stat-card--clickable" @onclick='() => Nav.NavigateTo("/monitor")'>
+            <div class="cm-stat-card__arrow">
+                <RadzenIcon Icon="north_east" />
+            </div>
             <div class="cm-stat-card__value">@_globalUsage</div>
             <div class="cm-stat-card__label">Requests / min</div>
         </div>
-        <div class="cm-stat-card">
+        <div class="cm-stat-card cm-stat-card--clickable" @onclick='() => Nav.NavigateTo("/allocations")'>
+            <div class="cm-stat-card__arrow">
+                <RadzenIcon Icon="north_east" />
+            </div>
             <div class="cm-stat-card__value">@(_acquisitionPct)%</div>
             <div class="cm-stat-card__label">Pool Acquisition</div>
         </div>
