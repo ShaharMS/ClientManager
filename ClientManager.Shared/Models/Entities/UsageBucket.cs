@@ -19,4 +19,15 @@ public record UsageBucket
     /// Number of denied requests or denied acquisitions in this bucket.
     /// </summary>
     public long DeniedCount { get; init; }
+
+    /// <summary>
+    /// Number of explicit resource releases in this bucket.
+    /// </summary>
+    public long ReleasedCount { get; init; }
+
+    /// <summary>
+    /// Snapshot of concurrent active allocations at the time this bucket was recorded.
+    /// Only populated for resource pool targets.
+    /// </summary>
+    public long ActiveCount { get; init; }
 }

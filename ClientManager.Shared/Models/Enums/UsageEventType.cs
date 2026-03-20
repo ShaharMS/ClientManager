@@ -12,5 +12,9 @@ public enum UsageEventType
     /// <summary>
     /// Request denied or resource acquisition denied.
     /// </summary>
-    Denied
+    Denied,
+    /// <summary>
+    /// Resource allocation explicitly released.
+    /// </summary>
+    Released
 }

@@ -1,6 +1,6 @@
 # Plan: Unified Monitor & Allocations — Step 1: Monitor Page Redesign
 
-> **Status**: 🔲 Not started
+> **Status**: ✅ Completed
 > **Prerequisite**: None — this is the first step.
 > **Next**: [unified-monitor-allocations-2-allocations.md](unified-monitor-allocations-2-allocations.md)
 > **Parent**: [unified-monitor-allocations-overview.md](unified-monitor-allocations-overview.md)

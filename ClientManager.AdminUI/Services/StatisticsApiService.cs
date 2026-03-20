@@ -106,4 +106,5 @@ public record HistoricalUsageData(
     List<HistoricalUsagePoint> Points);
 
 public record HistoricalUsagePoint(
-    DateTime Timestamp, long GrantedCount, long DeniedCount);
+    DateTime Timestamp, long GrantedCount, long DeniedCount,
+    long ReleasedCount, long ActiveCount);

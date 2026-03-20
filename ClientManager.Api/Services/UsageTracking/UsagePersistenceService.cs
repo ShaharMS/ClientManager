@@ -48,8 +48,9 @@ public class UsagePersistenceService : BackgroundService
             {
                 using var scope = _scopeFactory.CreateScope();
                 var repository = scope.ServiceProvider.GetRequiredService<IUsageSnapshotRepository>();
+                var allocationRepository = scope.ServiceProvider.GetRequiredService<IResourceAllocationRepository>();
 
-                await FlushBufferAsync(repository, stoppingToken);
+                await FlushBufferAsync(repository, allocationRepository, stoppingToken);
                 await RollUpAsync(repository, BucketGranularity.FiveMinute, BucketGranularity.Hour, TimeSpan.FromHours(1), stoppingToken);
                 await RollUpAsync(repository, BucketGranularity.Hour, BucketGranularity.Day, TimeSpan.FromHours(24), stoppingToken);
                 await PruneExpiredAsync(repository, stoppingToken);
@@ -65,7 +66,7 @@ public class UsagePersistenceService : BackgroundService
         }
     }
 
-    private async Task FlushBufferAsync(IUsageSnapshotRepository repository, CancellationToken cancellationToken)
+    private async Task FlushBufferAsync(IUsageSnapshotRepository repository, IResourceAllocationRepository allocationRepository, CancellationToken cancellationToken)
     {
         var counts = _buffer.Drain();
         if (counts.Count == 0)
@@ -95,12 +96,21 @@ public class UsagePersistenceService : BackgroundService
 
             long granted = 0;
             long denied = 0;
+            long released = 0;
             foreach (var entry in group)
             {
                 if (entry.Key.EventType == UsageEventType.Granted)
                     granted += entry.Value;
-                else
+                else if (entry.Key.EventType == UsageEventType.Denied)
                     denied += entry.Value;
+                else if (entry.Key.EventType == UsageEventType.Released)
+                    released += entry.Value;
+            }
+
+            long activeCount = 0;
+            if (targetType == GlobalRateLimitTarget.ResourcePool)
+            {
+                activeCount = await allocationRepository.GetActiveCountByClientAsync(targetId, clientId, cancellationToken);
             }
 
             var buckets = snapshot.Buckets.ToList();
@@ -110,7 +120,9 @@ public class UsagePersistenceService : BackgroundService
                 buckets[existing] = buckets[existing] with
                 {
                     GrantedCount = buckets[existing].GrantedCount + granted,
-                    DeniedCount = buckets[existing].DeniedCount + denied
+                    DeniedCount = buckets[existing].DeniedCount + denied,
+                    ReleasedCount = buckets[existing].ReleasedCount + released,
+                    ActiveCount = activeCount
                 };
             }
             else
@@ -119,7 +131,9 @@ public class UsagePersistenceService : BackgroundService
                 {
                     Timestamp = bucketTimestamp,
                     GrantedCount = granted,
-                    DeniedCount = denied
+                    DeniedCount = denied,
+                    ReleasedCount = released,
+                    ActiveCount = activeCount
                 });
                 buckets.Sort((a, b) => a.Timestamp.CompareTo(b.Timestamp));
             }
@@ -171,6 +185,8 @@ public class UsagePersistenceService : BackgroundService
                 var targetTimestamp = group.Key;
                 var totalGranted = group.Sum(b => b.GrantedCount);
                 var totalDenied = group.Sum(b => b.DeniedCount);
+                var totalReleased = group.Sum(b => b.ReleasedCount);
+                var maxActive = group.Max(b => b.ActiveCount);
 
                 var existingIndex = targetBuckets.FindIndex(b => b.Timestamp == targetTimestamp);
                 if (existingIndex >= 0)
@@ -178,7 +194,9 @@ public class UsagePersistenceService : BackgroundService
                     targetBuckets[existingIndex] = targetBuckets[existingIndex] with
                     {
                         GrantedCount = targetBuckets[existingIndex].GrantedCount + totalGranted,
-                        DeniedCount = targetBuckets[existingIndex].DeniedCount + totalDenied
+                        DeniedCount = targetBuckets[existingIndex].DeniedCount + totalDenied,
+                        ReleasedCount = targetBuckets[existingIndex].ReleasedCount + totalReleased,
+                        ActiveCount = Math.Max(targetBuckets[existingIndex].ActiveCount, maxActive)
                     };
                 }
                 else
@@ -187,7 +205,9 @@ public class UsagePersistenceService : BackgroundService
                     {
                         Timestamp = targetTimestamp,
                         GrantedCount = totalGranted,
-                        DeniedCount = totalDenied
+                        DeniedCount = totalDenied,
+                        ReleasedCount = totalReleased,
+                        ActiveCount = maxActive
                     });
                 }
             }

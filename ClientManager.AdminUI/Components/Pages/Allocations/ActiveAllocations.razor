@@ -1,7 +1,6 @@
 @page "/allocations"
 @inject StatisticsApiService StatsService
 @inject ClientApiService ClientService
-@inject ResourcePoolApiService PoolService
 @implements IDisposable
 
 <div class="cm-page-header">
@@ -10,10 +9,14 @@
 </div>
 
 <div class="cm-monitor__filters">
-    <RadzenDropDown TValue="string?" @bind-Value="_selectedPoolId"
+    <RadzenDropDown TValue="string" @bind-Value="_selectedPoolId"
         Data="@_poolOptions" TextProperty="Name" ValueProperty="Id"
-        Placeholder="All pools" AllowClear="true"
-        Change="@(async _ => await RefreshAsync())" Style="width: 220px;" />
+        Placeholder="Select pool..." Style="width: 220px;"
+        Change="@OnFilterChanged" />
+    <RadzenDropDown @bind-Value="_selectedClientIds" Multiple="true"
+        Data="@_clientOptions" TextProperty="Name" ValueProperty="Id"
+        Placeholder="All clients" Style="width: 200px;"
+        Change="@OnFilterChanged" />
     <span class="cm-badge cm-badge--success" style="margin-left: auto;">
         <RadzenIcon Icon="fiber_manual_record" Style="font-size: 10px;" /> Auto-refreshing
     </span>
@@ -24,61 +27,46 @@
     <RadzenAlert AlertStyle="AlertStyle.Danger" Shade="Shade.Light">@_error</RadzenAlert>
 }
 
-@if (_clientSlotSeries.Count > 0)
+@if (_loading)
 {
-    <div class="cm-monitor__chart-card">
-        <div class="cm-dashboard__chart-header">
-            <span class="cm-dashboard__chart-title">Slot Usage by Client</span>
-        </div>
-        <RadzenChart Style="height: 300px;">
-            @foreach (var clientSeries in _clientSlotSeries)
-            {
-                <RadzenBarSeries Data="@clientSeries.Data" CategoryProperty="PoolName"
-                    ValueProperty="Slots" Title="@clientSeries.ClientName" />
-            }
-            <RadzenCategoryAxis />
-            <RadzenValueAxis />
-            <RadzenLegend Position="LegendPosition.Bottom" />
-        </RadzenChart>
-    </div>
+    <RadzenProgressBar Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate"
+        Style="height: 3px; margin-bottom: var(--space-sm);" />
 }
 
-<div class="cm-list-page__table-card">
-    <RadzenDataGrid Data="@_filteredPools" TItem="ResourcePoolStatistics"
-        AllowSorting="true" AllowPaging="true" PageSize="15"
-        PagerHorizontalAlign="HorizontalAlign.Center">
-        <Columns>
-            <RadzenDataGridColumn TItem="ResourcePoolStatistics" Property="Name" Title="Pool" />
-            <RadzenDataGridColumn TItem="ResourcePoolStatistics" Property="ActiveAllocations" Title="Active" Width="100px" />
-            <RadzenDataGridColumn TItem="ResourcePoolStatistics" Property="MaxSlots" Title="Max" Width="100px" />
-            <RadzenDataGridColumn TItem="ResourcePoolStatistics" Property="AvailableSlots" Title="Available" Width="100px" />
-            <RadzenDataGridColumn TItem="ResourcePoolStatistics" Title="Utilization" Width="200px">
-                <Template Context="pool">
-                    @{
-                        var pct = pool.MaxSlots > 0 ? (int)(pool.ActiveAllocations * 100.0 / pool.MaxSlots) : 0;
-                        var barStyle = pct >= 100 ? ProgressBarStyle.Danger : pct >= 75 ? ProgressBarStyle.Warning : ProgressBarStyle.Success;
-                    }
-                    <RadzenProgressBar Value="@pct" Max="100" ShowValue="true"
-                        ProgressBarStyle="@barStyle" Style="height: 20px;" />
-                </Template>
-            </RadzenDataGridColumn>
-            <RadzenDataGridColumn TItem="ResourcePoolStatistics" Title="Status" Width="110px" Sortable="false">
-                <Template Context="pool">
-                    @if (pool.AvailableSlots == 0)
-                    {
-                        <span class="cm-badge" style="background: #fee2e2; color: #991b1b;">At Capacity</span>
-                    }
-                    else
-                    {
-                        <span class="cm-badge cm-badge--success">Available</span>
-                    }
-                </Template>
-            </RadzenDataGridColumn>
-        </Columns>
-    </RadzenDataGrid>
+<div class="cm-monitor__chart-card">
+    @if (_targetCharts.Count > 0)
+    {
+        @foreach (var targetChart in _targetCharts)
+        {
+            <div class="cm-dashboard__chart-header">
+                <span class="cm-dashboard__chart-title">@targetChart.TargetName — Slot Usage</span>
+            </div>
+            <RadzenChart Style="height: 300px;">
+                @foreach (var clientArea in targetChart.ClientSeries)
+                {
+                    <RadzenStackedAreaSeries Data="@clientArea.Points"
+                        CategoryProperty="Label" ValueProperty="Value"
+                        Title="@clientArea.ClientName" />
+                }
+                <RadzenLineSeries Data="@targetChart.CapSeries"
+                    CategoryProperty="Label" ValueProperty="Value"
+                    Title="Max Slots" LineType="LineType.Dashed"
+                    Stroke="var(--color-text-secondary)" />
+                <RadzenCategoryAxis />
+                <RadzenValueAxis />
+                <RadzenLegend Position="LegendPosition.Bottom" />
+            </RadzenChart>
+        }
+    }
+    else
+    {
+        <div style="height: 340px; display: flex; align-items: center; justify-content: center;">
+            <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+        </div>
+    }
 </div>
 
-<div class="cm-list-page__table-card">
+<div class="cm-list-page__table-card" style="margin-top: var(--space-lg);">
     <div class="cm-dashboard__chart-header">
         <span class="cm-dashboard__chart-title">Client Allocation Detail</span>
     </div>
@@ -93,8 +81,10 @@
             <RadzenDataGridColumn TItem="AllocationClientRow" Title="Utilization" Width="180px">
                 <Template Context="row">
                     @{
-                        var pct = row.MaxSlots > 0 ? (int)(row.ActiveSlots * 100.0 / row.MaxSlots) : 0;
-                        var barStyle = pct >= 100 ? ProgressBarStyle.Danger : pct >= 75 ? ProgressBarStyle.Warning : ProgressBarStyle.Success;
+                        var pct = row.MaxSlots > 0
+                            ? (int)(row.ActiveSlots * 100.0 / row.MaxSlots) : 0;
+                        var barStyle = pct >= 100 ? ProgressBarStyle.Danger
+                            : pct >= 75 ? ProgressBarStyle.Warning : ProgressBarStyle.Success;
                     }
                     <RadzenProgressBar Value="@pct" Max="100" ShowValue="true"
                         ProgressBarStyle="@barStyle" Style="height: 18px;" />
@@ -121,95 +111,264 @@
     </RadzenDataGrid>
 </div>
 
+<hr class="cm-monitor__separator" />
+
+<div class="cm-list-page__table-card" style="margin-top: var(--space-lg);">
+    <div class="cm-dashboard__chart-header">
+        <span class="cm-dashboard__chart-title">All Resource Pools</span>
+    </div>
+    <RadzenDataGrid Data="@_pools" TItem="ResourcePoolStatistics"
+        AllowSorting="true" AllowPaging="true" PageSize="15"
+        PagerHorizontalAlign="HorizontalAlign.Center">
+        <Columns>
+            <RadzenDataGridColumn TItem="ResourcePoolStatistics" Property="Name" Title="Pool" />
+            <RadzenDataGridColumn TItem="ResourcePoolStatistics" Property="ActiveAllocations" Title="Active" Width="100px" />
+            <RadzenDataGridColumn TItem="ResourcePoolStatistics" Property="MaxSlots" Title="Max" Width="100px" />
+            <RadzenDataGridColumn TItem="ResourcePoolStatistics" Property="AvailableSlots" Title="Available" Width="100px" />
+            <RadzenDataGridColumn TItem="ResourcePoolStatistics" Title="Utilization" Width="200px">
+                <Template Context="pool">
+                    @{
+                        var pct = pool.MaxSlots > 0
+                            ? (int)(pool.ActiveAllocations * 100.0 / pool.MaxSlots) : 0;
+                        var barStyle = pct >= 100 ? ProgressBarStyle.Danger
+                            : pct >= 75 ? ProgressBarStyle.Warning : ProgressBarStyle.Success;
+                    }
+                    <RadzenProgressBar Value="@pct" Max="100" ShowValue="true"
+                        ProgressBarStyle="@barStyle" Style="height: 20px;" />
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="ResourcePoolStatistics" Title="Status" Width="110px" Sortable="false">
+                <Template Context="pool">
+                    @if (pool.AvailableSlots == 0)
+                    {
+                        <span class="cm-badge" style="background: #fee2e2; color: #991b1b;">At Capacity</span>
+                    }
+                    else
+                    {
+                        <span class="cm-badge cm-badge--success">Available</span>
+                    }
+                </Template>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
+</div>
+
 @code {
+    private const string AllPoolsId = "__all__";
+
     private List<ResourcePoolStatistics> _pools = [];
-    private List<PoolOption> _poolOptions = [];
-    private string? _selectedPoolId;
+    private List<NamedItem> _poolOptions = [];
+    private List<ClientOption> _clientOptions = [];
+    private string _selectedPoolId = AllPoolsId;
+    private IEnumerable<string>? _selectedClientIds;
+
+    private bool _loading;
     private string? _error;
     private Timer? _timer;
-    private List<ClientBarSeries> _clientSlotSeries = [];
+
+    private List<TargetChartData> _targetCharts = [];
     private List<AllocationClientRow> _clientDetailRows = [];
 
-    private IEnumerable<ResourcePoolStatistics> _filteredPools =>
-        _selectedPoolId is null
-            ? _pools
-            : _pools.Where(p => p.ResourcePoolId == _selectedPoolId);
-
     protected override async Task OnInitializedAsync()
-    {
-        await RefreshAsync();
-        _timer = new Timer(async _ =>
-        {
-            await RefreshAsync();
-            await InvokeAsync(StateHasChanged);
-        }, null, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
-    }
-
-    private async Task RefreshAsync()
     {
         try
         {
             _pools = await StatsService.GetResourcePoolStatsAsync();
-            _poolOptions = _pools.Select(p => new PoolOption(p.ResourcePoolId, p.Name)).ToList();
-
-            var targetPools = _selectedPoolId is null
-                ? _pools
-                : _pools.Where(p => p.ResourcePoolId == _selectedPoolId).ToList();
-
-            var clientSeriesMap = new Dictionary<string, List<PoolSlotPoint>>();
-            var detailRows = new List<AllocationClientRow>();
-            var now = DateTime.UtcNow;
-            var recentFrom = now.AddMinutes(-5);
-
-            foreach (var pool in targetPools)
-            {
-                var breakdown = await StatsService.GetClientUsageBreakdownAsync(
-                    "ResourcePool", pool.ResourcePoolId, null);
-
-                if (breakdown?.Entries is null)
-                    continue;
-
-                foreach (var entry in breakdown.Entries)
-                {
-                    var slots = (int)entry.Value;
-                    if (!clientSeriesMap.ContainsKey(entry.ClientName))
-                        clientSeriesMap[entry.ClientName] = [];
-
-                    clientSeriesMap[entry.ClientName].Add(
-                        new PoolSlotPoint(pool.Name, slots));
-
-                    long denied = 0;
-                    if (slots > 0)
-                    {
-                        try
-                        {
-                            var history = await StatsService.GetHistoricalUsageAsync(
-                                "ResourcePool", pool.ResourcePoolId, entry.ClientId,
-                                recentFrom, now, "FiveMinute");
-                            denied = history?.Points.Sum(p => p.DeniedCount) ?? 0;
-                        }
-                        catch
-                        {
-                            // Historical data may not exist yet
-                        }
-                    }
-
-                    detailRows.Add(new AllocationClientRow(
-                        entry.ClientId, entry.ClientName, pool.Name,
-                        slots, pool.MaxSlots, denied));
-                }
-            }
-
-            _clientSlotSeries = clientSeriesMap
-                .Select(kvp => new ClientBarSeries(kvp.Key, kvp.Value))
+            var clients = await ClientService.GetAllAsync();
+            _clientOptions = clients
+                .Select(c => new ClientOption(c.Id, c.Name))
                 .ToList();
 
-            _clientDetailRows = detailRows;
-            _error = null;
+            _poolOptions = new List<NamedItem> { new(AllPoolsId, "All Pools") }
+                .Concat(_pools.Select(p => new NamedItem(p.ResourcePoolId, p.Name)))
+                .ToList();
+            _selectedPoolId = AllPoolsId;
+
+            await LoadDataAsync();
         }
         catch (HttpRequestException ex)
         {
             _error = $"Unable to connect to the API: {ex.Message}";
+        }
+
+        _timer = new Timer(async _ =>
+        {
+            await LoadDataAsync();
+            await InvokeAsync(StateHasChanged);
+        }, null, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
+    }
+
+    private async Task OnFilterChanged()
+    {
+        _loading = true;
+        StateHasChanged();
+        await LoadDataAsync();
+        _loading = false;
+        StateHasChanged();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        try
+        {
+            _pools = await StatsService.GetResourcePoolStatsAsync();
+
+            var now = DateTime.UtcNow;
+            var from = now.AddHours(-1);
+            var recentFrom = now.AddMinutes(-5);
+
+            var visiblePools = _selectedPoolId == AllPoolsId
+                ? _pools
+                : _pools.Where(p => p.ResourcePoolId == _selectedPoolId).ToList();
+
+            // Fetch all breakdowns in parallel
+            var breakdownTasks = visiblePools.Select(pool =>
+                StatsService.GetClientUsageBreakdownAsync(
+                    "ResourcePool", pool.ResourcePoolId, _selectedClientIds))
+                .ToList();
+            var breakdowns = await Task.WhenAll(breakdownTasks);
+
+            var charts = new List<TargetChartData>();
+            var rows = new List<AllocationClientRow>();
+
+            if (_selectedPoolId == AllPoolsId)
+            {
+                var aggregated = new Dictionary<string, double>();
+                var totalMaxSlots = 0;
+
+                // Build list of all history tasks across all pools
+                var historyRequests = new List<(string PoolName, int MaxSlots, string ClientId, string ClientName)>();
+                for (var i = 0; i < visiblePools.Count; i++)
+                {
+                    var pool = visiblePools[i];
+                    totalMaxSlots += pool.MaxSlots;
+                    foreach (var entry in breakdowns[i]?.Entries ?? [])
+                    {
+                        historyRequests.Add((pool.Name, pool.MaxSlots, entry.ClientId, entry.ClientName));
+                    }
+                }
+
+                // Fetch all histories in parallel
+                var historyTasks = historyRequests.Select(r =>
+                    StatsService.GetHistoricalUsageAsync(
+                        "ResourcePool",
+                        visiblePools.First(p => p.Name == r.PoolName).ResourcePoolId,
+                        r.ClientId, from, now, "FiveMinute")).ToList();
+                var recentTasks = historyRequests.Select(r =>
+                    StatsService.GetHistoricalUsageAsync(
+                        "ResourcePool",
+                        visiblePools.First(p => p.Name == r.PoolName).ResourcePoolId,
+                        r.ClientId, recentFrom, now, "FiveMinute")).ToList();
+
+                var histories = await Task.WhenAll(historyTasks);
+                var recents = await Task.WhenAll(recentTasks);
+
+                for (var i = 0; i < historyRequests.Count; i++)
+                {
+                    var request = historyRequests[i];
+                    foreach (var point in histories[i]?.Points ?? [])
+                    {
+                        var label = point.Timestamp.ToLocalTime().ToString("HH:mm");
+                        if (!aggregated.ContainsKey(label))
+                            aggregated[label] = 0;
+                        aggregated[label] += (double)point.ActiveCount;
+                    }
+
+                    var lastPoint = recents[i]?.Points.LastOrDefault();
+                    var active = (int)(lastPoint?.ActiveCount ?? 0);
+                    var denied = recents[i]?.Points.Sum(p => p.DeniedCount) ?? 0;
+                    rows.Add(new AllocationClientRow(
+                        request.ClientId, request.ClientName, request.PoolName,
+                        active, request.MaxSlots, denied));
+                }
+
+                var sortedPoints = aggregated
+                    .OrderBy(kv => kv.Key)
+                    .Select(kv => new ChartPoint(kv.Key, kv.Value))
+                    .ToList();
+
+                var capPoints = sortedPoints
+                    .Select(p => new ChartPoint(p.Label, totalMaxSlots))
+                    .ToList();
+
+                charts.Add(new TargetChartData("All Pools",
+                    new List<ClientAreaSeries> { new("Total", sortedPoints) },
+                    capPoints));
+            }
+            else
+            {
+                for (var poolIdx = 0; poolIdx < visiblePools.Count; poolIdx++)
+                {
+                    var pool = visiblePools[poolIdx];
+                    var entries = breakdowns[poolIdx]?.Entries ?? [];
+
+                    // Fetch all client histories for this pool in parallel
+                    var clientHistoryTasks = entries.Select(entry =>
+                        StatsService.GetHistoricalUsageAsync(
+                            "ResourcePool", pool.ResourcePoolId, entry.ClientId,
+                            from, now, "FiveMinute")).ToList();
+                    var clientRecentTasks = entries.Select(entry =>
+                        StatsService.GetHistoricalUsageAsync(
+                            "ResourcePool", pool.ResourcePoolId, entry.ClientId,
+                            recentFrom, now, "FiveMinute")).ToList();
+
+                    var clientHistories = await Task.WhenAll(clientHistoryTasks);
+                    var clientRecents = await Task.WhenAll(clientRecentTasks);
+
+                    var clientAreas = new List<ClientAreaSeries>();
+
+                    // Collect the union of all timestamps across all clients
+                    var allTimestampSet = new SortedSet<string>();
+                    var rawPointsByClient = new List<Dictionary<string, double>>();
+
+                    for (var i = 0; i < entries.Count; i++)
+                    {
+                        var lookup = new Dictionary<string, double>();
+                        foreach (var p in clientHistories[i]?.Points ?? [])
+                        {
+                            var label = p.Timestamp.ToLocalTime().ToString("HH:mm");
+                            allTimestampSet.Add(label);
+                            lookup[label] = (double)p.ActiveCount;
+                        }
+                        rawPointsByClient.Add(lookup);
+                    }
+
+                    var allTimestamps = allTimestampSet.ToList();
+
+                    for (var i = 0; i < entries.Count; i++)
+                    {
+                        var entry = entries[i];
+                        var lookup = rawPointsByClient[i];
+                        var points = allTimestamps
+                            .Select(t => new ChartPoint(t, lookup.GetValueOrDefault(t, 0)))
+                            .ToList();
+
+                        clientAreas.Add(new ClientAreaSeries(entry.ClientName, points));
+
+                        var lastPoint = clientRecents[i]?.Points.LastOrDefault();
+                        var active = (int)(lastPoint?.ActiveCount ?? 0);
+                        var denied = clientRecents[i]?.Points.Sum(p => p.DeniedCount) ?? 0;
+
+                        rows.Add(new AllocationClientRow(
+                            entry.ClientId, entry.ClientName, pool.Name,
+                            active, pool.MaxSlots, denied));
+                    }
+
+                    var capPoints = allTimestamps
+                        .Select(t => new ChartPoint(t, pool.MaxSlots))
+                        .ToList();
+
+                    charts.Add(new TargetChartData(pool.Name, clientAreas, capPoints));
+                }
+            }
+
+            _targetCharts = charts;
+            _clientDetailRows = rows;
+            _error = null;
+        }
+        catch (HttpRequestException ex)
+        {
+            _error = $"Unable to load data: {ex.Message}";
         }
     }
 
@@ -218,9 +377,13 @@
         _timer?.Dispose();
     }
 
-    private record PoolOption(string Id, string Name);
-    private record ClientBarSeries(string ClientName, List<PoolSlotPoint> Data);
-    private record PoolSlotPoint(string PoolName, int Slots);
+    private record NamedItem(string Id, string Name);
+    private record ChartPoint(string Label, double Value);
+    private record ClientOption(string Id, string Name);
+    private record ClientAreaSeries(string ClientName, List<ChartPoint> Points);
+    private record TargetChartData(
+        string TargetName, List<ClientAreaSeries> ClientSeries,
+        List<ChartPoint> CapSeries);
     private record AllocationClientRow(
         string ClientId, string ClientName, string PoolName,
         int ActiveSlots, int MaxSlots, long DeniedLast5Min);

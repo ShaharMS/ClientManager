@@ -172,6 +172,7 @@ public class ResourceAllocationService : IResourceAllocationService
         {
             { "allocationId", allocationId }
         });
+        _usageRecorder.RecordAllocationEvent(allocation.ClientId, allocation.ResourcePoolId, UsageEventType.Released);
 
         _logger.LogInformation("Resource released | AllocationId={AllocationId}", allocationId);
 

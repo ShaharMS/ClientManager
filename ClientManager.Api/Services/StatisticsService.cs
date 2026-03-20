@@ -246,7 +246,7 @@ public class StatisticsService : IStatisticsService
                 targetId, targetType, granularity, cancellationToken);
         }
 
-        var aggregated = new SortedDictionary<DateTime, (long granted, long denied)>();
+        var aggregated = new SortedDictionary<DateTime, (long granted, long denied, long released, long active)>();
 
         foreach (var snapshot in snapshots)
         {
@@ -259,17 +259,19 @@ public class StatisticsService : IStatisticsService
                 {
                     aggregated[bucket.Timestamp] = (
                         existing.granted + bucket.GrantedCount,
-                        existing.denied + bucket.DeniedCount);
+                        existing.denied + bucket.DeniedCount,
+                        existing.released + bucket.ReleasedCount,
+                        existing.active + bucket.ActiveCount);
                 }
                 else
                 {
-                    aggregated[bucket.Timestamp] = (bucket.GrantedCount, bucket.DeniedCount);
+                    aggregated[bucket.Timestamp] = (bucket.GrantedCount, bucket.DeniedCount, bucket.ReleasedCount, bucket.ActiveCount);
                 }
             }
         }
 
         var points = aggregated
-            .Select(kvp => new HistoricalUsagePoint(kvp.Key, kvp.Value.granted, kvp.Value.denied))
+            .Select(kvp => new HistoricalUsagePoint(kvp.Key, kvp.Value.granted, kvp.Value.denied, kvp.Value.released, kvp.Value.active))
             .ToList();
 
         return new HistoricalUsageResponse(targetId, targetType, granularity, points);

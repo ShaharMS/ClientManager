@@ -14,3 +14,9 @@
     padding: var(--space-lg);
     margin-bottom: var(--space-lg);
 }
+
+.cm-monitor__separator {
+    border: none;
+    border-top: 1px solid var(--color-border);
+    margin: var(--space-xl) 0;
+}

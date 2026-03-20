@@ -17,4 +17,6 @@ public record HistoricalUsageResponse(
 public record HistoricalUsagePoint(
     DateTime Timestamp,
     long GrantedCount,
-    long DeniedCount);
+    long DeniedCount,
+    long ReleasedCount,
+    long ActiveCount);
