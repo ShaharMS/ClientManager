@@ -1,0 +1,111 @@
+.cm-settings {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+    max-width: 640px;
+}
+
+.cm-settings__card {
+    background: var(--color-bg-card);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--color-border);
+    padding: var(--space-lg);
+}
+
+.cm-settings__card-header {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-md);
+    margin-bottom: var(--space-lg);
+}
+
+.cm-settings__card-icon {
+    font-size: 24px;
+    color: var(--color-primary);
+    margin-top: 2px;
+}
+
+.cm-settings__card-title {
+    font-size: var(--font-size-md);
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin: 0;
+}
+
+.cm-settings__card-desc {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+    margin: var(--space-xs) 0 0 0;
+}
+
+.cm-settings__option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-sm) 0;
+}
+
+.cm-settings__option-label {
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    color: var(--color-text-primary);
+}
+
+.cm-settings__time-groups {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+}
+
+.cm-settings__time-group {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+}
+
+.cm-settings__time-group-label {
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    min-width: 60px;
+}
+
+.cm-settings__time-pills {
+    display: flex;
+    gap: var(--space-xs);
+    flex-wrap: wrap;
+}
+
+/* Pill button — reused by TimeRangeSelector component later */
+.cm-time-pill {
+    padding: 0.3rem 0.75rem;
+    border-radius: 999px;
+    border: 1px solid var(--color-border);
+    background: var(--color-bg-card);
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-xs);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.cm-time-pill:hover {
+    border-color: var(--color-primary-light);
+    color: var(--color-primary);
+    background: var(--color-primary-lightest);
+}
+
+.cm-time-pill--active {
+    background: var(--color-primary);
+    color: #ffffff;
+    border-color: var(--color-primary);
+}
+
+.cm-time-pill--active:hover {
+    background: var(--color-primary-dark);
+    border-color: var(--color-primary-dark);
+    color: #ffffff;
+}

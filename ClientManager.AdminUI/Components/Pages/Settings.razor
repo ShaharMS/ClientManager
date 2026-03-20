@@ -1,0 +1,90 @@
+@page "/settings"
+@inject UserPreferencesService PreferencesService
+
+<div class="cm-page-header">
+    <h1>Settings</h1>
+    <p>Customize your dashboard experience.</p>
+</div>
+
+@if (_loading)
+{
+    <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+}
+else
+{
+    <div class="cm-settings">
+        <div class="cm-settings__card">
+            <div class="cm-settings__card-header">
+                <RadzenIcon Icon="palette" class="cm-settings__card-icon" />
+                <div>
+                    <h3 class="cm-settings__card-title">Appearance</h3>
+                    <p class="cm-settings__card-desc">Choose between light and dark mode.</p>
+                </div>
+            </div>
+            <div class="cm-settings__option">
+                <span class="cm-settings__option-label">Dark Mode</span>
+                <RadzenSwitch @bind-Value="_isDarkMode" Change="@OnThemeChanged" />
+            </div>
+        </div>
+
+        <div class="cm-settings__card">
+            <div class="cm-settings__card-header">
+                <RadzenIcon Icon="schedule" class="cm-settings__card-icon" />
+                <div>
+                    <h3 class="cm-settings__card-title">Default Time Range</h3>
+                    <p class="cm-settings__card-desc">Used by charts when no specific range is selected.</p>
+                </div>
+            </div>
+            <div class="cm-settings__time-groups">
+                @foreach (var group in TimeRangePreset.All.GroupBy(p => p.Group))
+                {
+                    <div class="cm-settings__time-group">
+                        <span class="cm-settings__time-group-label">@group.Key</span>
+                        <div class="cm-settings__time-pills">
+                            @foreach (var preset in group)
+                            {
+                                <button class="cm-time-pill @(preset.Key == _selectedTimeRange ? "cm-time-pill--active" : "")"
+                                        @onclick="() => OnTimeRangeChanged(preset.Key)">
+                                    @preset.Label
+                                </button>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool _loading = true;
+    private bool _isDarkMode;
+    private string _selectedTimeRange = "1h";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var prefs = await PreferencesService.GetPreferencesAsync();
+            _isDarkMode = prefs.Theme == "dark";
+            _selectedTimeRange = prefs.DefaultTimeRange;
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task OnThemeChanged(bool value)
+    {
+        var prefs = await PreferencesService.GetPreferencesAsync();
+        prefs.Theme = value ? "dark" : "light";
+        await PreferencesService.SavePreferencesAsync(prefs);
+    }
+
+    private async Task OnTimeRangeChanged(string key)
+    {
+        _selectedTimeRange = key;
+        var prefs = await PreferencesService.GetPreferencesAsync();
+        prefs.DefaultTimeRange = key;
+        await PreferencesService.SavePreferencesAsync(prefs);
+    }
+}
