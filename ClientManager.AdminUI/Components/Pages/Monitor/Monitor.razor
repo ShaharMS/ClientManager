@@ -40,7 +40,7 @@
             <div class="cm-dashboard__chart-header">
                 <span class="cm-dashboard__chart-title">@targetChart.TargetName — Usage</span>
             </div>
-            <RadzenChart Style="height: 300px;">
+            <RadzenChart Style="height: 400px;">
                 @foreach (var clientArea in targetChart.ClientSeries)
                 {
                     <RadzenStackedAreaSeries Data="@clientArea.Points"
@@ -55,7 +55,7 @@
                     Stroke="var(--color-text-secondary)" />
                 <RadzenCategoryAxis />
                 <RadzenValueAxis />
-                <RadzenLegend Position="LegendPosition.Bottom" />
+                <RadzenLegend Position="LegendPosition.Right" />
             </RadzenChart>
         }
     }
@@ -352,6 +352,17 @@
                     var capPoints = allTimestamps
                         .Select(t => new ChartPoint(t, cap))
                         .ToList();
+
+                    var aggregated = ChartAggregator.Aggregate(
+                        clientAreas.Select(c => new ChartAggregator.AggregatedSeries(
+                            c.ClientId, c.ClientName,
+                            c.Points.Select(p => new ChartAggregator.AggregatedPoint(p.Label, p.Value)).ToList()
+                        )).ToList());
+
+                    clientAreas = aggregated.Select(a => new ClientAreaSeries(
+                        a.Id, a.Name,
+                        a.Points.Select(p => new ChartPoint(p.Label, p.Value)).ToList()
+                    )).ToList();
 
                     charts.Add(new TargetChartData(service.Name, clientAreas, capPoints));
                 }

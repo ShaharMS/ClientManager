@@ -1,6 +1,6 @@
 # Plan: UI Polish — Step 6: Chart Declutter for Many Clients
 
-> **Status**: 🔲 Not started
+> **Status**: ✅ Completed
 > **Prerequisite**: [ui-polish-5-dashboard-stacked-chart.md](ui-polish-5-dashboard-stacked-chart.md)
 > **Next**: None — this is the final step.
 > **Parent**: [ui-polish-overview.md](ui-polish-overview.md)

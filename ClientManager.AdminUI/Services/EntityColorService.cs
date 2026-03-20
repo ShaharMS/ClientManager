@@ -19,9 +19,13 @@ public class EntityColorService
 
     /// <summary>
     /// Returns a deterministic color string for the given entity ID.
+    /// The "__others__" aggregate always returns neutral slate gray.
     /// </summary>
     public string GetColor(string entityId)
     {
+        if (entityId == ChartAggregator.OthersId)
+            return "#94a3b8";
+
         var hash = GetStableHash(entityId);
         var index = (int)(hash % (uint)Palette.Length);
         return Palette[index];

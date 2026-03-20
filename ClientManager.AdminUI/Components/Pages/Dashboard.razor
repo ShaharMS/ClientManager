@@ -82,7 +82,7 @@ else
                         Change="@OnFilterChanged" />
                 </div>
             </div>
-            <RadzenChart Style="height: 300px;">
+            <RadzenChart Style="height: 400px;">
                 @foreach (var targetChart in _targetCharts)
                 {
                     @foreach (var clientArea in targetChart.ClientSeries)
@@ -100,7 +100,7 @@ else
                 }
                 <RadzenCategoryAxis />
                 <RadzenValueAxis />
-                <RadzenLegend Position="LegendPosition.Bottom" />
+                <RadzenLegend Position="LegendPosition.Right" />
             </RadzenChart>
         </div>
 
@@ -110,7 +110,7 @@ else
             </div>
             <RadzenChart Style="height: 300px;">
                 <RadzenDonutSeries Data="@_perClientUsage" CategoryProperty="ClientName"
-                    ValueProperty="Value" Title="Per Client"
+                    ValueProperty="Value"
                     Fills="@_perClientUsage.Select(p => Colors.GetColor(p.ClientId)).ToArray()" />
                 <RadzenLegend Position="LegendPosition.Right" />
             </RadzenChart>
@@ -299,6 +299,17 @@ else
                         .Select(e => new ClientUsagePoint(e.ClientId, e.ClientName, e.Value)).ToList();
                 }
             }
+
+            if (_perClientUsage.Count > ChartAggregator.DefaultTopN)
+            {
+                var ranked = _perClientUsage
+                    .OrderByDescending(p => p.Value)
+                    .ToList();
+                var top = ranked.Take(ChartAggregator.DefaultTopN).ToList();
+                var othersValue = ranked.Skip(ChartAggregator.DefaultTopN).Sum(p => p.Value);
+                top.Add(new ClientUsagePoint(ChartAggregator.OthersId, ChartAggregator.OthersLabel, othersValue));
+                _perClientUsage = top;
+            }
         }
         catch (HttpRequestException)
         {
@@ -365,6 +376,17 @@ else
         var capPoints = allTimestamps
             .Select(t => new TimeSeriesPoint(t, cap))
             .ToList();
+
+        var aggregatedAreas = ChartAggregator.Aggregate(
+            clientAreas.Select(c => new ChartAggregator.AggregatedSeries(
+                c.ClientId, c.ClientName,
+                c.Points.Select(p => new ChartAggregator.AggregatedPoint(p.Label, p.Value)).ToList()
+            )).ToList());
+
+        clientAreas = aggregatedAreas.Select(a => new ClientAreaSeries(
+            a.Id, a.Name,
+            a.Points.Select(p => new TimeSeriesPoint(p.Label, p.Value)).ToList()
+        )).ToList();
 
         var targetName = _filterTargets.FirstOrDefault(t => t.Id == _selectedTargetId)?.Name ?? "";
         _targetCharts.Add(new TargetChartData(targetName, clientAreas, capPoints));
