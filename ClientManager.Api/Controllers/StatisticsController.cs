@@ -335,60 +335,62 @@ public class StatisticsController : ControllerBase
     }
 
     /// <summary>
-    /// Retrieves usage over time for a specific service or resource pool.
+    /// Retrieves usage over time for one or more services or resource pools.
     /// </summary>
     /// <param name="filterType">The target type: Service or ResourcePool.</param>
-    /// <param name="targetId">The ID of the service or resource pool.</param>
+    /// <param name="targetIds">Comma-separated IDs of the services or resource pools.</param>
     /// <param name="clientIds">Optional comma-separated client IDs to filter by.</param>
     /// <param name="from">Optional start of the time range (UTC, ISO 8601).</param>
     /// <param name="to">Optional end of the time range (UTC, ISO 8601).</param>
-    /// <param name="granularity">Optional bucket granularity: FiveMinute, Hour, or Day.</param>
+    /// <param name="granularity">Optional bucket granularity: Second, FiveMinute, Hour, or Day.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>Time-series data for usage and capacity.</returns>
-    /// <response code="200">Returns usage time-series data.</response>
+    /// <returns>Per-target time-series data for usage and capacity.</returns>
+    /// <response code="200">Returns per-target usage time-series data.</response>
     [HttpGet("usage-timeseries")]
-    [ProducesResponseType(typeof(UsageTimeSeriesResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(List<TargetUsageTimeSeriesResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetUsageTimeSeries(
         [FromQuery] GlobalRateLimitTarget filterType,
-        [FromQuery] string targetId,
+        [FromQuery] string targetIds,
         [FromQuery] string? clientIds,
         [FromQuery] DateTime? from,
         [FromQuery] DateTime? to,
         [FromQuery] BucketGranularity? granularity,
         CancellationToken cancellationToken)
     {
+        var targetIdList = ParseIds(targetIds);
         var clientIdList = ParseClientIds(clientIds);
         var result = await _statisticsService.GetUsageTimeSeriesAsync(
-            filterType, targetId, clientIdList, from, to, granularity, cancellationToken);
+            filterType, targetIdList, clientIdList, from, to, granularity, cancellationToken);
         return Ok(result);
     }
 
     /// <summary>
-    /// Retrieves per-client usage breakdown for a specific service or resource pool.
+    /// Retrieves per-client usage breakdown for one or more services or resource pools.
     /// </summary>
     /// <param name="filterType">The target type: Service or ResourcePool.</param>
-    /// <param name="targetId">The ID of the service or resource pool.</param>
+    /// <param name="targetIds">Comma-separated IDs of the services or resource pools.</param>
     /// <param name="clientIds">Optional comma-separated client IDs to filter by.</param>
     /// <param name="from">Optional start of the time range (UTC, ISO 8601).</param>
     /// <param name="to">Optional end of the time range (UTC, ISO 8601).</param>
-    /// <param name="granularity">Optional bucket granularity: FiveMinute, Hour, or Day.</param>
+    /// <param name="granularity">Optional bucket granularity: Second, FiveMinute, Hour, or Day.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>Per-client usage breakdown.</returns>
-    /// <response code="200">Returns per-client usage breakdown.</response>
+    /// <returns>Per-target client usage breakdowns.</returns>
+    /// <response code="200">Returns per-target client usage breakdowns.</response>
     [HttpGet("client-usage-breakdown")]
-    [ProducesResponseType(typeof(ClientUsageBreakdownResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(List<TargetClientUsageBreakdownResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetClientUsageBreakdown(
         [FromQuery] GlobalRateLimitTarget filterType,
-        [FromQuery] string targetId,
+        [FromQuery] string targetIds,
         [FromQuery] string? clientIds,
         [FromQuery] DateTime? from,
         [FromQuery] DateTime? to,
         [FromQuery] BucketGranularity? granularity,
         CancellationToken cancellationToken)
     {
+        var targetIdList = ParseIds(targetIds);
         var clientIdList = ParseClientIds(clientIds);
         var result = await _statisticsService.GetClientUsageBreakdownAsync(
-            filterType, targetId, clientIdList, from, to, granularity, cancellationToken);
+            filterType, targetIdList, clientIdList, from, to, granularity, cancellationToken);
         return Ok(result);
     }
 
@@ -407,32 +409,38 @@ public class StatisticsController : ControllerBase
     }
 
     /// <summary>
-    /// Retrieves historical usage data for a service or resource pool over a time range.
+    /// Retrieves historical usage data for one or more services or resource pools over a time range.
     /// </summary>
     /// <param name="filterType">The target type: Service or ResourcePool.</param>
-    /// <param name="targetId">The ID of the service or resource pool.</param>
+    /// <param name="targetIds">Comma-separated IDs of the services or resource pools.</param>
     /// <param name="clientId">Optional: filter to a single client.</param>
     /// <param name="from">Start of the time range (UTC, ISO 8601).</param>
     /// <param name="to">End of the time range (UTC, ISO 8601).</param>
-    /// <param name="granularity">Bucket granularity: FiveMinute, Hour, or Day.</param>
+    /// <param name="granularity">Bucket granularity: Second, FiveMinute, Hour, or Day.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>Historical usage data points within the requested range.</returns>
+    /// <returns>Historical usage data points per target within the requested range.</returns>
     /// <response code="200">Returns the historical usage data.</response>
     [HttpGet("historical-usage")]
-    [ProducesResponseType(typeof(HistoricalUsageResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(List<HistoricalUsageResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetHistoricalUsage(
         [FromQuery] GlobalRateLimitTarget filterType,
-        [FromQuery] string targetId,
+        [FromQuery] string targetIds,
         [FromQuery] string? clientId,
         [FromQuery] DateTime from,
         [FromQuery] DateTime to,
         [FromQuery] BucketGranularity granularity,
         CancellationToken cancellationToken)
     {
+        var targetIdList = ParseIds(targetIds);
         var result = await _statisticsService.GetHistoricalUsageAsync(
-            targetId, filterType, clientId, from, to, granularity, cancellationToken);
+            targetIdList, filterType, clientId, from, to, granularity, cancellationToken);
 
         return Ok(result);
+    }
+
+    private static IEnumerable<string> ParseIds(string ids)
+    {
+        return ids.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
     }
 
     private static IEnumerable<string>? ParseClientIds(string? clientIds)

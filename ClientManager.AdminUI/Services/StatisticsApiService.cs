@@ -27,11 +27,11 @@ public class StatisticsApiService
         return await _httpClient.GetFromJsonAsync<GlobalUsageStats>("api/statistics/global-usage");
     }
 
-    public async Task<UsageTimeSeries?> GetUsageTimeSeriesAsync(
-        string filterType, string targetId, IEnumerable<string>? clientIds,
+    public async Task<List<TargetUsageTimeSeries>> GetUsageTimeSeriesAsync(
+        string filterType, IEnumerable<string> targetIds, IEnumerable<string>? clientIds,
         DateTime? from = null, DateTime? to = null, string? granularity = null)
     {
-        var url = $"api/statistics/usage-timeseries?filterType={Uri.EscapeDataString(filterType)}&targetId={Uri.EscapeDataString(targetId)}";
+        var url = $"api/statistics/usage-timeseries?filterType={Uri.EscapeDataString(filterType)}&targetIds={Uri.EscapeDataString(string.Join(",", targetIds))}";
         if (clientIds?.Any() == true)
         {
             url += $"&clientIds={Uri.EscapeDataString(string.Join(",", clientIds))}";
@@ -43,14 +43,14 @@ public class StatisticsApiService
         if (granularity is not null)
             url += $"&granularity={Uri.EscapeDataString(granularity)}";
 
-        return await _httpClient.GetFromJsonAsync<UsageTimeSeries>(url);
+        return await _httpClient.GetFromJsonAsync<List<TargetUsageTimeSeries>>(url) ?? [];
     }
 
-    public async Task<ClientUsageBreakdown?> GetClientUsageBreakdownAsync(
-        string filterType, string targetId, IEnumerable<string>? clientIds,
+    public async Task<List<TargetClientUsageBreakdown>> GetClientUsageBreakdownAsync(
+        string filterType, IEnumerable<string> targetIds, IEnumerable<string>? clientIds,
         DateTime? from = null, DateTime? to = null, string? granularity = null)
     {
-        var url = $"api/statistics/client-usage-breakdown?filterType={Uri.EscapeDataString(filterType)}&targetId={Uri.EscapeDataString(targetId)}";
+        var url = $"api/statistics/client-usage-breakdown?filterType={Uri.EscapeDataString(filterType)}&targetIds={Uri.EscapeDataString(string.Join(",", targetIds))}";
         if (clientIds?.Any() == true)
         {
             url += $"&clientIds={Uri.EscapeDataString(string.Join(",", clientIds))}";
@@ -62,7 +62,7 @@ public class StatisticsApiService
         if (granularity is not null)
             url += $"&granularity={Uri.EscapeDataString(granularity)}";
 
-        return await _httpClient.GetFromJsonAsync<ClientUsageBreakdown>(url);
+        return await _httpClient.GetFromJsonAsync<List<TargetClientUsageBreakdown>>(url) ?? [];
     }
 
     public async Task<ClientSummaries?> GetClientSummariesAsync()
@@ -70,19 +70,19 @@ public class StatisticsApiService
         return await _httpClient.GetFromJsonAsync<ClientSummaries>("api/statistics/client-summaries");
     }
 
-    public async Task<HistoricalUsageData?> GetHistoricalUsageAsync(
-        string filterType, string targetId, string? clientId,
+    public async Task<List<HistoricalUsageData>> GetHistoricalUsageAsync(
+        string filterType, IEnumerable<string> targetIds, string? clientId,
         DateTime from, DateTime to, string granularity)
     {
         var url = $"api/statistics/historical-usage?filterType={Uri.EscapeDataString(filterType)}"
-            + $"&targetId={Uri.EscapeDataString(targetId)}"
+            + $"&targetIds={Uri.EscapeDataString(string.Join(",", targetIds))}"
             + $"&from={from:O}&to={to:O}"
             + $"&granularity={Uri.EscapeDataString(granularity)}";
         if (clientId is not null)
         {
             url += $"&clientId={Uri.EscapeDataString(clientId)}";
         }
-        return await _httpClient.GetFromJsonAsync<HistoricalUsageData>(url);
+        return await _httpClient.GetFromJsonAsync<List<HistoricalUsageData>>(url) ?? [];
     }
 }
 
@@ -100,13 +100,14 @@ public record GlobalUsageStats(
     double RequestsPerMinute, int TotalPoolSlots,
     int AcquiredPoolSlots, double AcquisitionPercentage);
 
-public record UsageTimeSeries(
+public record TargetUsageTimeSeries(
+    string TargetId,
     List<UsageTimeSeriesPoint> UsagePoints,
     List<UsageTimeSeriesPoint> CapPoints);
 
 public record UsageTimeSeriesPoint(DateTime Timestamp, double Value);
 
-public record ClientUsageBreakdown(List<ClientUsageItem> Entries);
+public record TargetClientUsageBreakdown(string TargetId, List<ClientUsageItem> Entries);
 
 public record ClientUsageItem(string ClientId, string ClientName, double Value);
 
