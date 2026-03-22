@@ -1,8 +1,13 @@
 @* Skeleton placeholder for a chart area *@
 <div class="cm-dashboard__chart-card">
-    <div style="margin-bottom: var(--space-md);">
-        <SkeletonBlock CssClass="cm-skeleton--heading" />
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-md);">
+        <div style="display: flex; gap: var(--space-sm);">
+            <SkeletonBlock CssClass="cm-skeleton--text" Style="width: 140px; height: 2rem; margin-bottom: 0;" />
+            <SkeletonBlock CssClass="cm-skeleton--text" Style="width: 140px; height: 2rem; margin-bottom: 0;" />
+        </div>
+        <SkeletonBlock CssClass="cm-skeleton--text" Style="width: 100px; height: 2rem; margin-bottom: 0;" />
     </div>
+    <SkeletonBlock CssClass="cm-skeleton--heading" />
     <SkeletonBlock CssClass="cm-skeleton--chart" />
 </div>
 

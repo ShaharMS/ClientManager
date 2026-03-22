@@ -35,9 +35,11 @@
 }
 
 .cm-dashboard__chart-title {
+    display: block;
     font-size: var(--font-size-md);
     font-weight: 600;
     color: var(--color-text-primary);
+    margin-bottom: var(--space-sm);
 }
 
 .cm-dashboard__filters {

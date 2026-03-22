@@ -16,6 +16,16 @@
     border-radius: var(--radius-sm);
 }
 
+html[data-theme="dark"] .cm-skeleton {
+    background: linear-gradient(
+        90deg,
+        #334155 25%,
+        #475569 50%,
+        #334155 75%
+    );
+    background-size: 200% 100%;
+}
+
 /* Pre-made skeleton shapes */
 .cm-skeleton--text {
     height: 1rem;

@@ -1,16 +1,24 @@
 @inject UserPreferencesService PreferencesService
 
-<div class="cm-time-range-selector">
-    @foreach (var group in TimeRangePreset.All.GroupBy(p => p.Group))
+<div class="cm-time-range-dropdown">
+    <button class="cm-time-range-dropdown__trigger" @onclick="ToggleDropdown" @onclick:stopPropagation="true">
+        <span class="cm-time-range-dropdown__icon material-icons">filter_list</span>
+        <span class="cm-time-range-dropdown__label">@_selectedLabel</span>
+    </button>
+    @if (_isOpen)
     {
-        <div class="cm-time-range-selector__group">
-            <span class="cm-time-range-selector__group-label">@group.Key</span>
-            @foreach (var preset in group)
+        <div class="cm-time-range-dropdown__overlay" @onclick="CloseDropdown"></div>
+        <div class="cm-time-range-dropdown__menu">
+            @foreach (var group in TimeRangePreset.All.GroupBy(p => p.Group))
             {
-                <button class="cm-time-pill @(preset.Key == _selectedKey ? "cm-time-pill--active" : "")"
-                        @onclick="() => SelectPreset(preset)">
-                    @preset.Label
-                </button>
+                <div class="cm-time-range-dropdown__group-label">@group.Key</div>
+                @foreach (var preset in group)
+                {
+                    <button class="cm-time-range-dropdown__item @(preset.Key == _selectedKey ? "cm-time-range-dropdown__item--active" : "")"
+                            @onclick="() => SelectPreset(preset)" @onclick:stopPropagation="true">
+                        @preset.Label
+                    </button>
+                }
             }
         </div>
     }
@@ -19,9 +27,22 @@
 @code {
     [Parameter] public EventCallback<TimeRangePreset> OnRangeChanged { get; set; }
     [Parameter] public string? InitialKey { get; set; }
+    [Parameter] public string? SelectedKey { get; set; }
 
     private string _selectedKey = "1h";
+    private string _selectedLabel = "Last hour";
     private bool _initialized;
+    private bool _isOpen;
+
+    protected override void OnParametersSet()
+    {
+        if (SelectedKey is not null && _initialized && SelectedKey != _selectedKey)
+        {
+            var preset = TimeRangePreset.FindByKey(SelectedKey) ?? TimeRangePreset.Default;
+            _selectedKey = preset.Key;
+            _selectedLabel = preset.Label;
+        }
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -40,14 +61,21 @@
             }
 
             var preset = TimeRangePreset.FindByKey(_selectedKey) ?? TimeRangePreset.Default;
+            _selectedLabel = preset.Label;
             await OnRangeChanged.InvokeAsync(preset);
             StateHasChanged();
         }
     }
 
+    private void ToggleDropdown() => _isOpen = !_isOpen;
+
+    private void CloseDropdown() => _isOpen = false;
+
     private async Task SelectPreset(TimeRangePreset preset)
     {
         _selectedKey = preset.Key;
+        _selectedLabel = preset.Label;
+        _isOpen = false;
         await OnRangeChanged.InvokeAsync(preset);
     }
 }
