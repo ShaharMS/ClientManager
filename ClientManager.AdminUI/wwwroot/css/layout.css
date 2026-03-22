@@ -68,7 +68,7 @@ html, body {
     width: 28px;
     height: 28px;
     border-radius: 50%;
-    background: rgba(0, 0, 0, 0.06);
+    background: var(--color-border);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -82,7 +82,7 @@ html, body {
 
 .cm-stat-card--clickable:hover .cm-stat-card__arrow {
     opacity: 1;
-    background: rgba(0, 0, 0, 0.1);
+    background: var(--color-border);
 }
 
 /* Arrow on primary card uses lighter colors */

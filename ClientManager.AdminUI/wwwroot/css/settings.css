@@ -52,89 +52,175 @@
     color: var(--color-text-primary);
 }
 
-.cm-settings__time-groups {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-md);
+.cm-settings__time-range-select {
+    padding: var(--space-sm) 0;
 }
 
-.cm-settings__time-group {
-    display: flex;
+.cm-settings__time-range-dropdown {
+    max-width: 280px;
+}
+
+/* Time Range Dropdown — pill selector for chart headers */
+.cm-time-range-dropdown {
+    position: relative;
+    display: inline-flex;
+}
+
+.cm-time-range-dropdown__trigger {
+    display: inline-flex;
     align-items: center;
-    gap: var(--space-md);
-}
-
-.cm-settings__time-group-label {
-    font-size: var(--font-size-xs);
-    font-weight: 600;
-    color: var(--color-text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    min-width: 60px;
-}
-
-.cm-settings__time-pills {
-    display: flex;
-    gap: var(--space-xs);
-    flex-wrap: wrap;
-}
-
-/* Pill button — reused by TimeRangeSelector component later */
-.cm-time-pill {
-    padding: 0.3rem 0.75rem;
+    gap: 4px;
+    padding: 4px 12px;
+    border: 1px solid var(--color-text-primary);
     border-radius: 999px;
-    border: 1px solid var(--color-border);
-    background: var(--color-bg-card);
-    color: var(--color-text-secondary);
+    background: transparent;
+    color: var(--color-text-primary);
     font-size: var(--font-size-xs);
     font-weight: 500;
     cursor: pointer;
     transition: all 0.15s ease;
+    white-space: nowrap;
 }
 
-.cm-time-pill:hover {
-    border-color: var(--color-primary-light);
-    color: var(--color-primary);
+.cm-time-range-dropdown__trigger:hover {
     background: var(--color-primary-lightest);
 }
 
-.cm-time-pill--active {
-    background: var(--color-primary);
-    color: #ffffff;
-    border-color: var(--color-primary);
+.cm-time-range-dropdown__icon {
+    font-size: 14px;
 }
 
-.cm-time-pill--active:hover {
-    background: var(--color-primary-dark);
-    border-color: var(--color-primary-dark);
-    color: #ffffff;
+.cm-time-range-dropdown__overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 99;
 }
 
-/* Time Range Selector — inline component for chart headers */
-.cm-time-range-selector {
-    display: flex;
-    align-items: center;
-    gap: var(--space-sm);
-    flex-wrap: wrap;
+.cm-time-range-dropdown__menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    min-width: 180px;
+    max-height: 320px;
+    overflow-y: auto;
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+    padding: var(--space-xs) 0;
+    z-index: 100;
 }
 
-.cm-time-range-selector__group {
-    display: flex;
-    align-items: center;
-    gap: 3px;
-}
-
-.cm-time-range-selector__group-label {
+.cm-time-range-dropdown__group-label {
+    padding: var(--space-xs) var(--space-md);
     font-size: 10px;
     font-weight: 600;
     color: var(--color-text-muted);
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    margin-right: 2px;
 }
 
-/* Add a subtle separator between groups */
-.cm-time-range-selector__group + .cm-time-range-selector__group {
-    padding-left: var(--space-sm);
-    border-left: 1px solid var(--color-border);
+.cm-time-range-dropdown__group-label:not(:first-child) {
+    margin-top: var(--space-xs);
+    border-top: 1px solid var(--color-border);
+    padding-top: var(--space-sm);
+}
+
+.cm-time-range-dropdown__item {
+    display: block;
+    width: 100%;
+    padding: 6px var(--space-md);
+    border: none;
+    background: transparent;
+    color: var(--color-text-primary);
+    font-size: var(--font-size-sm);
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.1s ease;
+}
+
+.cm-time-range-dropdown__item:hover {
+    background: var(--color-primary-lightest);
+    color: var(--color-primary);
+}
+
+.cm-time-range-dropdown__item--active {
+    color: var(--color-primary);
+    font-weight: 600;
+    background: var(--color-primary-lightest);
+}
+
+/* Polling Interval Selector */
+.cm-polling-interval-dropdown {
+    position: relative;
+    display: inline-flex;
+}
+
+.cm-polling-interval-dropdown__trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 12px;
+    border: 1px solid var(--color-text-primary);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--color-text-primary);
+    font-size: var(--font-size-xs);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+}
+
+.cm-polling-interval-dropdown__trigger:hover {
+    background: var(--color-primary-lightest);
+}
+
+.cm-polling-interval-dropdown__icon {
+    font-size: 14px;
+}
+
+.cm-polling-interval-dropdown__overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 99;
+}
+
+.cm-polling-interval-dropdown__menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    min-width: 140px;
+    max-height: 280px;
+    overflow-y: auto;
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+    padding: var(--space-xs) 0;
+    z-index: 100;
+}
+
+.cm-polling-interval-dropdown__item {
+    display: block;
+    width: 100%;
+    padding: 6px var(--space-md);
+    border: none;
+    background: transparent;
+    color: var(--color-text-primary);
+    font-size: var(--font-size-sm);
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.1s ease;
+}
+
+.cm-polling-interval-dropdown__item:hover {
+    background: var(--color-primary-lightest);
+    color: var(--color-primary);
+}
+
+.cm-polling-interval-dropdown__item--active {
+    color: var(--color-primary);
+    font-weight: 600;
+    background: var(--color-primary-lightest);
 }
