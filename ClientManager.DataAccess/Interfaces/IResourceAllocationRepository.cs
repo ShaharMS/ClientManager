@@ -33,6 +33,22 @@ public interface IResourceAllocationRepository
     Task<int> GetActiveCountByClientAsync(string resourcePoolId, string clientId, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Gets the count of active (non-released, non-expired) allocations grouped by resource pool ID.
+    /// Loads the collection once and groups in memory to avoid N+1 queries.
+    /// </summary>
+    /// <param name="cancellationToken">Optional cancellation token.</param>
+    /// <returns>A dictionary mapping resource pool IDs to their active allocation counts.</returns>
+    Task<Dictionary<string, int>> GetActiveCountsByPoolAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets the count of active allocations grouped by (resource pool ID, client ID).
+    /// Loads the collection once and groups in memory to avoid N+1 queries.
+    /// </summary>
+    /// <param name="cancellationToken">Optional cancellation token.</param>
+    /// <returns>A dictionary mapping (poolId, clientId) tuples to their active allocation counts.</returns>
+    Task<Dictionary<(string PoolId, string ClientId), int>> GetActiveCountsByPoolAndClientAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Creates a new resource allocation.
     /// </summary>
     /// <param name="allocation">The allocation to create.</param>

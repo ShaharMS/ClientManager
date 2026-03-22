@@ -23,7 +23,7 @@ public class RequestTrackingMiddleware
         var stopwatch = Stopwatch.StartNew();
         var activity = Activity.Current;
 
-        _logger.LogInformation("Request started | TraceId={TraceId}, Method={Method}, Path={Path}, QueryString={QueryString}",
+        _logger.LogDebug("Request started | TraceId={TraceId}, Method={Method}, Path={Path}, QueryString={QueryString}",
             activity?.TraceId.ToString(), context.Request.Method, context.Request.Path.Value, context.Request.QueryString.Value);
 
         try

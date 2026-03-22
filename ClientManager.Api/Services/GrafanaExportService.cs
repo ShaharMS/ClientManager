@@ -94,6 +94,7 @@ public class GrafanaExportService : IGrafanaExportService
 
         // Pool metrics
         var pools = await _poolRepository.GetAllAsync(cancellationToken);
+        var activeCountsByPool = await _allocationRepository.GetActiveCountsByPoolAsync(cancellationToken);
 
         var maxSlotsValues = new List<MetricValue>();
         var activeSlotsValues = new List<MetricValue>();
@@ -103,7 +104,7 @@ public class GrafanaExportService : IGrafanaExportService
             var labels = new Dictionary<string, string> { ["pool"] = pool.Id };
             maxSlotsValues.Add(new MetricValue(labels, pool.MaxSlots));
 
-            var activeCount = await _allocationRepository.GetActiveCountAsync(pool.Id, cancellationToken);
+            var activeCount = activeCountsByPool.GetValueOrDefault(pool.Id);
             activeSlotsValues.Add(new MetricValue(labels, activeCount));
         }
 

@@ -62,11 +62,12 @@ public class StatisticsController : ControllerBase
         var clients = await _clientConfigRepository.GetAllAsync(cancellationToken);
         var services = await _serviceRepository.GetAllAsync(cancellationToken);
         var pools = await _poolRepository.GetAllAsync(cancellationToken);
+        var activeCountsByPool = await _allocationRepository.GetActiveCountsByPoolAsync(cancellationToken);
 
         var activeAllocations = 0;
         foreach (var pool in pools)
         {
-            activeAllocations += await _allocationRepository.GetActiveCountAsync(pool.Id, cancellationToken);
+            activeAllocations += activeCountsByPool.GetValueOrDefault(pool.Id);
         }
 
         return Ok(new SystemOverviewResponse(
@@ -129,10 +130,11 @@ public class StatisticsController : ControllerBase
             };
         }
 
+        var activeCountsByPoolAndClient = await _allocationRepository.GetActiveCountsByPoolAndClientAsync(cancellationToken);
         var resourcePools = new Dictionary<string, object>();
         foreach (var (poolId, poolSettings) in config.ResourcePools)
         {
-            var activeCount = await _allocationRepository.GetActiveCountByClientAsync(poolId, clientId, cancellationToken);
+            var activeCount = activeCountsByPoolAndClient.GetValueOrDefault((poolId, clientId));
             resourcePools[poolId] = new
             {
                 maxSlots = poolSettings.MaxSlots,
@@ -248,11 +250,12 @@ public class StatisticsController : ControllerBase
     public async Task<IActionResult> GetResourcePools(CancellationToken cancellationToken)
     {
         var pools = await _poolRepository.GetAllAsync(cancellationToken);
+        var activeCountsByPool = await _allocationRepository.GetActiveCountsByPoolAsync(cancellationToken);
 
         var results = new List<ResourcePoolStatisticsResponse>();
         foreach (var pool in pools)
         {
-            var activeCount = await _allocationRepository.GetActiveCountAsync(pool.Id, cancellationToken);
+            var activeCount = activeCountsByPool.GetValueOrDefault(pool.Id);
             var globalLimit = await _globalRateLimitRepository.GetByTargetAsync(
                 pool.Id, GlobalRateLimitTarget.ResourcePool, cancellationToken);
 
@@ -287,17 +290,18 @@ public class StatisticsController : ControllerBase
             throw new NotFoundException($"Resource pool '{resourcePoolId}' not found");
         }
 
-        var activeCount = await _allocationRepository.GetActiveCountAsync(pool.Id, cancellationToken);
+        var activeCountsByPool = await _allocationRepository.GetActiveCountsByPoolAsync(cancellationToken);
+        var activeCount = activeCountsByPool.GetValueOrDefault(pool.Id);
         var globalLimit = await _globalRateLimitRepository.GetByTargetAsync(
             pool.Id, GlobalRateLimitTarget.ResourcePool, cancellationToken);
 
         var clients = await _clientConfigRepository.GetAllAsync(cancellationToken);
+        var activeCountsByPoolAndClient = await _allocationRepository.GetActiveCountsByPoolAndClientAsync(cancellationToken);
         var clientDetails = new List<object>();
 
         foreach (var client in clients.Where(c => c.ResourcePools.ContainsKey(resourcePoolId)))
         {
-            var clientActiveCount = await _allocationRepository.GetActiveCountByClientAsync(
-                resourcePoolId, client.Id, cancellationToken);
+            var clientActiveCount = activeCountsByPoolAndClient.GetValueOrDefault((resourcePoolId, client.Id));
 
             clientDetails.Add(new
             {

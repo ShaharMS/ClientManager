@@ -39,6 +39,7 @@ public static class ServiceCollectionExtensions
         RegisterBackgroundServices(services);
         RegisterSeeding(services, configuration);
 
+        services.AddMemoryCache();
         services.Configure<UsageTrackingOptions>(
             configuration.GetSection(UsageTrackingOptions.SectionName));
 

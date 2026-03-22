@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Text.Json;
 using ClientManager.DataAccess.Interfaces;
 
@@ -6,12 +7,15 @@ namespace ClientManager.DataAccess.Implementations.JsonFile;
 /// <summary>
 /// JSON file-based implementation of <see cref="IDocumentStore"/>.
 /// Stores each collection as a separate JSON file and counters in a dedicated file.
+/// Uses an in-memory write-through cache so reads never hit disk after first load.
 /// Intended for local development and single-instance deployments.
 /// </summary>
 public class JsonFileDocumentStore : IDocumentStore
 {
     private readonly string _dataDirectory;
-    private readonly SemaphoreSlim _lock = new(1, 1);
+    private readonly SemaphoreSlim _writeLock = new(1, 1);
+    private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, JsonElement>> _collectionCache = new();
+    private ConcurrentDictionary<string, CounterEntry>? _counterCache;
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = true,
@@ -32,74 +36,71 @@ public class JsonFileDocumentStore : IDocumentStore
     private string CounterPath => Path.Combine(_dataDirectory, "_counters.json");
 
     /// <inheritdoc />
-    public async Task<T?> GetAsync<T>(string collection, string id, CancellationToken cancellationToken = default) where T : class
+    public Task<T?> GetAsync<T>(string collection, string id, CancellationToken cancellationToken = default) where T : class
     {
-        await _lock.WaitAsync(cancellationToken);
-        try
+        var dict = GetOrLoadCollection(collection);
+        if (dict.TryGetValue(id, out var element))
         {
-            var dict = await LoadCollectionAsync<T>(collection, cancellationToken);
-            return dict.GetValueOrDefault(id);
+            return Task.FromResult(element.Deserialize<T>(JsonOptions));
         }
-        finally
-        {
-            _lock.Release();
-        }
+        return Task.FromResult<T?>(null);
     }
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<T>> GetAllAsync<T>(string collection, CancellationToken cancellationToken = default) where T : class
+    public Task<IReadOnlyList<T>> GetAllAsync<T>(string collection, CancellationToken cancellationToken = default) where T : class
     {
-        await _lock.WaitAsync(cancellationToken);
-        try
+        var dict = GetOrLoadCollection(collection);
+        var list = new List<T>(dict.Count);
+        foreach (var element in dict.Values)
         {
-            var dict = await LoadCollectionAsync<T>(collection, cancellationToken);
-            return dict.Values.ToList();
+            var item = element.Deserialize<T>(JsonOptions);
+            if (item is not null)
+                list.Add(item);
         }
-        finally
-        {
-            _lock.Release();
-        }
+        return Task.FromResult<IReadOnlyList<T>>(list);
     }
 
     /// <inheritdoc />
     public async Task SetAsync<T>(string collection, string id, T document, CancellationToken cancellationToken = default) where T : class
     {
-        await _lock.WaitAsync(cancellationToken);
+        var element = JsonSerializer.SerializeToElement(document, JsonOptions);
+
+        await _writeLock.WaitAsync(cancellationToken);
         try
         {
-            var dict = await LoadCollectionAsync<T>(collection, cancellationToken);
-            dict[id] = document;
-            await SaveCollectionAsync(collection, dict, cancellationToken);
+            var dict = GetOrLoadCollection(collection);
+            dict[id] = element;
+            await PersistCollectionAsync(collection, dict, cancellationToken);
         }
         finally
         {
-            _lock.Release();
+            _writeLock.Release();
         }
     }
 
     /// <inheritdoc />
     public async Task DeleteAsync(string collection, string id, CancellationToken cancellationToken = default)
     {
-        await _lock.WaitAsync(cancellationToken);
+        await _writeLock.WaitAsync(cancellationToken);
         try
         {
-            var dict = await LoadCollectionAsync<object>(collection, cancellationToken);
-            dict.Remove(id);
-            await SaveCollectionAsync(collection, dict, cancellationToken);
+            var dict = GetOrLoadCollection(collection);
+            dict.TryRemove(id, out _);
+            await PersistCollectionAsync(collection, dict, cancellationToken);
         }
         finally
         {
-            _lock.Release();
+            _writeLock.Release();
         }
     }
 
     /// <inheritdoc />
     public async Task<long> IncrementCounterAsync(string key, TimeSpan window, CancellationToken cancellationToken = default)
     {
-        await _lock.WaitAsync(cancellationToken);
+        await _writeLock.WaitAsync(cancellationToken);
         try
         {
-            var counters = await LoadCountersAsync(cancellationToken);
+            var counters = GetOrLoadCounters();
             var now = DateTime.UtcNow;
 
             if (counters.TryGetValue(key, out var entry) && now - entry.WindowStart < window)
@@ -112,93 +113,113 @@ public class JsonFileDocumentStore : IDocumentStore
             }
 
             counters[key] = entry;
-            await SaveCountersAsync(counters, cancellationToken);
+            await PersistCountersAsync(counters, cancellationToken);
             return entry.Count;
         }
         finally
         {
-            _lock.Release();
+            _writeLock.Release();
         }
     }
 
     /// <inheritdoc />
-    public async Task<long> GetCounterAsync(string key, CancellationToken cancellationToken = default)
+    public Task<long> GetCounterAsync(string key, CancellationToken cancellationToken = default)
     {
-        await _lock.WaitAsync(cancellationToken);
-        try
-        {
-            var counters = await LoadCountersAsync(cancellationToken);
-            return counters.TryGetValue(key, out var entry) ? entry.Count : 0;
-        }
-        finally
-        {
-            _lock.Release();
-        }
+        var counters = GetOrLoadCounters();
+        var result = counters.TryGetValue(key, out var entry) ? entry.Count : 0;
+        return Task.FromResult(result);
     }
 
     /// <inheritdoc />
     public async Task ResetCounterAsync(string key, CancellationToken cancellationToken = default)
     {
-        await _lock.WaitAsync(cancellationToken);
+        await _writeLock.WaitAsync(cancellationToken);
         try
         {
-            var counters = await LoadCountersAsync(cancellationToken);
-            counters.Remove(key);
-            await SaveCountersAsync(counters, cancellationToken);
+            var counters = GetOrLoadCounters();
+            counters.TryRemove(key, out _);
+            await PersistCountersAsync(counters, cancellationToken);
         }
         finally
         {
-            _lock.Release();
+            _writeLock.Release();
         }
     }
 
     /// <inheritdoc />
     public async Task SetCounterAsync(string key, long value, TimeSpan window, CancellationToken cancellationToken = default)
     {
-        await _lock.WaitAsync(cancellationToken);
+        await _writeLock.WaitAsync(cancellationToken);
         try
         {
-            var counters = await LoadCountersAsync(cancellationToken);
+            var counters = GetOrLoadCounters();
             counters[key] = new CounterEntry(value, DateTime.UtcNow);
-            await SaveCountersAsync(counters, cancellationToken);
+            await PersistCountersAsync(counters, cancellationToken);
         }
         finally
         {
-            _lock.Release();
+            _writeLock.Release();
         }
     }
 
-    private async Task<Dictionary<string, T>> LoadCollectionAsync<T>(string collection, CancellationToken cancellationToken)
+    private ConcurrentDictionary<string, JsonElement> GetOrLoadCollection(string collection)
     {
-        var path = CollectionPath(collection);
-        if (!File.Exists(path))
-            return new Dictionary<string, T>();
+        return _collectionCache.GetOrAdd(collection, key =>
+        {
+            var path = CollectionPath(key);
+            if (!File.Exists(path))
+                return new ConcurrentDictionary<string, JsonElement>();
 
-        var json = await File.ReadAllTextAsync(path, cancellationToken);
-        return JsonSerializer.Deserialize<Dictionary<string, T>>(json, JsonOptions)
-               ?? new Dictionary<string, T>();
+            var json = File.ReadAllText(path);
+            var dict = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json, JsonOptions)
+                       ?? new Dictionary<string, JsonElement>();
+            return new ConcurrentDictionary<string, JsonElement>(dict);
+        });
     }
 
-    private async Task SaveCollectionAsync<T>(string collection, Dictionary<string, T> dict, CancellationToken cancellationToken)
+    private ConcurrentDictionary<string, CounterEntry> GetOrLoadCounters()
+    {
+        if (_counterCache is not null)
+            return _counterCache;
+
+        if (!File.Exists(CounterPath))
+        {
+            _counterCache = new ConcurrentDictionary<string, CounterEntry>();
+            return _counterCache;
+        }
+
+        try
+        {
+            var json = File.ReadAllText(CounterPath);
+            var dict = JsonSerializer.Deserialize<Dictionary<string, CounterEntry>>(json, JsonOptions)
+                       ?? new Dictionary<string, CounterEntry>();
+            _counterCache = new ConcurrentDictionary<string, CounterEntry>(dict);
+        }
+        catch (JsonException)
+        {
+            _counterCache = new ConcurrentDictionary<string, CounterEntry>();
+        }
+
+        return _counterCache;
+    }
+
+    private async Task PersistCollectionAsync(string collection, ConcurrentDictionary<string, JsonElement> dict, CancellationToken cancellationToken)
     {
         var json = JsonSerializer.Serialize(dict, JsonOptions);
-        await File.WriteAllTextAsync(CollectionPath(collection), json, cancellationToken);
+        await AtomicWriteAsync(CollectionPath(collection), json, cancellationToken);
     }
 
-    private async Task<Dictionary<string, CounterEntry>> LoadCountersAsync(CancellationToken cancellationToken)
-    {
-        if (!File.Exists(CounterPath))
-            return new Dictionary<string, CounterEntry>();
-
-        var json = await File.ReadAllTextAsync(CounterPath, cancellationToken);
-        return JsonSerializer.Deserialize<Dictionary<string, CounterEntry>>(json, JsonOptions)
-               ?? new Dictionary<string, CounterEntry>();
-    }
-
-    private async Task SaveCountersAsync(Dictionary<string, CounterEntry> counters, CancellationToken cancellationToken)
+    private async Task PersistCountersAsync(ConcurrentDictionary<string, CounterEntry> counters, CancellationToken cancellationToken)
     {
         var json = JsonSerializer.Serialize(counters, JsonOptions);
-        await File.WriteAllTextAsync(CounterPath, json, cancellationToken);
+        await AtomicWriteAsync(CounterPath, json, cancellationToken);
+    }
+
+    private static async Task AtomicWriteAsync(string targetPath, string content, CancellationToken cancellationToken)
+    {
+        var tmpPath = targetPath + ".tmp";
+        await File.WriteAllTextAsync(tmpPath, content, cancellationToken);
+        File.Move(tmpPath, targetPath, overwrite: true);
     }
 
     private record CounterEntry(long Count, DateTime WindowStart);

@@ -42,6 +42,28 @@ public class ResourceAllocationRepository : IResourceAllocationRepository
     }
 
     /// <inheritdoc />
+    public async Task<Dictionary<string, int>> GetActiveCountsByPoolAsync(CancellationToken cancellationToken = default)
+    {
+        var all = await _store.GetAllAsync<ResourceAllocation>(Collection, cancellationToken);
+        var now = DateTime.UtcNow;
+        return all
+            .Where(a => !a.IsReleased && a.ExpiresAt > now)
+            .GroupBy(a => a.ResourcePoolId)
+            .ToDictionary(g => g.Key, g => g.Count());
+    }
+
+    /// <inheritdoc />
+    public async Task<Dictionary<(string PoolId, string ClientId), int>> GetActiveCountsByPoolAndClientAsync(CancellationToken cancellationToken = default)
+    {
+        var all = await _store.GetAllAsync<ResourceAllocation>(Collection, cancellationToken);
+        var now = DateTime.UtcNow;
+        return all
+            .Where(a => !a.IsReleased && a.ExpiresAt > now)
+            .GroupBy(a => (a.ResourcePoolId, a.ClientId))
+            .ToDictionary(g => g.Key, g => g.Count());
+    }
+
+    /// <inheritdoc />
     public Task CreateAsync(ResourceAllocation allocation, CancellationToken cancellationToken = default) =>
         _store.SetAsync(Collection, allocation.Id, allocation, cancellationToken);
 

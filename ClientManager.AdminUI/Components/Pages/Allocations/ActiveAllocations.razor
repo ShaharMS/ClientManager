@@ -72,7 +72,7 @@
     <div class="cm-dashboard__chart-header">
         <span class="cm-dashboard__chart-title">Client Allocation Detail</span>
     </div>
-    <RadzenDataGrid Data="@_clientDetailRows" TItem="AllocationClientRow"
+    <RadzenDataGrid @ref="_clientDetailGrid" Data="@_clientDetailRows" TItem="AllocationClientRow"
         AllowSorting="true" AllowPaging="true" PageSize="15"
         PagerHorizontalAlign="HorizontalAlign.Center">
         <Columns>
@@ -119,7 +119,7 @@
     <div class="cm-dashboard__chart-header">
         <span class="cm-dashboard__chart-title">All Resource Pools</span>
     </div>
-    <RadzenDataGrid Data="@_pools" TItem="ResourcePoolStatistics"
+    <RadzenDataGrid @ref="_allPoolsGrid" Data="@_pools" TItem="ResourcePoolStatistics"
         AllowSorting="true" AllowPaging="true" PageSize="15"
         PagerHorizontalAlign="HorizontalAlign.Center">
         <Columns>
@@ -177,6 +177,8 @@
 
     private List<TargetChartData> _targetCharts = [];
     private List<AllocationClientRow> _clientDetailRows = [];
+    private RadzenDataGrid<AllocationClientRow>? _clientDetailGrid;
+    private RadzenDataGrid<ResourcePoolStatistics>? _allPoolsGrid;
 
     protected override async Task OnInitializedAsync()
     {
@@ -266,7 +268,7 @@
     {
         try
         {
-            _pools = await StatsService.GetResourcePoolStatsAsync();
+            var newPools = await StatsService.GetResourcePoolStatsAsync();
 
             var from = _timeRange.GetFrom();
             var now = _timeRange.GetTo();
@@ -275,14 +277,14 @@
             var recentTo = DateTime.UtcNow;
 
             var visiblePools = _selectedPoolId == AllPoolsId
-                ? _pools
-                : _pools.Where(p => p.ResourcePoolId == _selectedPoolId).ToList();
+                ? newPools
+                : newPools.Where(p => p.ResourcePoolId == _selectedPoolId).ToList();
 
             var visiblePoolIds = visiblePools.Select(p => p.ResourcePoolId).ToList();
 
             // Batch: one call for all breakdowns
             var breakdowns = await StatsService.GetClientUsageBreakdownAsync(
-                "ResourcePool", visiblePoolIds, _selectedClientIds);
+                "ResourcePool", visiblePoolIds, _selectedClientIds, from, now, granularity);
 
             var charts = new List<TargetChartData>();
             var rows = new List<AllocationClientRow>();
@@ -308,7 +310,7 @@
 
                     foreach (var point in history?.Points ?? [])
                     {
-                        var label = _timeRange.FormatTimestamp(point.Timestamp);
+                        var label = _timeRange.FormatTimestamp(point.Timestamp.ToLocalTime());
                         if (!aggregated.ContainsKey(label))
                             aggregated[label] = 0;
                         aggregated[label] += (double)point.ActiveCount;
@@ -370,7 +372,7 @@
                         var historyData = perClientHistories[i].FirstOrDefault();
                         foreach (var p in historyData?.Points ?? [])
                         {
-                            var label = _timeRange.FormatTimestamp(p.Timestamp);
+                            var label = _timeRange.FormatTimestamp(p.Timestamp.ToLocalTime());
                             allTimestampSet.Add(label);
                             lookup[label] = (double)p.ActiveCount;
                         }
@@ -420,7 +422,14 @@
             }
 
             _targetCharts = charts;
-            _clientDetailRows = rows;
+            _clientDetailRows.Clear();
+            _clientDetailRows.AddRange(rows);
+            _pools.Clear();
+            _pools.AddRange(newPools);
+
+            if (_clientDetailGrid is not null) await InvokeAsync(_clientDetailGrid.Reload);
+            if (_allPoolsGrid is not null) await InvokeAsync(_allPoolsGrid.Reload);
+
             _error = null;
         }
         catch (HttpRequestException ex)

@@ -74,7 +74,7 @@
         <div class="cm-dashboard__chart-header">
             <span class="cm-dashboard__chart-title">Client Breakdown</span>
         </div>
-        <RadzenDataGrid Data="@_clientRows" TItem="MonitorClientRow"
+        <RadzenDataGrid @ref="_clientRowsGrid" Data="@_clientRows" TItem="MonitorClientRow"
             AllowSorting="true" AllowPaging="true" PageSize="15"
             PagerHorizontalAlign="HorizontalAlign.Center">
             <Columns>
@@ -121,7 +121,7 @@
         <div class="cm-dashboard__chart-header">
             <span class="cm-dashboard__chart-title">All Services</span>
         </div>
-        <RadzenDataGrid Data="@_allServiceStats" TItem="ServiceSummaryRow"
+        <RadzenDataGrid @ref="_allServicesGrid" Data="@_allServiceStats" TItem="ServiceSummaryRow"
             AllowSorting="true" AllowPaging="true" PageSize="15"
             PagerHorizontalAlign="HorizontalAlign.Center">
             <Columns>
@@ -176,6 +176,8 @@
     private List<TargetChartData> _targetCharts = [];
     private List<MonitorClientRow> _clientRows = [];
     private List<ServiceSummaryRow> _allServiceStats = [];
+    private RadzenDataGrid<MonitorClientRow>? _clientRowsGrid;
+    private RadzenDataGrid<ServiceSummaryRow>? _allServicesGrid;
 
     private TimeRangePreset _timeRange = TimeRangePreset.Default;
 
@@ -443,7 +445,8 @@
             }
 
             _targetCharts = charts;
-            _clientRows = rows;
+            _clientRows.Clear();
+            _clientRows.AddRange(rows);
 
             // All-services summary — one batch call for all services
             var allServiceIds = _allServices.Select(s => s.Id).ToList();
@@ -460,7 +463,11 @@
                 allServiceBreakdowns.Add(new ServiceSummaryRow(
                     service.Id, service.Name, totalUsage, cap));
             }
-            _allServiceStats = allServiceBreakdowns;
+            _allServiceStats.Clear();
+            _allServiceStats.AddRange(allServiceBreakdowns);
+
+            if (_clientRowsGrid is not null) await InvokeAsync(_clientRowsGrid.Reload);
+            if (_allServicesGrid is not null) await InvokeAsync(_allServicesGrid.Reload);
 
             _error = null;
         }

@@ -80,6 +80,7 @@ public class PrometheusExportService : IPrometheusExportService
 
         // Pool metrics
         var pools = await _poolRepository.GetAllAsync(cancellationToken);
+        var activeCountsByPool = await _allocationRepository.GetActiveCountsByPoolAsync(cancellationToken);
 
         sb.AppendLine("# HELP clientmanager_pool_max_slots Maximum slots configured for a resource pool.");
         sb.AppendLine("# TYPE clientmanager_pool_max_slots gauge");
@@ -93,7 +94,7 @@ public class PrometheusExportService : IPrometheusExportService
         sb.AppendLine("# TYPE clientmanager_pool_active_slots gauge");
         foreach (var pool in pools)
         {
-            var activeCount = await _allocationRepository.GetActiveCountAsync(pool.Id, cancellationToken);
+            var activeCount = activeCountsByPool.GetValueOrDefault(pool.Id);
             sb.AppendLine($"clientmanager_pool_active_slots{{pool=\"{EscapeLabel(pool.Id)}\"}} {activeCount}");
         }
         sb.AppendLine();

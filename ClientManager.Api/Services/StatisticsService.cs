@@ -3,6 +3,7 @@ using ClientManager.Api.Models.Responses;
 using ClientManager.DataAccess.Interfaces;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Enums;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace ClientManager.Api.Services;
 
@@ -18,6 +19,9 @@ public class StatisticsService : IStatisticsService
     private readonly IResourceAllocationRepository _allocationRepository;
     private readonly IGlobalRateLimitRepository _globalRateLimitRepository;
     private readonly IUsageSnapshotRepository _usageSnapshotRepository;
+    private readonly IMemoryCache _cache;
+
+    private static readonly TimeSpan CacheDuration = TimeSpan.FromSeconds(5);
 
     /// <summary>
     /// Initializes a new instance of <see cref="StatisticsService"/>.
@@ -28,13 +32,15 @@ public class StatisticsService : IStatisticsService
     /// <param name="allocationRepository">Repository for resource allocation state.</param>
     /// <param name="globalRateLimitRepository">Repository for global rate limits.</param>
     /// <param name="usageSnapshotRepository">Repository for usage snapshot data.</param>
+    /// <param name="cache">In-memory cache for short-lived statistics results.</param>
     public StatisticsService(
         IClientConfigurationRepository clientConfigRepository,
         IEntityRepository<Service> serviceRepository,
         IEntityRepository<ResourcePool> poolRepository,
         IResourceAllocationRepository allocationRepository,
         IGlobalRateLimitRepository globalRateLimitRepository,
-        IUsageSnapshotRepository usageSnapshotRepository)
+        IUsageSnapshotRepository usageSnapshotRepository,
+        IMemoryCache cache)
     {
         _clientConfigRepository = clientConfigRepository;
         _serviceRepository = serviceRepository;
@@ -42,13 +48,27 @@ public class StatisticsService : IStatisticsService
         _allocationRepository = allocationRepository;
         _globalRateLimitRepository = globalRateLimitRepository;
         _usageSnapshotRepository = usageSnapshotRepository;
+        _cache = cache;
     }
 
     /// <inheritdoc />
     public async Task<GlobalUsageStatsResponse> GetGlobalUsageStatsAsync(
         CancellationToken cancellationToken = default)
     {
+        const string cacheKey = "stats:global-usage";
+        if (_cache.TryGetValue(cacheKey, out GlobalUsageStatsResponse? cached) && cached is not null)
+            return cached;
+
+        var result = await ComputeGlobalUsageStatsAsync(cancellationToken);
+        _cache.Set(cacheKey, result, CacheDuration);
+        return result;
+    }
+
+    private async Task<GlobalUsageStatsResponse> ComputeGlobalUsageStatsAsync(
+        CancellationToken cancellationToken)
+    {
         var pools = await _poolRepository.GetAllAsync(cancellationToken);
+        var activeCountsByPool = await _allocationRepository.GetActiveCountsByPoolAsync(cancellationToken);
 
         var totalSlots = 0;
         var acquiredSlots = 0;
@@ -56,7 +76,7 @@ public class StatisticsService : IStatisticsService
         foreach (var pool in pools)
         {
             totalSlots += (int)pool.MaxSlots;
-            acquiredSlots += await _allocationRepository.GetActiveCountAsync(pool.Id, cancellationToken);
+            acquiredSlots += activeCountsByPool.GetValueOrDefault(pool.Id);
         }
 
         var acquisitionPercentage = totalSlots > 0
@@ -204,16 +224,20 @@ public class StatisticsService : IStatisticsService
                     double count;
                     if (from is not null && to is not null)
                     {
-                        count = snapshot.Buckets
-                            .Where(b => b.Timestamp >= from && b.Timestamp <= to)
-                            .Sum(b => b.GrantedCount);
+                        var filteredBuckets = snapshot.Buckets
+                            .Where(b => b.Timestamp >= from && b.Timestamp <= to);
+                        count = targetType == GlobalRateLimitTarget.ResourcePool
+                            ? filteredBuckets.Select(b => (double)b.ActiveCount).DefaultIfEmpty(0).Max()
+                            : filteredBuckets.Sum(b => (double)b.GrantedCount);
                     }
                     else
                     {
                         var latestBucketTime = RoundDownToFiveMinutes(now).AddMinutes(-5);
-                        count = snapshot.Buckets
-                            .Where(b => b.Timestamp == latestBucketTime)
-                            .Sum(b => b.GrantedCount);
+                        var filteredBuckets = snapshot.Buckets
+                            .Where(b => b.Timestamp == latestBucketTime);
+                        count = targetType == GlobalRateLimitTarget.ResourcePool
+                            ? filteredBuckets.Select(b => (double)b.ActiveCount).DefaultIfEmpty(0).Max()
+                            : filteredBuckets.Sum(b => (double)b.GrantedCount);
                     }
 
                     if (count > 0)
@@ -236,7 +260,20 @@ public class StatisticsService : IStatisticsService
     public async Task<ClientSummariesResponse> GetClientSummariesAsync(
         CancellationToken cancellationToken = default)
     {
+        const string cacheKey = "stats:client-summaries";
+        if (_cache.TryGetValue(cacheKey, out ClientSummariesResponse? cached) && cached is not null)
+            return cached;
+
+        var result = await ComputeClientSummariesAsync(cancellationToken);
+        _cache.Set(cacheKey, result, CacheDuration);
+        return result;
+    }
+
+    private async Task<ClientSummariesResponse> ComputeClientSummariesAsync(
+        CancellationToken cancellationToken)
+    {
         var clients = await _clientConfigRepository.GetAllAsync(cancellationToken);
+        var activeCountsByPoolAndClient = await _allocationRepository.GetActiveCountsByPoolAndClientAsync(cancellationToken);
         var rows = new List<ClientSummaryRow>();
 
         foreach (var client in clients)
@@ -259,8 +296,7 @@ public class StatisticsService : IStatisticsService
             foreach (var (poolId, poolSettings) in client.ResourcePools)
             {
                 totalAccessibleSlots += (int)poolSettings.MaxSlots;
-                usedSlots += await _allocationRepository.GetActiveCountByClientAsync(
-                    poolId, client.Id, cancellationToken);
+                usedSlots += activeCountsByPoolAndClient.GetValueOrDefault((poolId, client.Id));
             }
 
             rows.Add(new ClientSummaryRow(
