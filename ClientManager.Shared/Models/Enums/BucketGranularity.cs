@@ -5,6 +5,7 @@ namespace ClientManager.Shared.Models.Enums;
 /// </summary>
 public enum BucketGranularity
 {
+    Second,
     FiveMinute,
     Hour,
     Day
