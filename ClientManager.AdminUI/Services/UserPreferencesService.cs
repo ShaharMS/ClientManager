@@ -56,6 +56,13 @@ public class UserPreferencesService : IAsyncDisposable
                ?? TimeRangePreset.Default;
     }
 
+    public async Task<PollingIntervalPreset> GetDefaultPollingIntervalAsync()
+    {
+        var prefs = await GetPreferencesAsync();
+        return PollingIntervalPreset.FindByKey(prefs.DefaultPollingInterval)
+               ?? PollingIntervalPreset.Default;
+    }
+
     public async ValueTask DisposeAsync()
     {
         if (_module is not null)

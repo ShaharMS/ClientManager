@@ -5,20 +5,32 @@ public record TimeRangePreset(string Key, string Label, string Group, TimeSpan D
     public DateTime GetFrom() => DateTime.UtcNow - Duration;
     public DateTime GetTo() => DateTime.UtcNow;
 
+    public string FormatTimestamp(DateTime timestamp)
+    {
+        var local = timestamp.ToLocalTime();
+        return Granularity switch
+        {
+            "Second" => local.ToString("HH:mm:ss"),
+            "Day" => local.ToString("MMM dd"),
+            "Hour" => local.ToString("MMM dd HH:mm"),
+            _ => local.ToString("HH:mm")
+        };
+    }
+
     public static readonly List<TimeRangePreset> All = new()
     {
-        new("1m",  "1m",  "Minutes", TimeSpan.FromMinutes(1),  "FiveMinute"),
-        new("5m",  "5m",  "Minutes", TimeSpan.FromMinutes(5),  "FiveMinute"),
-        new("15m", "15m", "Minutes", TimeSpan.FromMinutes(15), "FiveMinute"),
-        new("30m", "30m", "Minutes", TimeSpan.FromMinutes(30), "FiveMinute"),
-        new("1h",  "1h",  "Hours",   TimeSpan.FromHours(1),    "FiveMinute"),
-        new("3h",  "3h",  "Hours",   TimeSpan.FromHours(3),    "FiveMinute"),
-        new("6h",  "6h",  "Hours",   TimeSpan.FromHours(6),    "FiveMinute"),
-        new("12h", "12h", "Hours",   TimeSpan.FromHours(12),   "Hour"),
-        new("1d",  "1d",  "Days",    TimeSpan.FromDays(1),     "Hour"),
-        new("7d",  "7d",  "Days",    TimeSpan.FromDays(7),     "Hour"),
-        new("30d", "30d", "Days",    TimeSpan.FromDays(30),    "Day"),
-        new("90d", "90d", "Days",    TimeSpan.FromDays(90),    "Day"),
+        new("1m",  "Last minute",     "Minutes", TimeSpan.FromMinutes(1),  "Second"),
+        new("5m",  "Last 5 minutes",  "Minutes", TimeSpan.FromMinutes(5),  "FiveMinute"),
+        new("15m", "Last 15 minutes", "Minutes", TimeSpan.FromMinutes(15), "FiveMinute"),
+        new("30m", "Last 30 minutes", "Minutes", TimeSpan.FromMinutes(30), "FiveMinute"),
+        new("1h",  "Last hour",       "Hours",   TimeSpan.FromHours(1),    "FiveMinute"),
+        new("3h",  "Last 3 hours",    "Hours",   TimeSpan.FromHours(3),    "FiveMinute"),
+        new("6h",  "Last 6 hours",    "Hours",   TimeSpan.FromHours(6),    "FiveMinute"),
+        new("12h", "Last 12 hours",   "Hours",   TimeSpan.FromHours(12),   "Hour"),
+        new("1d",  "Last 24 hours",   "Days",    TimeSpan.FromDays(1),     "Hour"),
+        new("7d",  "Last 7 days",     "Days",    TimeSpan.FromDays(7),     "Hour"),
+        new("30d", "Last 30 days",    "Days",    TimeSpan.FromDays(30),    "Day"),
+        new("90d", "Last 90 days",    "Days",    TimeSpan.FromDays(90),    "Day"),
     };
 
     public static readonly TimeRangePreset Default = All.First(p => p.Key == "1h");

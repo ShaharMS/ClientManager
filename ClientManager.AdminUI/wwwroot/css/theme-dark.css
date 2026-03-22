@@ -29,26 +29,64 @@ html[data-theme="dark"] {
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
     --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
     --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
+
+    /* Radzen component variable overrides */
+    --rz-base-background-color: #1e293b;
+    --rz-body-background-color: #0f172a;
+    --rz-text-color: #f1f5f9;
+    --rz-text-secondary-color: #94a3b8;
+
+    /* Grid / Table */
+    --rz-grid-background-color: #1e293b;
+    --rz-grid-header-background-color: #0f172a;
+    --rz-grid-header-color: #94a3b8;
+    --rz-grid-cell-border: 1px solid #334155;
+    --rz-grid-cell-color: #f1f5f9;
+    --rz-grid-stripe-background-color: #0f172a;
+    --rz-grid-stripe-odd-background-color: #1e293b;
+    --rz-grid-hover-background-color: #334155;
+    --rz-grid-hover-color: #f1f5f9;
+    --rz-grid-border: 1px solid #334155;
+    --rz-grid-header-cell-border-bottom: 1px solid #334155;
+
+    /* Pager */
+    --rz-pager-background-color: #1e293b;
+
+    /* Inputs */
+    --rz-input-background-color: #0f172a;
+    --rz-input-border: 1px solid #334155;
+    --rz-input-disabled-color: #64748b;
+    --rz-input-disabled-placeholder-color: #64748b;
+    --rz-input-focus-border: 1px solid #818cf8;
+    --rz-input-hover-border: 1px solid #94a3b8;
+    --rz-input-border-block-end: 1px solid #334155;
+    --rz-input-placeholder-color: #64748b;
+
+    /* Numeric buttons */
+    --rz-numeric-button-color: #f1f5f9;
+    --rz-numeric-button-hover-background-color: #334155;
+
+    /* Progress bar */
+    --rz-progressbar-background-color: #334155;
+    --rz-progressbar-color: #f1f5f9;
+    --rz-progressbar-value-background-color: #818cf8;
+
+    /* Dropdown */
+    --rz-dropdown-item-hover-background-color: #0f172a;
+
+    /* Card */
+    --rz-card-background-color: #1e293b;
+    --rz-card-border: 1px solid #334155;
+
+    /* Borders */
+    --rz-border-disabled: 1px solid #334155;
+    --rz-border-normal: 1px solid #334155;
+    --rz-border-base: 1px solid #334155;
+    --rz-border-base-200: 1px solid #334155;
+    --rz-border-base-300: 1px solid #334155;
 }
 
-/* Override Radzen component backgrounds in dark mode */
-html[data-theme="dark"] .rz-datatable,
-html[data-theme="dark"] .rz-grid-table,
-html[data-theme="dark"] .rz-data-grid {
-    background: var(--color-bg-card);
-    color: var(--color-text-primary);
-}
-
-html[data-theme="dark"] .rz-datatable .rz-cell,
-html[data-theme="dark"] .rz-data-grid .rz-cell {
-    border-color: var(--color-border);
-}
-
-html[data-theme="dark"] .rz-pager {
-    background: var(--color-bg-card);
-    color: var(--color-text-secondary);
-}
-
+/* Radzen component overrides for dark mode */
 html[data-theme="dark"] .rz-dropdown,
 html[data-theme="dark"] .rz-multiselect,
 html[data-theme="dark"] .rz-textbox {
@@ -71,4 +109,20 @@ html[data-theme="dark"] .rz-state-highlight {
 
 html[data-theme="dark"] .rz-switch .rz-switch-circle {
     background: var(--color-bg-card);
+}
+
+html[data-theme="dark"] .rz-sortable-column:hover {
+    background: var(--color-border);
+}
+
+/* Disabled inputs — !important to override Radzen inline specificity */
+html[data-theme="dark"] .rz-textbox[disabled],
+html[data-theme="dark"] .rz-textbox.rz-state-disabled,
+html[data-theme="dark"] .rz-dropdown.rz-state-disabled,
+html[data-theme="dark"] .rz-spinner.rz-state-disabled,
+html[data-theme="dark"] .rz-state-disabled .rz-inputtext {
+    background: var(--color-border) !important;
+    color: var(--color-text-muted) !important;
+    border-color: var(--color-border) !important;
+    opacity: 0.7;
 }
