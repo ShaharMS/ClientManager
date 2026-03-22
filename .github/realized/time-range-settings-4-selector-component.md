@@ -1,6 +1,6 @@
 # Plan: Time Range Filtering & Settings — Step 4: Time Range Selector Component
 
-> **Status**: ✅ Completed
+> **Status**: ✅ Completed (redesigned from pills to dropdown)
 > **Prerequisite**: [time-range-settings-3-api-updates.md](time-range-settings-3-api-updates.md)
 > **Next**: [time-range-settings-5-page-integration.md](time-range-settings-5-page-integration.md)
 > **Parent**: [time-range-settings-overview.md](time-range-settings-overview.md)

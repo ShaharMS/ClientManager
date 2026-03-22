@@ -1,6 +1,6 @@
 # Plan: Time Range Filtering & Settings Page
 
-## Status: 🔲 Not started
+## Status: ✅ All steps completed
 
 ## Overview
 
@@ -19,7 +19,7 @@ This plan introduces a unified time range filtering system with sensible presets
 | 2 | [time-range-settings-2-settings-page.md](time-range-settings-2-settings-page.md) | ✅ `/settings` page with dark/light toggle and default time range picker, wire sidebar link |
 | 3 | [time-range-settings-3-api-updates.md](time-range-settings-3-api-updates.md) | ✅ Add `from`/`to` params to `usage-timeseries` and `client-usage-breakdown` API endpoints |
 | 4 | [time-range-settings-4-selector-component.md](time-range-settings-4-selector-component.md) | ✅ Reusable `TimeRangeSelector.razor` pill-button component matching Metric design |
-| 5 | [time-range-settings-5-page-integration.md](time-range-settings-5-page-integration.md) | Wire TimeRangeSelector into Dashboard and Monitor, respect default from preferences |
+| 5 | [time-range-settings-5-page-integration.md](time-range-settings-5-page-integration.md) | ✅ Wire TimeRangeSelector into Dashboard and Monitor, respect default from preferences |
 
 ## Key Decisions
 
