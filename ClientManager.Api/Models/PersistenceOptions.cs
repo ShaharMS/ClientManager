@@ -4,6 +4,8 @@ namespace ClientManager.Api.Models;
 
 /// <summary>
 /// Configuration options for the persistence layer. Bound from the "Persistence" section of appsettings.
+/// 
+/// Persistent storage in this application 
 /// </summary>
 public class PersistenceOptions
 {

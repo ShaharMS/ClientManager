@@ -101,6 +101,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IResourceAllocationService, ResourceAllocationService>();
         services.AddScoped<IAccessControlService, AccessControlService>();
         services.AddScoped<IStatisticsService, StatisticsService>();
+        services.AddScoped<IPrometheusExportService, PrometheusExportService>();
         services.AddSingleton<UsageBuffer>();
         services.AddSingleton<IUsageRecorder, UsageRecorder>();
     }

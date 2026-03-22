@@ -11,6 +11,16 @@ public class UsageTrackingOptions
     public const string SectionName = "UsageTracking";
 
     /// <summary>
+    /// How often the in-memory buffer is flushed to per-second storage. Default: 1 second.
+    /// </summary>
+    public TimeSpan SecondFlushInterval { get; set; } = TimeSpan.FromSeconds(1);
+
+    /// <summary>
+    /// How long to retain per-second granularity buckets. Default: 3 minutes.
+    /// </summary>
+    public TimeSpan SecondRetention { get; set; } = TimeSpan.FromMinutes(3);
+
+    /// <summary>
     /// How often the in-memory buffer is flushed to persistent storage. Default: 5 minutes.
     /// </summary>
     public TimeSpan FlushInterval { get; set; } = TimeSpan.FromMinutes(5);

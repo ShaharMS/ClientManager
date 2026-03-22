@@ -40,6 +40,38 @@ public class UsagePersistenceService : BackgroundService
     /// <inheritdoc />
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        var fastLoop = RunFastLoopAsync(stoppingToken);
+        var slowLoop = RunSlowLoopAsync(stoppingToken);
+        await Task.WhenAll(fastLoop, slowLoop);
+    }
+
+    private async Task RunFastLoopAsync(CancellationToken stoppingToken)
+    {
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            await Task.Delay(_options.SecondFlushInterval, stoppingToken);
+
+            try
+            {
+                using var scope = _scopeFactory.CreateScope();
+                var repository = scope.ServiceProvider.GetRequiredService<IUsageSnapshotRepository>();
+                var allocationRepository = scope.ServiceProvider.GetRequiredService<IResourceAllocationRepository>();
+
+                await FlushBufferAsync(repository, allocationRepository, BucketGranularity.Second, RoundDownToSecond, stoppingToken);
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                break;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in fast usage persistence cycle");
+            }
+        }
+    }
+
+    private async Task RunSlowLoopAsync(CancellationToken stoppingToken)
+    {
         while (!stoppingToken.IsCancellationRequested)
         {
             await Task.Delay(_options.FlushInterval, stoppingToken);
@@ -48,9 +80,8 @@ public class UsagePersistenceService : BackgroundService
             {
                 using var scope = _scopeFactory.CreateScope();
                 var repository = scope.ServiceProvider.GetRequiredService<IUsageSnapshotRepository>();
-                var allocationRepository = scope.ServiceProvider.GetRequiredService<IResourceAllocationRepository>();
 
-                await FlushBufferAsync(repository, allocationRepository, stoppingToken);
+                await RollUpAsync(repository, BucketGranularity.Second, BucketGranularity.FiveMinute, TimeSpan.FromMinutes(5), stoppingToken);
                 await RollUpAsync(repository, BucketGranularity.FiveMinute, BucketGranularity.Hour, TimeSpan.FromHours(1), stoppingToken);
                 await RollUpAsync(repository, BucketGranularity.Hour, BucketGranularity.Day, TimeSpan.FromHours(24), stoppingToken);
                 await PruneExpiredAsync(repository, stoppingToken);
@@ -61,18 +92,23 @@ public class UsagePersistenceService : BackgroundService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error in usage persistence cycle");
+                _logger.LogError(ex, "Error in slow usage persistence cycle");
             }
         }
     }
 
-    private async Task FlushBufferAsync(IUsageSnapshotRepository repository, IResourceAllocationRepository allocationRepository, CancellationToken cancellationToken)
+    private async Task FlushBufferAsync(
+        IUsageSnapshotRepository repository,
+        IResourceAllocationRepository allocationRepository,
+        BucketGranularity granularity,
+        Func<DateTime, DateTime> roundDown,
+        CancellationToken cancellationToken)
     {
         var counts = _buffer.Drain();
         if (counts.Count == 0)
             return;
 
-        var bucketTimestamp = RoundDownToFiveMinutes(DateTime.UtcNow);
+        var bucketTimestamp = roundDown(DateTime.UtcNow);
 
         var grouped = counts
             .GroupBy(c => (c.Key.ClientId, c.Key.TargetType, c.Key.TargetId))
@@ -81,7 +117,7 @@ public class UsagePersistenceService : BackgroundService
         foreach (var group in grouped)
         {
             var (clientId, targetType, targetId) = group.Key;
-            var id = UsageSnapshotRepository.BuildId(clientId, targetType, targetId, BucketGranularity.FiveMinute);
+            var id = UsageSnapshotRepository.BuildId(clientId, targetType, targetId, granularity);
 
             var snapshot = await repository.GetByIdAsync(id, cancellationToken)
                 ?? new UsageSnapshot
@@ -90,7 +126,7 @@ public class UsagePersistenceService : BackgroundService
                     ClientId = clientId,
                     TargetId = targetId,
                     TargetType = targetType,
-                    Granularity = BucketGranularity.FiveMinute,
+                    Granularity = granularity,
                     Buckets = new List<UsageBucket>()
                 };
 
@@ -224,6 +260,7 @@ public class UsagePersistenceService : BackgroundService
     {
         var now = DateTime.UtcNow;
 
+        await PruneGranularityAsync(repository, BucketGranularity.Second, now - _options.SecondRetention, cancellationToken);
         await PruneGranularityAsync(repository, BucketGranularity.FiveMinute, now - _options.FiveMinuteRetention, cancellationToken);
         await PruneGranularityAsync(repository, BucketGranularity.Hour, now - _options.HourlyRetention, cancellationToken);
         await PruneGranularityAsync(repository, BucketGranularity.Day, now - _options.DailyRetention, cancellationToken);
@@ -247,6 +284,11 @@ public class UsagePersistenceService : BackgroundService
         }
     }
 
+    private static DateTime RoundDownToSecond(DateTime utc)
+    {
+        return new DateTime(utc.Year, utc.Month, utc.Day, utc.Hour, utc.Minute, utc.Second, 0, DateTimeKind.Utc);
+    }
+
     private static DateTime RoundDownToFiveMinutes(DateTime utc)
     {
         return new DateTime(utc.Year, utc.Month, utc.Day, utc.Hour, utc.Minute / 5 * 5, 0, DateTimeKind.Utc);
@@ -256,6 +298,8 @@ public class UsagePersistenceService : BackgroundService
     {
         return granularity switch
         {
+            BucketGranularity.Second => RoundDownToSecond(utc),
+            BucketGranularity.FiveMinute => RoundDownToFiveMinutes(utc),
             BucketGranularity.Hour => new DateTime(utc.Year, utc.Month, utc.Day, utc.Hour, 0, 0, DateTimeKind.Utc),
             BucketGranularity.Day => new DateTime(utc.Year, utc.Month, utc.Day, 0, 0, 0, DateTimeKind.Utc),
             _ => RoundDownToFiveMinutes(utc)
