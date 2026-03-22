@@ -65,7 +65,7 @@ try
     app.UseHttpsRedirection();
     app.UseAuthorization();
     app.MapControllers();
-    app.MapPrometheusScrapingEndpoint("/metrics");
+    app.MapPrometheusScrapingEndpoint("/prometheus/otel");
 
     app.Lifetime.ApplicationStarted.Register(() =>
     {

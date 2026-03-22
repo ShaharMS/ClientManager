@@ -102,6 +102,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAccessControlService, AccessControlService>();
         services.AddScoped<IStatisticsService, StatisticsService>();
         services.AddScoped<IPrometheusExportService, PrometheusExportService>();
+        services.AddScoped<IGrafanaExportService, GrafanaExportService>();
         services.AddSingleton<UsageBuffer>();
         services.AddSingleton<IUsageRecorder, UsageRecorder>();
     }

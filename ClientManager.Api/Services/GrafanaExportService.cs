@@ -1,29 +1,3 @@
-# Plan: Multi-Platform Metrics Export — Step 2: Grafana Export Service
-
-> **Status**: 🔲 Not started
-> **Prerequisite**: [metrics-export-1-interfaces.md](metrics-export-1-interfaces.md)
-> **Next**: [metrics-export-3-controller-routes.md](metrics-export-3-controller-routes.md)
-> **Parent**: [metrics-export-overview.md](metrics-export-overview.md)
-
-## TL;DR
-
-Implement `GrafanaExportService` that exports the same metrics as `PrometheusExportService` but in OpenMetrics JSON format. Register the service in DI.
-
-## Reference Pattern
-
-In [ClientManager.Api/Services/PrometheusExportService.cs](../../ClientManager.Api/Services/PrometheusExportService.cs):
-- Constructor injection of repositories: `IUsageSnapshotRepository`, `IEntityRepository<ResourcePool>`, `IResourceAllocationRepository`, `IStatisticsService`
-- XML documentation on class and constructor
-- Single public async method implementing the interface
-- Metrics collected: global RPM, per-service requests/denied, pool max/active slots
-
-## Steps
-
-### 1. Create GrafanaExportService
-
-Create `ClientManager.Api/Services/GrafanaExportService.cs`:
-
-```csharp
 using ClientManager.Api.Interfaces;
 using ClientManager.Api.Models.Responses;
 using ClientManager.DataAccess.Interfaces;
@@ -150,19 +124,3 @@ public class GrafanaExportService : IGrafanaExportService
         return new GrafanaMetricsResponse(metrics);
     }
 }
-```
-
-### 2. Register GrafanaExportService in DI
-
-In `ClientManager.Api/Program.cs`, add the service registration near the existing `PrometheusExportService` registration:
-
-```csharp
-builder.Services.AddScoped<IGrafanaExportService, GrafanaExportService>();
-```
-
-## Verification
-
-- Project compiles without errors
-- `GrafanaExportService` is registered in DI container
-- Service can be resolved via `IGrafanaExportService`
-- **UI: Not applicable for this step — no UI changes**

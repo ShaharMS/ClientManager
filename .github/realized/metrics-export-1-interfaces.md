@@ -1,6 +1,6 @@
 # Plan: Multi-Platform Metrics Export — Step 1: Interfaces
 
-> **Status**: 🔲 Not started
+> **Status**: ✅ Completed
 > **Prerequisite**: None — this is the first step.
 > **Next**: [metrics-export-2-grafana-service.md](metrics-export-2-grafana-service.md)
 > **Parent**: [metrics-export-overview.md](metrics-export-overview.md)
