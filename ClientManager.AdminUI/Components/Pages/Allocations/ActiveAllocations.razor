@@ -2,25 +2,12 @@
 @inject StatisticsApiService StatsService
 @inject ClientApiService ClientService
 @inject EntityColorService Colors
-@implements IDisposable
+@inject IJSRuntime JS
+@implements IAsyncDisposable
 
 <div class="cm-page-header">
     <h1>Active Allocations</h1>
-    <p>Real-time resource pool utilization — refreshes every 10 seconds.</p>
-</div>
-
-<div class="cm-monitor__filters">
-    <RadzenDropDown TValue="string" @bind-Value="_selectedPoolId"
-        Data="@_poolOptions" TextProperty="Name" ValueProperty="Id"
-        Placeholder="Select pool..." Style="width: 220px;"
-        Change="@OnFilterChanged" />
-    <RadzenDropDown @bind-Value="_selectedClientIds" Multiple="true"
-        Data="@_clientOptions" TextProperty="Name" ValueProperty="Id"
-        Placeholder="All clients" Style="width: 200px;"
-        Change="@OnFilterChanged" />
-    <span class="cm-badge cm-badge--success" style="margin-left: auto;">
-        <RadzenIcon Icon="fiber_manual_record" Style="font-size: 10px;" /> Auto-refreshing
-    </span>
+    <p>Resource pool utilization across all clients and pools.</p>
 </div>
 
 @if (_error is not null)
@@ -34,13 +21,27 @@
 }
 
 <div class="cm-monitor__chart-card">
+    <div class="cm-dashboard__chart-header">
+        <div class="cm-dashboard__filters">
+            <RadzenDropDown TValue="string" @bind-Value="_selectedPoolId"
+                Data="@_poolOptions" TextProperty="Name" ValueProperty="Id"
+                Placeholder="Select pool..." Style="width: 220px;"
+                Change="@OnFilterChanged" />
+            <RadzenDropDown @bind-Value="_selectedClientIds" Multiple="true"
+                Data="@_clientOptions" TextProperty="Name" ValueProperty="Id"
+                Placeholder="All clients" Style="width: 200px;"
+                Change="@OnFilterChanged" />
+        </div>
+        <div style="display: flex; gap: var(--space-sm); align-items: center;">
+            <PollingIntervalSelector OnIntervalChanged="OnPollingIntervalChanged" />
+            <TimeRangeSelector OnRangeChanged="OnTimeRangeChanged" />
+        </div>
+    </div>
     @if (_targetCharts.Count > 0)
     {
         @foreach (var targetChart in _targetCharts)
         {
-            <div class="cm-dashboard__chart-header">
-                <span class="cm-dashboard__chart-title">@targetChart.TargetName — Slot Usage</span>
-            </div>
+            <span class="cm-dashboard__chart-title">@targetChart.TargetName — Slot Usage</span>
             <RadzenChart Style="height: 400px;">
                 @foreach (var clientArea in targetChart.ClientSeries)
                 {
@@ -62,7 +63,8 @@
     }
     else
     {
-        <ChartSkeleton />
+        <SkeletonBlock CssClass="cm-skeleton--heading" />
+        <SkeletonBlock CssClass="cm-skeleton--chart" />
     }
 </div>
 
@@ -159,12 +161,19 @@
     private List<ResourcePoolStatistics> _pools = [];
     private List<NamedItem> _poolOptions = [];
     private List<ClientOption> _clientOptions = [];
+    private List<ClientConfiguration> _allClients = [];
     private string _selectedPoolId = AllPoolsId;
     private IEnumerable<string>? _selectedClientIds;
 
     private bool _loading;
     private string? _error;
     private Timer? _timer;
+    private TimeSpan _pollingInterval = TimeSpan.FromSeconds(10);
+    private bool _isVisible = true;
+    private IJSObjectReference? _visibilityModule;
+    private DotNetObjectReference<ActiveAllocations>? _dotNetRef;
+
+    private TimeRangePreset _timeRange = TimeRangePreset.Default;
 
     private List<TargetChartData> _targetCharts = [];
     private List<AllocationClientRow> _clientDetailRows = [];
@@ -175,6 +184,7 @@
         {
             _pools = await StatsService.GetResourcePoolStatsAsync();
             var clients = await ClientService.GetAllAsync();
+            _allClients = clients;
             _clientOptions = clients
                 .Select(c => new ClientOption(c.Id, c.Name))
                 .ToList();
@@ -183,19 +193,64 @@
                 .Concat(_pools.Select(p => new NamedItem(p.ResourcePoolId, p.Name)))
                 .ToList();
             _selectedPoolId = AllPoolsId;
-
-            await LoadDataAsync();
         }
         catch (HttpRequestException ex)
         {
             _error = $"Unable to connect to the API: {ex.Message}";
         }
 
+        StartTimer();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _visibilityModule = await JS.InvokeAsync<IJSObjectReference>(
+                "import", "./js/visibility.js");
+            _dotNetRef = DotNetObjectReference.Create(this);
+            await _visibilityModule.InvokeVoidAsync("register", _dotNetRef);
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnVisibilityChanged(bool visible)
+    {
+        _isVisible = visible;
+        if (visible)
+        {
+            await LoadDataAsync();
+            await InvokeAsync(StateHasChanged);
+            StartTimer();
+        }
+        else
+        {
+            _timer?.Dispose();
+            _timer = null;
+        }
+    }
+
+    private void StartTimer()
+    {
+        _timer?.Dispose();
         _timer = new Timer(async _ =>
         {
             await LoadDataAsync();
             await InvokeAsync(StateHasChanged);
-        }, null, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
+        }, null, _pollingInterval, _pollingInterval);
+    }
+
+    private Task OnPollingIntervalChanged(PollingIntervalPreset preset)
+    {
+        _pollingInterval = preset.Interval;
+        StartTimer();
+        return Task.CompletedTask;
+    }
+
+    private async Task OnTimeRangeChanged(TimeRangePreset preset)
+    {
+        _timeRange = preset;
+        await LoadDataAsync();
     }
 
     private async Task OnFilterChanged()
@@ -213,20 +268,21 @@
         {
             _pools = await StatsService.GetResourcePoolStatsAsync();
 
-            var now = DateTime.UtcNow;
-            var from = now.AddHours(-1);
-            var recentFrom = now.AddMinutes(-5);
+            var from = _timeRange.GetFrom();
+            var now = _timeRange.GetTo();
+            var granularity = _timeRange.Granularity;
+            var recentFrom = DateTime.UtcNow.AddMinutes(-5);
+            var recentTo = DateTime.UtcNow;
 
             var visiblePools = _selectedPoolId == AllPoolsId
                 ? _pools
                 : _pools.Where(p => p.ResourcePoolId == _selectedPoolId).ToList();
 
-            // Fetch all breakdowns in parallel
-            var breakdownTasks = visiblePools.Select(pool =>
-                StatsService.GetClientUsageBreakdownAsync(
-                    "ResourcePool", pool.ResourcePoolId, _selectedClientIds))
-                .ToList();
-            var breakdowns = await Task.WhenAll(breakdownTasks);
+            var visiblePoolIds = visiblePools.Select(p => p.ResourcePoolId).ToList();
+
+            // Batch: one call for all breakdowns
+            var breakdowns = await StatsService.GetClientUsageBreakdownAsync(
+                "ResourcePool", visiblePoolIds, _selectedClientIds);
 
             var charts = new List<TargetChartData>();
             var rows = new List<AllocationClientRow>();
@@ -236,50 +292,38 @@
                 var aggregated = new Dictionary<string, double>();
                 var totalMaxSlots = 0;
 
-                // Build list of all history tasks across all pools
-                var historyRequests = new List<(string PoolName, int MaxSlots, string ClientId, string ClientName)>();
-                for (var i = 0; i < visiblePools.Count; i++)
+                // Batch: one call for all histories across all visible pools
+                var allHistories = await StatsService.GetHistoricalUsageAsync(
+                    "ResourcePool", visiblePoolIds, null, from, now, granularity);
+                var allRecents = await StatsService.GetHistoricalUsageAsync(
+                    "ResourcePool", visiblePoolIds, null, recentFrom, recentTo, "FiveMinute");
+
+                foreach (var pool in visiblePools)
                 {
-                    var pool = visiblePools[i];
                     totalMaxSlots += pool.MaxSlots;
-                    foreach (var entry in breakdowns[i]?.Entries ?? [])
+
+                    var breakdown = breakdowns.FirstOrDefault(b => b.TargetId == pool.ResourcePoolId);
+                    var history = allHistories.FirstOrDefault(h => h.TargetId == pool.ResourcePoolId);
+                    var recent = allRecents.FirstOrDefault(h => h.TargetId == pool.ResourcePoolId);
+
+                    foreach (var point in history?.Points ?? [])
                     {
-                        historyRequests.Add((pool.Name, pool.MaxSlots, entry.ClientId, entry.ClientName));
-                    }
-                }
-
-                // Fetch all histories in parallel
-                var historyTasks = historyRequests.Select(r =>
-                    StatsService.GetHistoricalUsageAsync(
-                        "ResourcePool",
-                        visiblePools.First(p => p.Name == r.PoolName).ResourcePoolId,
-                        r.ClientId, from, now, "FiveMinute")).ToList();
-                var recentTasks = historyRequests.Select(r =>
-                    StatsService.GetHistoricalUsageAsync(
-                        "ResourcePool",
-                        visiblePools.First(p => p.Name == r.PoolName).ResourcePoolId,
-                        r.ClientId, recentFrom, now, "FiveMinute")).ToList();
-
-                var histories = await Task.WhenAll(historyTasks);
-                var recents = await Task.WhenAll(recentTasks);
-
-                for (var i = 0; i < historyRequests.Count; i++)
-                {
-                    var request = historyRequests[i];
-                    foreach (var point in histories[i]?.Points ?? [])
-                    {
-                        var label = point.Timestamp.ToLocalTime().ToString("HH:mm");
+                        var label = _timeRange.FormatTimestamp(point.Timestamp);
                         if (!aggregated.ContainsKey(label))
                             aggregated[label] = 0;
                         aggregated[label] += (double)point.ActiveCount;
                     }
 
-                    var lastPoint = recents[i]?.Points.LastOrDefault();
-                    var active = (int)(lastPoint?.ActiveCount ?? 0);
-                    var denied = recents[i]?.Points.Sum(p => p.DeniedCount) ?? 0;
-                    rows.Add(new AllocationClientRow(
-                        request.ClientId, request.ClientName, request.PoolName,
-                        active, request.MaxSlots, denied));
+                    foreach (var entry in breakdown?.Entries ?? [])
+                    {
+                        var clientMax = GetClientPoolMaxSlots(entry.ClientId, pool.ResourcePoolId, pool.MaxSlots);
+                        var lastPoint = recent?.Points.LastOrDefault();
+                        var active = (int)(lastPoint?.ActiveCount ?? 0);
+                        var denied = recent?.Points.Sum(p => p.DeniedCount) ?? 0;
+                        rows.Add(new AllocationClientRow(
+                            entry.ClientId, entry.ClientName, pool.Name,
+                            active, clientMax, denied));
+                    }
                 }
 
                 var sortedPoints = aggregated
@@ -297,36 +341,36 @@
             }
             else
             {
-                for (var poolIdx = 0; poolIdx < visiblePools.Count; poolIdx++)
+                foreach (var pool in visiblePools)
                 {
-                    var pool = visiblePools[poolIdx];
-                    var entries = breakdowns[poolIdx]?.Entries ?? [];
+                    var breakdown = breakdowns.FirstOrDefault(b => b.TargetId == pool.ResourcePoolId);
+                    var entries = breakdown?.Entries ?? [];
 
-                    // Fetch all client histories for this pool in parallel
-                    var clientHistoryTasks = entries.Select(entry =>
+                    // Per-client histories for this specific pool
+                    var perClientHistoryTasks = entries.Select(entry =>
                         StatsService.GetHistoricalUsageAsync(
-                            "ResourcePool", pool.ResourcePoolId, entry.ClientId,
-                            from, now, "FiveMinute")).ToList();
-                    var clientRecentTasks = entries.Select(entry =>
+                            "ResourcePool", new[] { pool.ResourcePoolId }, entry.ClientId,
+                            from, now, granularity)).ToList();
+                    var perClientRecentTasks = entries.Select(entry =>
                         StatsService.GetHistoricalUsageAsync(
-                            "ResourcePool", pool.ResourcePoolId, entry.ClientId,
-                            recentFrom, now, "FiveMinute")).ToList();
+                            "ResourcePool", new[] { pool.ResourcePoolId }, entry.ClientId,
+                            recentFrom, recentTo, "FiveMinute")).ToList();
 
-                    var clientHistories = await Task.WhenAll(clientHistoryTasks);
-                    var clientRecents = await Task.WhenAll(clientRecentTasks);
+                    var perClientHistories = await Task.WhenAll(perClientHistoryTasks);
+                    var perClientRecents = await Task.WhenAll(perClientRecentTasks);
 
                     var clientAreas = new List<ClientAreaSeries>();
 
-                    // Collect the union of all timestamps across all clients
                     var allTimestampSet = new SortedSet<string>();
                     var rawPointsByClient = new List<Dictionary<string, double>>();
 
                     for (var i = 0; i < entries.Count; i++)
                     {
                         var lookup = new Dictionary<string, double>();
-                        foreach (var p in clientHistories[i]?.Points ?? [])
+                        var historyData = perClientHistories[i].FirstOrDefault();
+                        foreach (var p in historyData?.Points ?? [])
                         {
-                            var label = p.Timestamp.ToLocalTime().ToString("HH:mm");
+                            var label = _timeRange.FormatTimestamp(p.Timestamp);
                             allTimestampSet.Add(label);
                             lookup[label] = (double)p.ActiveCount;
                         }
@@ -345,13 +389,15 @@
 
                         clientAreas.Add(new ClientAreaSeries(entry.ClientId, entry.ClientName, points));
 
-                        var lastPoint = clientRecents[i]?.Points.LastOrDefault();
+                        var recentData = perClientRecents[i].FirstOrDefault();
+                        var lastPoint = recentData?.Points.LastOrDefault();
                         var active = (int)(lastPoint?.ActiveCount ?? 0);
-                        var denied = clientRecents[i]?.Points.Sum(p => p.DeniedCount) ?? 0;
+                        var denied = recentData?.Points.Sum(p => p.DeniedCount) ?? 0;
 
+                        var clientMax = GetClientPoolMaxSlots(entry.ClientId, pool.ResourcePoolId, pool.MaxSlots);
                         rows.Add(new AllocationClientRow(
                             entry.ClientId, entry.ClientName, pool.Name,
-                            active, pool.MaxSlots, denied));
+                            active, clientMax, denied));
                     }
 
                     var capPoints = allTimestamps
@@ -383,9 +429,23 @@
         }
     }
 
-    public void Dispose()
+    private int GetClientPoolMaxSlots(string clientId, string poolId, int poolMaxSlots)
+    {
+        var client = _allClients.FirstOrDefault(c => c.Id == clientId);
+        if (client?.ResourcePools.TryGetValue(poolId, out var settings) == true)
+            return (int)settings.MaxSlots;
+        return poolMaxSlots;
+    }
+
+    public async ValueTask DisposeAsync()
     {
         _timer?.Dispose();
+        if (_visibilityModule is not null)
+        {
+            await _visibilityModule.InvokeVoidAsync("unregister");
+            await _visibilityModule.DisposeAsync();
+        }
+        _dotNetRef?.Dispose();
     }
 
     private record NamedItem(string Id, string Name);

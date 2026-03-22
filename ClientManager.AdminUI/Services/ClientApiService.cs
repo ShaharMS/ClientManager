@@ -6,6 +6,9 @@ namespace ClientManager.AdminUI.Services;
 public class ClientApiService
 {
     private readonly HttpClient _httpClient;
+    private static readonly TimeSpan CacheTtl = TimeSpan.FromSeconds(30);
+    private List<ClientConfiguration>? _cachedAll;
+    private DateTime _cachedAllAt;
 
     public ClientApiService(IHttpClientFactory httpClientFactory)
     {
@@ -14,7 +17,12 @@ public class ClientApiService
 
     public async Task<List<ClientConfiguration>> GetAllAsync()
     {
-        return await _httpClient.GetFromJsonAsync<List<ClientConfiguration>>("api/clients") ?? [];
+        if (_cachedAll is not null && DateTime.UtcNow - _cachedAllAt < CacheTtl)
+            return _cachedAll;
+
+        _cachedAll = await _httpClient.GetFromJsonAsync<List<ClientConfiguration>>("api/clients") ?? [];
+        _cachedAllAt = DateTime.UtcNow;
+        return _cachedAll;
     }
 
     public async Task<ClientConfiguration?> GetByIdAsync(string id)
@@ -26,17 +34,20 @@ public class ClientApiService
     {
         var response = await _httpClient.PostAsJsonAsync("api/clients", config);
         response.EnsureSuccessStatusCode();
+        _cachedAll = null;
     }
 
     public async Task UpdateAsync(string id, ClientConfiguration config)
     {
         var response = await _httpClient.PutAsJsonAsync($"api/clients/{id}", config);
         response.EnsureSuccessStatusCode();
+        _cachedAll = null;
     }
 
     public async Task DeleteAsync(string id)
     {
         var response = await _httpClient.DeleteAsync($"api/clients/{id}");
         response.EnsureSuccessStatusCode();
+        _cachedAll = null;
     }
 }

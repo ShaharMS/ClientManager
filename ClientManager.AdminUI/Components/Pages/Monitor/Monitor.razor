@@ -4,22 +4,12 @@
 @inject ClientApiService ClientService
 @inject GlobalRateLimitApiService RateLimitApi
 @inject EntityColorService Colors
-@implements IDisposable
+@inject IJSRuntime JS
+@implements IAsyncDisposable
 
 <div class="cm-page-header">
     <h1>Monitor</h1>
     <p>Real-time request analytics across services and clients.</p>
-</div>
-
-<div class="cm-monitor__filters">
-    <RadzenDropDown TValue="string" @bind-Value="_selectedServiceId"
-        Data="@_serviceOptions" TextProperty="Name" ValueProperty="Id"
-        Placeholder="Select service..." Style="width: 220px;"
-        Change="@OnFilterChanged" />
-    <RadzenDropDown @bind-Value="_selectedClientIds" Multiple="true"
-        Data="@_clientOptions" TextProperty="Name" ValueProperty="Id"
-        Placeholder="All clients" Style="width: 200px;"
-        Change="@OnFilterChanged" />
 </div>
 
 @if (_error is not null)
@@ -33,13 +23,27 @@
 }
 
 <div class="cm-monitor__chart-card">
+    <div class="cm-dashboard__chart-header">
+        <div class="cm-dashboard__filters">
+            <RadzenDropDown TValue="string" @bind-Value="_selectedServiceId"
+                Data="@_serviceOptions" TextProperty="Name" ValueProperty="Id"
+                Placeholder="Select service..." Style="width: 220px;"
+                Change="@OnFilterChanged" />
+            <RadzenDropDown @bind-Value="_selectedClientIds" Multiple="true"
+                Data="@_clientOptions" TextProperty="Name" ValueProperty="Id"
+                Placeholder="All clients" Style="width: 200px;"
+                Change="@OnFilterChanged" />
+        </div>
+        <div style="display: flex; gap: var(--space-sm); align-items: center;">
+            <PollingIntervalSelector OnIntervalChanged="OnPollingIntervalChanged" />
+            <TimeRangeSelector OnRangeChanged="OnTimeRangeChanged" />
+        </div>
+    </div>
     @if (_targetCharts.Count > 0)
     {
         @foreach (var targetChart in _targetCharts)
         {
-            <div class="cm-dashboard__chart-header">
-                <span class="cm-dashboard__chart-title">@targetChart.TargetName — Usage</span>
-            </div>
+            <span class="cm-dashboard__chart-title">@targetChart.TargetName — Usage</span>
             <RadzenChart Style="height: 400px;">
                 @foreach (var clientArea in targetChart.ClientSeries)
                 {
@@ -61,7 +65,8 @@
     }
     else
     {
-        <ChartSkeleton />
+        <SkeletonBlock CssClass="cm-skeleton--heading" />
+        <SkeletonBlock CssClass="cm-skeleton--chart" />
     }
 </div>
 
@@ -163,10 +168,16 @@
     private bool _loading;
     private string? _error;
     private Timer? _timer;
+    private TimeSpan _pollingInterval = TimeSpan.FromSeconds(10);
+    private bool _isVisible = true;
+    private IJSObjectReference? _visibilityModule;
+    private DotNetObjectReference<Monitor>? _dotNetRef;
 
     private List<TargetChartData> _targetCharts = [];
     private List<MonitorClientRow> _clientRows = [];
     private List<ServiceSummaryRow> _allServiceStats = [];
+
+    private TimeRangePreset _timeRange = TimeRangePreset.Default;
 
     protected override async Task OnInitializedAsync()
     {
@@ -181,19 +192,65 @@
             _serviceOptions = new List<NamedItem> { new(AllServicesId, "All Services") }
                 .Concat(_allServices.Select(s => new NamedItem(s.Id, s.Name))).ToList();
             _selectedServiceId = AllServicesId;
-
-            await LoadDataAsync();
         }
         catch (HttpRequestException ex)
         {
             _error = $"Unable to connect to the API: {ex.Message}";
         }
 
+        StartTimer();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _visibilityModule = await JS.InvokeAsync<IJSObjectReference>(
+                "import", "./js/visibility.js");
+            _dotNetRef = DotNetObjectReference.Create(this);
+            await _visibilityModule.InvokeVoidAsync("register", _dotNetRef);
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnVisibilityChanged(bool visible)
+    {
+        _isVisible = visible;
+        if (visible)
+        {
+            await LoadDataAsync();
+            await InvokeAsync(StateHasChanged);
+            StartTimer();
+        }
+        else
+        {
+            _timer?.Dispose();
+            _timer = null;
+        }
+    }
+
+    private void StartTimer()
+    {
+        _timer?.Dispose();
         _timer = new Timer(async _ =>
         {
             await LoadDataAsync();
             await InvokeAsync(StateHasChanged);
-        }, null, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
+        }, null, _pollingInterval, _pollingInterval);
+    }
+
+    private Task OnPollingIntervalChanged(PollingIntervalPreset preset)
+    {
+        _pollingInterval = preset.Interval;
+        StartTimer();
+        return Task.CompletedTask;
+    }
+
+    private async Task OnTimeRangeChanged(TimeRangePreset preset)
+    {
+        _timeRange = preset;
+        await LoadDataAsync();
+        StateHasChanged();
     }
 
     private async Task OnFilterChanged()
@@ -210,7 +267,7 @@
         try
         {
             var now = DateTime.UtcNow;
-            var from = now.AddHours(-1);
+            var from = _timeRange.GetFrom();
             var recentFrom = now.AddMinutes(-5);
 
             var rateLimits = await RateLimitApi.GetByTargetTypeAsync(
@@ -220,12 +277,30 @@
                 ? _allServices
                 : _allServices.Where(s => s.Id == _selectedServiceId).ToList();
 
-            // Fetch all breakdowns in parallel
-            var breakdownTasks = visibleServices.Select(service =>
-                StatsService.GetClientUsageBreakdownAsync(
-                    "Service", service.Id, _selectedClientIds))
+            var visibleServiceIds = visibleServices.Select(s => s.Id).ToList();
+
+            // Batch: one call for all breakdowns
+            var breakdowns = await StatsService.GetClientUsageBreakdownAsync(
+                "Service", visibleServiceIds, _selectedClientIds,
+                from, _timeRange.GetTo(), _timeRange.Granularity);
+
+            // Collect all client IDs that appear in breakdowns for history fetch
+            var allClientIds = breakdowns
+                .SelectMany(b => b.Entries.Select(e => e.ClientId))
+                .Distinct()
                 .ToList();
-            var breakdowns = await Task.WhenAll(breakdownTasks);
+
+            // Batch: one call for all histories across all visible services
+            var allHistories = allClientIds.Count > 0
+                ? await StatsService.GetHistoricalUsageAsync(
+                    "Service", visibleServiceIds, null, from, now, _timeRange.Granularity)
+                : [];
+
+            // Batch: one call for recent data across all visible services
+            var allRecents = allClientIds.Count > 0
+                ? await StatsService.GetHistoricalUsageAsync(
+                    "Service", visibleServiceIds, null, recentFrom, now, "FiveMinute")
+                : [];
 
             var charts = new List<TargetChartData>();
             var rows = new List<MonitorClientRow>();
@@ -235,45 +310,32 @@
                 var aggregated = new Dictionary<string, double>();
                 var totalCap = 0;
 
-                var historyRequests = new List<(string ServiceName, int Cap, string ClientId, string ClientName, string ServiceId)>();
-                for (var i = 0; i < visibleServices.Count; i++)
+                foreach (var service in visibleServices)
                 {
-                    var service = visibleServices[i];
                     var cap = rateLimits
                         .FirstOrDefault(r => r.TargetId == service.Id)?.MaxRequests ?? 0;
                     totalCap += cap;
-                    foreach (var entry in breakdowns[i]?.Entries ?? [])
+
+                    var breakdown = breakdowns.FirstOrDefault(b => b.TargetId == service.Id);
+                    var history = allHistories.FirstOrDefault(h => h.TargetId == service.Id);
+                    var recent = allRecents.FirstOrDefault(h => h.TargetId == service.Id);
+
+                    foreach (var point in history?.Points ?? [])
                     {
-                        historyRequests.Add((service.Name, cap, entry.ClientId, entry.ClientName, service.Id));
-                    }
-                }
-
-                var historyTasks = historyRequests.Select(r =>
-                    StatsService.GetHistoricalUsageAsync(
-                        "Service", r.ServiceId, r.ClientId, from, now, "FiveMinute")).ToList();
-                var recentTasks = historyRequests.Select(r =>
-                    StatsService.GetHistoricalUsageAsync(
-                        "Service", r.ServiceId, r.ClientId, recentFrom, now, "FiveMinute")).ToList();
-
-                var histories = await Task.WhenAll(historyTasks);
-                var recents = await Task.WhenAll(recentTasks);
-
-                for (var i = 0; i < historyRequests.Count; i++)
-                {
-                    var request = historyRequests[i];
-                    foreach (var point in histories[i]?.Points ?? [])
-                    {
-                        var label = point.Timestamp.ToLocalTime().ToString("HH:mm");
+                        var label = _timeRange.FormatTimestamp(point.Timestamp.ToLocalTime());
                         if (!aggregated.ContainsKey(label))
                             aggregated[label] = 0;
                         aggregated[label] += (double)point.GrantedCount;
                     }
 
-                    var granted = recents[i]?.Points.Sum(p => p.GrantedCount) ?? 0;
-                    var denied = recents[i]?.Points.Sum(p => p.DeniedCount) ?? 0;
-                    rows.Add(new MonitorClientRow(
-                        request.ClientId, request.ClientName, request.ServiceName,
-                        granted, denied, request.Cap));
+                    foreach (var entry in breakdown?.Entries ?? [])
+                    {
+                        var granted = recent?.Points.Sum(p => p.GrantedCount) ?? 0;
+                        var denied = recent?.Points.Sum(p => p.DeniedCount) ?? 0;
+                        rows.Add(new MonitorClientRow(
+                            entry.ClientId, entry.ClientName, service.Name,
+                            granted, denied, cap));
+                    }
                 }
 
                 var sortedPoints = aggregated
@@ -291,38 +353,49 @@
             }
             else
             {
-                for (var svcIdx = 0; svcIdx < visibleServices.Count; svcIdx++)
+                foreach (var service in visibleServices)
                 {
-                    var service = visibleServices[svcIdx];
-                    var entries = breakdowns[svcIdx]?.Entries ?? [];
-
                     var cap = rateLimits
                         .FirstOrDefault(r => r.TargetId == service.Id)?.MaxRequests ?? 0;
 
-                    var clientHistoryTasks = entries.Select(entry =>
+                    var breakdown = breakdowns.FirstOrDefault(b => b.TargetId == service.Id);
+                    var entries = breakdown?.Entries ?? [];
+
+                    // Per-client histories: fetch one batch per service with client filter
+                    var clientHistories = entries.Count > 0
+                        ? await StatsService.GetHistoricalUsageAsync(
+                            "Service", new[] { service.Id }, null, from, now, _timeRange.Granularity)
+                        : [];
+                    var clientRecents = entries.Count > 0
+                        ? await StatsService.GetHistoricalUsageAsync(
+                            "Service", new[] { service.Id }, null, recentFrom, now, "FiveMinute")
+                        : [];
+
+                    // For per-client chart data, we need individual client histories
+                    var perClientHistoryTasks = entries.Select(entry =>
                         StatsService.GetHistoricalUsageAsync(
-                            "Service", service.Id, entry.ClientId,
-                            from, now, "FiveMinute")).ToList();
-                    var clientRecentTasks = entries.Select(entry =>
+                            "Service", new[] { service.Id }, entry.ClientId,
+                            from, now, _timeRange.Granularity)).ToList();
+                    var perClientRecentTasks = entries.Select(entry =>
                         StatsService.GetHistoricalUsageAsync(
-                            "Service", service.Id, entry.ClientId,
+                            "Service", new[] { service.Id }, entry.ClientId,
                             recentFrom, now, "FiveMinute")).ToList();
 
-                    var clientHistories = await Task.WhenAll(clientHistoryTasks);
-                    var clientRecents = await Task.WhenAll(clientRecentTasks);
+                    var perClientHistories = await Task.WhenAll(perClientHistoryTasks);
+                    var perClientRecents = await Task.WhenAll(perClientRecentTasks);
 
                     var clientAreas = new List<ClientAreaSeries>();
 
-                    // Collect the union of all timestamps across all clients
                     var allTimestampSet = new SortedSet<string>();
                     var rawPointsByClient = new List<Dictionary<string, double>>();
 
                     for (var i = 0; i < entries.Count; i++)
                     {
                         var lookup = new Dictionary<string, double>();
-                        foreach (var p in clientHistories[i]?.Points ?? [])
+                        var historyData = perClientHistories[i].FirstOrDefault();
+                        foreach (var p in historyData?.Points ?? [])
                         {
-                            var label = p.Timestamp.ToLocalTime().ToString("HH:mm");
+                            var label = _timeRange.FormatTimestamp(p.Timestamp.ToLocalTime());
                             allTimestampSet.Add(label);
                             lookup[label] = (double)p.GrantedCount;
                         }
@@ -341,15 +414,16 @@
 
                         clientAreas.Add(new ClientAreaSeries(entry.ClientId, entry.ClientName, points));
 
-                        var granted = clientRecents[i]?.Points.Sum(p => p.GrantedCount) ?? 0;
-                        var denied = clientRecents[i]?.Points.Sum(p => p.DeniedCount) ?? 0;
+                        var recentData = perClientRecents[i].FirstOrDefault();
+                        var granted = recentData?.Points.Sum(p => p.GrantedCount) ?? 0;
+                        var denied = recentData?.Points.Sum(p => p.DeniedCount) ?? 0;
 
                         rows.Add(new MonitorClientRow(
                             entry.ClientId, entry.ClientName, service.Name,
                             granted, denied, cap));
                     }
 
-                    var capPoints = allTimestamps
+                    var chartCapPoints = allTimestamps
                         .Select(t => new ChartPoint(t, cap))
                         .ToList();
 
@@ -364,24 +438,23 @@
                         a.Points.Select(p => new ChartPoint(p.Label, p.Value)).ToList()
                     )).ToList();
 
-                    charts.Add(new TargetChartData(service.Name, clientAreas, capPoints));
+                    charts.Add(new TargetChartData(service.Name, clientAreas, chartCapPoints));
                 }
             }
 
             _targetCharts = charts;
             _clientRows = rows;
 
-            // All-services summary (always unfiltered) — fetch in parallel
-            var summaryBreakdownTasks = _allServices.Select(service =>
-                StatsService.GetClientUsageBreakdownAsync("Service", service.Id, null))
-                .ToList();
-            var summaryBreakdowns = await Task.WhenAll(summaryBreakdownTasks);
+            // All-services summary — one batch call for all services
+            var allServiceIds = _allServices.Select(s => s.Id).ToList();
+            var summaryBreakdowns = await StatsService.GetClientUsageBreakdownAsync(
+                "Service", allServiceIds, null);
 
             var allServiceBreakdowns = new List<ServiceSummaryRow>();
-            for (var i = 0; i < _allServices.Count; i++)
+            foreach (var service in _allServices)
             {
-                var service = _allServices[i];
-                var totalUsage = (long)(summaryBreakdowns[i]?.Entries.Sum(e => e.Value) ?? 0);
+                var bd = summaryBreakdowns.FirstOrDefault(b => b.TargetId == service.Id);
+                var totalUsage = (long)(bd?.Entries.Sum(e => e.Value) ?? 0);
                 var cap = rateLimits
                     .FirstOrDefault(r => r.TargetId == service.Id)?.MaxRequests ?? 0;
                 allServiceBreakdowns.Add(new ServiceSummaryRow(
@@ -397,9 +470,15 @@
         }
     }
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
         _timer?.Dispose();
+        if (_visibilityModule is not null)
+        {
+            await _visibilityModule.InvokeVoidAsync("unregister");
+            await _visibilityModule.DisposeAsync();
+        }
+        _dotNetRef?.Dispose();
     }
 
     private record NamedItem(string Id, string Name);

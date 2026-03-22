@@ -6,6 +6,8 @@
 @inject GlobalRateLimitApiService RateLimitApi
 @inject EntityColorService Colors
 @inject NavigationManager Nav
+@inject IJSRuntime JS
+@implements IAsyncDisposable
 
 <div class="cm-page-header">
     <h1>Welcome</h1>
@@ -68,7 +70,6 @@ else
     <div class="cm-dashboard__charts">
         <div class="cm-dashboard__chart-card">
             <div class="cm-dashboard__chart-header">
-                <span class="cm-dashboard__chart-title">Usage Over Time</span>
                 <div class="cm-dashboard__filters">
                     <RadzenDropDown @bind-Value="_selectedFilterType"
                         Data="@_filterTypes" TextProperty="Label" ValueProperty="Value"
@@ -81,7 +82,12 @@ else
                         Placeholder="All clients" Style="width:200px;"
                         Change="@OnFilterChanged" />
                 </div>
+                <div style="display: flex; gap: var(--space-sm); align-items: center;">
+                    <PollingIntervalSelector OnIntervalChanged="OnPollingIntervalChanged" />
+                    <TimeRangeSelector OnRangeChanged="OnTimeRangeChanged" />
+                </div>
             </div>
+            <span class="cm-dashboard__chart-title">Usage Over Time</span>
             <RadzenChart Style="height: 400px;">
                 @foreach (var targetChart in _targetCharts)
                 {
@@ -108,12 +114,21 @@ else
             <div class="cm-dashboard__chart-header">
                 <span class="cm-dashboard__chart-title">Usage Per Client</span>
             </div>
-            <RadzenChart Style="height: 300px;">
-                <RadzenDonutSeries Data="@_perClientUsage" CategoryProperty="ClientName"
-                    ValueProperty="Value"
-                    Fills="@_perClientUsage.Select(p => Colors.GetColor(p.ClientId)).ToArray()" />
-                <RadzenLegend Position="LegendPosition.Right" />
-            </RadzenChart>
+            @if (_perClientUsage.Count > 0)
+            {
+                <RadzenChart Style="height: 300px;">
+                    <RadzenDonutSeries Data="@_perClientUsage" CategoryProperty="ClientName"
+                        ValueProperty="Value"
+                        Fills="@_perClientUsage.Select(p => Colors.GetColor(p.ClientId)).ToArray()" />
+                    <RadzenLegend Position="LegendPosition.Right" />
+                </RadzenChart>
+            }
+            else
+            {
+                <div style="height: 300px; display: flex; align-items: center; justify-content: center; color: var(--color-text-muted);">
+                    No usage data available
+                </div>
+            }
         </div>
     </div>
 
@@ -152,6 +167,13 @@ else
     private IEnumerable<string>? _selectedClientIds;
     private string? _tableSearch;
 
+    // Polling state
+    private Timer? _timer;
+    private TimeSpan _pollingInterval = TimeSpan.FromSeconds(10);
+    private bool _isVisible = true;
+    private IJSObjectReference? _visibilityModule;
+    private DotNetObjectReference<Dashboard>? _dotNetRef;
+
     private List<FilterOption> _filterTypes = new()
     {
         new("Service", "Service"),
@@ -165,6 +187,8 @@ else
     private List<TargetChartData> _targetCharts = new();
     private List<ClientUsagePoint> _perClientUsage = new();
 
+    private TimeRangePreset _timeRange = TimeRangePreset.Default;
+
     private const string AllTargetsId = "__all__";
 
     private List<ClientSummaryRow> _clientSummaries = new();
@@ -175,6 +199,7 @@ else
         try
         {
             _overview = await StatsService.GetOverviewAsync();
+            StartTimer();
 
             var services = await ServiceService.GetAllAsync();
             var pools = await PoolService.GetAllAsync();
@@ -209,11 +234,10 @@ else
             }
             _filteredClientSummaries = _clientSummaries;
 
-            // Load initial chart data if a target is available
+            // Select first target; chart load is triggered by TimeRangeSelector
             if (_filterTargets.Count > 0)
             {
                 _selectedTargetId = _filterTargets[0].Id;
-                await LoadChartDataAsync();
             }
         }
         catch (HttpRequestException ex)
@@ -224,6 +248,12 @@ else
         {
             _loading = false;
         }
+    }
+
+    private async Task OnTimeRangeChanged(TimeRangePreset preset)
+    {
+        _timeRange = preset;
+        await LoadChartDataAsync();
     }
 
     private async Task OnFilterChanged(object? _)
@@ -252,64 +282,61 @@ else
 
         try
         {
-            _targetCharts.Clear();
+            var newCharts = new List<TargetChartData>();
+            List<ClientUsagePoint> newDonut;
 
             if (_selectedTargetId == AllTargetsId)
             {
-                await LoadAllTargetsChartDataAsync();
-            }
-            else
-            {
-                await LoadSingleTargetChartDataAsync();
-            }
+                await LoadAllTargetsChartDataAsync(newCharts);
 
-            // Donut: aggregate across all visible targets when "All" is selected
-            if (_selectedTargetId == AllTargetsId)
-            {
-                var allEntries = new Dictionary<string, (string Name, double Value)>();
+                // For "All" mode, derive per-client donut from historical API (same path as line chart)
+                var donutFrom = _timeRange.GetFrom();
+                var donutTo = _timeRange.GetTo();
+                var isRateBased = _selectedFilterType == "Service";
+
                 var targets = _selectedFilterType == "Service"
                     ? _allServices.Where(t => t.Id != AllTargetsId)
                     : _allPools.Where(t => t.Id != AllTargetsId);
+                var targetIds = targets.Select(t => t.Id).ToList();
 
-                foreach (var target in targets)
+                var donutClients = _selectedClientIds?.Any() == true
+                    ? _clients.Where(c => _selectedClientIds.Contains(c.Id)).ToList()
+                    : _clients;
+
+                var perClientTasks = donutClients.Select(client =>
+                    StatsService.GetHistoricalUsageAsync(
+                        _selectedFilterType, targetIds, client.Id, donutFrom, donutTo, _timeRange.Granularity));
+                var perClientResults = await Task.WhenAll(perClientTasks);
+
+                newDonut = new List<ClientUsagePoint>();
+                for (var i = 0; i < donutClients.Count; i++)
                 {
-                    var breakdown = await StatsService.GetClientUsageBreakdownAsync(
-                        _selectedFilterType, target.Id, _selectedClientIds);
-                    if (breakdown?.Entries is null) continue;
-
-                    foreach (var entry in breakdown.Entries.Where(e => e.Value > 0))
-                    {
-                        if (allEntries.TryGetValue(entry.ClientId, out var existing))
-                            allEntries[entry.ClientId] = (existing.Name, existing.Value + entry.Value);
-                        else
-                            allEntries[entry.ClientId] = (entry.ClientName, entry.Value);
-                    }
+                    var client = donutClients[i];
+                    var totalValue = perClientResults[i]
+                        .SelectMany(h => h.Points)
+                        .Sum(p => isRateBased ? (double)p.GrantedCount : (double)p.ActiveCount);
+                    if (totalValue > 0)
+                        newDonut.Add(new ClientUsagePoint(client.Id, client.Name, totalValue));
                 }
-                _perClientUsage = allEntries
-                    .Select(e => new ClientUsagePoint(e.Key, e.Value.Name, e.Value.Value)).ToList();
             }
             else
             {
-                var breakdown = await StatsService.GetClientUsageBreakdownAsync(
-                    _selectedFilterType, _selectedTargetId, _selectedClientIds);
-                if (breakdown is not null)
-                {
-                    _perClientUsage = breakdown.Entries
-                        .Where(e => e.Value > 0)
-                        .Select(e => new ClientUsagePoint(e.ClientId, e.ClientName, e.Value)).ToList();
-                }
+                newDonut = await LoadSingleTargetChartDataAsync(newCharts);
             }
 
-            if (_perClientUsage.Count > ChartAggregator.DefaultTopN)
+            if (newDonut.Count > ChartAggregator.DefaultTopN)
             {
-                var ranked = _perClientUsage
+                var ranked = newDonut
                     .OrderByDescending(p => p.Value)
                     .ToList();
                 var top = ranked.Take(ChartAggregator.DefaultTopN).ToList();
                 var othersValue = ranked.Skip(ChartAggregator.DefaultTopN).Sum(p => p.Value);
                 top.Add(new ClientUsagePoint(ChartAggregator.OthersId, ChartAggregator.OthersLabel, othersValue));
-                _perClientUsage = top;
+                newDonut = top;
             }
+
+            _targetCharts = newCharts;
+            _perClientUsage = newDonut;
         }
         catch (HttpRequestException)
         {
@@ -317,66 +344,104 @@ else
         }
     }
 
-    private async Task LoadSingleTargetChartDataAsync()
+    private async Task<List<ClientUsagePoint>> LoadSingleTargetChartDataAsync(List<TargetChartData> charts)
     {
-        var now = DateTime.UtcNow;
-        var from = now.AddHours(-1);
+        var from = _timeRange.GetFrom();
+        var now = _timeRange.GetTo();
+        var isRateBased = _selectedFilterType == "Service";
 
-        var breakdown = await StatsService.GetClientUsageBreakdownAsync(
-            _selectedFilterType, _selectedTargetId!, _selectedClientIds);
-        var entries = breakdown?.Entries ?? [];
+        // Use _clients list directly for client discovery (reliable path)
+        var clientsToQuery = _selectedClientIds?.Any() == true
+            ? _clients.Where(c => _selectedClientIds.Contains(c.Id)).ToList()
+            : _clients;
 
-        int cap = 0;
-        if (_selectedFilterType == "Service")
+        // Get cap and window for scaling
+        double baseCap = 0;
+        TimeSpan? rateWindow = null;
+
+        if (isRateBased)
         {
-            var rateLimits = await RateLimitApi.GetByTargetTypeAsync(
-                GlobalRateLimitTarget.Service);
-            cap = rateLimits.FirstOrDefault(r => r.TargetId == _selectedTargetId)?.MaxRequests ?? 0;
+            var rateLimits = await RateLimitApi.GetByTargetTypeAsync(GlobalRateLimitTarget.Service);
+            var limit = rateLimits.FirstOrDefault(r => r.TargetId == _selectedTargetId);
+            if (limit is not null)
+            {
+                baseCap = limit.MaxRequests;
+                rateWindow = limit.Window;
+            }
         }
         else
         {
             var pools = await PoolService.GetAllAsync();
-            cap = (int)(pools.FirstOrDefault(p => p.Id == _selectedTargetId)?.MaxSlots ?? 0);
+            baseCap = pools.FirstOrDefault(p => p.Id == _selectedTargetId)?.MaxSlots ?? 0;
         }
 
-        var clientHistoryTasks = entries.Select(entry =>
+        // Fetch per-client histories using the reliable historical API
+        var perClientHistoryTasks = clientsToQuery.Select(client =>
             StatsService.GetHistoricalUsageAsync(
-                _selectedFilterType, _selectedTargetId!, entry.ClientId,
-                from, now, "FiveMinute")).ToList();
-        var clientHistories = await Task.WhenAll(clientHistoryTasks);
+                _selectedFilterType, new[] { _selectedTargetId! }, client.Id,
+                from, now, _timeRange.Granularity)).ToList();
+        var perClientHistories = await Task.WhenAll(perClientHistoryTasks);
 
-        var clientAreas = new List<ClientAreaSeries>();
-        var allTimestampSet = new SortedSet<string>();
-        var rawPointsByClient = new List<Dictionary<string, double>>();
+        // Aggregate each client's data to 12 buckets (skip clients with no data)
+        var clientAggregations = new Dictionary<string, (NamedItem Client, ChartBucketAggregator.AggregationResult Result)>();
 
-        for (var i = 0; i < entries.Count; i++)
+        // Always generate bucket structure for the time range (cap line needs it even with no data)
+        var emptyAggregation = ChartBucketAggregator.Aggregate([], from, now);
+        var bucketDuration = emptyAggregation.BucketDuration;
+
+        for (var i = 0; i < clientsToQuery.Count; i++)
         {
-            var lookup = new Dictionary<string, double>();
-            foreach (var p in clientHistories[i]?.Points ?? [])
-            {
-                var label = p.Timestamp.ToLocalTime().ToString("HH:mm");
-                allTimestampSet.Add(label);
-                lookup[label] = _selectedFilterType == "Service"
-                    ? (double)p.GrantedCount : (double)p.ActiveCount;
-            }
-            rawPointsByClient.Add(lookup);
-        }
-
-        var allTimestamps = allTimestampSet.ToList();
-        for (var i = 0; i < entries.Count; i++)
-        {
-            var entry = entries[i];
-            var lookup = rawPointsByClient[i];
-            var points = allTimestamps
-                .Select(t => new TimeSeriesPoint(t, lookup.GetValueOrDefault(t, 0)))
+            var client = clientsToQuery[i];
+            var clientHistory = perClientHistories[i].FirstOrDefault();
+            var rawPoints = (clientHistory?.Points ?? [])
+                .Select(p => new ChartBucketAggregator.RawPoint(
+                    p.Timestamp,
+                    isRateBased ? (double)p.GrantedCount : (double)p.ActiveCount))
                 .ToList();
-            clientAreas.Add(new ClientAreaSeries(entry.ClientId, entry.ClientName, points));
+
+            if (rawPoints.Count == 0) continue;
+
+            var aggregation = ChartBucketAggregator.Aggregate(rawPoints, from, now);
+            clientAggregations[client.Id] = (client, aggregation);
         }
 
-        var capPoints = allTimestamps
-            .Select(t => new TimeSeriesPoint(t, cap))
+        // Build common bucket labels (use first client's aggregation, or empty buckets for cap line)
+        var referenceBuckets = clientAggregations.Values.FirstOrDefault().Result?.Buckets
+            ?? emptyAggregation.Buckets;
+        var bucketLabels = referenceBuckets.Select(b => b.Label).ToList();
+
+        // Build client area series
+        var clientAreas = new List<ClientAreaSeries>();
+        foreach (var (clientId, (client, agg)) in clientAggregations)
+        {
+            var points = agg.Buckets
+                .Select(b => new TimeSeriesPoint(b.Label, b.Value))
+                .ToList();
+            clientAreas.Add(new ClientAreaSeries(clientId, client.Name, points));
+        }
+
+        // Scale cap for rate-based limits
+        var scaledCap = baseCap;
+        if (isRateBased && rateWindow.HasValue && rateWindow.Value > TimeSpan.Zero && bucketDuration > TimeSpan.Zero)
+        {
+            var scaleFactor = bucketDuration.TotalSeconds / rateWindow.Value.TotalSeconds;
+            scaledCap = baseCap * scaleFactor;
+        }
+
+        var capPoints = bucketLabels
+            .Select(label => new TimeSeriesPoint(label, scaledCap))
             .ToList();
 
+        // Derive donut data from per-client aggregated values (no extra API call)
+        var donutData = new List<ClientUsagePoint>();
+        foreach (var (clientId, (client, agg)) in clientAggregations)
+        {
+            var totalValue = agg.Buckets.Sum(b => b.Value);
+            if (totalValue > 0)
+                donutData.Add(new ClientUsagePoint(clientId, client.Name, totalValue));
+        }
+
+        // Apply top-N client aggregation (limit to 10 clients + Others)
         var aggregatedAreas = ChartAggregator.Aggregate(
             clientAreas.Select(c => new ChartAggregator.AggregatedSeries(
                 c.ClientId, c.ClientName,
@@ -389,77 +454,85 @@ else
         )).ToList();
 
         var targetName = _filterTargets.FirstOrDefault(t => t.Id == _selectedTargetId)?.Name ?? "";
-        _targetCharts.Add(new TargetChartData(targetName, clientAreas, capPoints));
+        charts.Add(new TargetChartData(targetName, clientAreas, capPoints));
+
+        return donutData;
     }
 
-    private async Task LoadAllTargetsChartDataAsync()
+    private async Task LoadAllTargetsChartDataAsync(List<TargetChartData> charts)
     {
-        var now = DateTime.UtcNow;
-        var from = now.AddHours(-1);
+        var from = _timeRange.GetFrom();
+        var now = _timeRange.GetTo();
 
         var targets = (_selectedFilterType == "Service"
             ? _allServices : _allPools).Where(t => t.Id != AllTargetsId).ToList();
 
-        var breakdownTasks = targets.Select(target =>
-            StatsService.GetClientUsageBreakdownAsync(
-                _selectedFilterType, target.Id, _selectedClientIds)).ToList();
-        var breakdowns = await Task.WhenAll(breakdownTasks);
+        var targetIds = targets.Select(t => t.Id).ToList();
 
-        var aggregated = new Dictionary<string, double>();
-        var totalCap = 0;
-        var historyRequests = new List<(string TargetId, string ClientId, string ClientName)>();
+        // Collect cap info for scaling
+        double totalBaseCap = 0;
+        TimeSpan? rateWindow = null;
+        bool isRateBased = _selectedFilterType == "Service";
 
-        if (_selectedFilterType == "Service")
+        if (isRateBased)
         {
             var rateLimits = await RateLimitApi.GetByTargetTypeAsync(
                 GlobalRateLimitTarget.Service);
-            for (var i = 0; i < targets.Count; i++)
+            foreach (var target in targets)
             {
-                var cap = rateLimits.FirstOrDefault(r => r.TargetId == targets[i].Id)?.MaxRequests ?? 0;
-                totalCap += cap;
-                foreach (var entry in breakdowns[i]?.Entries ?? [])
-                    historyRequests.Add((targets[i].Id, entry.ClientId, entry.ClientName));
+                var limit = rateLimits.FirstOrDefault(r => r.TargetId == target.Id);
+                if (limit is not null)
+                {
+                    totalBaseCap += limit.MaxRequests;
+                    rateWindow ??= limit.Window; // Use first window as reference
+                }
             }
         }
         else
         {
             var pools = await PoolService.GetAllAsync();
-            for (var i = 0; i < targets.Count; i++)
+            foreach (var target in targets)
             {
-                var cap = (int)(pools.FirstOrDefault(p => p.Id == targets[i].Id)?.MaxSlots ?? 0);
-                totalCap += cap;
-                foreach (var entry in breakdowns[i]?.Entries ?? [])
-                    historyRequests.Add((targets[i].Id, entry.ClientId, entry.ClientName));
+                var cap = pools.FirstOrDefault(p => p.Id == target.Id)?.MaxSlots ?? 0;
+                totalBaseCap += cap;
             }
         }
 
-        var historyTasks = historyRequests.Select(r =>
-            StatsService.GetHistoricalUsageAsync(
-                _selectedFilterType, r.TargetId, r.ClientId, from, now, "FiveMinute")).ToList();
-        var histories = await Task.WhenAll(historyTasks);
+        // Batch history fetch for all targets
+        var histories = await StatsService.GetHistoricalUsageAsync(
+            _selectedFilterType, targetIds, null, from, now, _timeRange.Granularity);
 
-        for (var i = 0; i < historyRequests.Count; i++)
+        // Collect all raw points
+        var rawPoints = new List<ChartBucketAggregator.RawPoint>();
+        foreach (var history in histories)
         {
-            foreach (var point in histories[i]?.Points ?? [])
+            foreach (var point in history.Points)
             {
-                var label = point.Timestamp.ToLocalTime().ToString("HH:mm");
-                if (!aggregated.ContainsKey(label))
-                    aggregated[label] = 0;
-                aggregated[label] += _selectedFilterType == "Service"
-                    ? (double)point.GrantedCount : (double)point.ActiveCount;
+                var value = isRateBased ? (double)point.GrantedCount : (double)point.ActiveCount;
+                rawPoints.Add(new ChartBucketAggregator.RawPoint(point.Timestamp, value));
             }
         }
 
-        var sortedPoints = aggregated
-            .OrderBy(kv => kv.Key)
-            .Select(kv => new TimeSeriesPoint(kv.Key, kv.Value))
+        // Aggregate to 12 buckets
+        var aggregation = ChartBucketAggregator.Aggregate(rawPoints, from, now);
+
+        // Scale cap for rate-based limits
+        var scaledCap = totalBaseCap;
+        if (isRateBased && rateWindow.HasValue && rateWindow.Value > TimeSpan.Zero)
+        {
+            var scaleFactor = aggregation.BucketDuration.TotalSeconds / rateWindow.Value.TotalSeconds;
+            scaledCap = totalBaseCap * scaleFactor;
+        }
+
+        var sortedPoints = aggregation.Buckets
+            .Select(b => new TimeSeriesPoint(b.Label, b.Value))
             .ToList();
         var capPoints = sortedPoints
-            .Select(p => new TimeSeriesPoint(p.Label, totalCap))
+            .Select(p => new TimeSeriesPoint(p.Label, scaledCap))
             .ToList();
 
-        var label2 = _selectedFilterType == "Service" ? "All Services" : "All Resource Pools";
-        _targetCharts.Add(new TargetChartData(label2,
+        var label = _selectedFilterType == "Service" ? "All Services" : "All Resource Pools";
+        charts.Add(new TargetChartData(label,
             new List<ClientAreaSeries> { new("total", "Total", sortedPoints) },
             capPoints));
     }
@@ -487,4 +560,89 @@ else
     private record ClientUsagePoint(string ClientId, string ClientName, double Value);
     private record ClientSummaryRow(string ClientId, string DisplayName, int AccessibleServices,
         string TotalRateLimitCap, int AccessiblePools, string SlotsDisplay);
+
+    // --- Polling & Visibility ---
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _visibilityModule = await JS.InvokeAsync<IJSObjectReference>(
+                "import", "./js/visibility.js");
+            _dotNetRef = DotNetObjectReference.Create(this);
+            await _visibilityModule.InvokeVoidAsync("register", _dotNetRef);
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnVisibilityChanged(bool visible)
+    {
+        _isVisible = visible;
+        if (visible)
+        {
+            await RefreshDataAsync();
+            await InvokeAsync(StateHasChanged);
+            StartTimer();
+        }
+        else
+        {
+            _timer?.Dispose();
+            _timer = null;
+        }
+    }
+
+    private void StartTimer()
+    {
+        _timer?.Dispose();
+        _timer = new Timer(_ =>
+        {
+            if (!_isVisible) return;
+            _ = InvokeAsync(async () =>
+            {
+                await RefreshDataAsync();
+                StateHasChanged();
+            });
+        }, null, _pollingInterval, _pollingInterval);
+    }
+
+    private Task OnPollingIntervalChanged(PollingIntervalPreset preset)
+    {
+        _pollingInterval = preset.Interval;
+        StartTimer();
+        return Task.CompletedTask;
+    }
+
+    private async Task RefreshDataAsync()
+    {
+        try
+        {
+            // Refresh global usage stats
+            var globalUsage = await StatsService.GetGlobalUsageStatsAsync();
+            if (globalUsage is not null)
+            {
+                _globalUsage = globalUsage.RequestsPerMinute > 0
+                    ? globalUsage.RequestsPerMinute.ToString("N0")
+                    : "—";
+                _acquisitionPct = (int)Math.Round(globalUsage.AcquisitionPercentage);
+            }
+
+            // Refresh charts
+            await LoadChartDataAsync();
+        }
+        catch (HttpRequestException)
+        {
+            // Leave current data in place on error
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _timer?.Dispose();
+        if (_visibilityModule is not null)
+        {
+            await _visibilityModule.InvokeVoidAsync("unregister");
+            await _visibilityModule.DisposeAsync();
+        }
+        _dotNetRef?.Dispose();
+    }
 }
