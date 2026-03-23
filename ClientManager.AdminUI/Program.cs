@@ -1,8 +1,22 @@
 using ClientManager.AdminUI.Components;
 using ClientManager.AdminUI.Services;
+using ClientManager.Shared.Logging;
+using NLog;
+using NLog.Web;
 using Radzen;
 
+var logger = LogManager.Setup()
+    .LoadConfigurationFromAppSettings()
+    .GetCurrentClassLogger();
+
+try
+{
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Logging.ClearProviders();
+builder.Host.UseNLog();
+
+builder.Services.AddSingleton(typeof(IAppLogger<>), typeof(AppLogger<>));
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
@@ -48,3 +62,13 @@ app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
 app.Run();
+}
+catch (Exception exception)
+{
+    logger.Error(exception, "Stopped AdminUI because of exception");
+    throw;
+}
+finally
+{
+    LogManager.Shutdown();
+}

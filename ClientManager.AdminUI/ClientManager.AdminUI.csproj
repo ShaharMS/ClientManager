@@ -11,7 +11,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="NLog" Version="5.*" />
+    <PackageReference Include="NLog.Web.AspNetCore" Version="5.*" />
     <PackageReference Include="Radzen.Blazor" Version="10.0.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Update="nlog.config" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
