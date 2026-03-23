@@ -1,6 +1,7 @@
 using ClientManager.Api.Interfaces;
 using ClientManager.Api.Models.Responses;
-using ClientManager.DataAccess.Interfaces;
+using ClientManager.DataAccess.Databases.Interfaces;
+using ClientManager.DataAccess.Repositories.Interfaces;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Enums;
 using Microsoft.Extensions.Caching.Memory;
@@ -90,7 +91,7 @@ public class StatisticsService : IStatisticsService
             .GetAllByGranularityAsync(BucketGranularity.Second, cancellationToken);
 
         var recentSecondRequests = allSecondSnapshots
-            .Where(s => s.TargetType == GlobalRateLimitTarget.Service)
+            .Where(s => s.TargetType == TargetType.Service)
             .SelectMany(s => s.Buckets)
             .Where(b => b.Timestamp >= secondCutoff)
             .Sum(b => b.GrantedCount);
@@ -107,7 +108,7 @@ public class StatisticsService : IStatisticsService
                 .GetAllByGranularityAsync(BucketGranularity.FiveMinute, cancellationToken);
 
             var recentRequests = allServiceSnapshots
-                .Where(s => s.TargetType == GlobalRateLimitTarget.Service)
+                .Where(s => s.TargetType == TargetType.Service)
                 .SelectMany(s => s.Buckets)
                 .Where(b => b.Timestamp == latestBucketTime)
                 .Sum(b => b.GrantedCount);
@@ -124,7 +125,7 @@ public class StatisticsService : IStatisticsService
 
     /// <inheritdoc />
     public async Task<List<TargetUsageTimeSeriesResponse>> GetUsageTimeSeriesAsync(
-        GlobalRateLimitTarget targetType, IEnumerable<string> targetIds, IEnumerable<string>? clientIds,
+        TargetType targetType, IEnumerable<string> targetIds, IEnumerable<string>? clientIds,
         DateTime? from = null, DateTime? to = null, BucketGranularity? granularity = null,
         CancellationToken cancellationToken = default)
     {
@@ -140,10 +141,10 @@ public class StatisticsService : IStatisticsService
         {
             double capValue = 0;
 
-            if (targetType == GlobalRateLimitTarget.Service)
+            if (targetType == TargetType.Service)
             {
                 var globalLimit = await _globalRateLimitRepository.GetByTargetAsync(
-                    targetId, GlobalRateLimitTarget.Service, cancellationToken);
+                    targetId, TargetType.Service, cancellationToken);
                 capValue = globalLimit?.MaxRequests ?? 0;
             }
             else
@@ -188,7 +189,7 @@ public class StatisticsService : IStatisticsService
 
     /// <inheritdoc />
     public async Task<List<TargetClientUsageBreakdownResponse>> GetClientUsageBreakdownAsync(
-        GlobalRateLimitTarget targetType, IEnumerable<string> targetIds, IEnumerable<string>? clientIds,
+        TargetType targetType, IEnumerable<string> targetIds, IEnumerable<string>? clientIds,
         DateTime? from = null, DateTime? to = null, BucketGranularity? granularity = null,
         CancellationToken cancellationToken = default)
     {
@@ -235,7 +236,7 @@ public class StatisticsService : IStatisticsService
                         .LastOrDefault();
 
                     double count;
-                    count = targetType == GlobalRateLimitTarget.ResourcePool
+                    count = targetType == TargetType.ResourcePool
                         ? filteredBuckets.Select(b => (double)b.ActiveCount).DefaultIfEmpty(0).Max()
                         : grantedCount;
 
@@ -320,7 +321,7 @@ public class StatisticsService : IStatisticsService
     /// <inheritdoc />
     public async Task<List<HistoricalUsageResponse>> GetHistoricalUsageAsync(
         IEnumerable<string> targetIds,
-        GlobalRateLimitTarget targetType,
+        TargetType targetType,
         string? clientId,
         DateTime from,
         DateTime to,
@@ -358,7 +359,7 @@ public class StatisticsService : IStatisticsService
 
     private async Task<(List<HistoricalUsagePoint> Points, BucketGranularity ActualGranularity)> FetchHistoricalPointsWithFallbackAsync(
         string targetId,
-        GlobalRateLimitTarget targetType,
+        TargetType targetType,
         string? clientId,
         DateTime from,
         DateTime to,

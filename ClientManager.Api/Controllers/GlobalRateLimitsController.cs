@@ -1,5 +1,5 @@
 using ClientManager.Api.Models.Exceptions;
-using ClientManager.DataAccess.Interfaces;
+using ClientManager.DataAccess.Databases.Interfaces;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Enums;
 using Microsoft.AspNetCore.Http;
@@ -35,7 +35,7 @@ public class GlobalRateLimitsController : ControllerBase
     /// <response code="200">Returns the global rate limits.</response>
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<GlobalRateLimit>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetAll([FromQuery] GlobalRateLimitTarget? targetType, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetAll([FromQuery] TargetType? targetType, CancellationToken cancellationToken)
     {
         if (targetType.HasValue)
         {

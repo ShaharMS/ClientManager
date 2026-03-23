@@ -22,14 +22,14 @@ public class UsageRecorder : IUsageRecorder
     /// <inheritdoc />
     public void RecordServiceRequest(string clientId, string serviceId, UsageEventType eventType)
     {
-        var key = new UsageBufferKey(clientId, GlobalRateLimitTarget.Service, serviceId, eventType);
+        var key = new UsageBufferKey(clientId, TargetType.Service, serviceId, eventType);
         _buffer.Increment(key);
     }
 
     /// <inheritdoc />
     public void RecordAllocationEvent(string clientId, string resourcePoolId, UsageEventType eventType)
     {
-        var key = new UsageBufferKey(clientId, GlobalRateLimitTarget.ResourcePool, resourcePoolId, eventType);
+        var key = new UsageBufferKey(clientId, TargetType.ResourcePool, resourcePoolId, eventType);
         _buffer.Increment(key);
     }
 }

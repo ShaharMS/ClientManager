@@ -1,7 +1,8 @@
 using ClientManager.Api.Interfaces;
 using ClientManager.Api.Models.Exceptions;
 using ClientManager.Api.Models.Responses;
-using ClientManager.DataAccess.Interfaces;
+using ClientManager.DataAccess.Databases.Interfaces;
+using ClientManager.DataAccess.Repositories.Interfaces;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Enums;
 using Microsoft.AspNetCore.Http;
@@ -181,7 +182,7 @@ public class StatisticsController : ControllerBase
         {
             var clientCount = clients.Count(c => c.Services.ContainsKey(service.Id));
             var globalLimit = await _globalRateLimitRepository.GetByTargetAsync(
-                service.Id, GlobalRateLimitTarget.Service, cancellationToken);
+                service.Id, TargetType.Service, cancellationToken);
 
             results.Add(new ServiceStatisticsResponse(
                 ServiceId: service.Id,
@@ -215,7 +216,7 @@ public class StatisticsController : ControllerBase
 
         var clients = await _clientConfigRepository.GetAllAsync(cancellationToken);
         var globalLimit = await _globalRateLimitRepository.GetByTargetAsync(
-            serviceId, GlobalRateLimitTarget.Service, cancellationToken);
+            serviceId, TargetType.Service, cancellationToken);
 
         var clientDetails = clients
             .Where(c => c.Services.ContainsKey(serviceId))
@@ -257,7 +258,7 @@ public class StatisticsController : ControllerBase
         {
             var activeCount = activeCountsByPool.GetValueOrDefault(pool.Id);
             var globalLimit = await _globalRateLimitRepository.GetByTargetAsync(
-                pool.Id, GlobalRateLimitTarget.ResourcePool, cancellationToken);
+                pool.Id, TargetType.ResourcePool, cancellationToken);
 
             results.Add(new ResourcePoolStatisticsResponse(
                 ResourcePoolId: pool.Id,
@@ -293,7 +294,7 @@ public class StatisticsController : ControllerBase
         var activeCountsByPool = await _allocationRepository.GetActiveCountsByPoolAsync(cancellationToken);
         var activeCount = activeCountsByPool.GetValueOrDefault(pool.Id);
         var globalLimit = await _globalRateLimitRepository.GetByTargetAsync(
-            pool.Id, GlobalRateLimitTarget.ResourcePool, cancellationToken);
+            pool.Id, TargetType.ResourcePool, cancellationToken);
 
         var clients = await _clientConfigRepository.GetAllAsync(cancellationToken);
         var activeCountsByPoolAndClient = await _allocationRepository.GetActiveCountsByPoolAndClientAsync(cancellationToken);
@@ -353,7 +354,7 @@ public class StatisticsController : ControllerBase
     [HttpGet("usage-timeseries")]
     [ProducesResponseType(typeof(List<TargetUsageTimeSeriesResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetUsageTimeSeries(
-        [FromQuery] GlobalRateLimitTarget filterType,
+        [FromQuery] TargetType filterType,
         [FromQuery] string targetIds,
         [FromQuery] string? clientIds,
         [FromQuery] DateTime? from,
@@ -383,7 +384,7 @@ public class StatisticsController : ControllerBase
     [HttpGet("client-usage-breakdown")]
     [ProducesResponseType(typeof(List<TargetClientUsageBreakdownResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetClientUsageBreakdown(
-        [FromQuery] GlobalRateLimitTarget filterType,
+        [FromQuery] TargetType filterType,
         [FromQuery] string targetIds,
         [FromQuery] string? clientIds,
         [FromQuery] DateTime? from,
@@ -427,7 +428,7 @@ public class StatisticsController : ControllerBase
     [HttpGet("historical-usage")]
     [ProducesResponseType(typeof(List<HistoricalUsageResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetHistoricalUsage(
-        [FromQuery] GlobalRateLimitTarget filterType,
+        [FromQuery] TargetType filterType,
         [FromQuery] string targetIds,
         [FromQuery] string? clientId,
         [FromQuery] DateTime from,

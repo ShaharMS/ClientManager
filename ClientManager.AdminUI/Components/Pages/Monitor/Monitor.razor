@@ -298,7 +298,7 @@
             var recentFrom = now.Subtract(RecentWindow);
 
             var rateLimits = await RateLimitApi.GetByTargetTypeAsync(
-                ClientManager.Shared.Models.Enums.GlobalRateLimitTarget.Service);
+                ClientManager.Shared.Models.Enums.TargetType.Service);
             var rateLimitLookup = rateLimits.ToDictionary(r => r.TargetId, StringComparer.OrdinalIgnoreCase);
             var chartBucketDuration = GetBucketDuration(_timeRange.Granularity);
 

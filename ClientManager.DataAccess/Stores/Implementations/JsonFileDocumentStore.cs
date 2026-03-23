@@ -1,8 +1,8 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
-using ClientManager.DataAccess.Interfaces;
+using ClientManager.DataAccess.Bindings.Interfaces;
 
-namespace ClientManager.DataAccess.Implementations.JsonFile;
+namespace ClientManager.DataAccess.Bindings.Implementations;
 
 /// <summary>
 /// JSON file-based implementation of <see cref="IDocumentStore"/>.

@@ -1,5 +1,5 @@
 using ClientManager.Api.Interfaces;
-using ClientManager.DataAccess.Interfaces;
+using ClientManager.DataAccess.Databases.Interfaces;
 using ClientManager.Shared.Models.Entities;
 
 namespace ClientManager.Api.Services.RateLimiting;

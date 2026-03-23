@@ -1,12 +1,13 @@
-using ClientManager.DataAccess.Interfaces;
+using ClientManager.DataAccess.Bindings.Interfaces;
+using ClientManager.DataAccess.Repositories.Interfaces;
 
-namespace ClientManager.DataAccess.Implementations;
+namespace ClientManager.DataAccess.Repositories.Implementations;
 
 /// <summary>
 /// Generic CRUD repository that delegates all storage operations to an <see cref="IDocumentStore"/>.
 /// Platform-agnostic — works with any document store implementation.
 /// </summary>
-/// <typeparam name="T">The entity type.</typeparam>
+/// <typeparam name="T">The type of the stored entity. Must be a class instance</typeparam>
 public class EntityRepository<T> : IEntityRepository<T> where T : class
 {
     private readonly IDocumentStore _store;

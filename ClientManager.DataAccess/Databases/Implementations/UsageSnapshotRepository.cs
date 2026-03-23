@@ -1,8 +1,9 @@
-using ClientManager.DataAccess.Interfaces;
+using ClientManager.DataAccess.Bindings.Interfaces;
+using ClientManager.DataAccess.Databases.Interfaces;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Enums;
 
-namespace ClientManager.DataAccess.Implementations;
+namespace ClientManager.DataAccess.Databases.Implementations;
 
 /// <summary>
 /// Persists usage snapshots in <see cref="IDocumentStore"/> and performs in-memory filtering for queries.
@@ -28,7 +29,7 @@ public class UsageSnapshotRepository : IUsageSnapshotRepository
     /// <inheritdoc />
     public async Task<IReadOnlyList<UsageSnapshot>> GetByTargetAsync(
         string targetId,
-        GlobalRateLimitTarget targetType,
+        TargetType targetType,
         BucketGranularity granularity,
         CancellationToken cancellationToken = default)
     {
@@ -43,7 +44,7 @@ public class UsageSnapshotRepository : IUsageSnapshotRepository
     public async Task<UsageSnapshot?> GetByClientAndTargetAsync(
         string clientId,
         string targetId,
-        GlobalRateLimitTarget targetType,
+        TargetType targetType,
         BucketGranularity granularity,
         CancellationToken cancellationToken = default)
     {
@@ -69,7 +70,7 @@ public class UsageSnapshotRepository : IUsageSnapshotRepository
     /// </summary>
     public static string BuildId(
         string clientId,
-        GlobalRateLimitTarget targetType,
+        TargetType targetType,
         string targetId,
         BucketGranularity granularity) =>
         $"{clientId}:{targetType}:{targetId}:{granularity}";

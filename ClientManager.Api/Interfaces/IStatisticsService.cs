@@ -28,7 +28,7 @@ public interface IStatisticsService
     /// <param name="cancellationToken">Optional cancellation token.</param>
     /// <returns>Per-target time-series data for usage and capacity.</returns>
     Task<List<TargetUsageTimeSeriesResponse>> GetUsageTimeSeriesAsync(
-        GlobalRateLimitTarget targetType, IEnumerable<string> targetIds, IEnumerable<string>? clientIds,
+        TargetType targetType, IEnumerable<string> targetIds, IEnumerable<string>? clientIds,
         DateTime? from = null, DateTime? to = null, BucketGranularity? granularity = null,
         CancellationToken cancellationToken = default);
 
@@ -44,7 +44,7 @@ public interface IStatisticsService
     /// <param name="cancellationToken">Optional cancellation token.</param>
     /// <returns>Per-target client usage breakdowns.</returns>
     Task<List<TargetClientUsageBreakdownResponse>> GetClientUsageBreakdownAsync(
-        GlobalRateLimitTarget targetType, IEnumerable<string> targetIds, IEnumerable<string>? clientIds,
+        TargetType targetType, IEnumerable<string> targetIds, IEnumerable<string>? clientIds,
         DateTime? from = null, DateTime? to = null, BucketGranularity? granularity = null,
         CancellationToken cancellationToken = default);
 
@@ -68,7 +68,7 @@ public interface IStatisticsService
     /// <returns>Historical usage time-series data per target.</returns>
     Task<List<HistoricalUsageResponse>> GetHistoricalUsageAsync(
         IEnumerable<string> targetIds,
-        GlobalRateLimitTarget targetType,
+        TargetType targetType,
         string? clientId,
         DateTime from,
         DateTime to,

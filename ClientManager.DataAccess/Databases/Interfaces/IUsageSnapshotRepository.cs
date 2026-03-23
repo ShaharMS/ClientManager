@@ -1,7 +1,7 @@
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Enums;
 
-namespace ClientManager.DataAccess.Interfaces;
+namespace ClientManager.DataAccess.Databases.Interfaces;
 
 /// <summary>
 /// Repository for persisting and querying time-bucketed usage snapshots.
@@ -26,7 +26,7 @@ public interface IUsageSnapshotRepository
     /// <returns>All matching snapshots.</returns>
     Task<IReadOnlyList<UsageSnapshot>> GetByTargetAsync(
         string targetId,
-        GlobalRateLimitTarget targetType,
+        TargetType targetType,
         BucketGranularity granularity,
         CancellationToken cancellationToken = default);
 
@@ -42,7 +42,7 @@ public interface IUsageSnapshotRepository
     Task<UsageSnapshot?> GetByClientAndTargetAsync(
         string clientId,
         string targetId,
-        GlobalRateLimitTarget targetType,
+        TargetType targetType,
         BucketGranularity granularity,
         CancellationToken cancellationToken = default);
 

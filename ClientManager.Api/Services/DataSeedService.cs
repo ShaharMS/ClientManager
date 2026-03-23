@@ -1,5 +1,6 @@
 using ClientManager.Api.Models;
-using ClientManager.DataAccess.Interfaces;
+using ClientManager.DataAccess.Databases.Interfaces;
+using ClientManager.DataAccess.Repositories.Interfaces;
 using ClientManager.Shared.Logging;
 using ClientManager.Shared.Models.Entities;
 

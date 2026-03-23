@@ -1,6 +1,7 @@
 using ClientManager.Api.Interfaces;
 using ClientManager.Api.Models.Responses;
-using ClientManager.DataAccess.Interfaces;
+using ClientManager.DataAccess.Databases.Interfaces;
+using ClientManager.DataAccess.Repositories.Interfaces;
 using ClientManager.Shared.Models.Enums;
 
 namespace ClientManager.Api.Services;
@@ -49,14 +50,14 @@ public class GrafanaExportService : IGrafanaExportService
             .GetAllByGranularityAsync(BucketGranularity.Second, cancellationToken);
 
         var serviceSnapshots = secondSnapshots
-            .Where(s => s.TargetType == GlobalRateLimitTarget.Service)
+            .Where(s => s.TargetType == TargetType.Service)
             .ToList();
 
         if (serviceSnapshots.Count == 0)
         {
             serviceSnapshots = (await _usageSnapshotRepository
                 .GetAllByGranularityAsync(BucketGranularity.FiveMinute, cancellationToken))
-                .Where(s => s.TargetType == GlobalRateLimitTarget.Service)
+                .Where(s => s.TargetType == TargetType.Service)
                 .ToList();
         }
 

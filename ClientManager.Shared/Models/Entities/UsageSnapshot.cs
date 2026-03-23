@@ -26,7 +26,7 @@ public record UsageSnapshot
     /// <summary>
     /// Whether the target is a Service or ResourcePool.
     /// </summary>
-    public GlobalRateLimitTarget TargetType { get; init; }
+    public TargetType TargetType { get; init; }
 
     /// <summary>
     /// The time granularity of the buckets in this snapshot.

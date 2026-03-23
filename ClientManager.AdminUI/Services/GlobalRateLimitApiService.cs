@@ -10,7 +10,7 @@ public class GlobalRateLimitApiService
     private static readonly TimeSpan CacheTtl = TimeSpan.FromSeconds(30);
     private List<GlobalRateLimit>? _cachedAll;
     private DateTime _cachedAllAt;
-    private readonly Dictionary<GlobalRateLimitTarget, (List<GlobalRateLimit> Data, DateTime At)> _cachedByTarget = new();
+    private readonly Dictionary<TargetType, (List<GlobalRateLimit> Data, DateTime At)> _cachedByTarget = new();
 
     public GlobalRateLimitApiService(IHttpClientFactory httpClientFactory)
     {
@@ -27,7 +27,7 @@ public class GlobalRateLimitApiService
         return _cachedAll;
     }
 
-    public async Task<List<GlobalRateLimit>> GetByTargetTypeAsync(GlobalRateLimitTarget targetType)
+    public async Task<List<GlobalRateLimit>> GetByTargetTypeAsync(TargetType targetType)
     {
         if (_cachedByTarget.TryGetValue(targetType, out var cached) && DateTime.UtcNow - cached.At < CacheTtl)
             return cached.Data;

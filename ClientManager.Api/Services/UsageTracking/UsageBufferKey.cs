@@ -11,6 +11,6 @@ namespace ClientManager.Api.Services.UsageTracking;
 /// <param name="EventType">Whether the event was granted or denied.</param>
 public record UsageBufferKey(
     string ClientId,
-    GlobalRateLimitTarget TargetType,
+    TargetType TargetType,
     string TargetId,
     UsageEventType EventType);

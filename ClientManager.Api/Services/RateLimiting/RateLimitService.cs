@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using ClientManager.Api.Interfaces;
 using ClientManager.Api.Services.Instrumentation;
-using ClientManager.DataAccess.Interfaces;
+using ClientManager.DataAccess.Databases.Interfaces;
 using ClientManager.Shared.Logging;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Enums;
@@ -125,7 +125,7 @@ public class RateLimitService : IRateLimitService
         var exemptFromGlobal = serviceSettings?.ExemptFromGlobalLimit ?? config.ExemptFromGlobalLimits;
 
         var globalLimit = await _globalRateLimitRepository.GetByTargetAsync(
-            serviceId, GlobalRateLimitTarget.Service, cancellationToken);
+            serviceId, TargetType.Service, cancellationToken);
 
         if (globalLimit is null)
         {
@@ -181,7 +181,7 @@ public class RateLimitService : IRateLimitService
         var exemptFromGlobal = config.ExemptFromGlobalLimits;
 
         var globalLimit = await _globalRateLimitRepository.GetByTargetAsync(
-            resourcePoolId, GlobalRateLimitTarget.ResourcePool, cancellationToken);
+            resourcePoolId, TargetType.ResourcePool, cancellationToken);
 
         if (globalLimit is null)
         {

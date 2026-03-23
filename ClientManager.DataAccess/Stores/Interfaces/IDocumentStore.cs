@@ -1,4 +1,4 @@
-namespace ClientManager.DataAccess.Interfaces;
+namespace ClientManager.DataAccess.Bindings.Interfaces;
 
 /// <summary>
 /// A generic document store abstraction for CRUD operations on keyed documents.

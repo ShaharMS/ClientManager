@@ -361,7 +361,7 @@ else
 
         if (isRateBased)
         {
-            var rateLimits = await RateLimitApi.GetByTargetTypeAsync(GlobalRateLimitTarget.Service);
+            var rateLimits = await RateLimitApi.GetByTargetTypeAsync(TargetType.Service);
             var limit = rateLimits.FirstOrDefault(r => r.TargetId == _selectedTargetId);
             if (limit is not null)
             {
@@ -477,7 +477,7 @@ else
         if (isRateBased)
         {
             var rateLimits = await RateLimitApi.GetByTargetTypeAsync(
-                GlobalRateLimitTarget.Service);
+                TargetType.Service);
             foreach (var target in targets)
             {
                 var limit = rateLimits.FirstOrDefault(r => r.TargetId == target.Id);

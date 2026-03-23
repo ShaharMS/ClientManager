@@ -1,6 +1,6 @@
 using ClientManager.Shared.Models.Entities;
 
-namespace ClientManager.DataAccess.Interfaces;
+namespace ClientManager.DataAccess.Databases.Interfaces;
 
 /// <summary>
 /// Repository for managing resource allocation state, including active counts and TTL-based cleanup.

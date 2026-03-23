@@ -1,6 +1,6 @@
 using ClientManager.Api.Models;
-using ClientManager.DataAccess.Implementations;
-using ClientManager.DataAccess.Interfaces;
+using ClientManager.DataAccess.Databases.Implementations;
+using ClientManager.DataAccess.Databases.Interfaces;
 using ClientManager.Shared.Logging;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Enums;
@@ -145,7 +145,7 @@ public class UsagePersistenceService : BackgroundService
             }
 
             long activeCount = 0;
-            if (targetType == GlobalRateLimitTarget.ResourcePool)
+            if (targetType == TargetType.ResourcePool)
             {
                 activeCount = await allocationRepository.GetActiveCountByClientAsync(targetId, clientId, cancellationToken);
             }

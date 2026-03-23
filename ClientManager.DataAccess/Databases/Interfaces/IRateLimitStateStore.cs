@@ -1,4 +1,4 @@
-namespace ClientManager.DataAccess.Interfaces;
+namespace ClientManager.DataAccess.Databases.Interfaces;
 
 /// <summary>
 /// Store for rate limit counters with windowed increment support.

@@ -110,7 +110,7 @@ else
     {
         try
         {
-            _limits = await RateLimitApi.GetByTargetTypeAsync(GlobalRateLimitTarget.ResourcePool);
+            _limits = await RateLimitApi.GetByTargetTypeAsync(TargetType.ResourcePool);
             _error = null;
         }
         catch (HttpRequestException ex)

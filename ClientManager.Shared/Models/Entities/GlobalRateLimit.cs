@@ -21,7 +21,7 @@ public record GlobalRateLimit
     /// <summary>
     /// Whether the target is a service or a resource pool.
     /// </summary>
-    public GlobalRateLimitTarget TargetType { get; init; }
+    public TargetType TargetType { get; init; }
 
     /// <summary>
     /// The rate limiting algorithm to use.

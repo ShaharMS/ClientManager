@@ -3,11 +3,12 @@ using ClientManager.Api.Models;
 using ClientManager.Api.Services;
 using ClientManager.Api.Services.RateLimiting;
 using ClientManager.Api.Services.UsageTracking;
-using ClientManager.DataAccess.Implementations;
+using ClientManager.DataAccess.Bindings.Implementations;
+using ClientManager.DataAccess.Bindings.Interfaces;
+using ClientManager.DataAccess.Databases.Implementations;
+using ClientManager.DataAccess.Databases.Interfaces;
 using ClientManager.DataAccess.Implementations.JsonFile;
-using ClientManager.DataAccess.Implementations.MongoDb;
-using ClientManager.DataAccess.Implementations.Redis;
-using ClientManager.DataAccess.Interfaces;
+using ClientManager.DataAccess.Repositories.Interfaces;
 using ClientManager.Shared.Logging;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Enums;
@@ -63,7 +64,7 @@ public static class ServiceCollectionExtensions
                     new MongoClient(options.MongoDbConnectionString));
                 services.AddSingleton<IMongoDatabase>(sp =>
                     sp.GetRequiredService<IMongoClient>().GetDatabase(options.MongoDbDatabaseName));
-                services.AddSingleton<IDocumentStore, MongoDbDocumentStore>();
+                services.AddSingleton<IDocumentStore, MongoDBDocumentStore>();
                 break;
 
             case PersistenceProvider.Redis:

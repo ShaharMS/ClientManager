@@ -7,7 +7,7 @@ namespace ClientManager.Api.Models.Responses;
 /// </summary>
 public record HistoricalUsageResponse(
     string TargetId,
-    GlobalRateLimitTarget TargetType,
+    TargetType TargetType,
     BucketGranularity Granularity,
     List<HistoricalUsagePoint> Points);
 

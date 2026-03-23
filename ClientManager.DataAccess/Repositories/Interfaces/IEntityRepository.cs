@@ -1,9 +1,9 @@
-namespace ClientManager.DataAccess.Interfaces;
+namespace ClientManager.DataAccess.Repositories.Interfaces;
 
 /// <summary>
-/// Generic repository interface for CRUD operations on entities.
+/// Generic repository interface for CRUD operations on entities identifiable by a unique <see cref="string"/> key.
 /// </summary>
-/// <typeparam name="T">The entity type.</typeparam>
+/// <typeparam name="T">The type of the identifiable object. Must be a class instance.</typeparam>
 public interface IEntityRepository<T> where T : class
 {
     /// <summary>

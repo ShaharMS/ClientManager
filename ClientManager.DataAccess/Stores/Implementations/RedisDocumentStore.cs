@@ -1,8 +1,8 @@
 using System.Text.Json;
-using ClientManager.DataAccess.Interfaces;
+using ClientManager.DataAccess.Bindings.Interfaces;
 using StackExchange.Redis;
 
-namespace ClientManager.DataAccess.Implementations.Redis;
+namespace ClientManager.DataAccess.Bindings.Implementations;
 
 /// <summary>
 /// Redis-based implementation of <see cref="IDocumentStore"/>.

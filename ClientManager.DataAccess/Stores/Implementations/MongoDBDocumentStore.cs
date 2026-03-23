@@ -1,16 +1,16 @@
 using System.Text.Json;
-using ClientManager.DataAccess.Interfaces;
+using ClientManager.DataAccess.Bindings.Interfaces;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
 using MongoDB.Driver;
 
-namespace ClientManager.DataAccess.Implementations.MongoDb;
+namespace ClientManager.DataAccess.Bindings.Implementations;
 
 /// <summary>
 /// MongoDB-based implementation of <see cref="IDocumentStore"/>.
 /// Each collection name maps to a MongoDB collection. Counters use a dedicated collection.
 /// </summary>
-public class MongoDbDocumentStore : IDocumentStore
+public class MongoDBDocumentStore : IDocumentStore
 {
     private readonly IMongoDatabase _database;
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -19,10 +19,10 @@ public class MongoDbDocumentStore : IDocumentStore
     };
 
     /// <summary>
-    /// Initializes a new instance of <see cref="MongoDbDocumentStore"/>.
+    /// Initializes a new instance of <see cref="MongoDBDocumentStore"/>.
     /// </summary>
     /// <param name="database">The MongoDB database instance to use.</param>
-    public MongoDbDocumentStore(IMongoDatabase database)
+    public MongoDBDocumentStore(IMongoDatabase database)
     {
         _database = database;
     }

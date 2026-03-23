@@ -1,6 +1,7 @@
-using ClientManager.DataAccess.Interfaces;
+using ClientManager.DataAccess.Bindings.Interfaces;
+using ClientManager.DataAccess.Databases.Interfaces;
 
-namespace ClientManager.DataAccess.Implementations;
+namespace ClientManager.DataAccess.Databases.Implementations;
 
 /// <summary>
 /// Platform-agnostic implementation of <see cref="IRateLimitStateStore"/>.
