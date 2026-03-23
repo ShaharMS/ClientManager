@@ -24,4 +24,16 @@ public static class LogarithmicScaleHelper
             _ => (original / 1_000_000).ToString("N1") + "M"
         };
     }
+
+    public static string FormatLinearAxisLabel(object value)
+    {
+        if (value is not double d) return "";
+        return d switch
+        {
+            < 1 => d.ToString("F1"),
+            < 1_000 => d.ToString("N0"),
+            < 1_000_000 => (d / 1_000).ToString("N1") + "K",
+            _ => (d / 1_000_000).ToString("N1") + "M"
+        };
+    }
 }

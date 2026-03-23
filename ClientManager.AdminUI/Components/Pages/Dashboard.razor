@@ -104,7 +104,7 @@ else
                         Stroke="var(--color-text-secondary)" />
                 }
                 <RadzenCategoryAxis />
-                <RadzenValueAxis Formatter="@(_axisScaleType == AxisScaleType.Logarithmic ? LogarithmicScaleHelper.FormatAxisLabel : null)" />
+                <RadzenValueAxis Formatter="@(_axisScaleType == AxisScaleType.Logarithmic ? LogarithmicScaleHelper.FormatAxisLabel : LogarithmicScaleHelper.FormatLinearAxisLabel)" />
                 <RadzenLegend Position="LegendPosition.Right" />
             </RadzenChart>
         </div>
