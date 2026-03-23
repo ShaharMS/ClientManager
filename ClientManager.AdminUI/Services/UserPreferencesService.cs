@@ -1,6 +1,7 @@
 using ClientManager.AdminUI.Models;
 using Microsoft.JSInterop;
 
+
 namespace ClientManager.AdminUI.Services;
 
 public class UserPreferencesService : IAsyncDisposable
@@ -61,6 +62,14 @@ public class UserPreferencesService : IAsyncDisposable
         var prefs = await GetPreferencesAsync();
         return PollingIntervalPreset.FindByKey(prefs.DefaultPollingInterval)
                ?? PollingIntervalPreset.Default;
+    }
+
+    public async Task<AxisScaleType> GetDefaultAxisScaleAsync()
+    {
+        var prefs = await GetPreferencesAsync();
+        return Enum.TryParse<AxisScaleType>(prefs.DefaultAxisScale, out var scale)
+            ? scale
+            : AxisScaleType.Linear;
     }
 
     public async ValueTask DisposeAsync()

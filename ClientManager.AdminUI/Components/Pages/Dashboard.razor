@@ -82,10 +82,9 @@ else
                         Placeholder="All clients" Style="width:200px;"
                         Change="@OnFilterChanged" />
                 </div>
-                <div style="display: flex; gap: var(--space-sm); align-items: center;">
-                    <PollingIntervalSelector OnIntervalChanged="OnPollingIntervalChanged" />
-                    <TimeRangeSelector OnRangeChanged="OnTimeRangeChanged" />
-                </div>
+                <ChartSettingsDropdown OnTimeRangeChanged="OnTimeRangeChanged"
+                                       OnPollingIntervalChanged="OnPollingIntervalChanged"
+                                       OnAxisScaleChanged="OnAxisScaleChanged" />
             </div>
             <span class="cm-dashboard__chart-title">Usage Over Time</span>
             <RadzenChart Style="height: 400px;">
@@ -93,19 +92,19 @@ else
                 {
                     @foreach (var clientArea in targetChart.ClientSeries)
                     {
-                        <RadzenStackedAreaSeries Data="@clientArea.Points"
+                        <RadzenStackedAreaSeries Data="@TransformPoints(clientArea.Points)"
                             CategoryProperty="Label" ValueProperty="Value"
                             Title="@clientArea.ClientName"
                             Fill="@Colors.GetColor(clientArea.ClientId)"
                             Stroke="@Colors.GetColor(clientArea.ClientId)" />
                     }
-                    <RadzenLineSeries Data="@targetChart.CapSeries"
+                    <RadzenLineSeries Data="@TransformPoints(targetChart.CapSeries)"
                         CategoryProperty="Label" ValueProperty="Value"
                         Title="Cap" LineType="LineType.Dashed"
                         Stroke="var(--color-text-secondary)" />
                 }
                 <RadzenCategoryAxis />
-                <RadzenValueAxis />
+                <RadzenValueAxis Formatter="@(_axisScaleType == AxisScaleType.Logarithmic ? LogarithmicScaleHelper.FormatAxisLabel : null)" />
                 <RadzenLegend Position="LegendPosition.Right" />
             </RadzenChart>
         </div>
@@ -188,6 +187,7 @@ else
     private List<ClientUsagePoint> _perClientUsage = new();
 
     private TimeRangePreset _timeRange = TimeRangePreset.Default;
+    private AxisScaleType _axisScaleType = AxisScaleType.Linear;
 
     private const string AllTargetsId = "__all__";
 
@@ -611,6 +611,18 @@ else
         StartTimer();
         return Task.CompletedTask;
     }
+
+    private Task OnAxisScaleChanged(AxisScaleType scale)
+    {
+        _axisScaleType = scale;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private List<TimeSeriesPoint> TransformPoints(List<TimeSeriesPoint> points) =>
+        _axisScaleType == AxisScaleType.Logarithmic
+            ? points.Select(p => p with { Value = LogarithmicScaleHelper.Transform(p.Value) }).ToList()
+            : points;
 
     private async Task RefreshDataAsync()
     {

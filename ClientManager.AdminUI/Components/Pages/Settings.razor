@@ -64,6 +64,25 @@ else
                                 Style="width: 100%; max-width: 280px;" />
             </div>
         </div>
+
+        <div class="cm-settings__card">
+            <div class="cm-settings__card-header">
+                <RadzenIcon Icon="show_chart" class="cm-settings__card-icon" />
+                <div>
+                    <h3 class="cm-settings__card-title">Default Axis Scale</h3>
+                    <p class="cm-settings__card-desc">Choose how chart Y-axes scale values. Logarithmic makes small values more visible.</p>
+                </div>
+            </div>
+            <div class="cm-settings__time-range-select">
+                <RadzenDropDown TValue="string"
+                                Data="@_axisScaleOptions"
+                                TextProperty="Label"
+                                ValueProperty="Value"
+                                @bind-Value="_selectedAxisScale"
+                                Change="@(args => OnAxisScaleChanged((string)args))"
+                                Style="width: 100%; max-width: 280px;" />
+            </div>
+        </div>
     </div>
 }
 
@@ -72,6 +91,15 @@ else
     private bool _isDarkMode;
     private string _selectedTimeRange = "1h";
     private string _selectedPollingInterval = "10s";
+    private string _selectedAxisScale = "Linear";
+
+    private static readonly List<AxisScaleOption> _axisScaleOptions = new()
+    {
+        new("Linear", "Linear"),
+        new("Logarithmic", "Logarithmic")
+    };
+
+    private record AxisScaleOption(string Value, string Label);
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -81,6 +109,7 @@ else
             _isDarkMode = prefs.Theme == "dark";
             _selectedTimeRange = prefs.DefaultTimeRange;
             _selectedPollingInterval = prefs.DefaultPollingInterval;
+            _selectedAxisScale = prefs.DefaultAxisScale;
             _loading = false;
             StateHasChanged();
         }
@@ -106,6 +135,14 @@ else
         _selectedPollingInterval = key;
         var prefs = await PreferencesService.GetPreferencesAsync();
         prefs.DefaultPollingInterval = key;
+        await PreferencesService.SavePreferencesAsync(prefs);
+    }
+
+    private async Task OnAxisScaleChanged(string value)
+    {
+        _selectedAxisScale = value;
+        var prefs = await PreferencesService.GetPreferencesAsync();
+        prefs.DefaultAxisScale = value;
         await PreferencesService.SavePreferencesAsync(prefs);
     }
 }

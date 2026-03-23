@@ -1,0 +1,114 @@
+@inject UserPreferencesService PreferencesService
+
+<div class="cm-chart-settings-dropdown">
+    <button class="cm-chart-settings-dropdown__trigger" @onclick="ToggleFlyout" @onclick:stopPropagation="true">
+        <span class="cm-chart-settings-dropdown__icon material-icons">tune</span>
+        <span class="cm-chart-settings-dropdown__label">Settings</span>
+    </button>
+    @if (_isOpen)
+    {
+        <div class="cm-chart-settings-dropdown__overlay" @onclick="CloseFlyout"></div>
+        <div class="cm-chart-settings-dropdown__panel">
+            <div class="cm-chart-settings-dropdown__section">
+                <span class="cm-chart-settings-dropdown__section-label">Time Range</span>
+                <div class="cm-chart-settings-dropdown__chips">
+                    @foreach (var group in TimeRangePreset.All.GroupBy(p => p.Group))
+                    {
+                        @foreach (var preset in group)
+                        {
+                            <button class="cm-chart-settings-dropdown__chip @(preset.Key == _selectedTimeRangeKey ? "cm-chart-settings-dropdown__chip--active" : "")"
+                                    @onclick="() => SelectTimeRange(preset)" @onclick:stopPropagation="true">
+                                @preset.Label
+                            </button>
+                        }
+                    }
+                </div>
+            </div>
+
+            <div class="cm-chart-settings-dropdown__section">
+                <span class="cm-chart-settings-dropdown__section-label">Refresh Rate</span>
+                <div class="cm-chart-settings-dropdown__chips">
+                    @foreach (var preset in PollingIntervalPreset.All)
+                    {
+                        <button class="cm-chart-settings-dropdown__chip @(preset.Key == _selectedPollingKey ? "cm-chart-settings-dropdown__chip--active" : "")"
+                                @onclick="() => SelectPollingInterval(preset)" @onclick:stopPropagation="true">
+                            @preset.Label
+                        </button>
+                    }
+                </div>
+            </div>
+
+            <div class="cm-chart-settings-dropdown__section">
+                <span class="cm-chart-settings-dropdown__section-label">Vertical Axis</span>
+                <div class="cm-chart-settings-dropdown__chips">
+                    <button class="cm-chart-settings-dropdown__chip @(_selectedAxisScale == AxisScaleType.Linear ? "cm-chart-settings-dropdown__chip--active" : "")"
+                            @onclick="() => SelectAxisScale(AxisScaleType.Linear)" @onclick:stopPropagation="true">
+                        Linear
+                    </button>
+                    <button class="cm-chart-settings-dropdown__chip @(_selectedAxisScale == AxisScaleType.Logarithmic ? "cm-chart-settings-dropdown__chip--active" : "")"
+                            @onclick="() => SelectAxisScale(AxisScaleType.Logarithmic)" @onclick:stopPropagation="true">
+                        Logarithmic
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public EventCallback<TimeRangePreset> OnTimeRangeChanged { get; set; }
+    [Parameter] public EventCallback<PollingIntervalPreset> OnPollingIntervalChanged { get; set; }
+    [Parameter] public EventCallback<AxisScaleType> OnAxisScaleChanged { get; set; }
+    [Parameter] public string? InitialTimeRangeKey { get; set; }
+
+    private bool _isOpen;
+    private bool _initialized;
+    private string _selectedTimeRangeKey = "1h";
+    private string _selectedPollingKey = "10s";
+    private AxisScaleType _selectedAxisScale = AxisScaleType.Linear;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !_initialized)
+        {
+            _initialized = true;
+
+            var defaultTimeRange = InitialTimeRangeKey is not null
+                ? TimeRangePreset.FindByKey(InitialTimeRangeKey) ?? await PreferencesService.GetDefaultTimeRangeAsync()
+                : await PreferencesService.GetDefaultTimeRangeAsync();
+            _selectedTimeRangeKey = defaultTimeRange.Key;
+
+            var defaultPolling = await PreferencesService.GetDefaultPollingIntervalAsync();
+            _selectedPollingKey = defaultPolling.Key;
+
+            _selectedAxisScale = await PreferencesService.GetDefaultAxisScaleAsync();
+
+            await OnTimeRangeChanged.InvokeAsync(defaultTimeRange);
+            await OnPollingIntervalChanged.InvokeAsync(defaultPolling);
+            await OnAxisScaleChanged.InvokeAsync(_selectedAxisScale);
+            StateHasChanged();
+        }
+    }
+
+    private void ToggleFlyout() => _isOpen = !_isOpen;
+
+    private void CloseFlyout() => _isOpen = false;
+
+    private async Task SelectTimeRange(TimeRangePreset preset)
+    {
+        _selectedTimeRangeKey = preset.Key;
+        await OnTimeRangeChanged.InvokeAsync(preset);
+    }
+
+    private async Task SelectPollingInterval(PollingIntervalPreset preset)
+    {
+        _selectedPollingKey = preset.Key;
+        await OnPollingIntervalChanged.InvokeAsync(preset);
+    }
+
+    private async Task SelectAxisScale(AxisScaleType scale)
+    {
+        _selectedAxisScale = scale;
+        await OnAxisScaleChanged.InvokeAsync(scale);
+    }
+}
