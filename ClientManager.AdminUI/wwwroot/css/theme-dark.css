@@ -115,6 +115,36 @@ html[data-theme="dark"] .rz-sortable-column:hover {
     background: var(--color-border);
 }
 
+/* Dropdown item hover — set both bg and text to avoid blacked-out items */
+html[data-theme="dark"] .rz-dropdown-item:not(.rz-state-highlight):hover,
+html[data-theme="dark"] .rz-list-item:not(.rz-state-highlight):hover {
+    background: var(--color-border) !important;
+    color: var(--color-text-primary) !important;
+}
+
+/* Scrollbar styling for dark mode containers */
+html[data-theme="dark"] {
+    scrollbar-color: #475569 #1e293b;
+}
+
+html[data-theme="dark"] ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+html[data-theme="dark"] ::-webkit-scrollbar-track {
+    background: #1e293b;
+}
+
+html[data-theme="dark"] ::-webkit-scrollbar-thumb {
+    background: #475569;
+    border-radius: 4px;
+}
+
+html[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+    background: #64748b;
+}
+
 /* Disabled inputs — !important to override Radzen inline specificity */
 html[data-theme="dark"] .rz-textbox[disabled],
 html[data-theme="dark"] .rz-textbox.rz-state-disabled,
