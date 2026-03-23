@@ -221,28 +221,33 @@ public class StatisticsService : IStatisticsService
                         string.Equals(s.ClientId, client.Id, StringComparison.OrdinalIgnoreCase));
                     if (snapshot is null) continue;
 
-                    double count;
-                    if (from is not null && to is not null)
-                    {
-                        var filteredBuckets = snapshot.Buckets
-                            .Where(b => b.Timestamp >= from && b.Timestamp <= to);
-                        count = targetType == GlobalRateLimitTarget.ResourcePool
-                            ? filteredBuckets.Select(b => (double)b.ActiveCount).DefaultIfEmpty(0).Max()
-                            : filteredBuckets.Sum(b => (double)b.GrantedCount);
-                    }
-                    else
-                    {
-                        var latestBucketTime = RoundDownToFiveMinutes(now).AddMinutes(-5);
-                        var filteredBuckets = snapshot.Buckets
-                            .Where(b => b.Timestamp == latestBucketTime);
-                        count = targetType == GlobalRateLimitTarget.ResourcePool
-                            ? filteredBuckets.Select(b => (double)b.ActiveCount).DefaultIfEmpty(0).Max()
-                            : filteredBuckets.Sum(b => (double)b.GrantedCount);
-                    }
+                    var filteredBuckets = (from is not null && to is not null)
+                        ? snapshot.Buckets.Where(b => b.Timestamp >= from && b.Timestamp <= to).ToList()
+                        : snapshot.Buckets
+                            .Where(b => b.Timestamp == RoundDownToFiveMinutes(now).AddMinutes(-5))
+                            .ToList();
 
-                    if (count > 0)
+                    var grantedCount = filteredBuckets.Sum(b => b.GrantedCount);
+                    var deniedCount = filteredBuckets.Sum(b => b.DeniedCount);
+                    var latestActiveCount = filteredBuckets
+                        .OrderBy(b => b.Timestamp)
+                        .Select(b => b.ActiveCount)
+                        .LastOrDefault();
+
+                    double count;
+                    count = targetType == GlobalRateLimitTarget.ResourcePool
+                        ? filteredBuckets.Select(b => (double)b.ActiveCount).DefaultIfEmpty(0).Max()
+                        : grantedCount;
+
+                    if (count > 0 || deniedCount > 0 || latestActiveCount > 0)
                     {
-                        entries.Add(new ClientUsageEntry(client.Id, client.Name, count));
+                        entries.Add(new ClientUsageEntry(
+                            client.Id,
+                            client.Name,
+                            count,
+                            grantedCount,
+                            deniedCount,
+                            latestActiveCount));
                     }
                 }
 

@@ -14,8 +14,14 @@ public record ClientUsageBreakdownResponse(
 /// <param name="ClientId">The unique identifier of the client.</param>
 /// <param name="ClientName">Human-readable display name of the client.</param>
 /// <param name="Value">The usage value for this client.</param>
+/// <param name="GrantedCount">Total granted requests across the requested window.</param>
+/// <param name="DeniedCount">Total denied requests across the requested window.</param>
+/// <param name="ActiveCount">Latest active allocation count within the requested window.</param>
 public record ClientUsageEntry(
     string ClientId,
     string ClientName,
-    double Value
+    double Value,
+    long GrantedCount,
+    long DeniedCount,
+    long ActiveCount
 );

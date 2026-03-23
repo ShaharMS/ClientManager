@@ -297,6 +297,8 @@
             // Batch: one call for all breakdowns
             var breakdowns = await StatsService.GetClientUsageBreakdownAsync(
                 "ResourcePool", visiblePoolIds, _selectedClientIds, from, now, granularity);
+            var recentBreakdowns = await StatsService.GetClientUsageBreakdownAsync(
+                "ResourcePool", visiblePoolIds, _selectedClientIds, recentFrom, recentTo, "FiveMinute");
 
             var charts = new List<TargetChartData>();
             var rows = new List<AllocationClientRow>();
@@ -318,7 +320,8 @@
 
                     var breakdown = breakdowns.FirstOrDefault(b => b.TargetId == pool.ResourcePoolId);
                     var history = allHistories.FirstOrDefault(h => h.TargetId == pool.ResourcePoolId);
-                    var recent = allRecents.FirstOrDefault(h => h.TargetId == pool.ResourcePoolId);
+                    var recentEntries = recentBreakdowns
+                        .FirstOrDefault(b => b.TargetId == pool.ResourcePoolId)?.Entries ?? [];
 
                     foreach (var point in history?.Points ?? [])
                     {
@@ -331,12 +334,12 @@
                     foreach (var entry in breakdown?.Entries ?? [])
                     {
                         var clientMax = GetClientPoolMaxSlots(entry.ClientId, pool.ResourcePoolId, pool.MaxSlots);
-                        var lastPoint = recent?.Points.LastOrDefault();
-                        var active = (int)(lastPoint?.ActiveCount ?? 0);
-                        var denied = recent?.Points.Sum(p => p.DeniedCount) ?? 0;
+                        var recentEntry = recentEntries.FirstOrDefault(e => e.ClientId == entry.ClientId);
                         rows.Add(new AllocationClientRow(
                             entry.ClientId, entry.ClientName, pool.Name,
-                            active, clientMax, denied));
+                            (int)(recentEntry?.ActiveCount ?? 0),
+                            clientMax,
+                            recentEntry?.DeniedCount ?? 0));
                     }
                 }
 
@@ -358,6 +361,8 @@
                 foreach (var pool in visiblePools)
                 {
                     var breakdown = breakdowns.FirstOrDefault(b => b.TargetId == pool.ResourcePoolId);
+                    var recentEntries = recentBreakdowns
+                        .FirstOrDefault(b => b.TargetId == pool.ResourcePoolId)?.Entries ?? [];
                     var entries = breakdown?.Entries ?? [];
 
                     // Per-client histories for this specific pool
@@ -365,13 +370,8 @@
                         StatsService.GetHistoricalUsageAsync(
                             "ResourcePool", new[] { pool.ResourcePoolId }, entry.ClientId,
                             from, now, granularity)).ToList();
-                    var perClientRecentTasks = entries.Select(entry =>
-                        StatsService.GetHistoricalUsageAsync(
-                            "ResourcePool", new[] { pool.ResourcePoolId }, entry.ClientId,
-                            recentFrom, recentTo, "FiveMinute")).ToList();
 
                     var perClientHistories = await Task.WhenAll(perClientHistoryTasks);
-                    var perClientRecents = await Task.WhenAll(perClientRecentTasks);
 
                     var clientAreas = new List<ClientAreaSeries>();
 
@@ -403,15 +403,13 @@
 
                         clientAreas.Add(new ClientAreaSeries(entry.ClientId, entry.ClientName, points));
 
-                        var recentData = perClientRecents[i].FirstOrDefault();
-                        var lastPoint = recentData?.Points.LastOrDefault();
-                        var active = (int)(lastPoint?.ActiveCount ?? 0);
-                        var denied = recentData?.Points.Sum(p => p.DeniedCount) ?? 0;
-
+                        var recentEntry = recentEntries.FirstOrDefault(e => e.ClientId == entry.ClientId);
                         var clientMax = GetClientPoolMaxSlots(entry.ClientId, pool.ResourcePoolId, pool.MaxSlots);
                         rows.Add(new AllocationClientRow(
                             entry.ClientId, entry.ClientName, pool.Name,
-                            active, clientMax, denied));
+                            (int)(recentEntry?.ActiveCount ?? 0),
+                            clientMax,
+                            recentEntry?.DeniedCount ?? 0));
                     }
 
                     var capPoints = allTimestamps

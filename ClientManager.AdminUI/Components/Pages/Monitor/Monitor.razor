@@ -81,24 +81,34 @@
                 <RadzenDataGridColumn TItem="MonitorClientRow" Property="ServiceName" Title="Service" Width="150px" />
                 <RadzenDataGridColumn TItem="MonitorClientRow" Property="GrantedLast5Min" Title="Req (5m)" Width="100px" />
                 <RadzenDataGridColumn TItem="MonitorClientRow" Property="DeniedLast5Min" Title="Denied (5m)" Width="110px" />
-                <RadzenDataGridColumn TItem="MonitorClientRow" Property="RateLimitCap" Title="Cap" Width="80px" />
+                <RadzenDataGridColumn TItem="MonitorClientRow" Title="Cap (5m)" Width="90px">
+                    <Template Context="row">@FormatCap(row.RateLimitCap)</Template>
+                </RadzenDataGridColumn>
                 <RadzenDataGridColumn TItem="MonitorClientRow" Title="Utilization" Width="180px">
                     <Template Context="row">
-                        @{
-                            var pct = row.RateLimitCap > 0
-                                ? (int)(row.GrantedLast5Min * 100.0 / row.RateLimitCap) : 0;
+                        @if (row.RateLimitCap > 0)
+                        {
+                            var pct = (int)(row.GrantedLast5Min * 100.0 / row.RateLimitCap);
                             var barStyle = pct >= 100 ? ProgressBarStyle.Danger
                                 : pct >= 75 ? ProgressBarStyle.Warning : ProgressBarStyle.Success;
+                            <RadzenProgressBar Value="@pct" Max="100" ShowValue="true"
+                                ProgressBarStyle="@barStyle" Style="height: 18px;" />
                         }
-                        <RadzenProgressBar Value="@pct" Max="100" ShowValue="true"
-                            ProgressBarStyle="@barStyle" Style="height: 18px;" />
+                        else
+                        {
+                            <span>—</span>
+                        }
                     </Template>
                 </RadzenDataGridColumn>
                 <RadzenDataGridColumn TItem="MonitorClientRow" Title="Status" Width="120px" Sortable="false">
                     <Template Context="row">
-                        @if (row.DeniedLast5Min > 0)
+                        @if (row.DeniedLast5Min > 0 && row.RateLimitCap > 0 && row.GrantedLast5Min >= row.RateLimitCap * 0.9)
                         {
                             <span class="cm-badge" style="background: #fee2e2; color: #991b1b;">Hitting Limit</span>
+                        }
+                        else if (row.DeniedLast5Min > 0)
+                        {
+                            <span class="cm-badge" style="background: #fef3c7; color: #92400e;">Denied</span>
                         }
                         else if (row.RateLimitCap > 0 && row.GrantedLast5Min >= row.RateLimitCap * 0.9)
                         {
@@ -157,10 +167,12 @@
 
 @code {
     private const string AllServicesId = "__all__";
+    private static readonly TimeSpan RecentWindow = TimeSpan.FromMinutes(5);
 
     private List<Service> _allServices = [];
     private List<NamedItem> _serviceOptions = [];
     private List<ClientOption> _clientOptions = [];
+    private List<ClientConfiguration> _allClients = [];
     private string _selectedServiceId = AllServicesId;
     private IEnumerable<string>? _selectedClientIds;
 
@@ -187,6 +199,7 @@
         {
             _allServices = await ServiceService.GetAllAsync();
             var clients = await ClientService.GetAllAsync();
+            _allClients = clients;
             _clientOptions = clients
                 .Select(c => new ClientOption(c.Id, c.Name))
                 .ToList();
@@ -282,10 +295,12 @@
         {
             var now = DateTime.UtcNow;
             var from = _timeRange.GetFrom();
-            var recentFrom = now.AddMinutes(-5);
+            var recentFrom = now.Subtract(RecentWindow);
 
             var rateLimits = await RateLimitApi.GetByTargetTypeAsync(
                 ClientManager.Shared.Models.Enums.GlobalRateLimitTarget.Service);
+            var rateLimitLookup = rateLimits.ToDictionary(r => r.TargetId, StringComparer.OrdinalIgnoreCase);
+            var chartBucketDuration = GetBucketDuration(_timeRange.Granularity);
 
             var visibleServices = _selectedServiceId == AllServicesId
                 ? _allServices
@@ -297,6 +312,9 @@
             var breakdowns = await StatsService.GetClientUsageBreakdownAsync(
                 "Service", visibleServiceIds, _selectedClientIds,
                 from, _timeRange.GetTo(), _timeRange.Granularity);
+            var recentBreakdowns = await StatsService.GetClientUsageBreakdownAsync(
+                "Service", visibleServiceIds, _selectedClientIds,
+                recentFrom, now, "FiveMinute");
 
             // Collect all client IDs that appear in breakdowns for history fetch
             var allClientIds = breakdowns
@@ -326,13 +344,12 @@
 
                 foreach (var service in visibleServices)
                 {
-                    var cap = rateLimits
-                        .FirstOrDefault(r => r.TargetId == service.Id)?.MaxRequests ?? 0;
-                    totalCap += cap;
+                    totalCap += GetScaledGlobalServiceCap(service.Id, rateLimitLookup, chartBucketDuration);
 
                     var breakdown = breakdowns.FirstOrDefault(b => b.TargetId == service.Id);
                     var history = allHistories.FirstOrDefault(h => h.TargetId == service.Id);
-                    var recent = allRecents.FirstOrDefault(h => h.TargetId == service.Id);
+                    var recentEntries = recentBreakdowns
+                        .FirstOrDefault(b => b.TargetId == service.Id)?.Entries ?? [];
 
                     foreach (var point in history?.Points ?? [])
                     {
@@ -344,11 +361,12 @@
 
                     foreach (var entry in breakdown?.Entries ?? [])
                     {
-                        var granted = recent?.Points.Sum(p => p.GrantedCount) ?? 0;
-                        var denied = recent?.Points.Sum(p => p.DeniedCount) ?? 0;
+                        var recentEntry = recentEntries.FirstOrDefault(e => e.ClientId == entry.ClientId);
                         rows.Add(new MonitorClientRow(
                             entry.ClientId, entry.ClientName, service.Name,
-                            granted, denied, cap));
+                            recentEntry?.GrantedCount ?? 0,
+                            recentEntry?.DeniedCount ?? 0,
+                            GetEffectiveClientServiceCap(entry.ClientId, service.Id, rateLimitLookup, RecentWindow)));
                     }
                 }
 
@@ -369,34 +387,20 @@
             {
                 foreach (var service in visibleServices)
                 {
-                    var cap = rateLimits
-                        .FirstOrDefault(r => r.TargetId == service.Id)?.MaxRequests ?? 0;
+                    var chartCap = GetScaledGlobalServiceCap(service.Id, rateLimitLookup, chartBucketDuration);
 
                     var breakdown = breakdowns.FirstOrDefault(b => b.TargetId == service.Id);
+                    var recentEntries = recentBreakdowns
+                        .FirstOrDefault(b => b.TargetId == service.Id)?.Entries ?? [];
                     var entries = breakdown?.Entries ?? [];
-
-                    // Per-client histories: fetch one batch per service with client filter
-                    var clientHistories = entries.Count > 0
-                        ? await StatsService.GetHistoricalUsageAsync(
-                            "Service", new[] { service.Id }, null, from, now, _timeRange.Granularity)
-                        : [];
-                    var clientRecents = entries.Count > 0
-                        ? await StatsService.GetHistoricalUsageAsync(
-                            "Service", new[] { service.Id }, null, recentFrom, now, "FiveMinute")
-                        : [];
 
                     // For per-client chart data, we need individual client histories
                     var perClientHistoryTasks = entries.Select(entry =>
                         StatsService.GetHistoricalUsageAsync(
                             "Service", new[] { service.Id }, entry.ClientId,
                             from, now, _timeRange.Granularity)).ToList();
-                    var perClientRecentTasks = entries.Select(entry =>
-                        StatsService.GetHistoricalUsageAsync(
-                            "Service", new[] { service.Id }, entry.ClientId,
-                            recentFrom, now, "FiveMinute")).ToList();
 
                     var perClientHistories = await Task.WhenAll(perClientHistoryTasks);
-                    var perClientRecents = await Task.WhenAll(perClientRecentTasks);
 
                     var clientAreas = new List<ClientAreaSeries>();
 
@@ -428,17 +432,17 @@
 
                         clientAreas.Add(new ClientAreaSeries(entry.ClientId, entry.ClientName, points));
 
-                        var recentData = perClientRecents[i].FirstOrDefault();
-                        var granted = recentData?.Points.Sum(p => p.GrantedCount) ?? 0;
-                        var denied = recentData?.Points.Sum(p => p.DeniedCount) ?? 0;
+                        var recentEntry = recentEntries.FirstOrDefault(e => e.ClientId == entry.ClientId);
 
                         rows.Add(new MonitorClientRow(
                             entry.ClientId, entry.ClientName, service.Name,
-                            granted, denied, cap));
+                            recentEntry?.GrantedCount ?? 0,
+                            recentEntry?.DeniedCount ?? 0,
+                            GetEffectiveClientServiceCap(entry.ClientId, service.Id, rateLimitLookup, RecentWindow)));
                     }
 
                     var chartCapPoints = allTimestamps
-                        .Select(t => new ChartPoint(t, cap))
+                        .Select(t => new ChartPoint(t, chartCap))
                         .ToList();
 
                     var aggregated = ChartAggregator.Aggregate(
@@ -470,8 +474,7 @@
             {
                 var bd = summaryBreakdowns.FirstOrDefault(b => b.TargetId == service.Id);
                 var totalUsage = (long)(bd?.Entries.Sum(e => e.Value) ?? 0);
-                var cap = rateLimits
-                    .FirstOrDefault(r => r.TargetId == service.Id)?.MaxRequests ?? 0;
+                var cap = GetScaledGlobalServiceCap(service.Id, rateLimitLookup, RecentWindow);
                 allServiceBreakdowns.Add(new ServiceSummaryRow(
                     service.Id, service.Name, totalUsage, cap));
             }
@@ -499,6 +502,73 @@
         }
         _dotNetRef?.Dispose();
     }
+
+    private int GetEffectiveClientServiceCap(
+        string clientId,
+        string serviceId,
+        IReadOnlyDictionary<string, GlobalRateLimit> globalLimitsByService,
+        TimeSpan comparisonWindow)
+    {
+        var client = _allClients.FirstOrDefault(c => c.Id == clientId);
+        if (client is null)
+            return GetScaledGlobalServiceCap(serviceId, globalLimitsByService, comparisonWindow);
+
+        var serviceSettings = client.Services.GetValueOrDefault(serviceId);
+        var caps = new List<int>();
+
+        if (serviceSettings?.RateLimit is not null)
+        {
+            caps.Add(ScaleRateLimitCap(serviceSettings.RateLimit.MaxRequests, serviceSettings.RateLimit.Window, comparisonWindow));
+        }
+
+        if (client.GlobalRateLimit is not null)
+        {
+            caps.Add(ScaleRateLimitCap(client.GlobalRateLimit.MaxRequests, client.GlobalRateLimit.Window, comparisonWindow));
+        }
+
+        var exemptFromServiceGlobal = serviceSettings?.ExemptFromGlobalLimit ?? client.ExemptFromGlobalLimits;
+        if (!exemptFromServiceGlobal)
+        {
+            var globalCap = GetScaledGlobalServiceCap(serviceId, globalLimitsByService, comparisonWindow);
+            if (globalCap > 0)
+            {
+                caps.Add(globalCap);
+            }
+        }
+
+        return caps.Count > 0 ? caps.Min() : 0;
+    }
+
+    private static int GetScaledGlobalServiceCap(
+        string serviceId,
+        IReadOnlyDictionary<string, GlobalRateLimit> globalLimitsByService,
+        TimeSpan comparisonWindow)
+    {
+        return globalLimitsByService.TryGetValue(serviceId, out var globalLimit)
+            ? ScaleRateLimitCap(globalLimit.MaxRequests, globalLimit.Window, comparisonWindow)
+            : 0;
+    }
+
+    private static int ScaleRateLimitCap(int maxRequests, TimeSpan configuredWindow, TimeSpan comparisonWindow)
+    {
+        if (maxRequests <= 0 || configuredWindow <= TimeSpan.Zero || comparisonWindow <= TimeSpan.Zero)
+            return 0;
+
+        var scaled = maxRequests * comparisonWindow.TotalSeconds / configuredWindow.TotalSeconds;
+        return scaled > 0
+            ? Math.Max(1, (int)Math.Round(scaled, MidpointRounding.AwayFromZero))
+            : 0;
+    }
+
+    private static TimeSpan GetBucketDuration(string granularity) => granularity switch
+    {
+        "Second" => TimeSpan.FromSeconds(1),
+        "Hour" => TimeSpan.FromHours(1),
+        "Day" => TimeSpan.FromDays(1),
+        _ => TimeSpan.FromMinutes(5)
+    };
+
+    private static string FormatCap(int cap) => cap > 0 ? cap.ToString() : "—";
 
     private record NamedItem(string Id, string Name);
     private record ChartPoint(string Label, double Value);

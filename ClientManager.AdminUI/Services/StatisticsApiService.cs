@@ -109,7 +109,13 @@ public record UsageTimeSeriesPoint(DateTime Timestamp, double Value);
 
 public record TargetClientUsageBreakdown(string TargetId, List<ClientUsageItem> Entries);
 
-public record ClientUsageItem(string ClientId, string ClientName, double Value);
+public record ClientUsageItem(
+    string ClientId,
+    string ClientName,
+    double Value,
+    long GrantedCount,
+    long DeniedCount,
+    long ActiveCount);
 
 public record ClientSummaries(List<ClientSummaryItem> Rows);
 
