@@ -1,5 +1,6 @@
 using ClientManager.Api.Models;
 using ClientManager.DataAccess.Interfaces;
+using ClientManager.Shared.Logging;
 using ClientManager.Shared.Models.Entities;
 
 namespace ClientManager.Api.Services;
@@ -19,7 +20,7 @@ namespace ClientManager.Api.Services;
 /// </summary>
 public class DataSeedService : IHostedService
 {
-    private readonly ILogger<DataSeedService> _logger;
+    private readonly IAppLogger<DataSeedService> _logger;
     private readonly SeedOptions _seedOptions;
     private readonly IServiceScopeFactory _scopeFactory;
 
@@ -30,7 +31,7 @@ public class DataSeedService : IHostedService
     /// <param name="seedOptions">The seed data configuration.</param>
     /// <param name="scopeFactory">Factory for creating service scopes.</param>
     public DataSeedService(
-        ILogger<DataSeedService> logger,
+        IAppLogger<DataSeedService> logger,
         SeedOptions seedOptions,
         IServiceScopeFactory scopeFactory)
     {
@@ -55,7 +56,7 @@ public class DataSeedService : IHostedService
             if (existing is null)
             {
                 await serviceRepo.CreateAsync(service, cancellationToken);
-                _logger.LogInformation("Seeded service | ServiceId={ServiceId}", service.Id);
+                _logger.Info("Seeded service", new { ServiceId = service.Id });
             }
         }
 
@@ -65,7 +66,7 @@ public class DataSeedService : IHostedService
             if (existing is null)
             {
                 await poolRepo.CreateAsync(pool, cancellationToken);
-                _logger.LogInformation("Seeded resource pool | ResourcePoolId={ResourcePoolId}", pool.Id);
+                _logger.Info("Seeded resource pool", new { ResourcePoolId = pool.Id });
             }
         }
 
@@ -75,7 +76,7 @@ public class DataSeedService : IHostedService
             if (existing is null)
             {
                 await globalRateLimitRepo.CreateAsync(globalLimit, cancellationToken);
-                _logger.LogInformation("Seeded global rate limit | GlobalRateLimitId={GlobalRateLimitId}", globalLimit.Id);
+                _logger.Info("Seeded global rate limit", new { GlobalRateLimitId = globalLimit.Id });
             }
         }
 
@@ -85,11 +86,11 @@ public class DataSeedService : IHostedService
             if (existing is null)
             {
                 await clientConfigRepo.CreateAsync(config, cancellationToken);
-                _logger.LogInformation("Seeded client configuration | ClientId={ClientId}", config.Id);
+                _logger.Info("Seeded client configuration", new { ClientId = config.Id });
             }
         }
 
-        _logger.LogInformation("Data seeding completed");
+        _logger.Info("Data seeding completed");
     }
 
     /// <inheritdoc />

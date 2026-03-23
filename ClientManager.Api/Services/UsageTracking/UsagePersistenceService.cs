@@ -1,6 +1,7 @@
 using ClientManager.Api.Models;
 using ClientManager.DataAccess.Implementations;
 using ClientManager.DataAccess.Interfaces;
+using ClientManager.Shared.Logging;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Enums;
 using Microsoft.Extensions.Options;
@@ -13,7 +14,7 @@ namespace ClientManager.Api.Services.UsageTracking;
 /// </summary>
 public class UsagePersistenceService : BackgroundService
 {
-    private readonly ILogger<UsagePersistenceService> _logger;
+    private readonly IAppLogger<UsagePersistenceService> _logger;
     private readonly UsageBuffer _buffer;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly UsageTrackingOptions _options;
@@ -26,7 +27,7 @@ public class UsagePersistenceService : BackgroundService
     /// <param name="scopeFactory">Factory for creating service scopes.</param>
     /// <param name="options">Usage tracking configuration options.</param>
     public UsagePersistenceService(
-        ILogger<UsagePersistenceService> logger,
+        IAppLogger<UsagePersistenceService> logger,
         UsageBuffer buffer,
         IServiceScopeFactory scopeFactory,
         IOptions<UsageTrackingOptions> options)
@@ -65,7 +66,7 @@ public class UsagePersistenceService : BackgroundService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error in fast usage persistence cycle");
+                _logger.Error("Error in fast usage persistence cycle", ex);
             }
         }
     }
@@ -92,7 +93,7 @@ public class UsagePersistenceService : BackgroundService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error in slow usage persistence cycle");
+                _logger.Error("Error in slow usage persistence cycle", ex);
             }
         }
     }
@@ -177,7 +178,7 @@ public class UsagePersistenceService : BackgroundService
             await repository.UpsertAsync(snapshot with { Buckets = buckets }, cancellationToken);
         }
 
-        _logger.LogDebug("Flushed {Count} usage counter groups to storage", grouped.Count);
+        _logger.Debug("Flushed usage counter groups to storage", new { Count = grouped.Count });
     }
 
     private async Task RollUpAsync(

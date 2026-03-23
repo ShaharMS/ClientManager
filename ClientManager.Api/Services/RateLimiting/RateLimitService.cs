@@ -2,9 +2,9 @@ using System.Diagnostics;
 using ClientManager.Api.Interfaces;
 using ClientManager.Api.Services.Instrumentation;
 using ClientManager.DataAccess.Interfaces;
+using ClientManager.Shared.Logging;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Enums;
-using Microsoft.Extensions.Logging;
 
 namespace ClientManager.Api.Services.RateLimiting;
 
@@ -15,7 +15,7 @@ namespace ClientManager.Api.Services.RateLimiting;
 /// </summary>
 public class RateLimitService : IRateLimitService
 {
-    private readonly ILogger<RateLimitService> _logger;
+    private readonly IAppLogger<RateLimitService> _logger;
     private readonly IClientConfigurationRepository _clientConfigRepository;
     private readonly IGlobalRateLimitRepository _globalRateLimitRepository;
     private readonly RateLimitStrategyResolver _strategyResolver;
@@ -30,7 +30,7 @@ public class RateLimitService : IRateLimitService
     /// <param name="strategyResolver">Resolver for rate limit strategy implementations.</param>
     /// <param name="metrics">The metrics instrumentation instance.</param>
     public RateLimitService(
-        ILogger<RateLimitService> logger,
+        IAppLogger<RateLimitService> logger,
         IClientConfigurationRepository clientConfigRepository,
         IGlobalRateLimitRepository globalRateLimitRepository,
         RateLimitStrategyResolver strategyResolver,
@@ -88,8 +88,7 @@ public class RateLimitService : IRateLimitService
                 { "serviceId", serviceId }
             });
 
-        _logger.LogDebug("Rate limit evaluated | ClientId={ClientId}, ServiceId={ServiceId}, Allowed={Allowed}, Remaining={Remaining}",
-            clientId, serviceId, result.IsAllowed, result.RemainingRequests);
+        _logger.Debug("Rate limit evaluated", new { ClientId = clientId, ServiceId = serviceId, Allowed = result.IsAllowed, Remaining = result.RemainingRequests });
 
         return result;
     }
@@ -161,8 +160,7 @@ public class RateLimitService : IRateLimitService
             }
         }
 
-        _logger.LogInformation("Global service limit checked | ClientId={ClientId}, ServiceId={ServiceId}, ContributesToGlobal={ContributesToGlobal}, ExemptFromGlobal={ExemptFromGlobal}, Allowed={Allowed}",
-            clientId, serviceId, contributesToGlobal, exemptFromGlobal, result.IsAllowed);
+        _logger.Info("Global service limit checked", new { ClientId = clientId, ServiceId = serviceId, ContributesToGlobal = contributesToGlobal, ExemptFromGlobal = exemptFromGlobal, Allowed = result.IsAllowed });
 
         return result;
     }
@@ -218,8 +216,7 @@ public class RateLimitService : IRateLimitService
             }
         }
 
-        _logger.LogInformation("Global resource pool limit checked | ClientId={ClientId}, ResourcePoolId={ResourcePoolId}, ContributesToGlobal={ContributesToGlobal}, ExemptFromGlobal={ExemptFromGlobal}, Allowed={Allowed}",
-            clientId, resourcePoolId, contributesToGlobal, exemptFromGlobal, result.IsAllowed);
+        _logger.Info("Global resource pool limit checked", new { ClientId = clientId, ResourcePoolId = resourcePoolId, ContributesToGlobal = contributesToGlobal, ExemptFromGlobal = exemptFromGlobal, Allowed = result.IsAllowed });
 
         return result;
     }

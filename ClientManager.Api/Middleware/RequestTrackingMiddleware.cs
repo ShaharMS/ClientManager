@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using ClientManager.Api.Services.Instrumentation;
+using ClientManager.Shared.Logging;
 
 namespace ClientManager.Api.Middleware;
 
@@ -10,9 +11,9 @@ namespace ClientManager.Api.Middleware;
 public class RequestTrackingMiddleware
 {
     private readonly RequestDelegate _next;
-    private readonly ILogger<RequestTrackingMiddleware> _logger;
+    private readonly IAppLogger<RequestTrackingMiddleware> _logger;
 
-    public RequestTrackingMiddleware(RequestDelegate next, ILogger<RequestTrackingMiddleware> logger)
+    public RequestTrackingMiddleware(RequestDelegate next, IAppLogger<RequestTrackingMiddleware> logger)
     {
         _next = next;
         _logger = logger;
@@ -23,8 +24,7 @@ public class RequestTrackingMiddleware
         var stopwatch = Stopwatch.StartNew();
         var activity = Activity.Current;
 
-        _logger.LogDebug("Request started | TraceId={TraceId}, Method={Method}, Path={Path}, QueryString={QueryString}",
-            activity?.TraceId.ToString(), context.Request.Method, context.Request.Path.Value, context.Request.QueryString.Value);
+        _logger.Debug("Request started", new { TraceId = activity?.TraceId.ToString(), Method = context.Request.Method, Path = context.Request.Path.Value, QueryString = context.Request.QueryString.Value });
 
         try
         {
@@ -58,8 +58,7 @@ public class RequestTrackingMiddleware
                 });
             }
 
-            _logger.LogInformation("Request completed | TraceId={TraceId}, Method={Method}, Path={Path}, StatusCode={StatusCode}, DurationMs={DurationMs}",
-                activity?.TraceId.ToString(), context.Request.Method, context.Request.Path.Value, statusCode, stopwatch.Elapsed.TotalMilliseconds);
+            _logger.Info("Request completed", new { TraceId = activity?.TraceId.ToString(), Method = context.Request.Method, Path = context.Request.Path.Value, StatusCode = statusCode, DurationMs = stopwatch.Elapsed.TotalMilliseconds });
         }
     }
 }

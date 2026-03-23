@@ -4,6 +4,7 @@ using ClientManager.Api.Extensions;
 using ClientManager.Api.Middleware;
 using ClientManager.Api.Services.Instrumentation;
 using ClientManager.Api.Swagger;
+using ClientManager.Shared.Logging;
 using NLog;
 using NLog.Web;
 using OpenTelemetry.Metrics;
@@ -69,13 +70,14 @@ try
 
     app.Lifetime.ApplicationStarted.Register(() =>
     {
+        var appLogger = app.Services.GetRequiredService<IAppLogger<Program>>();
         var urls = app.Urls;
         foreach (var url in urls)
         {
-            logger.Info("API listening on {Url}", url);
+            appLogger.Info("API listening", new { Url = url });
             if (app.Environment.IsDevelopment())
             {
-                logger.Info("Swagger docs available at {DocsUrl}", $"{url}/docs");
+                appLogger.Info("Swagger docs available", new { DocsUrl = $"{url}/docs" });
             }
         }
     });

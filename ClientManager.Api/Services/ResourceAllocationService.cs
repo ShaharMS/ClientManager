@@ -4,6 +4,7 @@ using ClientManager.Api.Models.Exceptions;
 using ClientManager.Api.Models.Responses;
 using ClientManager.Api.Services.Instrumentation;
 using ClientManager.DataAccess.Interfaces;
+using ClientManager.Shared.Logging;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Enums;
 
@@ -15,7 +16,7 @@ namespace ClientManager.Api.Services;
 /// </summary>
 public class ResourceAllocationService : IResourceAllocationService
 {
-    private readonly ILogger<ResourceAllocationService> _logger;
+    private readonly IAppLogger<ResourceAllocationService> _logger;
     private readonly IEntityRepository<ResourcePool> _poolRepository;
     private readonly IResourceAllocationRepository _allocationRepository;
     private readonly IClientConfigurationRepository _clientConfigRepository;
@@ -34,7 +35,7 @@ public class ResourceAllocationService : IResourceAllocationService
     /// <param name="metrics">The metrics instrumentation instance.</param>
     /// <param name="usageRecorder">The usage event recorder.</param>
     public ResourceAllocationService(
-        ILogger<ResourceAllocationService> logger,
+        IAppLogger<ResourceAllocationService> logger,
         IEntityRepository<ResourcePool> poolRepository,
         IResourceAllocationRepository allocationRepository,
         IClientConfigurationRepository clientConfigRepository,
@@ -142,8 +143,7 @@ public class ResourceAllocationService : IResourceAllocationService
         });
         _usageRecorder.RecordAllocationEvent(clientId, resourcePoolId, UsageEventType.Granted);
 
-        _logger.LogInformation("Resource acquired | ClientId={ClientId}, ResourcePoolId={ResourcePoolId}, AllocationId={AllocationId}, ExpiresAt={ExpiresAt}",
-            clientId, resourcePoolId, allocationId, expiresAt);
+        _logger.Info("Resource acquired", new { ClientId = clientId, ResourcePoolId = resourcePoolId, AllocationId = allocationId, ExpiresAt = expiresAt });
 
         return new ResourceAcquireResponse
         {
@@ -174,7 +174,7 @@ public class ResourceAllocationService : IResourceAllocationService
         });
         _usageRecorder.RecordAllocationEvent(allocation.ClientId, allocation.ResourcePoolId, UsageEventType.Released);
 
-        _logger.LogInformation("Resource released | AllocationId={AllocationId}", allocationId);
+        _logger.Info("Resource released", new { AllocationId = allocationId });
 
         return true;
     }
@@ -187,7 +187,7 @@ public class ResourceAllocationService : IResourceAllocationService
         if (cleanedUp > 0)
         {
             _metrics.ResourceExpired.Add(cleanedUp);
-            _logger.LogInformation("Expired allocations cleaned up | Count={Count}", cleanedUp);
+            _logger.Info("Expired allocations cleaned up", new { Count = cleanedUp });
         }
     }
 }

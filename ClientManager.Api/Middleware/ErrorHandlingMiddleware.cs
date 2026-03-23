@@ -1,4 +1,5 @@
 using ClientManager.Api.Models.Exceptions;
+using ClientManager.Shared.Logging;
 
 namespace ClientManager.Api.Middleware;
 
@@ -9,9 +10,9 @@ namespace ClientManager.Api.Middleware;
 public class ErrorHandlingMiddleware
 {
     private readonly RequestDelegate _next;
-    private readonly ILogger<ErrorHandlingMiddleware> _logger;
+    private readonly IAppLogger<ErrorHandlingMiddleware> _logger;
 
-    public ErrorHandlingMiddleware(RequestDelegate next, ILogger<ErrorHandlingMiddleware> logger)
+    public ErrorHandlingMiddleware(RequestDelegate next, IAppLogger<ErrorHandlingMiddleware> logger)
     {
         _next = next;
         _logger = logger;
@@ -25,38 +26,32 @@ public class ErrorHandlingMiddleware
         }
         catch (NotFoundException exception)
         {
-            _logger.LogWarning("Resource not found | Path={Path}, Detail={Detail}",
-                context.Request.Path.Value, exception.Message);
+            _logger.Warn("Resource not found", new { Path = context.Request.Path.Value, Detail = exception.Message });
             await WriteProblemDetailsAsync(context, StatusCodes.Status404NotFound, "Not Found", exception.Message);
         }
         catch (ConflictException exception)
         {
-            _logger.LogWarning("Conflict | Path={Path}, Detail={Detail}",
-                context.Request.Path.Value, exception.Message);
+            _logger.Warn("Conflict", new { Path = context.Request.Path.Value, Detail = exception.Message });
             await WriteProblemDetailsAsync(context, StatusCodes.Status409Conflict, "Conflict", exception.Message);
         }
         catch (ValidationException exception)
         {
-            _logger.LogWarning("Validation failed | Path={Path}, Detail={Detail}",
-                context.Request.Path.Value, exception.Message);
+            _logger.Warn("Validation failed", new { Path = context.Request.Path.Value, Detail = exception.Message });
             await WriteProblemDetailsAsync(context, StatusCodes.Status400BadRequest, "Bad Request", exception.Message);
         }
         catch (AccessDeniedException exception)
         {
-            _logger.LogWarning("Access denied | Path={Path}, ClientId={ClientId}, ServiceId={ServiceId}",
-                context.Request.Path.Value, exception.ClientId, exception.ServiceId);
+            _logger.Warn("Access denied", new { Path = context.Request.Path.Value, ClientId = exception.ClientId, ServiceId = exception.ServiceId });
             await WriteProblemDetailsAsync(context, StatusCodes.Status403Forbidden, "Forbidden", exception.Message);
         }
         catch (ClientDisabledException exception)
         {
-            _logger.LogWarning("Client disabled | Path={Path}, ClientId={ClientId}",
-                context.Request.Path.Value, exception.ClientId);
+            _logger.Warn("Client disabled", new { Path = context.Request.Path.Value, ClientId = exception.ClientId });
             await WriteProblemDetailsAsync(context, StatusCodes.Status403Forbidden, "Forbidden", exception.Message);
         }
         catch (RateLimitedException exception)
         {
-            _logger.LogWarning("Rate limited | Path={Path}, Detail={Detail}, RetryAfterSeconds={RetryAfterSeconds}",
-                context.Request.Path.Value, exception.Message, exception.RetryAfterSeconds);
+            _logger.Warn("Rate limited", new { Path = context.Request.Path.Value, Detail = exception.Message, RetryAfterSeconds = exception.RetryAfterSeconds });
 
             if (exception.RetryAfterSeconds.HasValue)
             {
@@ -67,8 +62,7 @@ public class ErrorHandlingMiddleware
         }
         catch (Exception exception)
         {
-            _logger.LogError(exception, "Unhandled exception | Path={Path}, Method={Method}",
-                context.Request.Path.Value, context.Request.Method);
+            _logger.Error("Unhandled exception", exception, new { Path = context.Request.Path.Value, Method = context.Request.Method });
             await WriteProblemDetailsAsync(context, StatusCodes.Status500InternalServerError, "Internal Server Error", "An unexpected error occurred.");
         }
     }
@@ -81,7 +75,6 @@ public class ErrorHandlingMiddleware
 
         var problemDetails = new
         {
-            type = $"https://httpstatuses.com/{statusCode}",
             title,
             status = statusCode,
             detail,

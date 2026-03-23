@@ -8,6 +8,7 @@ using ClientManager.DataAccess.Implementations.JsonFile;
 using ClientManager.DataAccess.Implementations.MongoDb;
 using ClientManager.DataAccess.Implementations.Redis;
 using ClientManager.DataAccess.Interfaces;
+using ClientManager.Shared.Logging;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Enums;
 using MongoDB.Driver;
@@ -28,6 +29,8 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddClientManager(
         this IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton(typeof(IAppLogger<>), typeof(AppLogger<>));
+
         var persistenceOptions = configuration
             .GetSection(PersistenceOptions.SectionName)
             .Get<PersistenceOptions>() ?? new PersistenceOptions();

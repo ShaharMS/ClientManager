@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using ClientManager.Api.Interfaces;
+using ClientManager.Shared.Logging;
 
 namespace ClientManager.Api.Services;
 
@@ -8,7 +9,7 @@ namespace ClientManager.Api.Services;
 /// </summary>
 public class AllocationCleanupService : BackgroundService
 {
-    private readonly ILogger<AllocationCleanupService> _logger;
+    private readonly IAppLogger<AllocationCleanupService> _logger;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly TimeSpan _interval = TimeSpan.FromSeconds(30);
 
@@ -18,7 +19,7 @@ public class AllocationCleanupService : BackgroundService
     /// <param name="logger">The logger instance.</param>
     /// <param name="scopeFactory">Factory for creating service scopes.</param>
     public AllocationCleanupService(
-        ILogger<AllocationCleanupService> logger,
+        IAppLogger<AllocationCleanupService> logger,
         IServiceScopeFactory scopeFactory)
     {
         _logger = logger;
@@ -44,7 +45,7 @@ public class AllocationCleanupService : BackgroundService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error cleaning up expired resource allocations");
+                _logger.Error("Error cleaning up expired resource allocations", ex);
             }
 
             await Task.Delay(_interval, stoppingToken);

@@ -4,6 +4,7 @@ using ClientManager.Api.Models.Exceptions;
 using ClientManager.Api.Models.Responses;
 using ClientManager.Api.Services.Instrumentation;
 using ClientManager.DataAccess.Interfaces;
+using ClientManager.Shared.Logging;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Enums;
 
@@ -15,7 +16,7 @@ namespace ClientManager.Api.Services;
 /// </summary>
 public class AccessControlService : IAccessControlService
 {
-    private readonly ILogger<AccessControlService> _logger;
+    private readonly IAppLogger<AccessControlService> _logger;
     private readonly IClientConfigurationRepository _clientConfigRepository;
     private readonly IEntityRepository<Service> _serviceRepository;
     private readonly IRateLimitService _rateLimitService;
@@ -32,7 +33,7 @@ public class AccessControlService : IAccessControlService
     /// <param name="metrics">The metrics instrumentation instance.</param>
     /// <param name="usageRecorder">The usage event recorder.</param>
     public AccessControlService(
-        ILogger<AccessControlService> logger,
+        IAppLogger<AccessControlService> logger,
         IClientConfigurationRepository clientConfigRepository,
         IEntityRepository<Service> serviceRepository,
         IRateLimitService rateLimitService,
@@ -122,8 +123,7 @@ public class AccessControlService : IAccessControlService
             throw new RateLimitedException("Rate limit exceeded", result.RetryAfterSeconds);
         }
 
-        _logger.LogInformation("Access granted | ClientId={ClientId}, ServiceId={ServiceId}",
-            clientId, serviceId);
+        _logger.Info("Access granted", new { ClientId = clientId, ServiceId = serviceId });
 
         _metrics.AccessGranted.Add(1, new TagList
         {
