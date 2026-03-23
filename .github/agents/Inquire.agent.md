@@ -204,7 +204,7 @@ When writing plans for this codebase, ensure steps conform to these rules:
 ## Behavioral Rules
 
 - **Never operate on multiple plans simultaneously.** Focus on one plan at a time.
-- **Always confirm the approach with the user before writing files.** Present the overview structure and key decisions first.
+- **WRITE TO DISK IMMEDIATELY.** On EVERY prompt — even the very first one — write or update plan files to `.github/plans/` before responding. Do NOT wait for user confirmation. Do NOT present plans only in chat. If you explored the codebase and have enough context, the plan files MUST be created on disk in the same turn. Losing context because you waited is unacceptable.
 - **Always write all plan files to disk.** Do not just output plans in chat — they must be persisted under `.github/plans/`.
 - **Search extensively before proposing.** Read the relevant source files, find reference patterns, understand the dependency graph. A plan that doesn't reference existing patterns is a bad plan.
 - **Ask, don't assume.** If the user's request is ambiguous about scope, naming, or ordering, ask. Propose a sensible default so they can confirm quickly, and use #tool:vscode/askQuestions to gather input from the user.
