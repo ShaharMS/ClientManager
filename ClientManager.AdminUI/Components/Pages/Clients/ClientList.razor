@@ -1,6 +1,8 @@
 @page "/clients"
 @inject ClientApiService ClientApi
 @inject NavigationManager Nav
+@inject IJSRuntime JS
+@implements IAsyncDisposable
 
 <div class="cm-page-header">
     <h1>Clients</h1>
@@ -19,14 +21,16 @@ else
 {
     <div class="cm-list-page__table-card">
         <div class="cm-list-page__header">
-            <RadzenTextBox Placeholder="Search clients..." @bind-Value="_search"
-                Change="@OnSearchChanged" Style="width: 280px;" />
+            <RadzenTextBox Placeholder="Search clients..."
+                Value="@_search"
+                ValueChanged="@((string v) => { _search = v; StateHasChanged(); })"
+                Style="width: 280px;" />
             <RadzenButton Text="Create Client" Icon="add" Click="@(() => Nav.NavigateTo("/clients/new"))"
                 ButtonStyle="ButtonStyle.Primary" />
         </div>
 
         <RadzenDataGrid Data="@_filteredClients" TItem="ClientConfiguration"
-            AllowSorting="true" AllowPaging="true" PageSize="15"
+            AllowSorting="true" AllowPaging="true" PageSize="@_pageSize"
             PagerHorizontalAlign="HorizontalAlign.Center">
             <Columns>
                 <RadzenDataGridColumn TItem="ClientConfiguration" Property="Id" Title="ID" Width="150px" />
@@ -68,6 +72,9 @@ else
     private string? _error;
     private string? _search;
     private List<ClientConfiguration> _clients = [];
+    private int _pageSize = 10;
+    private IJSObjectReference? _tableJs;
+    private DotNetObjectReference<ClientList>? _selfRef;
 
     private IEnumerable<ClientConfiguration> _filteredClients =>
         string.IsNullOrWhiteSpace(_search)
@@ -79,6 +86,36 @@ else
     protected override async Task OnInitializedAsync()
     {
         await LoadAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _tableJs = await JS.InvokeAsync<IJSObjectReference>("import", "./js/table.js");
+            _selfRef = DotNetObjectReference.Create(this);
+            await _tableJs.InvokeVoidAsync("register", _selfRef);
+            await RecalculatePageSizeAsync();
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnWindowResize() => await RecalculatePageSizeAsync();
+
+    private async Task RecalculatePageSizeAsync()
+    {
+        _pageSize = await _tableJs!.InvokeAsync<int>("getPageSize", 45);
+        StateHasChanged();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_tableJs is not null)
+        {
+            await _tableJs.InvokeVoidAsync("unregister");
+            await _tableJs.DisposeAsync();
+        }
+        _selfRef?.Dispose();
     }
 
     private async Task LoadAsync()
@@ -97,8 +134,6 @@ else
             _loading = false;
         }
     }
-
-    private void OnSearchChanged() => StateHasChanged();
 
     private async Task DeleteAsync(string id)
     {

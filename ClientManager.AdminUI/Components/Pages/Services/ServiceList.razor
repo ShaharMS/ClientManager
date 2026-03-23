@@ -1,6 +1,8 @@
 @page "/services"
 @inject ServiceApiService ServiceApi
 @inject NavigationManager Nav
+@inject IJSRuntime JS
+@implements IAsyncDisposable
 
 <div class="cm-page-header">
     <h1>Services</h1>
@@ -19,14 +21,16 @@ else
 {
     <div class="cm-list-page__table-card">
         <div class="cm-list-page__header">
-            <RadzenTextBox Placeholder="Search services..." @bind-Value="_search"
-                Change="@OnSearchChanged" Style="width: 280px;" />
+            <RadzenTextBox Placeholder="Search services..."
+                Value="@_search"
+                ValueChanged="@((string v) => { _search = v; StateHasChanged(); })"
+                Style="width: 280px;" />
             <RadzenButton Text="Create Service" Icon="add" Click="@(() => Nav.NavigateTo("/services/new"))"
                 ButtonStyle="ButtonStyle.Primary" />
         </div>
 
         <RadzenDataGrid Data="@_filteredServices" TItem="Service"
-            AllowSorting="true" AllowPaging="true" PageSize="15"
+            AllowSorting="true" AllowPaging="true" PageSize="@_pageSize"
             PagerHorizontalAlign="HorizontalAlign.Center">
             <Columns>
                 <RadzenDataGridColumn TItem="Service" Property="Id" Title="ID" Width="200px" />
@@ -62,6 +66,9 @@ else
     private string? _error;
     private string? _search;
     private List<Service> _services = [];
+    private int _pageSize = 10;
+    private IJSObjectReference? _tableJs;
+    private DotNetObjectReference<ServiceList>? _selfRef;
 
     private IEnumerable<Service> _filteredServices =>
         string.IsNullOrWhiteSpace(_search)
@@ -71,6 +78,36 @@ else
                 s.Name.Contains(_search, StringComparison.OrdinalIgnoreCase));
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _tableJs = await JS.InvokeAsync<IJSObjectReference>("import", "./js/table.js");
+            _selfRef = DotNetObjectReference.Create(this);
+            await _tableJs.InvokeVoidAsync("register", _selfRef);
+            await RecalculatePageSizeAsync();
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnWindowResize() => await RecalculatePageSizeAsync();
+
+    private async Task RecalculatePageSizeAsync()
+    {
+        _pageSize = await _tableJs!.InvokeAsync<int>("getPageSize", 45);
+        StateHasChanged();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_tableJs is not null)
+        {
+            await _tableJs.InvokeVoidAsync("unregister");
+            await _tableJs.DisposeAsync();
+        }
+        _selfRef?.Dispose();
+    }
 
     private async Task LoadAsync()
     {
@@ -88,8 +125,6 @@ else
             _loading = false;
         }
     }
-
-    private void OnSearchChanged() => StateHasChanged();
 
     private async Task DeleteAsync(string id)
     {
