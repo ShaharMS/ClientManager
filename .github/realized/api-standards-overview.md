@@ -16,10 +16,10 @@ The current route structure is `api/clients`, `api/services`, `api/resource-pool
 
 | Order | Plan File | Summary |
 |-------|-----------|---------|
-| 1 | [api-standards-1-versioning.md](.github/plans/api-standards-1-versioning.md) | Install versioning packages, configure services, update all controller routes to `api/v1/`, configure Swagger version switching |
-| 2 | [api-standards-2-pagination-foundation.md](.github/plans/api-standards-2-pagination-foundation.md) | Create standard `PagedRequest`/`PagedResponse<T>` models and pagination extension method |
-| 3 | [api-standards-3-apply-pagination-filtering.md](.github/plans/api-standards-3-apply-pagination-filtering.md) | Apply pagination and query param filtering to all collection-returning controller endpoints |
-| 4 | [api-standards-4-adminui-sync.md](.github/plans/api-standards-4-adminui-sync.md) | Update all AdminUI API services for versioned URLs, paginated responses, and filter params |
+| 1 | [api-standards-1-versioning.md](.github/realized/api-standards-1-versioning.md) | Install versioning packages, configure services, update all controller routes to `api/v1/`, configure Swagger version switching |
+| 2 | [api-standards-2-pagination-foundation.md](.github/realized/api-standards-2-pagination-foundation.md) | Create standard `PagedRequest`/`PagedResponse<T>` models and pagination extension method |
+| 3 | [api-standards-3-apply-pagination-filtering.md](.github/realized/api-standards-3-apply-pagination-filtering.md) | Apply pagination and query param filtering to all collection-returning controller endpoints |
+| 4 | [api-standards-4-adminui-sync.md](.github/realized/api-standards-4-adminui-sync.md) | Update all AdminUI API services for versioned URLs, paginated responses, and filter params |
 
 ## Key Decisions
 
