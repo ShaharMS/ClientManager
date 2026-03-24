@@ -81,10 +81,29 @@ public class AccessControlService : IAccessControlService
 
         if (!service.IsEnabled)
         {
-            throw new NotFoundException($"Service '{serviceId}' is disabled");
+            _metrics.AccessDenied.Add(1, new TagList
+            {
+                { "clientId", clientId },
+                { "serviceId", serviceId },
+                { "reason", AccessDenialReason.ServiceDisabled.ToTagValue() }
+            });
+            _usageRecorder.RecordServiceRequest(clientId, serviceId, UsageEventType.Denied);
+            throw new ServiceDisabledException(serviceId);
         }
 
-        if (!config.Services.TryGetValue(serviceId, out var serviceSettings) || !serviceSettings.IsAllowed)
+        if (!config.Services.TryGetValue(serviceId, out var serviceSettings))
+        {
+            _metrics.AccessDenied.Add(1, new TagList
+            {
+                { "clientId", clientId },
+                { "serviceId", serviceId },
+                { "reason", AccessDenialReason.NotConfigured.ToTagValue() }
+            });
+            _usageRecorder.RecordServiceRequest(clientId, serviceId, UsageEventType.Denied);
+            throw new AccessNotConfiguredException(clientId, serviceId);
+        }
+
+        if (!serviceSettings.IsAllowed)
         {
             _metrics.AccessDenied.Add(1, new TagList
             {

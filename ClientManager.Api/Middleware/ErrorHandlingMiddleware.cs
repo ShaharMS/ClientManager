@@ -39,6 +39,11 @@ public class ErrorHandlingMiddleware
             _logger.Warn("Validation failed", new { Path = context.Request.Path.Value, Detail = exception.Message });
             await WriteProblemDetailsAsync(context, StatusCodes.Status400BadRequest, "Bad Request", exception.Message);
         }
+        catch (AccessNotConfiguredException exception)
+        {
+            _logger.Warn("Access not configured", new { Path = context.Request.Path.Value, ClientId = exception.ClientId, ServiceId = exception.ServiceId });
+            await WriteProblemDetailsAsync(context, StatusCodes.Status401Unauthorized, "Unauthorized", exception.Message);
+        }
         catch (AccessDeniedException exception)
         {
             _logger.Warn("Access denied", new { Path = context.Request.Path.Value, ClientId = exception.ClientId, ServiceId = exception.ServiceId });
@@ -47,6 +52,11 @@ public class ErrorHandlingMiddleware
         catch (ClientDisabledException exception)
         {
             _logger.Warn("Client disabled", new { Path = context.Request.Path.Value, ClientId = exception.ClientId });
+            await WriteProblemDetailsAsync(context, StatusCodes.Status403Forbidden, "Forbidden", exception.Message);
+        }
+        catch (ServiceDisabledException exception)
+        {
+            _logger.Warn("Service disabled", new { Path = context.Request.Path.Value, ServiceId = exception.ServiceId });
             await WriteProblemDetailsAsync(context, StatusCodes.Status403Forbidden, "Forbidden", exception.Message);
         }
         catch (RateLimitedException exception)

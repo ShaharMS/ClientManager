@@ -5,7 +5,9 @@ namespace ClientManager.Api.Services.Instrumentation;
 /// </summary>
 public enum AccessDenialReason
 {
+    NotConfigured,
     ClientDisabled,
+    ServiceDisabled,
     NotAllowed,
     GlobalRateLimited,
     RateLimited
@@ -28,7 +30,9 @@ public static class DenialReasonExtensions
 {
     public static string ToTagValue(this AccessDenialReason reason) => reason switch
     {
+        AccessDenialReason.NotConfigured => "not_configured",
         AccessDenialReason.ClientDisabled => "client_disabled",
+        AccessDenialReason.ServiceDisabled => "service_disabled",
         AccessDenialReason.NotAllowed => "not_allowed",
         AccessDenialReason.GlobalRateLimited => "global_rate_limited",
         AccessDenialReason.RateLimited => "rate_limited",
