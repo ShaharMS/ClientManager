@@ -60,12 +60,12 @@ public record GlobalRateLimit
     /// <summary>
     /// Unique identifier for this global rate limit.
     /// </summary>
-    public string Id { get; init; } = string.Empty;
+    public required string Id { get; init; }
 
     /// <summary>
     /// ID of the service or resource pool this limit applies to.
     /// </summary>
-    public string TargetId { get; init; } = string.Empty;
+    public required string TargetId { get; init; }
 
     /// <summary>
     /// Whether the target is a service or a resource pool. Determines the access-control

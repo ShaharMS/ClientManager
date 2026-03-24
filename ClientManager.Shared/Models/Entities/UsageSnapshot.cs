@@ -10,7 +10,7 @@ namespace ClientManager.Shared.Models.Entities;
 /// <para>
 ///     As <see cref="UsageEventType"/> events are emitted during access checks and resource
 ///     allocations, they accumulate in an in-memory buffer. A background
-///     <c>UsagePersistenceService</c> periodically drains that buffer, groups the counts by
+///     service periodically drains that buffer, groups the counts by
 ///     (client, target, granularity), and upserts them into the matching snapshot document.
 ///     Each flush appends or merges into the <see cref="Buckets"/> list.
 /// </para>
@@ -29,17 +29,17 @@ public record UsageSnapshot
     /// <br></br>
     /// Composed using <c>"{ClientId}:{TargetType}:{TargetId}:{Granularity}"</c>
     /// </summary>
-    public string Id { get; init; } = string.Empty;
+    public required string Id { get; init; }
 
     /// <summary>
     /// ID of the client this usage data belongs to.
     /// </summary>
-    public string ClientId { get; init; } = string.Empty;
+    public required string ClientId { get; init; }
 
     /// <summary>
     /// ID of the service or resource pool being tracked.
     /// </summary>
-    public string TargetId { get; init; } = string.Empty;
+    public required string TargetId { get; init; }
 
     /// <summary>
     /// The type of target this usage data is tracking.

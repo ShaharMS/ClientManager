@@ -1,7 +1,9 @@
+using ClientManager.Shared.Models.Entities;
+
 namespace ClientManager.Shared.Models.Enums;
 
 /// <summary>
-/// Controls the width of time windows used to aggregate <see cref="Entities.UsageBucket"/>s
+/// Controls the width of time windows used to aggregate <see cref="UsageBucket"/>s
 /// within a <see cref="Entities.UsageSnapshot"/>.
 ///
 /// <para>
@@ -27,14 +29,12 @@ public enum BucketGranularity
     FiveMinute,
 
     /// <summary>
-    /// 1-hour buckets. Lower resolution, longer retention; suitable for medium-term
-    /// capacity planning.
+    /// 1-hour buckets. Lower resolution, longer retention; suitable for medium-term capacity planning.
     /// </summary>
     Hour,
 
     /// <summary>
-    /// 1-day buckets. Coarsest resolution, longest retention; suitable for long-term trend
-    /// analysis and billing reports.
+    /// 1-day buckets. Coarsest resolution, longest retention; suitable for long-term trend analysis.
     /// </summary>
     Day
 }

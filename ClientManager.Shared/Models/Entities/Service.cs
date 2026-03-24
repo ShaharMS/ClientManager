@@ -1,6 +1,7 @@
 namespace ClientManager.Shared.Models.Entities;
 
 using System.Net;
+using ClientManager.Shared.Models.Enums;
 
 /// <summary>
 /// Defines a stateless, request/response target that clients can be granted access to
@@ -11,7 +12,7 @@ using System.Net;
 ///     <see cref="ClientConfiguration.Services"/>. Rate limits can be applied per-client
 ///     (<see cref="ClientRateLimit"/>), per-client-per-service
 ///     (<see cref="ServiceAccessSettings.RateLimit"/>), and globally
-///     (<see cref="GlobalRateLimit"/> with <see cref="Enums.TargetType.Service"/>).
+///     (<see cref="GlobalRateLimit"/> with <see cref="TargetType.Service"/>).
 /// </para>
 /// </summary>
 public record Service
@@ -19,12 +20,12 @@ public record Service
     /// <summary>
     /// Unique identifier for the service.
     /// </summary>
-    public string Id { get; init; } = string.Empty;
+    public required string Id { get; init; }
 
     /// <summary>
     /// Human-readable display name, used for error messages and metrics tags.
     /// </summary>
-    public string Name { get; init; } = string.Empty;
+    public required string Name { get; init; }
 
     /// <summary>
     /// Whether this service is currently active. Disabled services reject all requests with a <see cref="HttpStatusCode.Forbidden"/> response.

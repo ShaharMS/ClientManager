@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using ClientManager.Shared.Models.Entities;
 
 namespace ClientManager.Shared.Models.Enums;
 
@@ -14,7 +15,7 @@ namespace ClientManager.Shared.Models.Enums;
 /// </para>
 ///
 /// <para>
-///     This enum is used throughout the system - in <see cref="Entities.GlobalRateLimit"/> to
+///     This enum is used throughout the system - in <see cref="GlobalRateLimit"/> to
 ///     scope a rate-limit rule, in <see cref="UsageEventType"/> tracking to categorize events,
 ///     and in usage snapshots to partition statistics.
 /// </para>
@@ -32,9 +33,9 @@ public enum TargetType
     /// </para>
     /// <para>
     ///     Throttled exclusively via rate limits: per-client
-    ///     (<see cref="Entities.ClientRateLimit"/>), per-client-per-service
-    ///     (<see cref="Entities.ServiceAccessSettings.RateLimit"/>), and global-per-service
-    ///     (<see cref="Entities.GlobalRateLimit"/>).
+    ///     (<see cref="ClientRateLimit"/>), per-client-per-service
+    ///     (<see cref="ServiceAccessSettings.RateLimit"/>), and global-per-service
+    ///     (<see cref="GlobalRateLimit"/>).
     /// </para>
     /// </summary>
     Service,
@@ -46,12 +47,12 @@ public enum TargetType
     /// <para>
     ///     Clients acquire a <em>slot</em> (connection) and hold it for the duration of their
     ///     work. The server must maintain state for each active connection, so both the total
-    ///     number of concurrent slots (<see cref="Entities.ResourcePool.MaxSlots"/>) and each
-    ///     client's share (<see cref="Entities.ResourcePoolSettings.MaxSlots"/>) are capped.
+    ///     number of concurrent slots (<see cref="ResourcePool.MaxSlots"/>) and each
+    ///     client's share (<see cref="ResourcePoolSettings.MaxSlots"/>) are capped.
     /// </para>
     /// <para>
     ///     In addition to slot quotas, resource pools can also have a
-    ///     <see cref="Entities.GlobalRateLimit"/> that caps the <em>frequency</em> of
+    ///     <see cref="GlobalRateLimit"/> that caps the <em>frequency</em> of
     ///     acquisition attempts - preventing thundering-herd bursts even when slots are
     ///     available.
     /// </para>

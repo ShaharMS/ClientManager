@@ -4,10 +4,10 @@ namespace ClientManager.Shared.Models.Entities;
 /// Represents one active (or formerly active) slot held by a client in a resource pool.
 ///
 /// <para>
-///     Created when <c>ResourceAllocationService.AcquireAsync</c> succeeds. Freed in one of
-///     two ways: the client calls <c>ReleaseAsync</c> (sets <see cref="IsReleased"/> and emits
+///     Created when a resource aquisition attempt succeeds. Freed in one of
+///     two ways: the client explicitly releases the resource (and emits
 ///     a <see cref="Enums.UsageEventType.Released"/> event), or the allocation outlives its
-///     <see cref="ExpiresAt"/> and is cleaned up by <c>AllocationCleanupService</c> (no
+///     <see cref="ExpiresAt"/> and is cleaned up by a cleanup service (no
 ///     Released event emitted - the slot is silently reclaimed).
 /// </para>
 /// </summary>
@@ -16,17 +16,17 @@ public record ResourceAllocation
     /// <summary>
     /// Unique identifier for this allocation.
     /// </summary>
-    public string Id { get; init; } = string.Empty;
+    public required string Id { get; init; }
 
     /// <summary>
     /// ID of the resource pool this slot belongs to.
     /// </summary>
-    public string ResourcePoolId { get; init; } = string.Empty;
+    public required string ResourcePoolId { get; init; }
 
     /// <summary>
     /// ID of the client holding this slot.
     /// </summary>
-    public string ClientId { get; init; } = string.Empty;
+    public required string ClientId { get; init; }
 
     /// <summary>
     /// UTC timestamp when this slot was acquired.

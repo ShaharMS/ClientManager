@@ -62,12 +62,12 @@ public record ClientConfiguration
     /// <summary>
     /// Unique identifier for the client.
     /// </summary>
-    public string Id { get; init; } = string.Empty;
+    public required string Id { get; init; }
 
     /// <summary>
     /// Human-readable display name.
     /// </summary>
-    public string Name { get; init; } = string.Empty;
+    public required string Name { get; init; }
 
     /// <summary>
     /// Whether this client is currently active. Disabled clients are rejected immediately
@@ -130,7 +130,7 @@ public record ClientConfiguration
     ///     with that service and requests are rejected with <see cref="HttpStatusCode.Unauthorized"/> (401).
     /// </para>
     /// </summary>
-    public Dictionary<string, ServiceAccessSettings> Services { get; init; } = new();
+    public Dictionary<string, ServiceAccessSettings> Services { get; init; } = [];
 
     /// <summary>
     /// Per-resource-pool quota settings, keyed by resource pool ID.
@@ -141,7 +141,7 @@ public record ClientConfiguration
     ///     resource pool specific <see cref="ResourcePool.MaxSlots"/> still applies).
     /// </para>
     /// </summary>
-    public Dictionary<string, ResourcePoolSettings> ResourcePools { get; init; } = new();
+    public Dictionary<string, ResourcePoolSettings> ResourcePools { get; init; } = [];
 
     /// <summary>
     /// UTC timestamp when this configuration was created.

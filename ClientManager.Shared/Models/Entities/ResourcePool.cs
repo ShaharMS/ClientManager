@@ -1,3 +1,6 @@
+using ClientManager.Shared.Models.Enums;
+
+
 namespace ClientManager.Shared.Models.Entities;
 
 /// <summary>
@@ -19,13 +22,13 @@ namespace ClientManager.Shared.Models.Entities;
 ///     work, and freed either by an explicit release or automatically after
 ///     <see cref="AllocationTtl"/> expires. Expired allocations are cleaned up by a background
 ///     service (<c>AllocationCleanupService</c>) and do not produce a
-///     <see cref="Enums.UsageEventType.Released"/> usage event.
+///     <see cref="UsageEventType.Released"/> usage event.
 /// </para>
 ///
 /// <para><strong>Rate limits on top of slot quotas</strong></para>
 /// <para>
 ///     Optionally, a <see cref="GlobalRateLimit"/> with
-///     <see cref="Enums.TargetType.ResourcePool"/> can be configured to cap the
+///     <see cref="TargetType.ResourcePool"/> can be configured to cap the
 ///     <em>frequency</em> of acquisition attempts, independent of how many slots are free.
 ///     This prevents thundering-herd bursts from overwhelming the backing resource.
 /// </para>
@@ -35,12 +38,12 @@ public record ResourcePool
     /// <summary>
     /// Unique identifier for the resource pool.
     /// </summary>
-    public string Id { get; init; } = string.Empty;
+    public required string Id { get; init; }
 
     /// <summary>
     /// Human-readable display name, used for error messages and metrics tags.
     /// </summary>
-    public string Name { get; init; } = string.Empty;
+    public required string Name { get; init; }
 
     /// <summary>
     /// Maximum number of concurrent slots available system-wide, across all clients.
