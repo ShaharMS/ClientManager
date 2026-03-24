@@ -3,17 +3,17 @@ using ClientManager.Api.Models;
 using ClientManager.Api.Services;
 using ClientManager.Api.Services.RateLimiting;
 using ClientManager.Api.Services.UsageTracking;
-using ClientManager.DataAccess.Bindings.Implementations;
-using ClientManager.DataAccess.Bindings.Interfaces;
+using ClientManager.DataAccess.Stores.Implementations;
+using ClientManager.DataAccess.Stores.Interfaces;
 using ClientManager.DataAccess.Databases.Implementations;
 using ClientManager.DataAccess.Databases.Interfaces;
-using ClientManager.DataAccess.Implementations.JsonFile;
 using ClientManager.DataAccess.Repositories.Interfaces;
 using ClientManager.Shared.Logging;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Enums;
 using MongoDB.Driver;
 using StackExchange.Redis;
+using ClientManager.DataAccess.Repositories.Implementations;
 
 namespace ClientManager.Api.Extensions;
 

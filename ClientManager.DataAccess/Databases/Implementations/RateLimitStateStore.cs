@@ -1,4 +1,4 @@
-using ClientManager.DataAccess.Bindings.Interfaces;
+using ClientManager.DataAccess.Stores.Interfaces;
 using ClientManager.DataAccess.Databases.Interfaces;
 
 namespace ClientManager.DataAccess.Databases.Implementations;

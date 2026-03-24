@@ -1,10 +1,10 @@
 using System.Text.Json;
-using ClientManager.DataAccess.Bindings.Interfaces;
+using ClientManager.DataAccess.Stores.Interfaces;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
 using MongoDB.Driver;
 
-namespace ClientManager.DataAccess.Bindings.Implementations;
+namespace ClientManager.DataAccess.Stores.Implementations;
 
 /// <summary>
 /// MongoDB-based implementation of <see cref="IDocumentStore"/>.

@@ -4,8 +4,8 @@
 
 The project is intentionally split into two concerns:
 
-1. **Generic document storage** — a provider-agnostic abstraction for basic document and counter operations.
-2. **Domain repositories** — higher-level APIs that expose the data shapes used by the ClientManager domain.
+1. **Generic document storage** - a provider-agnostic abstraction for basic document and counter operations.
+2. **Domain repositories** - higher-level APIs that expose the data shapes used by the ClientManager domain.
 
 This project targets **.NET 9** and depends on `ClientManager.Shared` for the shared entities and enums used across the solution.
 

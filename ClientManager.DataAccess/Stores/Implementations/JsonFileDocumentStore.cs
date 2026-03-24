@@ -1,8 +1,8 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
-using ClientManager.DataAccess.Bindings.Interfaces;
+using ClientManager.DataAccess.Stores.Interfaces;
 
-namespace ClientManager.DataAccess.Bindings.Implementations;
+namespace ClientManager.DataAccess.Stores.Implementations;
 
 /// <summary>
 /// JSON file-based implementation of <see cref="IDocumentStore"/>.
@@ -171,8 +171,7 @@ public class JsonFileDocumentStore : IDocumentStore
                 return new ConcurrentDictionary<string, JsonElement>();
 
             var json = File.ReadAllText(path);
-            var dict = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json, JsonOptions)
-                       ?? new Dictionary<string, JsonElement>();
+            var dict = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json, JsonOptions) ?? [];
             return new ConcurrentDictionary<string, JsonElement>(dict);
         });
     }
@@ -191,8 +190,7 @@ public class JsonFileDocumentStore : IDocumentStore
         try
         {
             var json = File.ReadAllText(CounterPath);
-            var dict = JsonSerializer.Deserialize<Dictionary<string, CounterEntry>>(json, JsonOptions)
-                       ?? new Dictionary<string, CounterEntry>();
+            var dict = JsonSerializer.Deserialize<Dictionary<string, CounterEntry>>(json, JsonOptions) ?? [];
             _counterCache = new ConcurrentDictionary<string, CounterEntry>(dict);
         }
         catch (JsonException)
