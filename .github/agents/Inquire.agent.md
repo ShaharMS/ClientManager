@@ -134,7 +134,7 @@ snippets when the exact shape matters.}
 - **TL;DR is mandatory** — it is the first thing an executing agent reads to decide scope.
 - **Reference Pattern is critical** — always search the codebase for existing implementations of the same pattern. Link directly to them. This is the single most effective way to get consistent output from executing agents.
 - **Steps must be numbered, actionable, and file-scoped** — each step should be completable without ambiguity. Name the files to create or edit.
-- **Code snippets show shape, not full implementations** — show key names, type signatures, function signatures. The executing agent fills in the rest based on the reference pattern.
+- **Code snippets are minimal** — show only the key type signature, method signature, or a 3-5 line structural sketch at most. Do NOT write full method bodies, complete classes, or copy-pasteable implementations. The executing agent writes the real code based on your instructions, reference patterns, and the codebase. If you find yourself writing more than ~5 lines of code in a snippet, you're writing too much.
 - **Verification must be concrete** — prefer compilation checks, importability checks, and behavioral checks. No vague statements like "it should work."
 - **Each sub-plan should touch one layer or concern** — don't mix DAL and UI in the same sub-plan.
 - **Each sub-plan must be completable in a single agent session** — if it's too big, split it.

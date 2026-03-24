@@ -114,8 +114,8 @@ Check if the plan has a **next step** (the `**Next**` field in the sub-plan head
 ## Execution Rules
 
 - **One step at a time.** Never execute multiple sub-plan steps without confirming with the user between them.
-- **Follow the sub-plan precisely.** The sub-plan was written by a planning agent with full codebase context. Trust its instructions — file paths, code shapes, patterns to follow.
-- **Use Reference Patterns.** Before writing any code, read the reference files linked in the sub-plan. Match their style, structure, and patterns exactly.
+- **Follow the sub-plan's intent, not its literal code.** The sub-plan describes *what* to build, names files, and shows structural hints — but you write the actual code. Do NOT copy-paste snippets from the plan verbatim. Read the reference pattern files, understand the codebase conventions, and author the implementation yourself.
+- **Use Reference Patterns as your primary guide.** Before writing any code, read the reference files linked in the sub-plan. Match their style, structure, and patterns. The reference pattern is more authoritative than any code snippet in the plan.
 - **Run verification.** Every sub-plan has a Verification section. Run those checks (compile, import, test) before marking the step as done.
 - **Mark status in the files.** Always update the markdown status fields. This is how other agents and future sessions know what's been done.
 - **Respect repository conventions.** Follow the rules in `.github/copilot-instructions.md` — error handling, logging, code style, file structure, TypeScript guidelines.
