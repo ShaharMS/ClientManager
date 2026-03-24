@@ -1,16 +1,15 @@
+using ClientManager.DataAccess.Stores.Interfaces;
+
 namespace ClientManager.DataAccess.Databases.Interfaces;
 
 /// <summary>
 /// Thin abstraction over the atomic counter operations that rate-limit strategies need.
-/// Each call maps 1:1 to an <see cref="Stores.Interfaces.IDocumentStore"/> counter method,
+/// Each call maps 1:1 to an <see cref="IDocumentStore"/> counter method,
 /// keeping the strategy implementations decoupled from the storage backend.
 ///
 /// <para>
-///     The <c>key</c> parameter in every method is a composite string built by the calling
-///     strategy (e.g. <c>"{clientId}:{serviceId}"</c> for per-client limits, or
-///     <c>"global:service:{serviceId}"</c> for system-wide limits). The <c>window</c>
-///     parameter doubles as the counter's TTL - once the window elapses, the counter
-///     auto-expires so stale state never lingers.
+///     The <c>key</c> parameter in every method is an identifier of the counter, with composition
+///     influenced by the specific rate limit enforcer's implementation.
 /// </para>
 /// </summary>
 public interface IRateLimitStateStore
