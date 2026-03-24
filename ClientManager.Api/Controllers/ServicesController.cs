@@ -1,5 +1,8 @@
 using Asp.Versioning;
+using ClientManager.Api.Extensions;
 using ClientManager.Api.Models.Exceptions;
+using ClientManager.Api.Models.Requests;
+using ClientManager.Api.Models.Responses;
 using ClientManager.DataAccess.Repositories.Interfaces;
 using ClientManager.Shared.Models.Entities;
 using Microsoft.AspNetCore.Http;
@@ -28,16 +31,30 @@ public class ServicesController : ControllerBase
     }
 
     /// <summary>
-    /// Lists all services.
+    /// Lists all services with optional filtering and pagination.
     /// </summary>
-    /// <returns>A list of all services.</returns>
-    /// <response code="200">Returns all services.</response>
+    /// <param name="paging">Pagination parameters.</param>
+    /// <param name="isEnabled">Optional filter by enabled state.</param>
+    /// <param name="name">Optional case-insensitive name filter (contains match).</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A paginated list of services.</returns>
+    /// <response code="200">Returns the paginated services.</response>
     [HttpGet]
-    [ProducesResponseType(typeof(IReadOnlyList<Service>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetAll(CancellationToken cancellationToken)
+    [ProducesResponseType(typeof(PagedResponse<Service>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAll(
+        [FromQuery] PagedRequest paging,
+        [FromQuery] bool? isEnabled,
+        [FromQuery] string? name,
+        CancellationToken cancellationToken)
     {
         var services = await _repository.GetAllAsync(cancellationToken);
-        return Ok(services);
+
+        IReadOnlyList<Service> filtered = services
+            .Where(s => !isEnabled.HasValue || s.IsEnabled == isEnabled.Value)
+            .Where(s => name is null || s.Name.Contains(name, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        return Ok(filtered.ToPagedResponse(paging));
     }
 
     /// <summary>

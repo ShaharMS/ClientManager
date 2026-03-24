@@ -1,5 +1,8 @@
 using Asp.Versioning;
+using ClientManager.Api.Extensions;
 using ClientManager.Api.Models.Exceptions;
+using ClientManager.Api.Models.Requests;
+using ClientManager.Api.Models.Responses;
 using ClientManager.DataAccess.Databases.Interfaces;
 using ClientManager.Shared.Models.Entities;
 using Microsoft.AspNetCore.Http;
@@ -30,16 +33,30 @@ public class ClientConfigurationsController : ControllerBase
     #region Top-level client config CRUD
 
     /// <summary>
-    /// Lists all client configurations.
+    /// Lists all client configurations with optional filtering and pagination.
     /// </summary>
-    /// <returns>A list of all client configurations.</returns>
-    /// <response code="200">Returns all client configurations.</response>
+    /// <param name="paging">Pagination parameters.</param>
+    /// <param name="isEnabled">Optional filter by enabled state.</param>
+    /// <param name="name">Optional case-insensitive name filter (contains match).</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A paginated list of client configurations.</returns>
+    /// <response code="200">Returns the paginated client configurations.</response>
     [HttpGet]
-    [ProducesResponseType(typeof(IReadOnlyList<ClientConfiguration>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetAll(CancellationToken cancellationToken)
+    [ProducesResponseType(typeof(PagedResponse<ClientConfiguration>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAll(
+        [FromQuery] PagedRequest paging,
+        [FromQuery] bool? isEnabled,
+        [FromQuery] string? name,
+        CancellationToken cancellationToken)
     {
         var configs = await _repository.GetAllAsync(cancellationToken);
-        return Ok(configs);
+
+        IReadOnlyList<ClientConfiguration> filtered = configs
+            .Where(c => !isEnabled.HasValue || c.IsEnabled == isEnabled.Value)
+            .Where(c => name is null || c.Name.Contains(name, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        return Ok(filtered.ToPagedResponse(paging));
     }
 
     /// <summary>
@@ -117,21 +134,27 @@ public class ClientConfigurationsController : ControllerBase
     #region Sub-resource: Per-service access settings
 
     /// <summary>
-    /// Lists all service access settings for a client.
+    /// Lists all service access settings for a client, paginated.
     /// </summary>
     /// <param name="id">The unique identifier of the client.</param>
+    /// <param name="paging">Pagination parameters.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>The service access settings dictionary.</returns>
-    /// <response code="200">Returns the service access settings.</response>
+    /// <returns>A paginated list of service access setting entries.</returns>
+    /// <response code="200">Returns the paginated service access settings.</response>
     /// <response code="404">No client was found with the given identifier.</response>
     [HttpGet("{id}/services")]
-    [ProducesResponseType(typeof(Dictionary<string, ServiceAccessSettings>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(PagedResponse<KeyedEntry<ServiceAccessSettings>>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetServices(string id, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetServices(string id, [FromQuery] PagedRequest paging, CancellationToken cancellationToken)
     {
         var config = await _repository.GetByIdAsync(id, cancellationToken)
             ?? throw new NotFoundException($"Client '{id}' not found");
-        return Ok(config.Services);
+
+        IReadOnlyList<KeyedEntry<ServiceAccessSettings>> entries = config.Services
+            .Select(kvp => new KeyedEntry<ServiceAccessSettings>(kvp.Key, kvp.Value))
+            .ToList();
+
+        return Ok(entries.ToPagedResponse(paging));
     }
 
     /// <summary>
@@ -193,21 +216,27 @@ public class ClientConfigurationsController : ControllerBase
     #region Sub-resource: Per-pool resource settings
 
     /// <summary>
-    /// Lists all resource pool settings for a client.
+    /// Lists all resource pool settings for a client, paginated.
     /// </summary>
     /// <param name="id">The unique identifier of the client.</param>
+    /// <param name="paging">Pagination parameters.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>The resource pool settings dictionary.</returns>
-    /// <response code="200">Returns the resource pool settings.</response>
+    /// <returns>A paginated list of resource pool setting entries.</returns>
+    /// <response code="200">Returns the paginated resource pool settings.</response>
     /// <response code="404">No client was found with the given identifier.</response>
     [HttpGet("{id}/resource-pools")]
-    [ProducesResponseType(typeof(Dictionary<string, ResourcePoolSettings>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(PagedResponse<KeyedEntry<ResourcePoolSettings>>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetResourcePools(string id, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetResourcePools(string id, [FromQuery] PagedRequest paging, CancellationToken cancellationToken)
     {
         var config = await _repository.GetByIdAsync(id, cancellationToken)
             ?? throw new NotFoundException($"Client '{id}' not found");
-        return Ok(config.ResourcePools);
+
+        IReadOnlyList<KeyedEntry<ResourcePoolSettings>> entries = config.ResourcePools
+            .Select(kvp => new KeyedEntry<ResourcePoolSettings>(kvp.Key, kvp.Value))
+            .ToList();
+
+        return Ok(entries.ToPagedResponse(paging));
     }
 
     /// <summary>

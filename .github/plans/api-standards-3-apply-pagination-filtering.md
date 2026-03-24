@@ -1,6 +1,6 @@
 # Plan: API Standards — Step 3: Apply Pagination & Query Filtering to Controllers
 
-> **Status**: 🔲 Not started
+> **Status**: ✅ Completed
 > **Prerequisite**: [api-standards-2-pagination-foundation.md](api-standards-2-pagination-foundation.md)
 > **Next**: [api-standards-4-adminui-sync.md](api-standards-4-adminui-sync.md)
 > **Parent**: [api-standards-overview.md](api-standards-overview.md)

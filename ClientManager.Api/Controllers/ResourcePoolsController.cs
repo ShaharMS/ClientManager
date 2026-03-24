@@ -1,5 +1,8 @@
 using Asp.Versioning;
+using ClientManager.Api.Extensions;
 using ClientManager.Api.Models.Exceptions;
+using ClientManager.Api.Models.Requests;
+using ClientManager.Api.Models.Responses;
 using ClientManager.DataAccess.Repositories.Interfaces;
 using ClientManager.Shared.Models.Entities;
 using Microsoft.AspNetCore.Http;
@@ -28,16 +31,27 @@ public class ResourcePoolsController : ControllerBase
     }
 
     /// <summary>
-    /// Lists all resource pools.
+    /// Lists all resource pools with optional filtering and pagination.
     /// </summary>
-    /// <returns>A list of all resource pools.</returns>
-    /// <response code="200">Returns all resource pools.</response>
+    /// <param name="paging">Pagination parameters.</param>
+    /// <param name="name">Optional case-insensitive name filter (contains match).</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A paginated list of resource pools.</returns>
+    /// <response code="200">Returns the paginated resource pools.</response>
     [HttpGet]
-    [ProducesResponseType(typeof(IReadOnlyList<ResourcePool>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetAll(CancellationToken cancellationToken)
+    [ProducesResponseType(typeof(PagedResponse<ResourcePool>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAll(
+        [FromQuery] PagedRequest paging,
+        [FromQuery] string? name,
+        CancellationToken cancellationToken)
     {
         var pools = await _repository.GetAllAsync(cancellationToken);
-        return Ok(pools);
+
+        IReadOnlyList<ResourcePool> filtered = pools
+            .Where(p => name is null || p.Name.Contains(name, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        return Ok(filtered.ToPagedResponse(paging));
     }
 
     /// <summary>

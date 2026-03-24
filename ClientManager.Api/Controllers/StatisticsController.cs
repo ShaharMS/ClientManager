@@ -1,6 +1,8 @@
 using Asp.Versioning;
+using ClientManager.Api.Extensions;
 using ClientManager.Api.Interfaces;
 using ClientManager.Api.Models.Exceptions;
+using ClientManager.Api.Models.Requests;
 using ClientManager.Api.Models.Responses;
 using ClientManager.DataAccess.Databases.Interfaces;
 using ClientManager.DataAccess.Repositories.Interfaces;
@@ -83,17 +85,19 @@ public class StatisticsController : ControllerBase
     }
 
     /// <summary>
-    /// Returns summary statistics for all clients.
+    /// Returns paginated summary statistics for all clients.
     /// </summary>
-    /// <returns>A list of per-client summary statistics.</returns>
-    /// <response code="200">Returns per-client summaries.</response>
+    /// <param name="paging">Pagination parameters.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A paginated list of per-client summary statistics.</returns>
+    /// <response code="200">Returns paginated per-client summaries.</response>
     [HttpGet("clients")]
-    [ProducesResponseType(typeof(IReadOnlyList<ClientSummaryResponse>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetClients(CancellationToken cancellationToken)
+    [ProducesResponseType(typeof(PagedResponse<ClientSummaryResponse>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetClients([FromQuery] PagedRequest paging, CancellationToken cancellationToken)
     {
         var clients = await _clientConfigRepository.GetAllAsync(cancellationToken);
 
-        var summaries = clients.Select(c => new ClientSummaryResponse(
+        IReadOnlyList<ClientSummaryResponse> summaries = clients.Select(c => new ClientSummaryResponse(
             ClientId: c.Id,
             Name: c.Name,
             IsEnabled: c.IsEnabled,
@@ -101,7 +105,7 @@ public class StatisticsController : ControllerBase
             ResourcePoolCount: c.ResourcePools.Count,
             HasGlobalRateLimit: c.GlobalRateLimit is not null)).ToList();
 
-        return Ok(summaries);
+        return Ok(summaries.ToPagedResponse(paging));
     }
 
     /// <summary>
@@ -168,13 +172,15 @@ public class StatisticsController : ControllerBase
     }
 
     /// <summary>
-    /// Returns per-service usage statistics including client counts and global rate limit presence.
+    /// Returns paginated per-service usage statistics including client counts and global rate limit presence.
     /// </summary>
-    /// <returns>A list of per-service statistics.</returns>
-    /// <response code="200">Returns per-service statistics.</response>
+    /// <param name="paging">Pagination parameters.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A paginated list of per-service statistics.</returns>
+    /// <response code="200">Returns paginated per-service statistics.</response>
     [HttpGet("services")]
-    [ProducesResponseType(typeof(IReadOnlyList<ServiceStatisticsResponse>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetServices(CancellationToken cancellationToken)
+    [ProducesResponseType(typeof(PagedResponse<ServiceStatisticsResponse>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetServices([FromQuery] PagedRequest paging, CancellationToken cancellationToken)
     {
         var services = await _serviceRepository.GetAllAsync(cancellationToken);
         var clients = await _clientConfigRepository.GetAllAsync(cancellationToken);
@@ -194,7 +200,7 @@ public class StatisticsController : ControllerBase
                 HasGlobalRateLimit: globalLimit is not null));
         }
 
-        return Ok(results);
+        return Ok(((IReadOnlyList<ServiceStatisticsResponse>)results).ToPagedResponse(paging));
     }
 
     /// <summary>
@@ -244,13 +250,15 @@ public class StatisticsController : ControllerBase
     }
 
     /// <summary>
-    /// Returns per-resource-pool utilization statistics including active allocations and available slots.
+    /// Returns paginated per-resource-pool utilization statistics including active allocations and available slots.
     /// </summary>
-    /// <returns>A list of per-pool statistics.</returns>
-    /// <response code="200">Returns per-pool statistics.</response>
+    /// <param name="paging">Pagination parameters.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A paginated list of per-pool statistics.</returns>
+    /// <response code="200">Returns paginated per-pool statistics.</response>
     [HttpGet("resource-pools")]
-    [ProducesResponseType(typeof(IReadOnlyList<ResourcePoolStatisticsResponse>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetResourcePools(CancellationToken cancellationToken)
+    [ProducesResponseType(typeof(PagedResponse<ResourcePoolStatisticsResponse>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetResourcePools([FromQuery] PagedRequest paging, CancellationToken cancellationToken)
     {
         var pools = await _poolRepository.GetAllAsync(cancellationToken);
         var activeCountsByPool = await _allocationRepository.GetActiveCountsByPoolAsync(cancellationToken);
@@ -271,7 +279,7 @@ public class StatisticsController : ControllerBase
                 HasGlobalRateLimit: globalLimit is not null));
         }
 
-        return Ok(results);
+        return Ok(((IReadOnlyList<ResourcePoolStatisticsResponse>)results).ToPagedResponse(paging));
     }
 
     /// <summary>
@@ -402,17 +410,18 @@ public class StatisticsController : ControllerBase
     }
 
     /// <summary>
-    /// Retrieves a summary of all clients with their service and pool access statistics.
+    /// Retrieves a paginated summary of all clients with their service and pool access statistics.
     /// </summary>
+    /// <param name="paging">Pagination parameters.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>Client summary data for the dashboard table.</returns>
-    /// <response code="200">Returns client summaries.</response>
+    /// <returns>Paginated client summary data for the dashboard table.</returns>
+    /// <response code="200">Returns paginated client summaries.</response>
     [HttpGet("client-summaries")]
-    [ProducesResponseType(typeof(ClientSummariesResponse), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetClientSummaries(CancellationToken cancellationToken)
+    [ProducesResponseType(typeof(PagedResponse<ClientSummaryRow>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetClientSummaries([FromQuery] PagedRequest paging, CancellationToken cancellationToken)
     {
         var result = await _statisticsService.GetClientSummariesAsync(cancellationToken);
-        return Ok(result);
+        return Ok(result.Rows.ToPagedResponse(paging));
     }
 
     /// <summary>

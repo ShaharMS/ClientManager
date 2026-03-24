@@ -1,5 +1,8 @@
 using Asp.Versioning;
+using ClientManager.Api.Extensions;
 using ClientManager.Api.Models.Exceptions;
+using ClientManager.Api.Models.Requests;
+using ClientManager.Api.Models.Responses;
 using ClientManager.DataAccess.Databases.Interfaces;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Enums;
@@ -29,24 +32,32 @@ public class GlobalRateLimitsController : ControllerBase
     }
 
     /// <summary>
-    /// Lists all global rate limits, optionally filtered by target type.
+    /// Lists all global rate limits with optional filtering by target type and pagination.
     /// </summary>
+    /// <param name="paging">Pagination parameters.</param>
     /// <param name="targetType">Optional filter by target type (Service or ResourcePool).</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>A list of global rate limits.</returns>
-    /// <response code="200">Returns the global rate limits.</response>
+    /// <returns>A paginated list of global rate limits.</returns>
+    /// <response code="200">Returns the paginated global rate limits.</response>
     [HttpGet]
-    [ProducesResponseType(typeof(IReadOnlyList<GlobalRateLimit>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetAll([FromQuery] TargetType? targetType, CancellationToken cancellationToken)
+    [ProducesResponseType(typeof(PagedResponse<GlobalRateLimit>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAll(
+        [FromQuery] PagedRequest paging,
+        [FromQuery] TargetType? targetType,
+        CancellationToken cancellationToken)
     {
+        IReadOnlyList<GlobalRateLimit> limits;
+
         if (targetType.HasValue)
         {
-            var filtered = await _repository.GetByTargetTypeAsync(targetType.Value, cancellationToken);
-            return Ok(filtered);
+            limits = await _repository.GetByTargetTypeAsync(targetType.Value, cancellationToken);
+        }
+        else
+        {
+            limits = await _repository.GetAllAsync(cancellationToken);
         }
 
-        var all = await _repository.GetAllAsync(cancellationToken);
-        return Ok(all);
+        return Ok(limits.ToPagedResponse(paging));
     }
 
     /// <summary>
