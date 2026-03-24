@@ -11,5 +11,5 @@ public record MetricDefinition(
     string Name,
     string Type,
     string Help,
-    List<MetricValue> Values
+    IReadOnlyList<MetricValue> Values
 );

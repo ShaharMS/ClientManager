@@ -124,7 +124,7 @@ public class StatisticsService : IStatisticsService
     }
 
     /// <inheritdoc />
-    public async Task<List<TargetUsageTimeSeriesResponse>> GetUsageTimeSeriesAsync(
+    public async Task<IReadOnlyList<TargetUsageTimeSeriesResponse>> GetUsageTimeSeriesAsync(
         TargetType targetType, IEnumerable<string> targetIds, IEnumerable<string>? clientIds,
         DateTime? from = null, DateTime? to = null, BucketGranularity? granularity = null,
         CancellationToken cancellationToken = default)
@@ -188,7 +188,7 @@ public class StatisticsService : IStatisticsService
     }
 
     /// <inheritdoc />
-    public async Task<List<TargetClientUsageBreakdownResponse>> GetClientUsageBreakdownAsync(
+    public async Task<IReadOnlyList<TargetClientUsageBreakdownResponse>> GetClientUsageBreakdownAsync(
         TargetType targetType, IEnumerable<string> targetIds, IEnumerable<string>? clientIds,
         DateTime? from = null, DateTime? to = null, BucketGranularity? granularity = null,
         CancellationToken cancellationToken = default)
@@ -319,7 +319,7 @@ public class StatisticsService : IStatisticsService
     }
 
     /// <inheritdoc />
-    public async Task<List<HistoricalUsageResponse>> GetHistoricalUsageAsync(
+    public async Task<IReadOnlyList<HistoricalUsageResponse>> GetHistoricalUsageAsync(
         IEnumerable<string> targetIds,
         TargetType targetType,
         string? clientId,

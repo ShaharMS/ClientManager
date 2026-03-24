@@ -27,7 +27,7 @@ public interface IStatisticsService
     /// <param name="granularity">Optional bucket granularity override.</param>
     /// <param name="cancellationToken">Optional cancellation token.</param>
     /// <returns>Per-target time-series data for usage and capacity.</returns>
-    Task<List<TargetUsageTimeSeriesResponse>> GetUsageTimeSeriesAsync(
+    Task<IReadOnlyList<TargetUsageTimeSeriesResponse>> GetUsageTimeSeriesAsync(
         TargetType targetType, IEnumerable<string> targetIds, IEnumerable<string>? clientIds,
         DateTime? from = null, DateTime? to = null, BucketGranularity? granularity = null,
         CancellationToken cancellationToken = default);
@@ -43,7 +43,7 @@ public interface IStatisticsService
     /// <param name="granularity">Optional bucket granularity override.</param>
     /// <param name="cancellationToken">Optional cancellation token.</param>
     /// <returns>Per-target client usage breakdowns.</returns>
-    Task<List<TargetClientUsageBreakdownResponse>> GetClientUsageBreakdownAsync(
+    Task<IReadOnlyList<TargetClientUsageBreakdownResponse>> GetClientUsageBreakdownAsync(
         TargetType targetType, IEnumerable<string> targetIds, IEnumerable<string>? clientIds,
         DateTime? from = null, DateTime? to = null, BucketGranularity? granularity = null,
         CancellationToken cancellationToken = default);
@@ -66,7 +66,7 @@ public interface IStatisticsService
     /// <param name="granularity">The bucket granularity to query.</param>
     /// <param name="cancellationToken">Optional cancellation token.</param>
     /// <returns>Historical usage time-series data per target.</returns>
-    Task<List<HistoricalUsageResponse>> GetHistoricalUsageAsync(
+    Task<IReadOnlyList<HistoricalUsageResponse>> GetHistoricalUsageAsync(
         IEnumerable<string> targetIds,
         TargetType targetType,
         string? clientId,

@@ -7,7 +7,7 @@ namespace ClientManager.Api.Models.Responses;
 /// <param name="Entries">Per-client usage entries for this target.</param>
 public record TargetClientUsageBreakdownResponse(
     string TargetId,
-    List<ClientUsageEntry> Entries);
+    IReadOnlyList<ClientUsageEntry> Entries);
 
 /// <summary>
 /// Per-target usage time-series within a batch response.
@@ -17,5 +17,5 @@ public record TargetClientUsageBreakdownResponse(
 /// <param name="CapPoints">Data points representing the capacity limit over time.</param>
 public record TargetUsageTimeSeriesResponse(
     string TargetId,
-    List<TimeSeriesPoint> UsagePoints,
-    List<TimeSeriesPoint> CapPoints);
+    IReadOnlyList<TimeSeriesPoint> UsagePoints,
+    IReadOnlyList<TimeSeriesPoint> CapPoints);

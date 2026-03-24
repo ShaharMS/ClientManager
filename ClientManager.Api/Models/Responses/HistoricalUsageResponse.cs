@@ -9,7 +9,7 @@ public record HistoricalUsageResponse(
     string TargetId,
     TargetType TargetType,
     BucketGranularity Granularity,
-    List<HistoricalUsagePoint> Points);
+    IReadOnlyList<HistoricalUsagePoint> Points);
 
 /// <summary>
 /// A single data point in the historical usage time-series.

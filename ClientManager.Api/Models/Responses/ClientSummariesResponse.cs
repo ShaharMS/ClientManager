@@ -5,7 +5,7 @@ namespace ClientManager.Api.Models.Responses;
 /// </summary>
 /// <param name="Rows">List of per-client summary rows.</param>
 public record ClientSummariesResponse(
-    List<ClientSummaryRow> Rows
+    IReadOnlyList<ClientSummaryRow> Rows
 );
 
 /// <summary>

@@ -5,7 +5,7 @@ namespace ClientManager.Api.Models.Responses;
 /// </summary>
 /// <param name="Entries">List of per-client usage entries.</param>
 public record ClientUsageBreakdownResponse(
-    List<ClientUsageEntry> Entries
+    IReadOnlyList<ClientUsageEntry> Entries
 );
 
 /// <summary>

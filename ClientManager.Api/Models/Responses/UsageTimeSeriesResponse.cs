@@ -6,8 +6,8 @@ namespace ClientManager.Api.Models.Responses;
 /// <param name="UsagePoints">Data points representing actual usage over time.</param>
 /// <param name="CapPoints">Data points representing the capacity limit over time.</param>
 public record UsageTimeSeriesResponse(
-    List<TimeSeriesPoint> UsagePoints,
-    List<TimeSeriesPoint> CapPoints
+    IReadOnlyList<TimeSeriesPoint> UsagePoints,
+    IReadOnlyList<TimeSeriesPoint> CapPoints
 );
 
 /// <summary>

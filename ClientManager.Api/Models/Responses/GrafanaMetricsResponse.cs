@@ -5,5 +5,5 @@ namespace ClientManager.Api.Models.Responses;
 /// </summary>
 /// <param name="Metrics">The list of metric definitions.</param>
 public record GrafanaMetricsResponse(
-    List<MetricDefinition> Metrics
+    IReadOnlyList<MetricDefinition> Metrics
 );

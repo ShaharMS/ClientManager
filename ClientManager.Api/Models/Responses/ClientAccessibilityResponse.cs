@@ -3,7 +3,7 @@ namespace ClientManager.Api.Models.Responses;
 public record ClientAccessibilityResponse
 {
     public required string ClientId { get; init; }
-    public List<ServiceAccessibility> Services { get; init; } = [];
+    public IReadOnlyList<ServiceAccessibility> Services { get; init; } = [];
 }
 
 public record ServiceAccessibility
