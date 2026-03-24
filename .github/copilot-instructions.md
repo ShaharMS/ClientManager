@@ -1,5 +1,10 @@
 # Copilot Instructions
 
+## General Guidelines
+
+- Use extensive documentation for core components or those with multiple purposes/complex relationships.
+- Keep documentation light or skip it if the class's purpose is already clear or very specific. Avoid over-documenting obvious things.
+
 ## Controllers
 
 - Every controller and every action method **must** have XML documentation comments (`/// <summary>`).
