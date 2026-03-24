@@ -37,6 +37,9 @@ Thumbs.db
 .idea/
 *.sln.iml
 
+## VSCode
+.vscode/
+
 ## Application data
 data/
 logs/
