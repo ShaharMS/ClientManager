@@ -3,7 +3,8 @@ namespace ClientManager.Shared.Logging;
 /// <summary>
 /// Structured logging interface that enforces static messages with optional exception and extra data.
 /// </summary>
-/// <typeparam name="T">The category type for the logger.</typeparam>
+/// <typeparam name="T">The category type for the logger - typically the consuming class,
+/// used to name the underlying NLog logger.</typeparam>
 public interface IAppLogger<T>
 {
     void Trace(string message);

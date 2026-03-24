@@ -3,10 +3,23 @@ using ClientManager.Shared.Models.Enums;
 namespace ClientManager.Shared.Models.Entities;
 
 /// <summary>
-/// Represents usage data for a given client &amp; target combination over a continuous time range, aggregated into buckets of a specific <see cref="BucketGranularity"/>.
+/// A time-series document recording usage for one client against one target at a given
+/// <see cref="BucketGranularity"/>.
+///
+/// <para><strong>How snapshots are built</strong></para>
 /// <para>
-///     This is used to generate usage reports for clients over a period of time 
-///     (for example, give me the last 30 days of accesses client <c>X</c> made for service <c>Y</c>)
+///     As <see cref="UsageEventType"/> events are emitted during access checks and resource
+///     allocations, they accumulate in an in-memory buffer. A background
+///     <c>UsagePersistenceService</c> periodically drains that buffer, groups the counts by
+///     (client, target, granularity), and upserts them into the matching snapshot document.
+///     Each flush appends or merges into the <see cref="Buckets"/> list.
+/// </para>
+///
+/// <para><strong>Composite key</strong></para>
+/// <para>
+///     <see cref="Id"/> is deterministic: <c>"{ClientId}:{TargetType}:{TargetId}:{Granularity}"</c>.
+///     This means there is exactly one document per (client, target, granularity) combination,
+///     and every flush merges into the same document rather than creating a new one.
 /// </para>
 /// </summary>
 public record UsageSnapshot
@@ -41,5 +54,5 @@ public record UsageSnapshot
     /// <summary>
     /// Ordered list of usage aggregations over time, oldest first.
     /// </summary>
-    public List<UsageBucket> Buckets { get; init; } = new();
+    public List<UsageBucket> Buckets { get; init; } = [];
 }

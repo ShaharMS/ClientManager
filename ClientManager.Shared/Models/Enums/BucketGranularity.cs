@@ -1,40 +1,40 @@
 namespace ClientManager.Shared.Models.Enums;
 
 /// <summary>
-/// Defines the time granularity for usage tracking buckets.
+/// Controls the width of time windows used to aggregate <see cref="Entities.UsageBucket"/>s
+/// within a <see cref="Entities.UsageSnapshot"/>.
+///
 /// <para>
-///     Each bucket represents a fixed time interval (e.g., 1 second, 5 minutes, 1 hour, 1 day) during which usage is aggregated
-///     for summary and tracking purposes. The choice of granularity affects the precision and performance of usage tracking.
-/// </para>
-/// <para>
-///     Usage tracking of more accurate granularity (e.g., per second) allows for more precise rate limiting and usage analysis, but require more storage and processing overhead,
-///     and such more and more accurate periods are available for shorter time windows (for example, per-five-minutes buckets, by default, are only kept for the last hour.)
+///     Finer granularities (e.g. <see cref="Second"/>) give precise, near-real-time visibility
+///     but produce many buckets and are therefore retained for a shorter period.
+///     Coarser granularities (e.g. <see cref="Day"/>) compress data and are kept longer for
+///     trend analysis. The system maintains multiple snapshots per (client, target) combination
+///     - one for each granularity - so that dashboards can zoom from seconds to days without
+///     re-aggregating.
 /// </para>
 /// </summary>
 public enum BucketGranularity
 {
     /// <summary>
-    /// Usage is aggregated into 1-second buckets. This is the most precise granularity, allowing for detailed usage tracking.
-    /// <br></br>
-    /// Resolution is the highest, is persisted for the least amount of time.
+    /// 1-second buckets. Highest resolution, shortest retention.
     /// </summary>
     Second,
+
     /// <summary>
-    /// Usage is aggregated into 5-minute buckets. This provides a balance between precision and performance, suitable for short-term tracking needs.
-    /// <br></br>
-    /// Resolution is okay, is persisted for a medium amount of time.
+    /// 5-minute buckets. Balances precision with storage cost; suitable for short-term
+    /// operational dashboards.
     /// </summary>
     FiveMinute,
+
     /// <summary>
-    /// Usage is aggregated into 1-hour buckets. This is a coarser granularity, suitable for medium-to-long-term usage tracking and analysis.
-    /// <br></br>
-    /// Resolution is low, is persisted for a long amount of time.
+    /// 1-hour buckets. Lower resolution, longer retention; suitable for medium-term
+    /// capacity planning.
     /// </summary>
     Hour,
+
     /// <summary>
-    /// Usage is aggregated into 1-day buckets. This is the coarsest granularity, suitable for mostly for trend analysis.
-    /// <br></br>
-    /// Resolution is the lowest, is persisted for the longest amount of time.
+    /// 1-day buckets. Coarsest resolution, longest retention; suitable for long-term trend
+    /// analysis and billing reports.
     /// </summary>
     Day
 }

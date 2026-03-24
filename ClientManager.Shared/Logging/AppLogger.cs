@@ -6,8 +6,13 @@ using LogLevel = NLog.LogLevel;
 namespace ClientManager.Shared.Logging;
 
 /// <summary>
-/// NLog-backed implementation of <see cref="IAppLogger{T}"/> that attaches extra data
-/// properties with an <c>ExtraData.</c> prefix to each log event.
+/// NLog-backed implementation of <see cref="IAppLogger{T}"/>.
+///
+/// <para>
+///     Attaches the public properties of the <c>extraData</c> object to each log event
+///     under the <c>ExtraData.</c> prefix using reflection, making them available as
+///     structured fields in NLog layouts and sinks (e.g. JSON file, Seq, Elasticsearch).
+/// </para>
 /// </summary>
 /// <typeparam name="T">The category type for the logger.</typeparam>
 public class AppLogger<T> : IAppLogger<T>

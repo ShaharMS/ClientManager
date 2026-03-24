@@ -1,8 +1,15 @@
 namespace ClientManager.Shared.Models.Entities;
 
 /// <summary>
-/// Represents an active allocation of a resource pool slot by a client.
-/// Allocations auto-expire after <see cref="ExpiresAt"/> if not explicitly released.
+/// Represents one active (or formerly active) slot held by a client in a resource pool.
+///
+/// <para>
+///     Created when <c>ResourceAllocationService.AcquireAsync</c> succeeds. Freed in one of
+///     two ways: the client calls <c>ReleaseAsync</c> (sets <see cref="IsReleased"/> and emits
+///     a <see cref="Enums.UsageEventType.Released"/> event), or the allocation outlives its
+///     <see cref="ExpiresAt"/> and is cleaned up by <c>AllocationCleanupService</c> (no
+///     Released event emitted - the slot is silently reclaimed).
+/// </para>
 /// </summary>
 public record ResourceAllocation
 {
