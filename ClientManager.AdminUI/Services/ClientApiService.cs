@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using ClientManager.AdminUI.Models;
 using ClientManager.Shared.Models.Entities;
 
 namespace ClientManager.AdminUI.Services;
@@ -20,33 +21,35 @@ public class ClientApiService
         if (_cachedAll is not null && DateTime.UtcNow - _cachedAllAt < CacheTtl)
             return _cachedAll;
 
-        _cachedAll = await _httpClient.GetFromJsonAsync<List<ClientConfiguration>>("api/clients") ?? [];
+        var response = await _httpClient.GetFromJsonAsync<PagedResponse<ClientConfiguration>>(
+            "api/v1/clients?pageSize=100");
+        _cachedAll = response?.Items ?? [];
         _cachedAllAt = DateTime.UtcNow;
         return _cachedAll;
     }
 
     public async Task<ClientConfiguration?> GetByIdAsync(string id)
     {
-        return await _httpClient.GetFromJsonAsync<ClientConfiguration>($"api/clients/{id}");
+        return await _httpClient.GetFromJsonAsync<ClientConfiguration>($"api/v1/clients/{id}");
     }
 
     public async Task CreateAsync(ClientConfiguration config)
     {
-        var response = await _httpClient.PostAsJsonAsync("api/clients", config);
+        var response = await _httpClient.PostAsJsonAsync("api/v1/clients", config);
         response.EnsureSuccessStatusCode();
         _cachedAll = null;
     }
 
     public async Task UpdateAsync(string id, ClientConfiguration config)
     {
-        var response = await _httpClient.PutAsJsonAsync($"api/clients/{id}", config);
+        var response = await _httpClient.PutAsJsonAsync($"api/v1/clients/{id}", config);
         response.EnsureSuccessStatusCode();
         _cachedAll = null;
     }
 
     public async Task DeleteAsync(string id)
     {
-        var response = await _httpClient.DeleteAsync($"api/clients/{id}");
+        var response = await _httpClient.DeleteAsync($"api/v1/clients/{id}");
         response.EnsureSuccessStatusCode();
         _cachedAll = null;
     }

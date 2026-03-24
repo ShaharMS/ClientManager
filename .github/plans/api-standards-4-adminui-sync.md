@@ -1,6 +1,6 @@
 # Plan: API Standards — Step 4: AdminUI API Service Sync
 
-> **Status**: 🔲 Not started
+> **Status**: ✅ Completed
 > **Prerequisite**: [api-standards-3-apply-pagination-filtering.md](api-standards-3-apply-pagination-filtering.md)
 > **Next**: None — this is the final step.
 > **Parent**: [api-standards-overview.md](api-standards-overview.md)

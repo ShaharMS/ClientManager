@@ -224,14 +224,11 @@ else
 
             // Load client summaries from dedicated endpoint
             var summaries = await StatsService.GetClientSummariesAsync();
-            if (summaries is not null)
-            {
-                _clientSummaries = summaries.Rows.Select(r => new ClientSummaryRow(
-                    r.ClientId, r.DisplayName, r.AccessibleServices,
-                    r.TotalRateLimitCap, r.AccessiblePools,
-                    $"{r.UsedSlots}/{r.TotalAccessibleSlots}"
-                )).ToList();
-            }
+            _clientSummaries = summaries.Select(r => new ClientSummaryRow(
+                r.ClientId, r.DisplayName, r.AccessibleServices,
+                r.TotalRateLimitCap, r.AccessiblePools,
+                $"{r.UsedSlots}/{r.TotalAccessibleSlots}"
+            )).ToList();
             _filteredClientSummaries = _clientSummaries;
 
             // Select first target; chart load is triggered by TimeRangeSelector

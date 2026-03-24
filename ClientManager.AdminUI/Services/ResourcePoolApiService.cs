@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using ClientManager.AdminUI.Models;
 using ClientManager.Shared.Models.Entities;
 
 namespace ClientManager.AdminUI.Services;
@@ -20,33 +21,35 @@ public class ResourcePoolApiService
         if (_cachedAll is not null && DateTime.UtcNow - _cachedAllAt < CacheTtl)
             return _cachedAll;
 
-        _cachedAll = await _httpClient.GetFromJsonAsync<List<ResourcePool>>("api/resource-pools") ?? [];
+        var response = await _httpClient.GetFromJsonAsync<PagedResponse<ResourcePool>>(
+            "api/v1/resource-pools?pageSize=100");
+        _cachedAll = response?.Items ?? [];
         _cachedAllAt = DateTime.UtcNow;
         return _cachedAll;
     }
 
     public async Task<ResourcePool?> GetByIdAsync(string id)
     {
-        return await _httpClient.GetFromJsonAsync<ResourcePool>($"api/resource-pools/{id}");
+        return await _httpClient.GetFromJsonAsync<ResourcePool>($"api/v1/resource-pools/{id}");
     }
 
     public async Task CreateAsync(ResourcePool pool)
     {
-        var response = await _httpClient.PostAsJsonAsync("api/resource-pools", pool);
+        var response = await _httpClient.PostAsJsonAsync("api/v1/resource-pools", pool);
         response.EnsureSuccessStatusCode();
         _cachedAll = null;
     }
 
     public async Task UpdateAsync(string id, ResourcePool pool)
     {
-        var response = await _httpClient.PutAsJsonAsync($"api/resource-pools/{id}", pool);
+        var response = await _httpClient.PutAsJsonAsync($"api/v1/resource-pools/{id}", pool);
         response.EnsureSuccessStatusCode();
         _cachedAll = null;
     }
 
     public async Task DeleteAsync(string id)
     {
-        var response = await _httpClient.DeleteAsync($"api/resource-pools/{id}");
+        var response = await _httpClient.DeleteAsync($"api/v1/resource-pools/{id}");
         response.EnsureSuccessStatusCode();
         _cachedAll = null;
     }

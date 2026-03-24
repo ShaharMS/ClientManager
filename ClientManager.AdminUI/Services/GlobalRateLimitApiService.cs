@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using ClientManager.AdminUI.Models;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Enums;
 
@@ -22,7 +23,9 @@ public class GlobalRateLimitApiService
         if (_cachedAll is not null && DateTime.UtcNow - _cachedAllAt < CacheTtl)
             return _cachedAll;
 
-        _cachedAll = await _httpClient.GetFromJsonAsync<List<GlobalRateLimit>>("api/global-rate-limits") ?? [];
+        var response = await _httpClient.GetFromJsonAsync<PagedResponse<GlobalRateLimit>>(
+            "api/v1/global-rate-limits?pageSize=100");
+        _cachedAll = response?.Items ?? [];
         _cachedAllAt = DateTime.UtcNow;
         return _cachedAll;
     }
@@ -32,34 +35,35 @@ public class GlobalRateLimitApiService
         if (_cachedByTarget.TryGetValue(targetType, out var cached) && DateTime.UtcNow - cached.At < CacheTtl)
             return cached.Data;
 
-        var data = await _httpClient.GetFromJsonAsync<List<GlobalRateLimit>>(
-            $"api/global-rate-limits?targetType={targetType}") ?? [];
+        var response = await _httpClient.GetFromJsonAsync<PagedResponse<GlobalRateLimit>>(
+            $"api/v1/global-rate-limits?targetType={targetType}&pageSize=100");
+        var data = response?.Items ?? [];
         _cachedByTarget[targetType] = (data, DateTime.UtcNow);
         return data;
     }
 
     public async Task<GlobalRateLimit?> GetByIdAsync(string id)
     {
-        return await _httpClient.GetFromJsonAsync<GlobalRateLimit>($"api/global-rate-limits/{id}");
+        return await _httpClient.GetFromJsonAsync<GlobalRateLimit>($"api/v1/global-rate-limits/{id}");
     }
 
     public async Task CreateAsync(GlobalRateLimit limit)
     {
-        var response = await _httpClient.PostAsJsonAsync("api/global-rate-limits", limit);
+        var response = await _httpClient.PostAsJsonAsync("api/v1/global-rate-limits", limit);
         response.EnsureSuccessStatusCode();
         InvalidateCache();
     }
 
     public async Task UpdateAsync(string id, GlobalRateLimit limit)
     {
-        var response = await _httpClient.PutAsJsonAsync($"api/global-rate-limits/{id}", limit);
+        var response = await _httpClient.PutAsJsonAsync($"api/v1/global-rate-limits/{id}", limit);
         response.EnsureSuccessStatusCode();
         InvalidateCache();
     }
 
     public async Task DeleteAsync(string id)
     {
-        var response = await _httpClient.DeleteAsync($"api/global-rate-limits/{id}");
+        var response = await _httpClient.DeleteAsync($"api/v1/global-rate-limits/{id}");
         response.EnsureSuccessStatusCode();
         InvalidateCache();
     }

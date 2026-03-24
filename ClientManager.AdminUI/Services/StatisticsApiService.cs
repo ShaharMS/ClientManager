@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using ClientManager.AdminUI.Models;
 
 namespace ClientManager.AdminUI.Services;
 
@@ -13,25 +14,26 @@ public class StatisticsApiService
 
     public async Task<SystemOverview?> GetOverviewAsync()
     {
-        return await _httpClient.GetFromJsonAsync<SystemOverview>("api/statistics/overview");
+        return await _httpClient.GetFromJsonAsync<SystemOverview>("api/v1/statistics/overview");
     }
 
     public async Task<List<ResourcePoolStatistics>> GetResourcePoolStatsAsync()
     {
-        return await _httpClient.GetFromJsonAsync<List<ResourcePoolStatistics>>(
-            "api/statistics/resource-pools") ?? [];
+        var response = await _httpClient.GetFromJsonAsync<PagedResponse<ResourcePoolStatistics>>(
+            "api/v1/statistics/resource-pools?pageSize=100");
+        return response?.Items ?? [];
     }
 
     public async Task<GlobalUsageStats?> GetGlobalUsageStatsAsync()
     {
-        return await _httpClient.GetFromJsonAsync<GlobalUsageStats>("api/statistics/global-usage");
+        return await _httpClient.GetFromJsonAsync<GlobalUsageStats>("api/v1/statistics/global-usage");
     }
 
     public async Task<List<TargetUsageTimeSeries>> GetUsageTimeSeriesAsync(
         string filterType, IEnumerable<string> targetIds, IEnumerable<string>? clientIds,
         DateTime? from = null, DateTime? to = null, string? granularity = null)
     {
-        var url = $"api/statistics/usage-timeseries?filterType={Uri.EscapeDataString(filterType)}&targetIds={Uri.EscapeDataString(string.Join(",", targetIds))}";
+        var url = $"api/v1/statistics/usage-timeseries?filterType={Uri.EscapeDataString(filterType)}&targetIds={Uri.EscapeDataString(string.Join(",", targetIds))}";
         if (clientIds?.Any() == true)
         {
             url += $"&clientIds={Uri.EscapeDataString(string.Join(",", clientIds))}";
@@ -50,7 +52,7 @@ public class StatisticsApiService
         string filterType, IEnumerable<string> targetIds, IEnumerable<string>? clientIds,
         DateTime? from = null, DateTime? to = null, string? granularity = null)
     {
-        var url = $"api/statistics/client-usage-breakdown?filterType={Uri.EscapeDataString(filterType)}&targetIds={Uri.EscapeDataString(string.Join(",", targetIds))}";
+        var url = $"api/v1/statistics/client-usage-breakdown?filterType={Uri.EscapeDataString(filterType)}&targetIds={Uri.EscapeDataString(string.Join(",", targetIds))}";
         if (clientIds?.Any() == true)
         {
             url += $"&clientIds={Uri.EscapeDataString(string.Join(",", clientIds))}";
@@ -65,16 +67,18 @@ public class StatisticsApiService
         return await _httpClient.GetFromJsonAsync<List<TargetClientUsageBreakdown>>(url) ?? [];
     }
 
-    public async Task<ClientSummaries?> GetClientSummariesAsync()
+    public async Task<List<ClientSummaryItem>> GetClientSummariesAsync()
     {
-        return await _httpClient.GetFromJsonAsync<ClientSummaries>("api/statistics/client-summaries");
+        var response = await _httpClient.GetFromJsonAsync<PagedResponse<ClientSummaryItem>>(
+            "api/v1/statistics/client-summaries?pageSize=100");
+        return response?.Items ?? [];
     }
 
     public async Task<List<HistoricalUsageData>> GetHistoricalUsageAsync(
         string filterType, IEnumerable<string> targetIds, string? clientId,
         DateTime from, DateTime to, string granularity)
     {
-        var url = $"api/statistics/historical-usage?filterType={Uri.EscapeDataString(filterType)}"
+        var url = $"api/v1/statistics/historical-usage?filterType={Uri.EscapeDataString(filterType)}"
             + $"&targetIds={Uri.EscapeDataString(string.Join(",", targetIds))}"
             + $"&from={from:O}&to={to:O}"
             + $"&granularity={Uri.EscapeDataString(granularity)}";
@@ -116,8 +120,6 @@ public record ClientUsageItem(
     long GrantedCount,
     long DeniedCount,
     long ActiveCount);
-
-public record ClientSummaries(List<ClientSummaryItem> Rows);
 
 public record ClientSummaryItem(
     string ClientId, string DisplayName,
