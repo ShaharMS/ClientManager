@@ -16,6 +16,7 @@
 - All exposed API endpoints must have Swagger documentation.
 - Use `[ProducesResponseType]` attributes to document all possible response codes.
 - XML documentation comments on action methods must be surfaced in Swagger by enabling the XML comments file in the OpenAPI configuration.
+- Avoid using generic/boilerplate parameter documentation like "Optional cancellation token." Instead, parameter docs should explain what the parameter does in the context of the specific method.
 
 Example action method:
 
