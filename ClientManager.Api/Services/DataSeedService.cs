@@ -12,7 +12,7 @@ namespace ClientManager.Api.Services;
 /// Reads from <see cref="SeedOptions"/> (bound from the <c>"Seed"</c> section of <c>appsettings.json</c>)
 /// and creates any entities that don't already exist. This allows operators to define a baseline set of
 /// services, resource pools, global rate limits, and client configurations in config so the system
-/// is ready immediately after first deployment—no manual API calls required.
+/// is ready immediately after first deployment-no manual API calls required.
 /// </para>
 /// <para>
 /// Seed data is idempotent: entities are checked by ID before creation, so restarting the application

@@ -293,7 +293,7 @@ public class StatisticsService : IStatisticsService
 
             var rateLimitCap = totalMaxRequests > 0
                 ? $"{totalMaxRequests} req/min"
-                : "—";
+                : "-";
 
             var accessiblePools = client.ResourcePools.Count;
 

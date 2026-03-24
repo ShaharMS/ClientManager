@@ -158,7 +158,7 @@ else
     private string? _error;
     private SystemOverview? _overview;
 
-    private string _globalUsage = "—";
+    private string _globalUsage = "-";
     private int _acquisitionPct;
 
     private string _selectedFilterType = "Service";
@@ -218,7 +218,7 @@ else
             {
                 _globalUsage = globalUsage.RequestsPerMinute > 0
                     ? globalUsage.RequestsPerMinute.ToString("N0")
-                    : "—";
+                    : "-";
                 _acquisitionPct = (int)Math.Round(globalUsage.AcquisitionPercentage);
             }
 
@@ -340,7 +340,7 @@ else
         }
         catch (HttpRequestException)
         {
-            // Chart data load failed — leave current data in place
+            // Chart data load failed - leave current data in place
         }
     }
 
@@ -634,7 +634,7 @@ else
             {
                 _globalUsage = globalUsage.RequestsPerMinute > 0
                     ? globalUsage.RequestsPerMinute.ToString("N0")
-                    : "—";
+                    : "-";
                 _acquisitionPct = (int)Math.Round(globalUsage.AcquisitionPercentage);
             }
 

@@ -43,7 +43,7 @@ public class TokenBucketStrategy : IRateLimitStrategy
         long tokens;
         if (lastRefill == 0)
         {
-            // First request — initialize bucket to full capacity minus 1 (consuming this request)
+            // First request - initialize bucket to full capacity minus 1 (consuming this request)
             tokens = bucketCapacity - 1;
             await _stateStore.SetCountAsync(tokensKey, tokens, stateWindow, cancellationToken);
             await _stateStore.SetCountAsync(lastRefillKey, now, stateWindow, cancellationToken);

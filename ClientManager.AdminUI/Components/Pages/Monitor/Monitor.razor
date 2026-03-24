@@ -42,7 +42,7 @@
     {
         @foreach (var targetChart in _targetCharts)
         {
-            <span class="cm-dashboard__chart-title">@targetChart.TargetName — Usage</span>
+            <span class="cm-dashboard__chart-title">@targetChart.TargetName - Usage</span>
             <RadzenChart Style="height: 400px;">
                 @foreach (var clientArea in targetChart.ClientSeries)
                 {
@@ -96,7 +96,7 @@
                         }
                         else
                         {
-                            <span>—</span>
+                            <span>-</span>
                         }
                     </Template>
                 </RadzenDataGridColumn>
@@ -464,7 +464,7 @@
             _clientRows.Clear();
             _clientRows.AddRange(rows);
 
-            // All-services summary — one batch call for all services
+            // All-services summary - one batch call for all services
             var allServiceIds = _allServices.Select(s => s.Id).ToList();
             var summaryBreakdowns = await StatsService.GetClientUsageBreakdownAsync(
                 "Service", allServiceIds, null);
@@ -568,7 +568,7 @@
         _ => TimeSpan.FromMinutes(5)
     };
 
-    private static string FormatCap(int cap) => cap > 0 ? cap.ToString() : "—";
+    private static string FormatCap(int cap) => cap > 0 ? cap.ToString() : "-";
 
     private record NamedItem(string Id, string Name);
     private record ChartPoint(string Label, double Value);

@@ -1,5 +1,5 @@
 html[data-theme="dark"] {
-    /* Primary palette — keep hues, adjust lightness */
+    /* Primary palette - keep hues, adjust lightness */
     --color-primary: #818cf8;
     --color-primary-light: #a5b4fc;
     --color-primary-lighter: #3730a3;
@@ -16,7 +16,7 @@ html[data-theme="dark"] {
     --color-danger: #f87171;
     --color-info: #60a5fa;
 
-    /* Neutrals — inverted */
+    /* Neutrals - inverted */
     --color-bg: #0f172a;
     --color-bg-card: #1e293b;
     --color-bg-sidebar: #1e293b;
@@ -25,7 +25,7 @@ html[data-theme="dark"] {
     --color-text-muted: #64748b;
     --color-border: #334155;
 
-    /* Shadows — darker, more subtle */
+    /* Shadows - darker, more subtle */
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
     --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
     --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
@@ -115,7 +115,7 @@ html[data-theme="dark"] .rz-sortable-column:hover {
     background: var(--color-border);
 }
 
-/* Dropdown item hover — set both bg and text to avoid blacked-out items */
+/* Dropdown item hover - set both bg and text to avoid blacked-out items */
 html[data-theme="dark"] .rz-dropdown-item:not(.rz-state-highlight):hover,
 html[data-theme="dark"] .rz-list-item:not(.rz-state-highlight):hover {
     background: var(--color-border) !important;
@@ -145,7 +145,7 @@ html[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
     background: #64748b;
 }
 
-/* Disabled inputs — !important to override Radzen inline specificity */
+/* Disabled inputs - !important to override Radzen inline specificity */
 html[data-theme="dark"] .rz-textbox[disabled],
 html[data-theme="dark"] .rz-textbox.rz-state-disabled,
 html[data-theme="dark"] .rz-dropdown.rz-state-disabled,

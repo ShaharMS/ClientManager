@@ -49,7 +49,7 @@ try
 
     var app = builder.Build();
 
-    // Middleware pipeline — order matters
+    // Middleware pipeline - order matters
     app.UseMiddleware<RequestTrackingMiddleware>();
     app.UseMiddleware<ErrorHandlingMiddleware>();
 

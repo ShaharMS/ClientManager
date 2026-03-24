@@ -279,7 +279,7 @@ public class RateLimitService : IRateLimitService
             return !first.IsAllowed ? first : second;
         }
 
-        // Both allowed — return the lower RemainingRequests
+        // Both allowed - return the lower RemainingRequests
         return first.RemainingRequests <= second.RemainingRequests ? first : second;
     }
 

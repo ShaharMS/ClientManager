@@ -60,7 +60,7 @@
     max-width: 280px;
 }
 
-/* Time Range Dropdown — pill selector for chart headers */
+/* Time Range Dropdown - pill selector for chart headers */
 .cm-time-range-dropdown {
     position: relative;
     display: inline-flex;
