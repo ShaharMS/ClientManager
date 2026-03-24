@@ -1,3 +1,4 @@
+using Asp.Versioning;
 using ClientManager.Api.Interfaces;
 using ClientManager.Api.Models.Requests;
 using ClientManager.Api.Models.Responses;
@@ -10,7 +11,8 @@ namespace ClientManager.Api.Controllers;
 /// Operational endpoints for acquiring and releasing resource pool slots.
 /// </summary>
 [ApiController]
-[Route("api/resources")]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/resources")]
 [Tags("Resource Allocation")]
 public class ResourceAllocationController : ControllerBase
 {

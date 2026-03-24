@@ -1,6 +1,6 @@
 # Plan: API Standards — Step 1: API Versioning
 
-> **Status**: 🔲 Not started
+> **Status**: ✅ Completed
 > **Prerequisite**: None — this is the first step.
 > **Next**: [api-standards-2-pagination-foundation.md](api-standards-2-pagination-foundation.md)
 > **Parent**: [api-standards-overview.md](api-standards-overview.md)

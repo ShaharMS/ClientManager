@@ -1,3 +1,4 @@
+using Asp.Versioning;
 using ClientManager.Api.Interfaces;
 using ClientManager.Api.Models.Exceptions;
 using ClientManager.Api.Models.Responses;
@@ -15,7 +16,8 @@ namespace ClientManager.Api.Controllers;
 /// client counts, service usage, and resource pool utilization.
 /// </summary>
 [ApiController]
-[Route("api/statistics")]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/statistics")]
 [Tags("Statistics")]
 public class StatisticsController : ControllerBase
 {

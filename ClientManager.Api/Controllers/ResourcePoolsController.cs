@@ -1,3 +1,4 @@
+using Asp.Versioning;
 using ClientManager.Api.Models.Exceptions;
 using ClientManager.DataAccess.Repositories.Interfaces;
 using ClientManager.Shared.Models.Entities;
@@ -10,7 +11,8 @@ namespace ClientManager.Api.Controllers;
 /// Manages system-wide resource pool definitions.
 /// </summary>
 [ApiController]
-[Route("api/resource-pools")]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/resource-pools")]
 [Tags("Resource Pools")]
 public class ResourcePoolsController : ControllerBase
 {

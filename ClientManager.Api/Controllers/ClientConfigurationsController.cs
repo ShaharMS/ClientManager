@@ -1,3 +1,4 @@
+using Asp.Versioning;
 using ClientManager.Api.Models.Exceptions;
 using ClientManager.DataAccess.Databases.Interfaces;
 using ClientManager.Shared.Models.Entities;
@@ -10,7 +11,8 @@ namespace ClientManager.Api.Controllers;
 /// Manages client configuration documents and their nested sub-resources.
 /// </summary>
 [ApiController]
-[Route("api/clients")]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/clients")]
 [Tags("Client Configurations")]
 public class ClientConfigurationsController : ControllerBase
 {

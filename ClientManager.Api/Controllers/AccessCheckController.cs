@@ -1,3 +1,4 @@
+using Asp.Versioning;
 using ClientManager.Api.Interfaces;
 using ClientManager.Api.Models.Requests;
 using ClientManager.Api.Models.Responses;
@@ -10,7 +11,8 @@ namespace ClientManager.Api.Controllers;
 /// Operational endpoints for checking client access to services.
 /// </summary>
 [ApiController]
-[Route("api/access")]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/access")]
 [Tags("Access Check")]
 public class AccessCheckController : ControllerBase
 {

@@ -1,3 +1,4 @@
+using Asp.Versioning;
 using ClientManager.Api.Models.Exceptions;
 using ClientManager.DataAccess.Databases.Interfaces;
 using ClientManager.Shared.Models.Entities;
@@ -11,7 +12,8 @@ namespace ClientManager.Api.Controllers;
 /// Manages system-wide catch-all rate limits for services and resource pools.
 /// </summary>
 [ApiController]
-[Route("api/global-rate-limits")]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/global-rate-limits")]
 [Tags("Global Rate Limits")]
 public class GlobalRateLimitsController : ControllerBase
 {

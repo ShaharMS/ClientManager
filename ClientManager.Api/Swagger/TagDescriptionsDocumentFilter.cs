@@ -14,6 +14,7 @@ public class TagDescriptionsDocumentFilter : IDocumentFilter
         ["Access Check"] = "Operational endpoints for checking client access to services.",
         ["Client Configurations"] = "Manages client configuration documents and their nested sub-resources.",
         ["Global Rate Limits"] = "Manages system-wide catch-all rate limits for services and resource pools.",
+        ["Metrics"] = "Exposes system metrics in multiple formats for different monitoring platforms.",
         ["Resource Allocation"] = "Operational endpoints for acquiring and releasing resource pool slots.",
         ["Resource Pools"] = "Manages system-wide resource pool definitions.",
         ["Services"] = "Manages system-wide service definitions.",

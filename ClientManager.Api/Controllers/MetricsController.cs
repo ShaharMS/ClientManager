@@ -1,3 +1,4 @@
+using Asp.Versioning;
 using ClientManager.Api.Interfaces;
 using ClientManager.Api.Models.Responses;
 using Microsoft.AspNetCore.Mvc;
@@ -8,6 +9,8 @@ namespace ClientManager.Api.Controllers;
 /// Exposes system metrics in multiple formats for different monitoring platforms.
 /// </summary>
 [ApiController]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/metrics")]
 [Tags("Metrics")]
 public class MetricsController : ControllerBase
 {
@@ -33,7 +36,7 @@ public class MetricsController : ControllerBase
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Prometheus-formatted metrics text.</returns>
     /// <response code="200">Returns Prometheus exposition format metrics.</response>
-    [HttpGet("/prometheus")]
+    [HttpGet("prometheus")]
     [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetPrometheusMetrics(CancellationToken cancellationToken)
     {
@@ -47,7 +50,7 @@ public class MetricsController : ControllerBase
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>JSON object containing all metrics with labels.</returns>
     /// <response code="200">Returns OpenMetrics JSON format metrics.</response>
-    [HttpGet("/grafana")]
+    [HttpGet("grafana")]
     [ProducesResponseType(typeof(GrafanaMetricsResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetGrafanaMetrics(CancellationToken cancellationToken)
     {
