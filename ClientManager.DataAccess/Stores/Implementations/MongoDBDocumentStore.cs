@@ -112,6 +112,30 @@ public class MongoDBDocumentStore : IDocumentStore
     }
 
     /// <inheritdoc />
+    public async Task<long> DecrementCounterAsync(string key, CancellationToken cancellationToken = default)
+    {
+        var filter = Builders<BsonDocument>.Filter.Eq("_id", key);
+        var update = Builders<BsonDocument>.Update.Inc("Count", -1L);
+        var options = new FindOneAndUpdateOptions<BsonDocument>
+        {
+            ReturnDocument = ReturnDocument.After
+        };
+
+        var result = await CounterCollection.FindOneAndUpdateAsync(filter, update, options, cancellationToken);
+        if (result is null)
+            return 0;
+
+        var count = result["Count"].AsInt64;
+        if (count < 0)
+        {
+            await SetCounterAsync(key, 0, TimeSpan.FromHours(24), cancellationToken);
+            return 0;
+        }
+
+        return count;
+    }
+
+    /// <inheritdoc />
     public async Task ResetCounterAsync(string key, CancellationToken cancellationToken = default)
     {
         var filter = Builders<BsonDocument>.Filter.Eq("_id", key);

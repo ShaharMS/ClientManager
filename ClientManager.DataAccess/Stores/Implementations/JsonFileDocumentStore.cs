@@ -131,6 +131,29 @@ public class JsonFileDocumentStore : IDocumentStore
     }
 
     /// <inheritdoc />
+    public async Task<long> DecrementCounterAsync(string key, CancellationToken cancellationToken = default)
+    {
+        await _writeLock.WaitAsync(cancellationToken);
+        try
+        {
+            var counters = GetOrLoadCounters();
+            if (counters.TryGetValue(key, out var entry) && entry.Count > 0)
+            {
+                entry = entry with { Count = entry.Count - 1 };
+                counters[key] = entry;
+                await PersistCountersAsync(counters, cancellationToken);
+                return entry.Count;
+            }
+
+            return 0;
+        }
+        finally
+        {
+            _writeLock.Release();
+        }
+    }
+
+    /// <inheritdoc />
     public async Task ResetCounterAsync(string key, CancellationToken cancellationToken = default)
     {
         await _writeLock.WaitAsync(cancellationToken);

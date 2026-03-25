@@ -46,4 +46,21 @@ public interface IRateLimitStateStore
     /// <param name="key">The rate limit counter key to reset.</param>
     /// <param name="cancellationToken">Cancels the reset before it completes.</param>
     Task ResetAsync(string key, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Reads multiple counters in a single logical operation, reducing round trips for
+    /// strategies like <c>TokenBucketStrategy</c> that need several keys per evaluation.
+    /// </summary>
+    /// <param name="keys">The rate limit counter keys to read.</param>
+    /// <param name="cancellationToken">Cancels the batch read if the store is unresponsive.</param>
+    /// <returns>A dictionary mapping each key to its current value (0 if the key does not exist).</returns>
+    Task<IReadOnlyDictionary<string, long>> GetMultipleCountsAsync(IEnumerable<string> keys, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Writes multiple counters in a single logical operation, reducing round trips for
+    /// strategies like <c>TokenBucketStrategy</c> that update several keys per evaluation.
+    /// </summary>
+    /// <param name="entries">A dictionary mapping each key to its new value and expiry window.</param>
+    /// <param name="cancellationToken">Cancels the batch write before all entries are persisted.</param>
+    Task SetMultipleCountsAsync(IReadOnlyDictionary<string, (long value, TimeSpan window)> entries, CancellationToken cancellationToken = default);
 }

@@ -5,6 +5,7 @@ using ClientManager.DataAccess.Databases.Interfaces;
 using ClientManager.Shared.Logging;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Enums;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace ClientManager.Api.Services.RateLimiting;
 
@@ -20,6 +21,9 @@ public class RateLimitService : IRateLimitService
     private readonly IGlobalRateLimitRepository _globalRateLimitRepository;
     private readonly RateLimitStrategyResolver _strategyResolver;
     private readonly ClientManagerMetrics _metrics;
+    private readonly IMemoryCache _cache;
+
+    private static readonly TimeSpan GlobalLimitCacheTtl = TimeSpan.FromSeconds(30);
 
     /// <summary>
     /// Initializes a new instance of <see cref="RateLimitService"/>.
@@ -29,32 +33,35 @@ public class RateLimitService : IRateLimitService
     /// <param name="globalRateLimitRepository">Repository for global rate limits.</param>
     /// <param name="strategyResolver">Resolver for rate limit strategy implementations.</param>
     /// <param name="metrics">The metrics instrumentation instance.</param>
+    /// <param name="cache">Memory cache for short-lived global rate limit lookups.</param>
     public RateLimitService(
         IAppLogger<RateLimitService> logger,
         IClientConfigurationRepository clientConfigRepository,
         IGlobalRateLimitRepository globalRateLimitRepository,
         RateLimitStrategyResolver strategyResolver,
-        ClientManagerMetrics metrics)
+        ClientManagerMetrics metrics,
+        IMemoryCache cache)
     {
         _logger = logger;
         _clientConfigRepository = clientConfigRepository;
         _globalRateLimitRepository = globalRateLimitRepository;
         _strategyResolver = strategyResolver;
         _metrics = metrics;
+        _cache = cache;
     }
 
     /// <inheritdoc />
     public async Task<RateLimitResult> CheckAndIncrementAsync(
-        string clientId,
+        ClientConfiguration config,
         string serviceId,
         CancellationToken cancellationToken = default)
     {
-        var config = await _clientConfigRepository.GetByIdAsync(clientId, cancellationToken);
-        if (config is null || !config.IsEnabled)
+        if (!config.IsEnabled)
         {
             return Allowed();
         }
 
+        var clientId = config.Id;
         var serviceRateLimit = config.Services.GetValueOrDefault(serviceId)?.RateLimit;
         var globalRateLimit = config.GlobalRateLimit;
 
@@ -78,14 +85,14 @@ public class RateLimitService : IRateLimitService
         if (result.IsAllowed)
             _metrics.RateLimitAllowed.Add(1, new TagList
             {
-                { "clientId", clientId },
-                { "serviceId", serviceId }
+                { MetricTagKey.ClientId.ToTagName(), clientId },
+                { MetricTagKey.ServiceId.ToTagName(), serviceId }
             });
         else
             _metrics.RateLimitDenied.Add(1, new TagList
             {
-                { "clientId", clientId },
-                { "serviceId", serviceId }
+                { MetricTagKey.ClientId.ToTagName(), clientId },
+                { MetricTagKey.ServiceId.ToTagName(), serviceId }
             });
 
         _logger.Debug("Rate limit evaluated", new { ClientId = clientId, ServiceId = serviceId, Allowed = result.IsAllowed, Remaining = result.RemainingRequests });
@@ -110,21 +117,16 @@ public class RateLimitService : IRateLimitService
 
     /// <inheritdoc />
     public async Task<RateLimitResult> CheckGlobalServiceLimitAsync(
-        string clientId,
+        ClientConfiguration config,
         string serviceId,
         CancellationToken cancellationToken = default)
     {
-        var config = await _clientConfigRepository.GetByIdAsync(clientId, cancellationToken);
-        if (config is null)
-        {
-            return Allowed();
-        }
-
+        var clientId = config.Id;
         var serviceSettings = config.Services.GetValueOrDefault(serviceId);
         var contributesToGlobal = serviceSettings?.ContributesToGlobalLimit ?? config.ContributesToGlobalLimits;
         var exemptFromGlobal = serviceSettings?.ExemptFromGlobalLimit ?? config.ExemptFromGlobalLimits;
 
-        var globalLimit = await _globalRateLimitRepository.GetByTargetAsync(
+        var globalLimit = await GetCachedGlobalLimitAsync(
             serviceId, TargetType.Service, cancellationToken);
 
         if (globalLimit is null)
@@ -154,8 +156,8 @@ public class RateLimitService : IRateLimitService
                 result = result with { IsGlobalLimitHit = true };
                 _metrics.GlobalRateLimitHits.Add(1, new TagList
                 {
-                    { "clientId", clientId },
-                    { "serviceId", serviceId }
+                    { MetricTagKey.ClientId.ToTagName(), clientId },
+                    { MetricTagKey.ServiceId.ToTagName(), serviceId }
                 });
             }
         }
@@ -167,20 +169,15 @@ public class RateLimitService : IRateLimitService
 
     /// <inheritdoc />
     public async Task<RateLimitResult> CheckGlobalResourcePoolLimitAsync(
-        string clientId,
+        ClientConfiguration config,
         string resourcePoolId,
         CancellationToken cancellationToken = default)
     {
-        var config = await _clientConfigRepository.GetByIdAsync(clientId, cancellationToken);
-        if (config is null)
-        {
-            return Allowed();
-        }
-
+        var clientId = config.Id;
         var contributesToGlobal = config.ContributesToGlobalLimits;
         var exemptFromGlobal = config.ExemptFromGlobalLimits;
 
-        var globalLimit = await _globalRateLimitRepository.GetByTargetAsync(
+        var globalLimit = await GetCachedGlobalLimitAsync(
             resourcePoolId, TargetType.ResourcePool, cancellationToken);
 
         if (globalLimit is null)
@@ -210,8 +207,8 @@ public class RateLimitService : IRateLimitService
                 result = result with { IsGlobalLimitHit = true };
                 _metrics.GlobalRateLimitHits.Add(1, new TagList
                 {
-                    { "clientId", clientId },
-                    { "resourcePoolId", resourcePoolId }
+                    { MetricTagKey.ClientId.ToTagName(), clientId },
+                    { MetricTagKey.ResourcePoolId.ToTagName(), resourcePoolId }
                 });
             }
         }
@@ -252,6 +249,23 @@ public class RateLimitService : IRateLimitService
         }
 
         return CombineResults(serviceResult, globalResult);
+    }
+
+    /// <summary>
+    /// Retrieves a global rate limit from a short-lived cache to avoid a
+    /// <c>GetAll + FirstOrDefault</c> collection scan on every request.
+    /// The 30-second TTL keeps the cache fresh enough for admin-edited config.
+    /// </summary>
+    private async Task<GlobalRateLimit?> GetCachedGlobalLimitAsync(
+        string targetId, TargetType targetType, CancellationToken cancellationToken)
+    {
+        var cacheKey = $"global-limit:{targetId}:{targetType}";
+        if (!_cache.TryGetValue(cacheKey, out GlobalRateLimit? cached))
+        {
+            cached = await _globalRateLimitRepository.GetByTargetAsync(targetId, targetType, cancellationToken);
+            _cache.Set(cacheKey, cached, GlobalLimitCacheTtl);
+        }
+        return cached;
     }
 
     private static RateLimitResult Allowed() => new()

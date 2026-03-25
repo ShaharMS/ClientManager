@@ -34,6 +34,8 @@ public interface IResourceAllocationRepository
 
     /// <summary>
     /// Gets the count of active (non-released, non-expired) allocations for a resource pool.
+    /// Reads from a maintained atomic counter instead of scanning all allocation documents,
+    /// eliminating a full-collection <c>GetAllAsync</c> on every acquire attempt.
     /// </summary>
     /// <param name="resourcePoolId">The unique identifier of the resource pool.</param>
     /// <param name="cancellationToken">Cancels the count query - the acquire path will fail fast rather than block on a slow store.</param>
@@ -42,6 +44,8 @@ public interface IResourceAllocationRepository
 
     /// <summary>
     /// Gets the count of active allocations for a specific client within a resource pool.
+    /// Reads from a maintained atomic counter instead of scanning all allocation documents,
+    /// eliminating a full-collection <c>GetAllAsync</c> on every acquire attempt.
     /// </summary>
     /// <param name="resourcePoolId">The unique identifier of the resource pool.</param>
     /// <param name="clientId">The unique identifier of the client.</param>
@@ -85,4 +89,12 @@ public interface IResourceAllocationRepository
     /// <param name="cancellationToken">Cancels the cleanup scan - any allocations already marked in this batch remain marked, but the scan stops early.</param>
     /// <returns>The number of allocations that were cleaned up.</returns>
     Task<int> CleanupExpiredAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Performs a full collection scan and resets the maintained atomic counters to match
+    /// the actual active allocation counts. Called on the first cleanup cycle to correct
+    /// any drift between counters and ground truth.
+    /// </summary>
+    /// <param name="cancellationToken">Cancels the reconciliation scan.</param>
+    Task ReconcileCountersAsync(CancellationToken cancellationToken = default);
 }

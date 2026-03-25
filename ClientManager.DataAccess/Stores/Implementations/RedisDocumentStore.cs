@@ -84,6 +84,19 @@ public class RedisDocumentStore : IDocumentStore
     }
 
     /// <inheritdoc />
+    public async Task<long> DecrementCounterAsync(string key, CancellationToken cancellationToken = default)
+    {
+        var redisKey = $"{CounterPrefix}{key}";
+        var count = await Database.StringDecrementAsync(redisKey);
+        if (count < 0)
+        {
+            await Database.StringSetAsync(redisKey, 0);
+            return 0;
+        }
+        return count;
+    }
+
+    /// <inheritdoc />
     public async Task ResetCounterAsync(string key, CancellationToken cancellationToken = default)
     {
         var redisKey = $"{CounterPrefix}{key}";

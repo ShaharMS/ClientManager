@@ -65,9 +65,9 @@ public class AccessControlService : IAccessControlService
         {
             _metrics.AccessDenied.Add(1, new TagList
             {
-                { "clientId", clientId },
-                { "serviceId", serviceId },
-                { "reason", AccessDenialReason.ClientDisabled.ToTagValue() }
+                { MetricTagKey.ClientId.ToTagName(), clientId },
+                { MetricTagKey.ServiceId.ToTagName(), serviceId },
+                { MetricTagKey.Reason.ToTagName(), AccessDenialReason.ClientDisabled.ToTagValue() }
             });
             _usageRecorder.RecordServiceRequest(clientId, serviceId, UsageEventType.Denied);
             throw new ClientDisabledException(clientId);
@@ -83,9 +83,9 @@ public class AccessControlService : IAccessControlService
         {
             _metrics.AccessDenied.Add(1, new TagList
             {
-                { "clientId", clientId },
-                { "serviceId", serviceId },
-                { "reason", AccessDenialReason.ServiceDisabled.ToTagValue() }
+                { MetricTagKey.ClientId.ToTagName(), clientId },
+                { MetricTagKey.ServiceId.ToTagName(), serviceId },
+                { MetricTagKey.Reason.ToTagName(), AccessDenialReason.ServiceDisabled.ToTagValue() }
             });
             _usageRecorder.RecordServiceRequest(clientId, serviceId, UsageEventType.Denied);
             throw new ServiceDisabledException(serviceId);
@@ -95,9 +95,9 @@ public class AccessControlService : IAccessControlService
         {
             _metrics.AccessDenied.Add(1, new TagList
             {
-                { "clientId", clientId },
-                { "serviceId", serviceId },
-                { "reason", AccessDenialReason.NotConfigured.ToTagValue() }
+                { MetricTagKey.ClientId.ToTagName(), clientId },
+                { MetricTagKey.ServiceId.ToTagName(), serviceId },
+                { MetricTagKey.Reason.ToTagName(), AccessDenialReason.NotConfigured.ToTagValue() }
             });
             _usageRecorder.RecordServiceRequest(clientId, serviceId, UsageEventType.Denied);
             throw new AccessNotConfiguredException(clientId, serviceId);
@@ -107,37 +107,37 @@ public class AccessControlService : IAccessControlService
         {
             _metrics.AccessDenied.Add(1, new TagList
             {
-                { "clientId", clientId },
-                { "serviceId", serviceId },
-                { "reason", AccessDenialReason.NotAllowed.ToTagValue() }
+                { MetricTagKey.ClientId.ToTagName(), clientId },
+                { MetricTagKey.ServiceId.ToTagName(), serviceId },
+                { MetricTagKey.Reason.ToTagName(), AccessDenialReason.NotAllowed.ToTagValue() }
             });
             _usageRecorder.RecordServiceRequest(clientId, serviceId, UsageEventType.Denied);
             throw new AccessDeniedException(clientId, serviceId);
         }
 
         // Check global service rate limit before per-client limits
-        var globalResult = await _rateLimitService.CheckGlobalServiceLimitAsync(clientId, serviceId, cancellationToken);
+        var globalResult = await _rateLimitService.CheckGlobalServiceLimitAsync(config, serviceId, cancellationToken);
         if (!globalResult.IsAllowed)
         {
             _metrics.AccessDenied.Add(1, new TagList
             {
-                { "clientId", clientId },
-                { "serviceId", serviceId },
-                { "reason", AccessDenialReason.GlobalRateLimited.ToTagValue() }
+                { MetricTagKey.ClientId.ToTagName(), clientId },
+                { MetricTagKey.ServiceId.ToTagName(), serviceId },
+                { MetricTagKey.Reason.ToTagName(), AccessDenialReason.GlobalRateLimited.ToTagValue() }
             });
             _usageRecorder.RecordServiceRequest(clientId, serviceId, UsageEventType.Denied);
             throw new RateLimitedException("Global service rate limit exceeded", globalResult.RetryAfterSeconds);
         }
 
         // Check per-client rate limit (this increments the counter)
-        var result = await _rateLimitService.CheckAndIncrementAsync(clientId, serviceId, cancellationToken);
+        var result = await _rateLimitService.CheckAndIncrementAsync(config, serviceId, cancellationToken);
         if (!result.IsAllowed)
         {
             _metrics.AccessDenied.Add(1, new TagList
             {
-                { "clientId", clientId },
-                { "serviceId", serviceId },
-                { "reason", AccessDenialReason.RateLimited.ToTagValue() }
+                { MetricTagKey.ClientId.ToTagName(), clientId },
+                { MetricTagKey.ServiceId.ToTagName(), serviceId },
+                { MetricTagKey.Reason.ToTagName(), AccessDenialReason.RateLimited.ToTagValue() }
             });
             _usageRecorder.RecordServiceRequest(clientId, serviceId, UsageEventType.Denied);
             throw new RateLimitedException("Rate limit exceeded", result.RetryAfterSeconds);
@@ -147,8 +147,8 @@ public class AccessControlService : IAccessControlService
 
         _metrics.AccessGranted.Add(1, new TagList
         {
-            { "clientId", clientId },
-            { "serviceId", serviceId }
+            { MetricTagKey.ClientId.ToTagName(), clientId },
+            { MetricTagKey.ServiceId.ToTagName(), serviceId }
         });
         _usageRecorder.RecordServiceRequest(clientId, serviceId, UsageEventType.Granted);
 

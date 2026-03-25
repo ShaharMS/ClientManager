@@ -37,16 +37,23 @@ public class TokenBucketStrategy : IRateLimitStrategy
         // Use a long window for token bucket state so it doesn't expire prematurely
         var stateWindow = TimeSpan.FromSeconds(refillIntervalSeconds * bucketCapacity * 2);
 
-        var storedTokens = await _stateStore.GetCountAsync(tokensKey, cancellationToken);
-        var lastRefill = await _stateStore.GetCountAsync(lastRefillKey, cancellationToken);
+        // Batch read: 1 round trip instead of 2
+        var counts = await _stateStore.GetMultipleCountsAsync([tokensKey, lastRefillKey], cancellationToken);
+        var storedTokens = counts[tokensKey];
+        var lastRefill = counts[lastRefillKey];
 
         long tokens;
         if (lastRefill == 0)
         {
             // First request - initialize bucket to full capacity minus 1 (consuming this request)
             tokens = bucketCapacity - 1;
-            await _stateStore.SetCountAsync(tokensKey, tokens, stateWindow, cancellationToken);
-            await _stateStore.SetCountAsync(lastRefillKey, now, stateWindow, cancellationToken);
+
+            // Batch write: 1 round trip instead of 2
+            await _stateStore.SetMultipleCountsAsync(new Dictionary<string, (long, TimeSpan)>
+            {
+                [tokensKey] = (tokens, stateWindow),
+                [lastRefillKey] = (now, stateWindow)
+            }, cancellationToken);
 
             return new RateLimitResult
             {
@@ -70,8 +77,12 @@ public class TokenBucketStrategy : IRateLimitStrategy
             // No tokens available
             var retryAfter = (int)(refillIntervalSeconds / tokensPerRefill);
 
-            await _stateStore.SetCountAsync(tokensKey, 0, stateWindow, cancellationToken);
-            await _stateStore.SetCountAsync(lastRefillKey, newLastRefill, stateWindow, cancellationToken);
+            // Batch write: 1 round trip instead of 2
+            await _stateStore.SetMultipleCountsAsync(new Dictionary<string, (long, TimeSpan)>
+            {
+                [tokensKey] = (0, stateWindow),
+                [lastRefillKey] = (newLastRefill, stateWindow)
+            }, cancellationToken);
 
             return new RateLimitResult
             {
@@ -83,8 +94,13 @@ public class TokenBucketStrategy : IRateLimitStrategy
 
         // Consume one token
         tokens--;
-        await _stateStore.SetCountAsync(tokensKey, tokens, stateWindow, cancellationToken);
-        await _stateStore.SetCountAsync(lastRefillKey, newLastRefill, stateWindow, cancellationToken);
+
+        // Batch write: 1 round trip instead of 2
+        await _stateStore.SetMultipleCountsAsync(new Dictionary<string, (long, TimeSpan)>
+        {
+            [tokensKey] = (tokens, stateWindow),
+            [lastRefillKey] = (newLastRefill, stateWindow)
+        }, cancellationToken);
 
         return new RateLimitResult
         {
@@ -106,8 +122,10 @@ public class TokenBucketStrategy : IRateLimitStrategy
         var refillIntervalSeconds = (long)rateLimit.Window.TotalSeconds;
         var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
-        var storedTokens = await _stateStore.GetCountAsync(tokensKey, cancellationToken);
-        var lastRefill = await _stateStore.GetCountAsync(lastRefillKey, cancellationToken);
+        // Batch read: 1 round trip instead of 2
+        var counts = await _stateStore.GetMultipleCountsAsync([tokensKey, lastRefillKey], cancellationToken);
+        var storedTokens = counts[tokensKey];
+        var lastRefill = counts[lastRefillKey];
 
         if (lastRefill == 0)
         {

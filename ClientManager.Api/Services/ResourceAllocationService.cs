@@ -84,9 +84,9 @@ public class ResourceAllocationService : IResourceAllocationService
             {
                 _metrics.ResourceDenied.Add(1, new TagList
                 {
-                    { "clientId", clientId },
-                    { "resourcePoolId", resourcePoolId },
-                    { "reason", ResourceDenialReason.ClientCapReached.ToTagValue() }
+                    { MetricTagKey.ClientId.ToTagName(), clientId },
+                    { MetricTagKey.ResourcePoolId.ToTagName(), resourcePoolId },
+                    { MetricTagKey.Reason.ToTagName(), ResourceDenialReason.ClientCapReached.ToTagValue() }
                 });
                 _usageRecorder.RecordAllocationEvent(clientId, resourcePoolId, UsageEventType.Denied);
                 throw new RateLimitedException($"Client slot limit reached for pool '{resourcePoolId}'");
@@ -94,14 +94,14 @@ public class ResourceAllocationService : IResourceAllocationService
         }
 
         // Check global resource pool rate limit
-        var rateLimitResult = await _rateLimitService.CheckGlobalResourcePoolLimitAsync(clientId, resourcePoolId, cancellationToken);
+        var rateLimitResult = await _rateLimitService.CheckGlobalResourcePoolLimitAsync(config, resourcePoolId, cancellationToken);
         if (!rateLimitResult.IsAllowed)
         {
             _metrics.ResourceDenied.Add(1, new TagList
             {
-                { "clientId", clientId },
-                { "resourcePoolId", resourcePoolId },
-                { "reason", ResourceDenialReason.RateLimited.ToTagValue() }
+                { MetricTagKey.ClientId.ToTagName(), clientId },
+                { MetricTagKey.ResourcePoolId.ToTagName(), resourcePoolId },
+                { MetricTagKey.Reason.ToTagName(), ResourceDenialReason.RateLimited.ToTagValue() }
             });
             _usageRecorder.RecordAllocationEvent(clientId, resourcePoolId, UsageEventType.Denied);
             throw new RateLimitedException("Global resource pool rate limit exceeded", rateLimitResult.RetryAfterSeconds);
@@ -113,9 +113,9 @@ public class ResourceAllocationService : IResourceAllocationService
         {
             _metrics.ResourceDenied.Add(1, new TagList
             {
-                { "clientId", clientId },
-                { "resourcePoolId", resourcePoolId },
-                { "reason", ResourceDenialReason.NoSlots.ToTagValue() }
+                { MetricTagKey.ClientId.ToTagName(), clientId },
+                { MetricTagKey.ResourcePoolId.ToTagName(), resourcePoolId },
+                { MetricTagKey.Reason.ToTagName(), ResourceDenialReason.NoSlots.ToTagValue() }
             });
             _usageRecorder.RecordAllocationEvent(clientId, resourcePoolId, UsageEventType.Denied);
             throw new RateLimitedException($"No slots available in pool '{resourcePoolId}'");
@@ -139,8 +139,8 @@ public class ResourceAllocationService : IResourceAllocationService
 
         _metrics.ResourceAcquired.Add(1, new TagList
         {
-            { "clientId", clientId },
-            { "resourcePoolId", resourcePoolId }
+            { MetricTagKey.ClientId.ToTagName(), clientId },
+            { MetricTagKey.ResourcePoolId.ToTagName(), resourcePoolId }
         });
         _usageRecorder.RecordAllocationEvent(clientId, resourcePoolId, UsageEventType.Granted);
 
@@ -171,7 +171,7 @@ public class ResourceAllocationService : IResourceAllocationService
 
         _metrics.ResourceReleased.Add(1, new TagList
         {
-            { "allocationId", allocationId }
+            { MetricTagKey.AllocationId.ToTagName(), allocationId }
         });
         _usageRecorder.RecordAllocationEvent(allocation.ClientId, allocation.ResourcePoolId, UsageEventType.Released);
 

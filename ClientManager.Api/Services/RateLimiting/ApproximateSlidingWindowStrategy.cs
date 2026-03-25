@@ -78,8 +78,10 @@ public class ApproximateSlidingWindowStrategy : IRateLimitStrategy
         var currentWindowKey = $"sliding:{key}:{currentWindowNumber}";
         var previousWindowKey = $"sliding:{key}:{previousWindowNumber}";
 
-        var previousCount = await _stateStore.GetCountAsync(previousWindowKey, cancellationToken);
-        var currentCount = await _stateStore.GetCountAsync(currentWindowKey, cancellationToken);
+        // Batch read: 1 round trip instead of 2
+        var counts = await _stateStore.GetMultipleCountsAsync([previousWindowKey, currentWindowKey], cancellationToken);
+        var previousCount = counts[previousWindowKey];
+        var currentCount = counts[currentWindowKey];
 
         var windowStart = currentWindowNumber * windowSeconds;
         var elapsedRatio = (double)(now - windowStart) / windowSeconds;

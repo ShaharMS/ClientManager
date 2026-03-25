@@ -35,4 +35,27 @@ public class RateLimitStateStore : IRateLimitStateStore
     /// <inheritdoc />
     public Task ResetAsync(string key, CancellationToken cancellationToken = default) =>
         _store.ResetCounterAsync(key, cancellationToken);
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyDictionary<string, long>> GetMultipleCountsAsync(
+        IEnumerable<string> keys, CancellationToken cancellationToken = default)
+    {
+        var result = new Dictionary<string, long>();
+        foreach (var key in keys)
+        {
+            result[key] = await _store.GetCounterAsync(key, cancellationToken);
+        }
+        return result;
+    }
+
+    /// <inheritdoc />
+    public async Task SetMultipleCountsAsync(
+        IReadOnlyDictionary<string, (long value, TimeSpan window)> entries,
+        CancellationToken cancellationToken = default)
+    {
+        foreach (var (key, (value, window)) in entries)
+        {
+            await _store.SetCounterAsync(key, value, window, cancellationToken);
+        }
+    }
 }

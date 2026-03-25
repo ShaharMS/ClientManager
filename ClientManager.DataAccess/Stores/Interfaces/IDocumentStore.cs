@@ -87,6 +87,17 @@ public interface IDocumentStore
     Task<long> IncrementCounterAsync(string key, TimeSpan window, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Atomically decrements a counter identified by key, flooring at zero.
+    /// Unlike a read-modify-write cycle through <see cref="GetCounterAsync"/> and
+    /// <see cref="SetCounterAsync"/>, this is safe under concurrent access because
+    /// each backend can implement it with a single atomic operation (e.g. Redis DECRBY).
+    /// </summary>
+    /// <param name="key">The counter key.</param>
+    /// <param name="cancellationToken">Cancels the decrement before it completes.</param>
+    /// <returns>The counter value after decrementing (never negative).</returns>
+    Task<long> DecrementCounterAsync(string key, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Gets the current value of a counter.
     /// </summary>
     /// <param name="key">The counter key.</param>
