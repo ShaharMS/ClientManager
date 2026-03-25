@@ -14,24 +14,41 @@ namespace ClientManager.DataAccess.Databases.Interfaces;
 ///     and statistics APIs.
 /// </para>
 ///
+/// <para><strong>Segmented storage</strong></para>
+/// <para>
+///     Snapshots are stored as bounded time-segment documents rather than a single
+///     ever-growing document per (client, target, granularity). Each segment covers a
+///     fixed window (e.g. 1 hour for second-granularity data) and is identified by a
+///     compound key that includes the segment start time. This keeps individual documents
+///     small regardless of retention length. See <c>UsageSegmentHelper</c> for segment
+///     window sizes and ID construction.
+/// </para>
+///
 /// <para><strong>Query patterns</strong></para>
 /// <list type="bullet">
 ///     <item>
 ///         <description>
-///             <see cref="GetByClientAndTargetAsync"/> - single client + target at one
-///             granularity, used during each buffer flush to find the document to merge into.
+///             <see cref="GetByClientTargetAndSegmentAsync"/> — direct lookup of a single
+///             segment document by constructing its ID. Fastest path, used by flush.
 ///         </description>
 ///     </item>
 ///     <item>
 ///         <description>
-///             <see cref="GetByTargetAsync"/> - all clients for a given target, used by
-///             per-target dashboards (e.g. "show me who's using service X").
+///             <see cref="GetByTargetAndRangeAsync"/> — fetches all client segments
+///             overlapping a time range by enumerating segment IDs. Avoids scanning the
+///             entire collection.
 ///         </description>
 ///     </item>
 ///     <item>
 ///         <description>
-///             <see cref="GetAllByGranularityAsync"/> - all snapshots at one granularity,
-///             used for system-wide rollup and retention cleanup.
+///             <see cref="GetByTargetAsync"/> — all clients for a given target (legacy
+///             full-scan method, used where a time range is not available).
+///         </description>
+///     </item>
+///     <item>
+///         <description>
+///             <see cref="GetAllByGranularityAsync"/> — all snapshots at one granularity.
+///             Used by the background rollup and prune cycles where scanning is acceptable.
 ///         </description>
 ///     </item>
 /// </list>
@@ -84,6 +101,14 @@ public interface IUsageSnapshotRepository
     Task UpsertAsync(UsageSnapshot snapshot, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Deletes a usage snapshot document by its compound key. Used by prune and rollup to
+    /// drop whole segment documents instead of rewriting them with an empty bucket list.
+    /// </summary>
+    /// <param name="id">The compound key identifying the snapshot to delete.</param>
+    /// <param name="cancellationToken">Cancels the delete if the store is unresponsive.</param>
+    Task DeleteAsync(string id, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Gets all snapshots at a specific granularity level.
     /// </summary>
     /// <param name="granularity">The bucket granularity to filter by.</param>
@@ -91,5 +116,37 @@ public interface IUsageSnapshotRepository
     /// <returns>All snapshots matching the given granularity.</returns>
     Task<IReadOnlyList<UsageSnapshot>> GetAllByGranularityAsync(
         BucketGranularity granularity,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets all snapshots for a target within a time range by constructing segment IDs for
+    /// each known client instead of scanning the entire collection. The number of store reads
+    /// is bounded by (client count × segment count) rather than the total document count.
+    /// </summary>
+    /// <param name="targetId">The target identifier (service or resource pool).</param>
+    /// <param name="targetType">Whether the target is a Service or ResourcePool.</param>
+    /// <param name="granularity">The bucket granularity to filter by.</param>
+    /// <param name="from">Inclusive lower bound of the time range.</param>
+    /// <param name="to">Exclusive upper bound of the time range.</param>
+    /// <param name="cancellationToken">Cancels the query early if the caller is shutting down.</param>
+    /// <returns>All matching snapshots that contain at least one bucket in the requested range.</returns>
+    Task<IReadOnlyList<UsageSnapshot>> GetByTargetAndRangeAsync(
+        string targetId, TargetType targetType, BucketGranularity granularity,
+        DateTime from, DateTime to, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets a single snapshot for a specific client-target-granularity-segment combination
+    /// by constructing the segment ID directly — a single <c>GetByIdAsync</c> call with no scanning.
+    /// </summary>
+    /// <param name="clientId">The client identifier.</param>
+    /// <param name="targetId">The target identifier (service or resource pool).</param>
+    /// <param name="targetType">Whether the target is a Service or ResourcePool.</param>
+    /// <param name="granularity">The bucket granularity.</param>
+    /// <param name="segmentStart">The start of the segment window.</param>
+    /// <param name="cancellationToken">Cancels the lookup if the store is unresponsive.</param>
+    /// <returns>The snapshot if found; otherwise <c>null</c>.</returns>
+    Task<UsageSnapshot?> GetByClientTargetAndSegmentAsync(
+        string clientId, string targetId, TargetType targetType,
+        BucketGranularity granularity, DateTime segmentStart,
         CancellationToken cancellationToken = default);
 }

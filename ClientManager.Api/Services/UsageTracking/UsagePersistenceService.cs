@@ -118,7 +118,8 @@ public class UsagePersistenceService : BackgroundService
         foreach (var group in grouped)
         {
             var (clientId, targetType, targetId) = group.Key;
-            var id = UsageSnapshotRepository.BuildId(clientId, targetType, targetId, granularity);
+            var segmentStart = UsageSegmentHelper.GetSegmentStart(bucketTimestamp, granularity);
+            var id = UsageSegmentHelper.BuildSegmentId(clientId, targetType, targetId, granularity, segmentStart);
 
             var snapshot = await repository.GetByIdAsync(id, cancellationToken)
                 ?? new UsageSnapshot
@@ -128,7 +129,8 @@ public class UsagePersistenceService : BackgroundService
                     TargetId = targetId,
                     TargetType = targetType,
                     Granularity = granularity,
-                    Buckets = new List<UsageBucket>()
+                    SegmentStart = segmentStart,
+                    Buckets = []
                 };
 
             long granted = 0;
@@ -197,22 +199,6 @@ public class UsagePersistenceService : BackgroundService
             if (bucketsToRollUp.Count == 0)
                 continue;
 
-            var targetId = UsageSnapshotRepository.BuildId(
-                source.ClientId, source.TargetType, source.TargetId, targetGranularity);
-
-            var target = await repository.GetByIdAsync(targetId, cancellationToken)
-                ?? new UsageSnapshot
-                {
-                    Id = targetId,
-                    ClientId = source.ClientId,
-                    TargetId = source.TargetId,
-                    TargetType = source.TargetType,
-                    Granularity = targetGranularity,
-                    Buckets = new List<UsageBucket>()
-                };
-
-            var targetBuckets = target.Buckets.ToList();
-
             var rollUpGroups = bucketsToRollUp
                 .GroupBy(b => RoundDownToGranularity(b.Timestamp, targetGranularity))
                 .ToList();
@@ -220,6 +206,24 @@ public class UsagePersistenceService : BackgroundService
             foreach (var group in rollUpGroups)
             {
                 var targetTimestamp = group.Key;
+                var targetSegmentStart = UsageSegmentHelper.GetSegmentStart(targetTimestamp, targetGranularity);
+                var targetId = UsageSegmentHelper.BuildSegmentId(
+                    source.ClientId, source.TargetType, source.TargetId, targetGranularity, targetSegmentStart);
+
+                var target = await repository.GetByIdAsync(targetId, cancellationToken)
+                    ?? new UsageSnapshot
+                    {
+                        Id = targetId,
+                        ClientId = source.ClientId,
+                        TargetId = source.TargetId,
+                        TargetType = source.TargetType,
+                        Granularity = targetGranularity,
+                        SegmentStart = targetSegmentStart,
+                        Buckets = new List<UsageBucket>()
+                    };
+
+                var targetBuckets = target.Buckets.ToList();
+
                 var totalGranted = group.Sum(b => b.GrantedCount);
                 var totalDenied = group.Sum(b => b.DeniedCount);
                 var totalReleased = group.Sum(b => b.ReleasedCount);
@@ -247,13 +251,20 @@ public class UsagePersistenceService : BackgroundService
                         ActiveCount = maxActive
                     });
                 }
+
+                targetBuckets.Sort((a, b) => a.Timestamp.CompareTo(b.Timestamp));
+                await repository.UpsertAsync(target with { Buckets = targetBuckets }, cancellationToken);
             }
 
-            targetBuckets.Sort((a, b) => a.Timestamp.CompareTo(b.Timestamp));
-            await repository.UpsertAsync(target with { Buckets = targetBuckets }, cancellationToken);
-
             var remaining = source.Buckets.Where(b => b.Timestamp >= cutoff).ToList();
-            await repository.UpsertAsync(source with { Buckets = remaining }, cancellationToken);
+            if (remaining.Count == 0)
+            {
+                await repository.DeleteAsync(source.Id, cancellationToken);
+            }
+            else
+            {
+                await repository.UpsertAsync(source with { Buckets = remaining }, cancellationToken);
+            }
         }
     }
 
@@ -277,8 +288,25 @@ public class UsagePersistenceService : BackgroundService
 
         foreach (var snapshot in snapshots)
         {
+            // If the entire segment window ends before the cutoff, every bucket is expired.
+            // Drop the whole document instead of reading and rewriting it.
+            if (snapshot.SegmentStart.HasValue)
+            {
+                var segmentEnd = UsageSegmentHelper.GetSegmentEnd(snapshot.SegmentStart.Value, granularity);
+                if (segmentEnd <= cutoff)
+                {
+                    await repository.DeleteAsync(snapshot.Id, cancellationToken);
+                    continue;
+                }
+            }
+
+            // Boundary segment or legacy document — filter individual buckets.
             var remaining = snapshot.Buckets.Where(b => b.Timestamp >= cutoff).ToList();
-            if (remaining.Count < snapshot.Buckets.Count)
+            if (remaining.Count == 0)
+            {
+                await repository.DeleteAsync(snapshot.Id, cancellationToken);
+            }
+            else if (remaining.Count < snapshot.Buckets.Count)
             {
                 await repository.UpsertAsync(snapshot with { Buckets = remaining }, cancellationToken);
             }
