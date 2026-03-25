@@ -1,6 +1,6 @@
 # Plan: Statistics and Enforcement Performance Optimization — Step 1: Hot Path
 
-> **Status**: 🔲 Not started
+> **Status**: ✅ Completed
 > **Prerequisite**: None — this is the first step.
 > **Next**: [statistics-and-enforcement-optimization-2-snapshot-segments.md](statistics-and-enforcement-optimization-2-snapshot-segments.md)
 > **Parent**: [statistics-and-enforcement-optimization-overview.md](statistics-and-enforcement-optimization-overview.md)
