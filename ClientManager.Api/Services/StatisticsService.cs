@@ -1,5 +1,6 @@
 using ClientManager.Api.Interfaces;
 using ClientManager.Api.Models.Responses;
+using ClientManager.DataAccess.Databases.Implementations;
 using ClientManager.DataAccess.Databases.Interfaces;
 using ClientManager.DataAccess.Repositories.Interfaces;
 using ClientManager.Shared.Models.Entities;
@@ -11,6 +12,8 @@ namespace ClientManager.Api.Services;
 /// <summary>
 /// Provides aggregated statistics for the dashboard by reading from data stores
 /// and computing usage metrics, time-series data, and client summaries.
+/// Uses segment-based lookups and atomic counters to avoid full-collection scans
+/// on performance-sensitive paths.
 /// </summary>
 public class StatisticsService : IStatisticsService
 {
@@ -65,11 +68,15 @@ public class StatisticsService : IStatisticsService
         return result;
     }
 
+    /// <summary>
+    /// Computes global usage stats using maintained atomic counters for allocation counts
+    /// (avoiding full allocation scans) and segment-range lookups for recent request rates
+    /// (avoiding loading every second-granularity snapshot in the system).
+    /// </summary>
     private async Task<GlobalUsageStatsResponse> ComputeGlobalUsageStatsAsync(
         CancellationToken cancellationToken)
     {
         var pools = await _poolRepository.GetAllAsync(cancellationToken);
-        var activeCountsByPool = await _allocationRepository.GetActiveCountsByPoolAsync(cancellationToken);
 
         var totalSlots = 0;
         var acquiredSlots = 0;
@@ -77,24 +84,29 @@ public class StatisticsService : IStatisticsService
         foreach (var pool in pools)
         {
             totalSlots += (int)pool.MaxSlots;
-            acquiredSlots += activeCountsByPool.GetValueOrDefault(pool.Id);
+            acquiredSlots += await _allocationRepository.GetActiveCountAsync(pool.Id, cancellationToken);
         }
 
         var acquisitionPercentage = totalSlots > 0
             ? Math.Round(acquiredSlots * 100.0 / totalSlots, 1)
             : 0;
 
-        // Compute request rate: prefer per-second buckets for accuracy, fall back to 5-minute
         var now = DateTime.UtcNow;
         var secondCutoff = now.AddSeconds(-60);
-        var allSecondSnapshots = await _usageSnapshotRepository
-            .GetAllByGranularityAsync(BucketGranularity.Second, cancellationToken);
+        var services = await _serviceRepository.GetAllAsync(cancellationToken);
 
-        var recentSecondRequests = allSecondSnapshots
-            .Where(s => s.TargetType == TargetType.Service)
-            .SelectMany(s => s.Buckets)
-            .Where(b => b.Timestamp >= secondCutoff)
-            .Sum(b => b.GrantedCount);
+        long recentSecondRequests = 0;
+        foreach (var service in services)
+        {
+            var snapshots = await _usageSnapshotRepository.GetByTargetAndRangeAsync(
+                service.Id, TargetType.Service, BucketGranularity.Second,
+                secondCutoff, now, cancellationToken);
+
+            recentSecondRequests += snapshots
+                .SelectMany(s => s.Buckets)
+                .Where(b => b.Timestamp >= secondCutoff)
+                .Sum(b => b.GrantedCount);
+        }
 
         double requestsPerMinute;
         if (recentSecondRequests > 0)
@@ -104,14 +116,21 @@ public class StatisticsService : IStatisticsService
         else
         {
             var latestBucketTime = RoundDownToFiveMinutes(now).AddMinutes(-5);
-            var allServiceSnapshots = await _usageSnapshotRepository
-                .GetAllByGranularityAsync(BucketGranularity.FiveMinute, cancellationToken);
+            var fiveMinFrom = latestBucketTime;
+            var fiveMinTo = latestBucketTime.AddMinutes(5);
 
-            var recentRequests = allServiceSnapshots
-                .Where(s => s.TargetType == TargetType.Service)
-                .SelectMany(s => s.Buckets)
-                .Where(b => b.Timestamp == latestBucketTime)
-                .Sum(b => b.GrantedCount);
+            long recentRequests = 0;
+            foreach (var service in services)
+            {
+                var snapshots = await _usageSnapshotRepository.GetByTargetAndRangeAsync(
+                    service.Id, TargetType.Service, BucketGranularity.FiveMinute,
+                    fiveMinFrom, fiveMinTo, cancellationToken);
+
+                recentRequests += snapshots
+                    .SelectMany(s => s.Buckets)
+                    .Where(b => b.Timestamp == latestBucketTime)
+                    .Sum(b => b.GrantedCount);
+            }
 
             requestsPerMinute = Math.Round(recentRequests / 5.0, 1);
         }
@@ -123,7 +142,11 @@ public class StatisticsService : IStatisticsService
             AcquisitionPercentage: acquisitionPercentage);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Builds per-target time-series using <c>GetByTargetAndRangeAsync</c>, which fetches
+    /// only the segment documents overlapping the requested time range instead of loading
+    /// the entire snapshot collection.
+    /// </summary>
     public async Task<IReadOnlyList<TargetUsageTimeSeriesResponse>> GetUsageTimeSeriesAsync(
         TargetType targetType, IEnumerable<string> targetIds, IEnumerable<string>? clientIds,
         DateTime? from = null, DateTime? to = null, BucketGranularity? granularity = null,
@@ -153,8 +176,9 @@ public class StatisticsService : IStatisticsService
                 capValue = pool?.MaxSlots ?? 0;
             }
 
-            var snapshots = await _usageSnapshotRepository.GetByTargetAsync(
-                targetId, targetType, effectiveGranularity, cancellationToken);
+            var snapshots = await _usageSnapshotRepository.GetByTargetAndRangeAsync(
+                targetId, targetType, effectiveGranularity,
+                effectiveFrom, effectiveTo, cancellationToken);
 
             if (clientIdSet is not null)
             {
@@ -187,7 +211,11 @@ public class StatisticsService : IStatisticsService
         return results;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Builds per-client usage breakdowns using direct <c>GetByClientTargetAndSegmentAsync</c>
+    /// lookups per (client, target, segment) instead of loading all snapshots per target and
+    /// iterating all clients (the prior N×M nested-loop pattern).
+    /// </summary>
     public async Task<IReadOnlyList<TargetClientUsageBreakdownResponse>> GetClientUsageBreakdownAsync(
         TargetType targetType, IEnumerable<string> targetIds, IEnumerable<string>? clientIds,
         DateTime? from = null, DateTime? to = null, BucketGranularity? granularity = null,
@@ -208,23 +236,33 @@ public class StatisticsService : IStatisticsService
 
             foreach (var tryGranularity in granularityFallbackOrder)
             {
-                var snapshots = await _usageSnapshotRepository.GetByTargetAsync(
-                    targetId, targetType, tryGranularity, cancellationToken);
-
                 entries.Clear();
+
+                var effectiveFrom = from ?? RoundDownToFiveMinutes(now).AddMinutes(-5);
+                var effectiveTo = to ?? now;
 
                 foreach (var client in clients)
                 {
                     if (clientIdSet is not null && !clientIdSet.Contains(client.Id))
                         continue;
 
-                    var snapshot = snapshots.FirstOrDefault(s =>
-                        string.Equals(s.ClientId, client.Id, StringComparison.OrdinalIgnoreCase));
-                    if (snapshot is null) continue;
+                    var segmentStarts = UsageSegmentHelper.EnumerateSegmentStarts(
+                        effectiveFrom, effectiveTo, tryGranularity);
+
+                    var allBuckets = new List<UsageBucket>();
+                    foreach (var segmentStart in segmentStarts)
+                    {
+                        var snapshot = await _usageSnapshotRepository.GetByClientTargetAndSegmentAsync(
+                            client.Id, targetId, targetType, tryGranularity, segmentStart, cancellationToken);
+                        if (snapshot is not null)
+                            allBuckets.AddRange(snapshot.Buckets);
+                    }
+
+                    if (allBuckets.Count == 0) continue;
 
                     var filteredBuckets = (from is not null && to is not null)
-                        ? snapshot.Buckets.Where(b => b.Timestamp >= from && b.Timestamp <= to).ToList()
-                        : snapshot.Buckets
+                        ? allBuckets.Where(b => b.Timestamp >= from && b.Timestamp <= to).ToList()
+                        : allBuckets
                             .Where(b => b.Timestamp == RoundDownToFiveMinutes(now).AddMinutes(-5))
                             .ToList();
 
@@ -275,18 +313,20 @@ public class StatisticsService : IStatisticsService
         return result;
     }
 
+    /// <summary>
+    /// Computes per-client summary rows using individual counter reads per (pool, client) pair
+    /// instead of scanning the entire allocation collection and grouping in memory.
+    /// </summary>
     private async Task<ClientSummariesResponse> ComputeClientSummariesAsync(
         CancellationToken cancellationToken)
     {
         var clients = await _clientConfigRepository.GetAllAsync(cancellationToken);
-        var activeCountsByPoolAndClient = await _allocationRepository.GetActiveCountsByPoolAndClientAsync(cancellationToken);
         var rows = new List<ClientSummaryRow>();
 
         foreach (var client in clients)
         {
             var accessibleServices = client.Services.Count(s => s.Value.IsAllowed);
 
-            // Sum rate limit caps across all services that have one
             var totalMaxRequests = client.Services.Values
                 .Where(s => s.RateLimit is not null)
                 .Sum(s => s.RateLimit!.MaxRequests);
@@ -302,7 +342,8 @@ public class StatisticsService : IStatisticsService
             foreach (var (poolId, poolSettings) in client.ResourcePools)
             {
                 totalAccessibleSlots += (int)poolSettings.MaxSlots;
-                usedSlots += activeCountsByPoolAndClient.GetValueOrDefault((poolId, client.Id));
+                usedSlots += await _allocationRepository.GetActiveCountByClientAsync(
+                    poolId, client.Id, cancellationToken);
             }
 
             rows.Add(new ClientSummaryRow(
@@ -318,7 +359,11 @@ public class StatisticsService : IStatisticsService
         return new ClientSummariesResponse(rows);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Retrieves historical usage data using segment-range lookups. The granularity fallback
+    /// logic is unchanged — it still tries multiple granularities until data is found — but
+    /// each attempt is now a bounded segment lookup instead of a full-collection scan.
+    /// </summary>
     public async Task<IReadOnlyList<HistoricalUsageResponse>> GetHistoricalUsageAsync(
         IEnumerable<string> targetIds,
         TargetType targetType,
@@ -372,14 +417,21 @@ public class StatisticsService : IStatisticsService
 
             if (clientId is not null)
             {
-                var snapshot = await _usageSnapshotRepository.GetByClientAndTargetAsync(
-                    clientId, targetId, targetType, granularity, cancellationToken);
-                snapshots = snapshot is not null ? [snapshot] : [];
+                var segmentStarts = UsageSegmentHelper.EnumerateSegmentStarts(from, to, granularity);
+                var collected = new List<UsageSnapshot>();
+                foreach (var segmentStart in segmentStarts)
+                {
+                    var snapshot = await _usageSnapshotRepository.GetByClientTargetAndSegmentAsync(
+                        clientId, targetId, targetType, granularity, segmentStart, cancellationToken);
+                    if (snapshot is not null)
+                        collected.Add(snapshot);
+                }
+                snapshots = collected;
             }
             else
             {
-                snapshots = await _usageSnapshotRepository.GetByTargetAsync(
-                    targetId, targetType, granularity, cancellationToken);
+                snapshots = await _usageSnapshotRepository.GetByTargetAndRangeAsync(
+                    targetId, targetType, granularity, from, to, cancellationToken);
             }
 
             var aggregated = new SortedDictionary<DateTime, (long granted, long denied, long released, long active)>();
