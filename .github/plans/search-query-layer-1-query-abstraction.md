@@ -1,7 +1,7 @@
 # Plan: Search, Query Layer & Lucene Store — Step 1: Query Abstraction
 
 > **Status**: 🔲 Not started
-> **Prerequisite**: [multi-provider-storage-4-validation-config.md](multi-provider-storage-4-validation-config.md) (the multi-provider plan must be complete)
+> **Prerequisite**: [multi-provider-storage-4-validation-config.md](../realized/multi-provider-storage-4-validation-config.md) (the multi-provider plan must be complete)
 > **Next**: [search-query-layer-2-lucene-store.md](search-query-layer-2-lucene-store.md)
 > **Parent**: [search-query-layer-overview.md](search-query-layer-overview.md)
 

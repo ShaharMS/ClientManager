@@ -1,6 +1,6 @@
 # Plan: Multi-Provider Storage Architecture — Step 2: DI Wiring with Keyed Services
 
-> **Status**: 🔲 Not started
+> **Status**: ✅ Completed
 > **Prerequisite**: [multi-provider-storage-1-config-models.md](multi-provider-storage-1-config-models.md)
 > **Next**: [multi-provider-storage-3-database-migration.md](multi-provider-storage-3-database-migration.md)
 > **Parent**: [multi-provider-storage-overview.md](multi-provider-storage-overview.md)

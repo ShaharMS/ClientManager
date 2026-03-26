@@ -11,7 +11,7 @@ This plan addresses the problem in three layers:
 2. **Lucene.NET store** — implement a new `LuceneDocumentStore` that provides a PVC-friendly, file-based, natively-searchable store. This replaces the `JsonFileDocumentStore` as the recommended local/PVC option.
 3. **Push filtering down** — migrate all database implementations and controllers from GetAll+filter to use the new search capability, falling back to in-memory filtering only for stores that don't support native queries.
 
-**Dependency**: This plan depends on the [multi-provider-storage-overview.md](multi-provider-storage-overview.md) plan being complete. The Lucene store needs to be registerable as a storage role provider, and the per-platform options pattern established in that plan is reused for `LuceneStoreOptions`.
+**Dependency**: This plan depends on the [multi-provider-storage-overview.md](../realized/multi-provider-storage-overview.md) plan being complete. The Lucene store needs to be registerable as a storage role provider, and the per-platform options pattern established in that plan is reused for `LuceneStoreOptions`.
 
 ## Sub-Plans (execute in order)
 

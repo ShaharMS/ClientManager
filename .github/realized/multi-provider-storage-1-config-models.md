@@ -1,6 +1,6 @@
 # Plan: Multi-Provider Storage Architecture — Step 1: Configuration Models & Storage Roles
 
-> **Status**: 🔲 Not started
+> **Status**: ✅ Completed
 > **Prerequisite**: None — this is the first step.
 > **Next**: [multi-provider-storage-2-di-wiring.md](multi-provider-storage-2-di-wiring.md)
 > **Parent**: [multi-provider-storage-overview.md](multi-provider-storage-overview.md)
