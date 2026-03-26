@@ -1,10 +1,10 @@
 using System.Reflection;
 using System.Text.Json.Serialization;
 using Asp.Versioning;
-using ClientManager.Api.Extensions;
-using ClientManager.Api.Middleware;
-using ClientManager.Api.Services.Instrumentation;
-using ClientManager.Api.Swagger;
+using ClientManager.Api.Middlewares;
+using ClientManager.Api.Utils.Extensions;
+using ClientManager.Api.Utils.Instrumentation;
+using ClientManager.Api.Utils.Swagger;
 using ClientManager.Shared.Logging;
 using Microsoft.OpenApi;
 using NLog;

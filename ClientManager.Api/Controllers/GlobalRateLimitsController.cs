@@ -1,11 +1,11 @@
 using Asp.Versioning;
-using ClientManager.Api.Extensions;
 using ClientManager.Api.Models.Exceptions;
-using ClientManager.Api.Models.Requests;
-using ClientManager.Api.Models.Responses;
-using ClientManager.DataAccess.Databases.Interfaces;
+using ClientManager.Api.Utils.Extensions;
+using ClientManager.Shared.Models.Requests;
+using ClientManager.Shared.Models.Responses;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Enums;
+using ClientManager.DataAccess.Databases.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -20,15 +20,15 @@ namespace ClientManager.Api.Controllers;
 [Tags("Global Rate Limits")]
 public class GlobalRateLimitsController : ControllerBase
 {
-    private readonly IGlobalRateLimitRepository _repository;
+    private readonly IGlobalRateLimitDatabase _database;
 
     /// <summary>
     /// Initializes a new instance of <see cref="GlobalRateLimitsController"/>.
     /// </summary>
-    /// <param name="repository">The global rate limit repository.</param>
-    public GlobalRateLimitsController(IGlobalRateLimitRepository repository)
+    /// <param name="database">The global rate limit database.</param>
+    public GlobalRateLimitsController(IGlobalRateLimitDatabase database)
     {
-        _repository = repository;
+        _database = database;
     }
 
     /// <summary>
@@ -50,11 +50,11 @@ public class GlobalRateLimitsController : ControllerBase
 
         if (targetType.HasValue)
         {
-            limits = await _repository.GetByTargetTypeAsync(targetType.Value, cancellationToken);
+            limits = await _database.GetByTargetTypeAsync(targetType.Value, cancellationToken);
         }
         else
         {
-            limits = await _repository.GetAllAsync(cancellationToken);
+            limits = await _database.GetAllAsync(cancellationToken);
         }
 
         return Ok(limits.ToPagedResponse(paging));
@@ -73,8 +73,8 @@ public class GlobalRateLimitsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetById(string id, CancellationToken cancellationToken)
     {
-        var limit = await _repository.GetByIdAsync(id, cancellationToken)
-            ?? throw new NotFoundException($"Global rate limit '{id}' not found");
+        var limit = await _database.GetByIdAsync(id, cancellationToken)
+            ?? throw new GlobalRateLimitNotFoundException(id);
         return Ok(limit);
     }
 
@@ -91,13 +91,13 @@ public class GlobalRateLimitsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Create([FromBody] GlobalRateLimit limit, CancellationToken cancellationToken)
     {
-        var existing = await _repository.GetByTargetAsync(limit.TargetId, limit.TargetType, cancellationToken);
+        var existing = await _database.GetByTargetAsync(limit.TargetId, limit.TargetType, cancellationToken);
         if (existing is not null)
         {
-            throw new ConflictException($"A global rate limit already exists for {limit.TargetType} '{limit.TargetId}'");
+            throw new GlobalRateLimitAlreadyExistsException(limit.TargetId, limit.TargetType);
         }
 
-        await _repository.CreateAsync(limit, cancellationToken);
+        await _database.CreateAsync(limit, cancellationToken);
         return CreatedAtAction(nameof(GetById), new { id = limit.Id }, limit);
     }
 
@@ -116,7 +116,7 @@ public class GlobalRateLimitsController : ControllerBase
     public async Task<IActionResult> Update(string id, [FromBody] GlobalRateLimit limit, CancellationToken cancellationToken)
     {
         var updated = limit with { Id = id };
-        await _repository.UpdateAsync(updated, cancellationToken);
+        await _database.UpdateAsync(updated, cancellationToken);
         return Ok(updated);
     }
 
@@ -132,7 +132,7 @@ public class GlobalRateLimitsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(string id, CancellationToken cancellationToken)
     {
-        await _repository.DeleteAsync(id, cancellationToken);
+        await _database.DeleteAsync(id, cancellationToken);
         return NoContent();
     }
 }

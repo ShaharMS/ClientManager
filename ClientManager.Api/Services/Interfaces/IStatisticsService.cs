@@ -1,0 +1,89 @@
+using ClientManager.Shared.Models.Responses;
+using ClientManager.Shared.Models.Enums;
+
+namespace ClientManager.Api.Services.Interfaces;
+
+/// <summary>
+/// Provides aggregated statistics for the dashboard including usage metrics,
+/// time-series data, client breakdowns, and client summaries.
+/// <para>
+/// Statistics are derived from two data sources:
+/// <list type="bullet">
+///   <item><b>Usage snapshots</b> — time-bucketed counters (per-second, 5-minute, hourly, daily)
+///     populated by the buffer-flush pipeline. These drive time-series charts, RPM gauges,
+///     and client usage breakdowns.</item>
+///   <item><b>Entity repositories</b> — resource pool definitions and allocation state used
+///     to compute real-time slot utilization.</item>
+/// </list>
+/// Results may be cached for a short duration to avoid repeated expensive aggregations
+/// on high-frequency dashboard polling.
+/// </para>
+/// </summary>
+public interface IStatisticsService
+{
+    /// <summary>
+    /// Retrieves global usage statistics including request rate and pool acquisition.
+    /// </summary>
+    /// <param name="cancellationToken">Cancels the statistics computation.</param>
+    /// <returns>Global usage statistics.</returns>
+    Task<GlobalUsageStatsResponse> GetGlobalUsageStatsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Retrieves usage over time for one or more services or resource pools.
+    /// </summary>
+    /// <param name="targetType">Whether the targets are Services or ResourcePools.</param>
+    /// <param name="targetIds">The IDs of the services or resource pools.</param>
+    /// <param name="clientIds">Optional client IDs to filter by.</param>
+    /// <param name="from">Optional start of the time range (UTC).</param>
+    /// <param name="to">Optional end of the time range (UTC).</param>
+    /// <param name="granularity">Optional bucket granularity override.</param>
+    /// <param name="cancellationToken">Cancels the time-series query.</param>
+    /// <returns>Per-target time-series data for usage and capacity.</returns>
+    Task<IReadOnlyList<TargetUsageTimeSeriesResponse>> GetUsageTimeSeriesAsync(
+        TargetType targetType, IEnumerable<string> targetIds, IEnumerable<string>? clientIds,
+        DateTime? from = null, DateTime? to = null, BucketGranularity? granularity = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Retrieves per-client usage breakdown for one or more services or resource pools.
+    /// </summary>
+    /// <param name="targetType">Whether the targets are Services or ResourcePools.</param>
+    /// <param name="targetIds">The IDs of the services or resource pools.</param>
+    /// <param name="clientIds">Optional client IDs to filter by.</param>
+    /// <param name="from">Optional start of the time range (UTC).</param>
+    /// <param name="to">Optional end of the time range (UTC).</param>
+    /// <param name="granularity">Optional bucket granularity override.</param>
+    /// <param name="cancellationToken">Cancels the breakdown query.</param>
+    /// <returns>Per-target client usage breakdowns.</returns>
+    Task<IReadOnlyList<TargetClientUsageBreakdownResponse>> GetClientUsageBreakdownAsync(
+        TargetType targetType, IEnumerable<string> targetIds, IEnumerable<string>? clientIds,
+        DateTime? from = null, DateTime? to = null, BucketGranularity? granularity = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Retrieves a summary of all clients with their service and pool access statistics.
+    /// </summary>
+    /// <param name="cancellationToken">Cancels the summary computation.</param>
+    /// <returns>Client summary data for the dashboard table.</returns>
+    Task<ClientSummariesResponse> GetClientSummariesAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Retrieves historical usage data for one or more targets, optionally filtered by client.
+    /// </summary>
+    /// <param name="targetIds">The IDs of the services or resource pools.</param>
+    /// <param name="targetType">Whether the targets are Services or ResourcePools.</param>
+    /// <param name="clientId">Optional client ID to filter by.</param>
+    /// <param name="from">Start of the time range (UTC).</param>
+    /// <param name="to">End of the time range (UTC).</param>
+    /// <param name="granularity">The bucket granularity to query.</param>
+    /// <param name="cancellationToken">Cancels the historical data query.</param>
+    /// <returns>Historical usage time-series data per target.</returns>
+    Task<IReadOnlyList<HistoricalUsageResponse>> GetHistoricalUsageAsync(
+        IEnumerable<string> targetIds,
+        TargetType targetType,
+        string? clientId,
+        DateTime from,
+        DateTime to,
+        BucketGranularity granularity,
+        CancellationToken cancellationToken = default);
+}

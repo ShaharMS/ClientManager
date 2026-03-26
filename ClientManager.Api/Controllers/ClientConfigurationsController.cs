@@ -1,8 +1,8 @@
 using Asp.Versioning;
-using ClientManager.Api.Extensions;
 using ClientManager.Api.Models.Exceptions;
-using ClientManager.Api.Models.Requests;
-using ClientManager.Api.Models.Responses;
+using ClientManager.Shared.Models.Requests;
+using ClientManager.Shared.Models.Responses;
+using ClientManager.Api.Utils.Extensions;
 using ClientManager.DataAccess.Databases.Interfaces;
 using ClientManager.Shared.Models.Entities;
 using Microsoft.AspNetCore.Http;
@@ -19,15 +19,15 @@ namespace ClientManager.Api.Controllers;
 [Tags("Client Configurations")]
 public class ClientConfigurationsController : ControllerBase
 {
-    private readonly IClientConfigurationRepository _repository;
+    private readonly IClientConfigurationDatabase _database;
 
     /// <summary>
     /// Initializes a new instance of <see cref="ClientConfigurationsController"/>.
     /// </summary>
-    /// <param name="repository">The client configuration repository.</param>
-    public ClientConfigurationsController(IClientConfigurationRepository repository)
+    /// <param name="database">The client configuration database.</param>
+    public ClientConfigurationsController(IClientConfigurationDatabase database)
     {
-        _repository = repository;
+        _database = database;
     }
 
     #region Top-level client config CRUD
@@ -49,7 +49,7 @@ public class ClientConfigurationsController : ControllerBase
         [FromQuery] string? name,
         CancellationToken cancellationToken)
     {
-        var configs = await _repository.GetAllAsync(cancellationToken);
+        var configs = await _database.GetAllAsync(cancellationToken);
 
         IReadOnlyList<ClientConfiguration> filtered = configs
             .Where(c => !isEnabled.HasValue || c.IsEnabled == isEnabled.Value)
@@ -72,8 +72,8 @@ public class ClientConfigurationsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetById(string id, CancellationToken cancellationToken)
     {
-        var config = await _repository.GetByIdAsync(id, cancellationToken)
-            ?? throw new NotFoundException($"Client '{id}' not found");
+        var config = await _database.GetByIdAsync(id, cancellationToken)
+            ?? throw new ClientNotFoundException(id);
         return Ok(config);
     }
 
@@ -90,7 +90,7 @@ public class ClientConfigurationsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Create([FromBody] ClientConfiguration configuration, CancellationToken cancellationToken)
     {
-        await _repository.CreateAsync(configuration, cancellationToken);
+        await _database.CreateAsync(configuration, cancellationToken);
         return CreatedAtAction(nameof(GetById), new { id = configuration.Id }, configuration);
     }
 
@@ -109,7 +109,7 @@ public class ClientConfigurationsController : ControllerBase
     public async Task<IActionResult> Update(string id, [FromBody] ClientConfiguration configuration, CancellationToken cancellationToken)
     {
         var updated = configuration with { Id = id };
-        await _repository.UpdateAsync(updated, cancellationToken);
+        await _database.UpdateAsync(updated, cancellationToken);
         return Ok(updated);
     }
 
@@ -125,7 +125,7 @@ public class ClientConfigurationsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(string id, CancellationToken cancellationToken)
     {
-        await _repository.DeleteAsync(id, cancellationToken);
+        await _database.DeleteAsync(id, cancellationToken);
         return NoContent();
     }
 
@@ -147,8 +147,8 @@ public class ClientConfigurationsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetServices(string id, [FromQuery] PagedRequest paging, CancellationToken cancellationToken)
     {
-        var config = await _repository.GetByIdAsync(id, cancellationToken)
-            ?? throw new NotFoundException($"Client '{id}' not found");
+        var config = await _database.GetByIdAsync(id, cancellationToken)
+            ?? throw new ClientNotFoundException(id);
 
         IReadOnlyList<KeyedEntry<ServiceAccessSettings>> entries = config.Services
             .Select(kvp => new KeyedEntry<ServiceAccessSettings>(kvp.Key, kvp.Value))
@@ -171,8 +171,8 @@ public class ClientConfigurationsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetServiceSettings(string id, string serviceId, CancellationToken cancellationToken)
     {
-        var settings = await _repository.GetServiceSettingsAsync(id, serviceId, cancellationToken)
-            ?? throw new NotFoundException($"Service settings for '{serviceId}' not found on client '{id}'");
+        var settings = await _database.GetServiceSettingsAsync(id, serviceId, cancellationToken)
+            ?? throw new ServiceSettingsNotFoundException(serviceId, id);
         return Ok(settings);
     }
 
@@ -190,7 +190,7 @@ public class ClientConfigurationsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> SetServiceSettings(string id, string serviceId, [FromBody] ServiceAccessSettings settings, CancellationToken cancellationToken)
     {
-        await _repository.SetServiceSettingsAsync(id, serviceId, settings, cancellationToken);
+        await _database.SetServiceSettingsAsync(id, serviceId, settings, cancellationToken);
         return Ok(settings);
     }
 
@@ -207,7 +207,7 @@ public class ClientConfigurationsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> RemoveServiceSettings(string id, string serviceId, CancellationToken cancellationToken)
     {
-        await _repository.RemoveServiceSettingsAsync(id, serviceId, cancellationToken);
+        await _database.RemoveServiceSettingsAsync(id, serviceId, cancellationToken);
         return NoContent();
     }
 
@@ -229,8 +229,8 @@ public class ClientConfigurationsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetResourcePools(string id, [FromQuery] PagedRequest paging, CancellationToken cancellationToken)
     {
-        var config = await _repository.GetByIdAsync(id, cancellationToken)
-            ?? throw new NotFoundException($"Client '{id}' not found");
+        var config = await _database.GetByIdAsync(id, cancellationToken)
+            ?? throw new ClientNotFoundException(id);
 
         IReadOnlyList<KeyedEntry<ResourcePoolSettings>> entries = config.ResourcePools
             .Select(kvp => new KeyedEntry<ResourcePoolSettings>(kvp.Key, kvp.Value))
@@ -253,8 +253,8 @@ public class ClientConfigurationsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetResourcePoolSettings(string id, string poolId, CancellationToken cancellationToken)
     {
-        var settings = await _repository.GetResourcePoolSettingsAsync(id, poolId, cancellationToken)
-            ?? throw new NotFoundException($"Resource pool settings for '{poolId}' not found on client '{id}'");
+        var settings = await _database.GetResourcePoolSettingsAsync(id, poolId, cancellationToken)
+            ?? throw new ResourcePoolSettingsNotFoundException(poolId, id);
         return Ok(settings);
     }
 
@@ -272,7 +272,7 @@ public class ClientConfigurationsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> SetResourcePoolSettings(string id, string poolId, [FromBody] ResourcePoolSettings settings, CancellationToken cancellationToken)
     {
-        await _repository.SetResourcePoolSettingsAsync(id, poolId, settings, cancellationToken);
+        await _database.SetResourcePoolSettingsAsync(id, poolId, settings, cancellationToken);
         return Ok(settings);
     }
 
@@ -289,7 +289,7 @@ public class ClientConfigurationsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> RemoveResourcePoolSettings(string id, string poolId, CancellationToken cancellationToken)
     {
-        await _repository.RemoveResourcePoolSettingsAsync(id, poolId, cancellationToken);
+        await _database.RemoveResourcePoolSettingsAsync(id, poolId, cancellationToken);
         return NoContent();
     }
 
@@ -310,11 +310,11 @@ public class ClientConfigurationsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetGlobalRateLimit(string id, CancellationToken cancellationToken)
     {
-        var config = await _repository.GetByIdAsync(id, cancellationToken)
-            ?? throw new NotFoundException($"Client '{id}' not found");
+        var config = await _database.GetByIdAsync(id, cancellationToken)
+            ?? throw new ClientNotFoundException(id);
         return config.GlobalRateLimit is not null
             ? Ok(config.GlobalRateLimit)
-            : throw new NotFoundException($"No global rate limit configured for client '{id}'");
+            : throw new ClientGlobalRateLimitNotFoundException(id);
     }
 
     /// <summary>
@@ -330,10 +330,10 @@ public class ClientConfigurationsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> SetGlobalRateLimit(string id, [FromBody] ClientRateLimit rateLimit, CancellationToken cancellationToken)
     {
-        var config = await _repository.GetByIdAsync(id, cancellationToken)
-            ?? throw new NotFoundException($"Client '{id}' not found");
+        var config = await _database.GetByIdAsync(id, cancellationToken)
+            ?? throw new ClientNotFoundException(id);
         var updated = config with { GlobalRateLimit = rateLimit };
-        await _repository.UpdateAsync(updated, cancellationToken);
+        await _database.UpdateAsync(updated, cancellationToken);
         return Ok(rateLimit);
     }
 
@@ -349,10 +349,10 @@ public class ClientConfigurationsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> RemoveGlobalRateLimit(string id, CancellationToken cancellationToken)
     {
-        var config = await _repository.GetByIdAsync(id, cancellationToken)
-            ?? throw new NotFoundException($"Client '{id}' not found");
+        var config = await _database.GetByIdAsync(id, cancellationToken)
+            ?? throw new ClientNotFoundException(id);
         var updated = config with { GlobalRateLimit = null };
-        await _repository.UpdateAsync(updated, cancellationToken);
+        await _database.UpdateAsync(updated, cancellationToken);
         return NoContent();
     }
 

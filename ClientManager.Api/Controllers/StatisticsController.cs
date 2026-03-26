@@ -1,9 +1,9 @@
 using Asp.Versioning;
-using ClientManager.Api.Extensions;
-using ClientManager.Api.Interfaces;
 using ClientManager.Api.Models.Exceptions;
-using ClientManager.Api.Models.Requests;
-using ClientManager.Api.Models.Responses;
+using ClientManager.Shared.Models.Requests;
+using ClientManager.Shared.Models.Responses;
+using ClientManager.Api.Services.Interfaces;
+using ClientManager.Api.Utils.Extensions;
 using ClientManager.DataAccess.Databases.Interfaces;
 using ClientManager.DataAccess.Repositories.Interfaces;
 using ClientManager.Shared.Models.Entities;
@@ -23,35 +23,35 @@ namespace ClientManager.Api.Controllers;
 [Tags("Statistics")]
 public class StatisticsController : ControllerBase
 {
-    private readonly IClientConfigurationRepository _clientConfigRepository;
+    private readonly IClientConfigurationDatabase _clientConfigDatabase;
     private readonly IEntityRepository<Service> _serviceRepository;
     private readonly IEntityRepository<ResourcePool> _poolRepository;
-    private readonly IResourceAllocationRepository _allocationRepository;
-    private readonly IGlobalRateLimitRepository _globalRateLimitRepository;
+    private readonly IResourceAllocationDatabase _allocationDatabase;
+    private readonly IGlobalRateLimitDatabase _globalRateLimitDatabase;
     private readonly IStatisticsService _statisticsService;
 
     /// <summary>
     /// Initializes a new instance of <see cref="StatisticsController"/>.
     /// </summary>
-    /// <param name="clientConfigRepository">Repository for client configurations.</param>
+    /// <param name="clientConfigDatabase">Database for client configurations.</param>
     /// <param name="serviceRepository">Repository for service definitions.</param>
     /// <param name="poolRepository">Repository for resource pool definitions.</param>
-    /// <param name="allocationRepository">Repository for resource allocation state.</param>
-    /// <param name="globalRateLimitRepository">Repository for global rate limits.</param>
+    /// <param name="allocationDatabase">Database for resource allocation state.</param>
+    /// <param name="globalRateLimitDatabase">Database for global rate limits.</param>
     /// <param name="statisticsService">Service for aggregated dashboard statistics.</param>
     public StatisticsController(
-        IClientConfigurationRepository clientConfigRepository,
+        IClientConfigurationDatabase clientConfigDatabase,
         IEntityRepository<Service> serviceRepository,
         IEntityRepository<ResourcePool> poolRepository,
-        IResourceAllocationRepository allocationRepository,
-        IGlobalRateLimitRepository globalRateLimitRepository,
+        IResourceAllocationDatabase allocationDatabase,
+        IGlobalRateLimitDatabase globalRateLimitDatabase,
         IStatisticsService statisticsService)
     {
-        _clientConfigRepository = clientConfigRepository;
+        _clientConfigDatabase = clientConfigDatabase;
         _serviceRepository = serviceRepository;
         _poolRepository = poolRepository;
-        _allocationRepository = allocationRepository;
-        _globalRateLimitRepository = globalRateLimitRepository;
+        _allocationDatabase = allocationDatabase;
+        _globalRateLimitDatabase = globalRateLimitDatabase;
         _statisticsService = statisticsService;
     }
 
@@ -64,14 +64,14 @@ public class StatisticsController : ControllerBase
     [ProducesResponseType(typeof(SystemOverviewResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetOverview(CancellationToken cancellationToken)
     {
-        var clients = await _clientConfigRepository.GetAllAsync(cancellationToken);
+        var clients = await _clientConfigDatabase.GetAllAsync(cancellationToken);
         var services = await _serviceRepository.GetAllAsync(cancellationToken);
         var pools = await _poolRepository.GetAllAsync(cancellationToken);
 
         var activeAllocations = 0;
         foreach (var pool in pools)
         {
-            activeAllocations += await _allocationRepository.GetActiveCountAsync(pool.Id, cancellationToken);
+            activeAllocations += await _allocationDatabase.GetActiveCountAsync(pool.Id, cancellationToken);
         }
 
         return Ok(new SystemOverviewResponse(
@@ -94,7 +94,7 @@ public class StatisticsController : ControllerBase
     [ProducesResponseType(typeof(PagedResponse<ClientSummaryResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetClients([FromQuery] PagedRequest paging, CancellationToken cancellationToken)
     {
-        var clients = await _clientConfigRepository.GetAllAsync(cancellationToken);
+        var clients = await _clientConfigDatabase.GetAllAsync(cancellationToken);
 
         IReadOnlyList<ClientSummaryResponse> summaries = clients.Select(c => new ClientSummaryResponse(
             ClientId: c.Id,
@@ -120,12 +120,7 @@ public class StatisticsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetClientDetails(string clientId, CancellationToken cancellationToken)
     {
-        var config = await _clientConfigRepository.GetByIdAsync(clientId, cancellationToken);
-        if (config is null)
-        {
-            throw new NotFoundException($"Client '{clientId}' not found");
-        }
-
+        var config = await _clientConfigDatabase.GetByIdAsync(clientId, cancellationToken) ?? throw new NotFoundException($"Client '{clientId}' not found");
         var services = new Dictionary<string, object>();
         foreach (var (serviceId, settings) in config.Services)
         {
@@ -139,7 +134,7 @@ public class StatisticsController : ControllerBase
         var resourcePools = new Dictionary<string, object>();
         foreach (var (poolId, poolSettings) in config.ResourcePools)
         {
-            var activeCount = await _allocationRepository.GetActiveCountByClientAsync(
+            var activeCount = await _allocationDatabase.GetActiveCountByClientAsync(
                 poolId, clientId, cancellationToken);
             resourcePools[poolId] = new
             {
@@ -182,13 +177,13 @@ public class StatisticsController : ControllerBase
     public async Task<IActionResult> GetServices([FromQuery] PagedRequest paging, CancellationToken cancellationToken)
     {
         var services = await _serviceRepository.GetAllAsync(cancellationToken);
-        var clients = await _clientConfigRepository.GetAllAsync(cancellationToken);
+        var clients = await _clientConfigDatabase.GetAllAsync(cancellationToken);
 
         var results = new List<ServiceStatisticsResponse>();
         foreach (var service in services)
         {
             var clientCount = clients.Count(c => c.Services.ContainsKey(service.Id));
-            var globalLimit = await _globalRateLimitRepository.GetByTargetAsync(
+            var globalLimit = await _globalRateLimitDatabase.GetByTargetAsync(
                 service.Id, TargetType.Service, cancellationToken);
 
             results.Add(new ServiceStatisticsResponse(
@@ -215,14 +210,9 @@ public class StatisticsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetServiceDetails(string serviceId, CancellationToken cancellationToken)
     {
-        var service = await _serviceRepository.GetByIdAsync(serviceId, cancellationToken);
-        if (service is null)
-        {
-            throw new NotFoundException($"Service '{serviceId}' not found");
-        }
-
-        var clients = await _clientConfigRepository.GetAllAsync(cancellationToken);
-        var globalLimit = await _globalRateLimitRepository.GetByTargetAsync(
+        var service = await _serviceRepository.GetByIdAsync(serviceId, cancellationToken) ?? throw new NotFoundException($"Service '{serviceId}' not found");
+        var clients = await _clientConfigDatabase.GetAllAsync(cancellationToken);
+        var globalLimit = await _globalRateLimitDatabase.GetByTargetAsync(
             serviceId, TargetType.Service, cancellationToken);
 
         var clientDetails = clients
@@ -264,8 +254,8 @@ public class StatisticsController : ControllerBase
         var results = new List<ResourcePoolStatisticsResponse>();
         foreach (var pool in pools)
         {
-            var activeCount = await _allocationRepository.GetActiveCountAsync(pool.Id, cancellationToken);
-            var globalLimit = await _globalRateLimitRepository.GetByTargetAsync(
+            var activeCount = await _allocationDatabase.GetActiveCountAsync(pool.Id, cancellationToken);
+            var globalLimit = await _globalRateLimitDatabase.GetByTargetAsync(
                 pool.Id, TargetType.ResourcePool, cancellationToken);
 
             results.Add(new ResourcePoolStatisticsResponse(
@@ -293,22 +283,17 @@ public class StatisticsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetResourcePoolDetails(string resourcePoolId, CancellationToken cancellationToken)
     {
-        var pool = await _poolRepository.GetByIdAsync(resourcePoolId, cancellationToken);
-        if (pool is null)
-        {
-            throw new NotFoundException($"Resource pool '{resourcePoolId}' not found");
-        }
-
-        var activeCount = await _allocationRepository.GetActiveCountAsync(pool.Id, cancellationToken);
-        var globalLimit = await _globalRateLimitRepository.GetByTargetAsync(
+        var pool = await _poolRepository.GetByIdAsync(resourcePoolId, cancellationToken) ?? throw new NotFoundException($"Resource pool '{resourcePoolId}' not found");
+        var activeCount = await _allocationDatabase.GetActiveCountAsync(pool.Id, cancellationToken);
+        var globalLimit = await _globalRateLimitDatabase.GetByTargetAsync(
             pool.Id, TargetType.ResourcePool, cancellationToken);
 
-        var clients = await _clientConfigRepository.GetAllAsync(cancellationToken);
+        var clients = await _clientConfigDatabase.GetAllAsync(cancellationToken);
         var clientDetails = new List<object>();
 
         foreach (var client in clients.Where(c => c.ResourcePools.ContainsKey(resourcePoolId)))
         {
-            var clientActiveCount = await _allocationRepository.GetActiveCountByClientAsync(
+            var clientActiveCount = await _allocationDatabase.GetActiveCountByClientAsync(
                 resourcePoolId, client.Id, cancellationToken);
 
             clientDetails.Add(new

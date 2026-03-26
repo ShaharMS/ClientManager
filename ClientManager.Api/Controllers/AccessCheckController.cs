@@ -1,7 +1,7 @@
 using Asp.Versioning;
-using ClientManager.Api.Interfaces;
-using ClientManager.Api.Models.Requests;
-using ClientManager.Api.Models.Responses;
+using ClientManager.Shared.Models.Requests;
+using ClientManager.Shared.Models.Responses;
+using ClientManager.Api.Services.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 

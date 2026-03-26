@@ -1,0 +1,350 @@
+using ClientManager.Api.Models.Configuration;
+using ClientManager.DataAccess.Databases.Implementations;
+using ClientManager.DataAccess.Databases.Interfaces;
+using ClientManager.Shared.Logging;
+using ClientManager.Shared.Models.Entities;
+using ClientManager.Shared.Models.Enums;
+
+using Microsoft.Extensions.Options;
+
+namespace ClientManager.Api.Services.Implementations.UsageTracking;
+
+/// <summary>
+/// Background service that periodically flushes the in-memory usage buffer to persistent storage,
+/// rolls up fine-grained buckets into coarser granularities, and prunes expired data.
+/// <para>
+/// Operates two concurrent loops:
+/// <list type="bullet">
+///   <item><b>Fast loop</b> — drains the <see cref="UsageBuffer"/> at the
+///     <see cref="UsageTrackingOptions.SecondFlushInterval"/> and upserts per-second
+///     snapshots. This keeps the buffer small and provides near-real-time data
+///     for dashboards.</item>
+///   <item><b>Slow loop</b> — runs at <see cref="UsageTrackingOptions.FlushInterval"/>.
+///     Rolls up second-level data into 5-minute, hourly, and daily buckets, then
+///     prunes any buckets that have exceeded their configured retention.</item>
+/// </list>
+/// </para>
+/// </summary>
+public class UsagePersistenceService : BackgroundService
+{
+    private readonly IAppLogger<UsagePersistenceService> _logger;
+    private readonly UsageBuffer _buffer;
+    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly UsageTrackingOptions _options;
+
+    /// <summary>
+    /// Initializes a new instance of <see cref="UsagePersistenceService"/>.
+    /// </summary>
+    /// <param name="logger">The logger instance.</param>
+    /// <param name="buffer">The shared in-memory usage buffer.</param>
+    /// <param name="scopeFactory">Factory for creating service scopes.</param>
+    /// <param name="options">Usage tracking configuration options.</param>
+    public UsagePersistenceService(
+        IAppLogger<UsagePersistenceService> logger,
+        UsageBuffer buffer,
+        IServiceScopeFactory scopeFactory,
+        IOptions<UsageTrackingOptions> options)
+    {
+        _logger = logger;
+        _buffer = buffer;
+        _scopeFactory = scopeFactory;
+        _options = options.Value;
+    }
+
+    /// <inheritdoc />
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        var fastLoop = RunFastLoopAsync(stoppingToken);
+        var slowLoop = RunSlowLoopAsync(stoppingToken);
+        await Task.WhenAll(fastLoop, slowLoop);
+    }
+
+    private async Task RunFastLoopAsync(CancellationToken stoppingToken)
+    {
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            await Task.Delay(_options.SecondFlushInterval, stoppingToken);
+
+            try
+            {
+                using var scope = _scopeFactory.CreateScope();
+                var database = scope.ServiceProvider.GetRequiredService<IUsageSnapshotDatabase>();
+                var allocationDatabase = scope.ServiceProvider.GetRequiredService<IResourceAllocationDatabase>();
+
+                await FlushBufferAsync(database, allocationDatabase, BucketGranularity.Second, RoundDownToSecond, stoppingToken);
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                break;
+            }
+            catch (Exception ex)
+            {
+                _logger.Error("Error in fast usage persistence cycle", ex);
+            }
+        }
+    }
+
+    private async Task RunSlowLoopAsync(CancellationToken stoppingToken)
+    {
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            await Task.Delay(_options.FlushInterval, stoppingToken);
+
+            try
+            {
+                using var scope = _scopeFactory.CreateScope();
+                var database = scope.ServiceProvider.GetRequiredService<IUsageSnapshotDatabase>();
+
+                await RollUpAsync(database, BucketGranularity.Second, BucketGranularity.FiveMinute, TimeSpan.FromMinutes(5), stoppingToken);
+                await RollUpAsync(database, BucketGranularity.FiveMinute, BucketGranularity.Hour, TimeSpan.FromHours(1), stoppingToken);
+                await RollUpAsync(database, BucketGranularity.Hour, BucketGranularity.Day, TimeSpan.FromHours(24), stoppingToken);
+                await PruneExpiredAsync(database, stoppingToken);
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                break;
+            }
+            catch (Exception ex)
+            {
+                _logger.Error("Error in slow usage persistence cycle", ex);
+            }
+        }
+    }
+
+    private async Task FlushBufferAsync(
+        IUsageSnapshotDatabase database,
+        IResourceAllocationDatabase allocationDatabase,
+        BucketGranularity granularity,
+        Func<DateTime, DateTime> roundDown,
+        CancellationToken cancellationToken)
+    {
+        var counts = _buffer.Drain();
+        if (counts.Count == 0)
+            return;
+
+        var bucketTimestamp = roundDown(DateTime.UtcNow);
+
+        var grouped = counts
+            .GroupBy(c => (c.Key.ClientId, c.Key.TargetType, c.Key.TargetId))
+            .ToList();
+
+        foreach (var group in grouped)
+        {
+            var (clientId, targetType, targetId) = group.Key;
+            var segmentStart = UsageSegmentHelper.GetSegmentStart(bucketTimestamp, granularity);
+            var id = UsageSegmentHelper.BuildSegmentId(clientId, targetType, targetId, granularity, segmentStart);
+
+            var snapshot = await database.GetByIdAsync(id, cancellationToken)
+                ?? new UsageSnapshot
+                {
+                    Id = id,
+                    ClientId = clientId,
+                    TargetId = targetId,
+                    TargetType = targetType,
+                    Granularity = granularity,
+                    SegmentStart = segmentStart,
+                    Buckets = []
+                };
+
+            long granted = 0;
+            long denied = 0;
+            long released = 0;
+            foreach (var entry in group)
+            {
+                if (entry.Key.EventType == UsageEventType.Granted)
+                    granted += entry.Value;
+                else if (entry.Key.EventType == UsageEventType.Denied)
+                    denied += entry.Value;
+                else if (entry.Key.EventType == UsageEventType.Released)
+                    released += entry.Value;
+            }
+
+            long activeCount = 0;
+            if (targetType == TargetType.ResourcePool)
+            {
+                activeCount = await allocationDatabase.GetActiveCountByClientAsync(targetId, clientId, cancellationToken);
+            }
+
+            var buckets = snapshot.Buckets.ToList();
+            var existing = buckets.FindIndex(b => b.Timestamp == bucketTimestamp);
+            if (existing >= 0)
+            {
+                buckets[existing] = buckets[existing] with
+                {
+                    GrantedCount = buckets[existing].GrantedCount + granted,
+                    DeniedCount = buckets[existing].DeniedCount + denied,
+                    ReleasedCount = buckets[existing].ReleasedCount + released,
+                    ActiveCount = activeCount
+                };
+            }
+            else
+            {
+                buckets.Add(new UsageBucket
+                {
+                    Timestamp = bucketTimestamp,
+                    GrantedCount = granted,
+                    DeniedCount = denied,
+                    ReleasedCount = released,
+                    ActiveCount = activeCount
+                });
+                buckets.Sort((a, b) => a.Timestamp.CompareTo(b.Timestamp));
+            }
+
+            await database.UpsertAsync(snapshot with { Buckets = buckets }, cancellationToken);
+        }
+
+        _logger.Debug("Flushed usage counter groups to storage", new { grouped.Count });
+    }
+
+    private async Task RollUpAsync(
+        IUsageSnapshotDatabase database,
+        BucketGranularity sourceGranularity,
+        BucketGranularity targetGranularity,
+        TimeSpan ageThreshold,
+        CancellationToken cancellationToken)
+    {
+        var cutoff = DateTime.UtcNow - ageThreshold;
+        var sourceSnapshots = await database.GetAllByGranularityAsync(sourceGranularity, cancellationToken);
+
+        foreach (var source in sourceSnapshots)
+        {
+            var bucketsToRollUp = source.Buckets.Where(b => b.Timestamp < cutoff).ToList();
+            if (bucketsToRollUp.Count == 0)
+                continue;
+
+            var rollUpGroups = bucketsToRollUp
+                .GroupBy(b => RoundDownToGranularity(b.Timestamp, targetGranularity))
+                .ToList();
+
+            foreach (var group in rollUpGroups)
+            {
+                var targetTimestamp = group.Key;
+                var targetSegmentStart = UsageSegmentHelper.GetSegmentStart(targetTimestamp, targetGranularity);
+                var targetId = UsageSegmentHelper.BuildSegmentId(
+                    source.ClientId, source.TargetType, source.TargetId, targetGranularity, targetSegmentStart);
+
+                var target = await database.GetByIdAsync(targetId, cancellationToken)
+                    ?? new UsageSnapshot
+                    {
+                        Id = targetId,
+                        ClientId = source.ClientId,
+                        TargetId = source.TargetId,
+                        TargetType = source.TargetType,
+                        Granularity = targetGranularity,
+                        SegmentStart = targetSegmentStart,
+                        Buckets = []
+                    };
+
+                var targetBuckets = target.Buckets.ToList();
+
+                var totalGranted = group.Sum(b => b.GrantedCount);
+                var totalDenied = group.Sum(b => b.DeniedCount);
+                var totalReleased = group.Sum(b => b.ReleasedCount);
+                var maxActive = group.Max(b => b.ActiveCount);
+
+                var existingIndex = targetBuckets.FindIndex(b => b.Timestamp == targetTimestamp);
+                if (existingIndex >= 0)
+                {
+                    targetBuckets[existingIndex] = targetBuckets[existingIndex] with
+                    {
+                        GrantedCount = targetBuckets[existingIndex].GrantedCount + totalGranted,
+                        DeniedCount = targetBuckets[existingIndex].DeniedCount + totalDenied,
+                        ReleasedCount = targetBuckets[existingIndex].ReleasedCount + totalReleased,
+                        ActiveCount = Math.Max(targetBuckets[existingIndex].ActiveCount, maxActive)
+                    };
+                }
+                else
+                {
+                    targetBuckets.Add(new UsageBucket
+                    {
+                        Timestamp = targetTimestamp,
+                        GrantedCount = totalGranted,
+                        DeniedCount = totalDenied,
+                        ReleasedCount = totalReleased,
+                        ActiveCount = maxActive
+                    });
+                }
+
+                targetBuckets.Sort((a, b) => a.Timestamp.CompareTo(b.Timestamp));
+                await database.UpsertAsync(target with { Buckets = targetBuckets }, cancellationToken);
+            }
+
+            var remaining = source.Buckets.Where(b => b.Timestamp >= cutoff).ToList();
+            if (remaining.Count == 0)
+            {
+                await database.DeleteAsync(source.Id, cancellationToken);
+            }
+            else
+            {
+                await database.UpsertAsync(source with { Buckets = remaining }, cancellationToken);
+            }
+        }
+    }
+
+    private async Task PruneExpiredAsync(IUsageSnapshotDatabase database, CancellationToken cancellationToken)
+    {
+        var now = DateTime.UtcNow;
+
+        await PruneGranularityAsync(database, BucketGranularity.Second, now - _options.SecondRetention, cancellationToken);
+        await PruneGranularityAsync(database, BucketGranularity.FiveMinute, now - _options.FiveMinuteRetention, cancellationToken);
+        await PruneGranularityAsync(database, BucketGranularity.Hour, now - _options.HourlyRetention, cancellationToken);
+        await PruneGranularityAsync(database, BucketGranularity.Day, now - _options.DailyRetention, cancellationToken);
+    }
+
+    private static async Task PruneGranularityAsync(
+        IUsageSnapshotDatabase database,
+        BucketGranularity granularity,
+        DateTime cutoff,
+        CancellationToken cancellationToken)
+    {
+        var snapshots = await database.GetAllByGranularityAsync(granularity, cancellationToken);
+
+        foreach (var snapshot in snapshots)
+        {
+            // If the entire segment window ends before the cutoff, every bucket is expired.
+            // Drop the whole document instead of reading and rewriting it.
+            if (snapshot.SegmentStart.HasValue)
+            {
+                var segmentEnd = UsageSegmentHelper.GetSegmentEnd(snapshot.SegmentStart.Value, granularity);
+                if (segmentEnd <= cutoff)
+                {
+                    await database.DeleteAsync(snapshot.Id, cancellationToken);
+                    continue;
+                }
+            }
+
+            // Boundary segment or legacy document — filter individual buckets.
+            var remaining = snapshot.Buckets.Where(b => b.Timestamp >= cutoff).ToList();
+            if (remaining.Count == 0)
+            {
+                await database.DeleteAsync(snapshot.Id, cancellationToken);
+            }
+            else if (remaining.Count < snapshot.Buckets.Count)
+            {
+                await database.UpsertAsync(snapshot with { Buckets = remaining }, cancellationToken);
+            }
+        }
+    }
+
+    private static DateTime RoundDownToSecond(DateTime utc)
+    {
+        return new DateTime(utc.Year, utc.Month, utc.Day, utc.Hour, utc.Minute, utc.Second, 0, DateTimeKind.Utc);
+    }
+
+    private static DateTime RoundDownToFiveMinutes(DateTime utc)
+    {
+        return new DateTime(utc.Year, utc.Month, utc.Day, utc.Hour, utc.Minute / 5 * 5, 0, DateTimeKind.Utc);
+    }
+
+    private static DateTime RoundDownToGranularity(DateTime utc, BucketGranularity granularity)
+    {
+        return granularity switch
+        {
+            BucketGranularity.Second => RoundDownToSecond(utc),
+            BucketGranularity.FiveMinute => RoundDownToFiveMinutes(utc),
+            BucketGranularity.Hour => new DateTime(utc.Year, utc.Month, utc.Day, utc.Hour, 0, 0, DateTimeKind.Utc),
+            BucketGranularity.Day => new DateTime(utc.Year, utc.Month, utc.Day, 0, 0, 0, DateTimeKind.Utc),
+            _ => RoundDownToFiveMinutes(utc)
+        };
+    }
+}

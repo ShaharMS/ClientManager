@@ -1,10 +1,10 @@
 using Asp.Versioning;
-using ClientManager.Api.Extensions;
 using ClientManager.Api.Models.Exceptions;
-using ClientManager.Api.Models.Requests;
-using ClientManager.Api.Models.Responses;
-using ClientManager.DataAccess.Repositories.Interfaces;
+using ClientManager.Shared.Models.Requests;
+using ClientManager.Shared.Models.Responses;
 using ClientManager.Shared.Models.Entities;
+using ClientManager.Api.Utils.Extensions;
+using ClientManager.DataAccess.Repositories.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -68,7 +68,7 @@ public class ResourcePoolsController : ControllerBase
     public async Task<IActionResult> GetById(string id, CancellationToken cancellationToken)
     {
         var pool = await _repository.GetByIdAsync(id, cancellationToken)
-            ?? throw new NotFoundException($"Resource pool '{id}' not found");
+            ?? throw new ResourcePoolNotFoundException(id);
         return Ok(pool);
     }
 
