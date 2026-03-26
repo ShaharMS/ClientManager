@@ -22,7 +22,7 @@ namespace ClientManager.DataAccess.Databases.Interfaces;
 ///     screens that need a full overview without N+1 queries.
 /// </para>
 /// </summary>
-public interface IResourceAllocationRepository
+public interface IResourceAllocationDatabase
 {
     /// <summary>
     /// Retrieves a resource allocation by its unique identifier.

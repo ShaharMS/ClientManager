@@ -41,9 +41,7 @@ public class RedisDocumentStore : IDocumentStore
     public async Task<IReadOnlyList<T>> GetAllAsync<T>(string collection, CancellationToken cancellationToken = default) where T : class
     {
         var entries = await Database.HashGetAllAsync(HashKey(collection));
-        return entries
-            .Select(e => JsonSerializer.Deserialize<T>(e.Value!, JsonOptions)!)
-            .ToList();
+        return [.. entries.Select(e => JsonSerializer.Deserialize<T>(e.Value!, JsonOptions)!)];
     }
 
     /// <inheritdoc />

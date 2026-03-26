@@ -6,11 +6,11 @@ namespace ClientManager.DataAccess.Repositories.Interfaces;
 ///
 /// <para>
 ///     Entities with richer query requirements extend this interface with domain-specific
-///     methods (e.g. <see cref="Databases.Interfaces.IGlobalRateLimitRepository"/> adds
+///     methods (e.g. <see cref="Databases.Interfaces.IGlobalRateLimitDatabase"/> adds
 ///     target-based lookups). Entities whose access patterns diverge significantly
 ///     (nested sub-documents, allocation lifecycle) define a standalone interface instead
-///     (e.g. <see cref="Databases.Interfaces.IClientConfigurationRepository"/>,
-///     <see cref="Databases.Interfaces.IResourceAllocationRepository"/>).
+///     (e.g. <see cref="Databases.Interfaces.IClientConfigurationDatabase"/>,
+///     <see cref="Databases.Interfaces.IResourceAllocationDatabase"/>).
 /// </para>
 /// </summary>
 /// <typeparam name="T">The entity type. Must be a reference type with a string <c>Id</c> property

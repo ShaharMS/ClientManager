@@ -3,7 +3,7 @@ namespace ClientManager.DataAccess.Stores.Interfaces;
 /// <summary>
 /// Lowest-level storage abstraction in the data-access layer. Every persistence backend
 /// (JSON file, MongoDB, Redis) implements this interface once, and all higher-level
-/// repositories delegate to it - no repository talks to a database driver directly.
+/// databases and repositories delegate to it - no caller talks to a store driver directly.
 ///
 /// <para><strong>Two responsibilities in one surface</strong></para>
 /// <para>
@@ -24,7 +24,7 @@ namespace ClientManager.DataAccess.Stores.Interfaces;
 ///             <strong>Atomic counters</strong> (<see cref="IncrementCounterAsync"/>,
 ///             <see cref="GetCounterAsync"/>, <see cref="SetCounterAsync"/>,
 ///             <see cref="ResetCounterAsync"/>): simple numeric values with built-in TTL.
-///             Used exclusively by <see cref="Databases.Interfaces.IRateLimitStateStore"/>
+///             Used exclusively by <see cref="Databases.Interfaces.IRateLimitStateDatabase"/>
 ///             to track sliding/fixed window counts and token-bucket levels.
 ///         </description>
 ///     </item>

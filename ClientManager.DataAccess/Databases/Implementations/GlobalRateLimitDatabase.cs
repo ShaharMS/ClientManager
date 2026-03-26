@@ -7,19 +7,19 @@ using ClientManager.Shared.Models.Enums;
 namespace ClientManager.DataAccess.Databases.Implementations;
 
 /// <summary>
-/// Platform-agnostic implementation of <see cref="IGlobalRateLimitRepository"/>.
+/// Platform-agnostic implementation of <see cref="IGlobalRateLimitDatabase"/>.
 /// Delegates storage to <see cref="IDocumentStore"/> and filters in memory.
 /// </summary>
-public class GlobalRateLimitRepository : EntityRepository<GlobalRateLimit>, IGlobalRateLimitRepository
+public class GlobalRateLimitDatabase : EntityRepository<GlobalRateLimit>, IGlobalRateLimitDatabase
 {
     private readonly IDocumentStore _store;
     private const string Collection = "GlobalRateLimit";
 
     /// <summary>
-    /// Initializes a new instance of <see cref="GlobalRateLimitRepository"/>.
+    /// Initializes a new instance of <see cref="GlobalRateLimitDatabase"/>.
     /// </summary>
     /// <param name="store">The document store to delegate operations to.</param>
-    public GlobalRateLimitRepository(IDocumentStore store)
+    public GlobalRateLimitDatabase(IDocumentStore store)
         : base(store, Collection, g => g.Id)
     {
         _store = store;
@@ -36,6 +36,6 @@ public class GlobalRateLimitRepository : EntityRepository<GlobalRateLimit>, IGlo
     public async Task<IReadOnlyList<GlobalRateLimit>> GetByTargetTypeAsync(TargetType targetType, CancellationToken cancellationToken = default)
     {
         var all = await _store.GetAllAsync<GlobalRateLimit>(Collection, cancellationToken);
-        return all.Where(g => g.TargetType == targetType).ToList();
+        return [.. all.Where(g => g.TargetType == targetType)];
     }
 }

@@ -53,7 +53,7 @@ namespace ClientManager.DataAccess.Databases.Interfaces;
 ///     </item>
 /// </list>
 /// </summary>
-public interface IUsageSnapshotRepository
+public interface IUsageSnapshotDatabase
 {
     /// <summary>
     /// Gets a usage snapshot by its compound key.

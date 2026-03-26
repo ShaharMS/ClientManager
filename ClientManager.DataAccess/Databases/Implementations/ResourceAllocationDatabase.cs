@@ -5,21 +5,21 @@ using ClientManager.Shared.Models.Entities;
 namespace ClientManager.DataAccess.Databases.Implementations;
 
 /// <summary>
-/// Platform-agnostic implementation of <see cref="IResourceAllocationRepository"/>.
+/// Platform-agnostic implementation of <see cref="IResourceAllocationDatabase"/>.
 /// Stores allocations in <see cref="IDocumentStore"/> and maintains atomic counters
 /// for active-count queries to avoid full-collection scans on the acquire hot path.
 /// </summary>
-public class ResourceAllocationRepository : IResourceAllocationRepository
+public class ResourceAllocationDatabase : IResourceAllocationDatabase
 {
     private readonly IDocumentStore _store;
     private const string Collection = "ResourceAllocation";
     private static readonly TimeSpan CounterTtl = TimeSpan.FromHours(24);
 
     /// <summary>
-    /// Initializes a new instance of <see cref="ResourceAllocationRepository"/>.
+    /// Initializes a new instance of <see cref="ResourceAllocationDatabase"/>.
     /// </summary>
     /// <param name="store">The document store to delegate operations to.</param>
-    public ResourceAllocationRepository(IDocumentStore store)
+    public ResourceAllocationDatabase(IDocumentStore store)
     {
         _store = store;
     }

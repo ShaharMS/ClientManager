@@ -3,7 +3,7 @@ using ClientManager.Shared.Models.Entities;
 namespace ClientManager.DataAccess.Databases.Interfaces;
 
 /// <summary>
-/// Repository for <see cref="ClientConfiguration"/> documents. Provides full-document CRUD
+/// Database for <see cref="ClientConfiguration"/> documents. Provides full-document CRUD
 /// plus fine-grained sub-document accessors for service and resource-pool settings.
 ///
 /// <para><strong>Why sub-document helpers exist</strong></para>
@@ -25,7 +25,7 @@ namespace ClientManager.DataAccess.Databases.Interfaces;
 ///     interface clearer and more explicit about the available operations.
 /// </para>
 /// </summary>
-public interface IClientConfigurationRepository
+public interface IClientConfigurationDatabase
 {
     /// <summary>
     /// Retrieves a client configuration by its unique identifier.

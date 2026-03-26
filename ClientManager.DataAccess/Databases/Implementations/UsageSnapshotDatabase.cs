@@ -9,21 +9,21 @@ namespace ClientManager.DataAccess.Databases.Implementations;
 /// Persists usage snapshots in <see cref="IDocumentStore"/> and performs in-memory filtering for queries.
 /// Segment-aware methods construct deterministic segment IDs to avoid full-collection scans.
 /// </summary>
-public class UsageSnapshotRepository : IUsageSnapshotRepository
+public class UsageSnapshotDatabase : IUsageSnapshotDatabase
 {
     private readonly IDocumentStore _store;
-    private readonly IClientConfigurationRepository _clientConfigRepository;
+    private readonly IClientConfigurationDatabase _clientConfigDatabase;
     private const string Collection = "UsageSnapshots";
 
     /// <summary>
-    /// Initializes a new instance of <see cref="UsageSnapshotRepository"/>.
+    /// Initializes a new instance of <see cref="UsageSnapshotDatabase"/>.
     /// </summary>
     /// <param name="store">The document store to delegate operations to.</param>
-    /// <param name="clientConfigRepository">Used by range queries to enumerate client IDs for segment ID construction.</param>
-    public UsageSnapshotRepository(IDocumentStore store, IClientConfigurationRepository clientConfigRepository)
+    /// <param name="clientConfigDatabase">Used by range queries to enumerate client IDs for segment ID construction.</param>
+    public UsageSnapshotDatabase(IDocumentStore store, IClientConfigurationDatabase clientConfigDatabase)
     {
         _store = store;
-        _clientConfigRepository = clientConfigRepository;
+        _clientConfigDatabase = clientConfigDatabase;
     }
 
     /// <inheritdoc />
@@ -38,10 +38,7 @@ public class UsageSnapshotRepository : IUsageSnapshotRepository
         CancellationToken cancellationToken = default)
     {
         var all = await _store.GetAllAsync<UsageSnapshot>(Collection, cancellationToken);
-        return all.Where(s =>
-            s.TargetId == targetId &&
-            s.TargetType == targetType &&
-            s.Granularity == granularity).ToList();
+        return [.. all.Where(s => s.TargetId == targetId && s.TargetType == targetType && s.Granularity == granularity)];
     }
 
     /// <inheritdoc />
@@ -70,7 +67,7 @@ public class UsageSnapshotRepository : IUsageSnapshotRepository
         CancellationToken cancellationToken = default)
     {
         var all = await _store.GetAllAsync<UsageSnapshot>(Collection, cancellationToken);
-        return all.Where(s => s.Granularity == granularity).ToList();
+        return [.. all.Where(s => s.Granularity == granularity)];
     }
 
     /// <summary>
@@ -88,7 +85,7 @@ public class UsageSnapshotRepository : IUsageSnapshotRepository
         string targetId, TargetType targetType, BucketGranularity granularity,
         DateTime from, DateTime to, CancellationToken cancellationToken = default)
     {
-        var clients = await _clientConfigRepository.GetAllAsync(cancellationToken);
+        var clients = await _clientConfigDatabase.GetAllAsync(cancellationToken);
         var segmentStarts = UsageSegmentHelper.EnumerateSegmentStarts(from, to, granularity).ToList();
 
         var results = new List<UsageSnapshot>();

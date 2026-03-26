@@ -4,18 +4,18 @@ using ClientManager.DataAccess.Databases.Interfaces;
 namespace ClientManager.DataAccess.Databases.Implementations;
 
 /// <summary>
-/// Platform-agnostic implementation of <see cref="IRateLimitStateStore"/>.
+/// Platform-agnostic implementation of <see cref="IRateLimitStateDatabase"/>.
 /// Delegates all counter operations to <see cref="IDocumentStore"/>.
 /// </summary>
-public class RateLimitStateStore : IRateLimitStateStore
+public class RateLimitStateDatabase : IRateLimitStateDatabase
 {
     private readonly IDocumentStore _store;
 
     /// <summary>
-    /// Initializes a new instance of <see cref="RateLimitStateStore"/>.
+    /// Initializes a new instance of <see cref="RateLimitStateDatabase"/>.
     /// </summary>
     /// <param name="store">The document store to delegate counter operations to.</param>
-    public RateLimitStateStore(IDocumentStore store)
+    public RateLimitStateDatabase(IDocumentStore store)
     {
         _store = store;
     }

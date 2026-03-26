@@ -5,20 +5,20 @@ using ClientManager.Shared.Models.Entities;
 namespace ClientManager.DataAccess.Databases.Implementations;
 
 /// <summary>
-/// Platform-agnostic implementation of <see cref="IClientConfigurationRepository"/>.
+/// Platform-agnostic implementation of <see cref="IClientConfigurationDatabase"/>.
 /// Delegates storage to <see cref="IDocumentStore"/> and implements sub-document helpers
 /// by loading, modifying, and saving the full document.
 /// </summary>
-public class ClientConfigurationRepository : IClientConfigurationRepository
+public class ClientConfigurationDatabase : IClientConfigurationDatabase
 {
     private readonly IDocumentStore _store;
     private const string Collection = "ClientConfiguration";
 
     /// <summary>
-    /// Initializes a new instance of <see cref="ClientConfigurationRepository"/>.
+    /// Initializes a new instance of <see cref="ClientConfigurationDatabase"/>.
     /// </summary>
     /// <param name="store">The document store to delegate operations to.</param>
-    public ClientConfigurationRepository(IDocumentStore store)
+    public ClientConfigurationDatabase(IDocumentStore store)
     {
         _store = store;
     }

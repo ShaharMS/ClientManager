@@ -15,7 +15,7 @@ namespace ClientManager.DataAccess.Databases.Interfaces;
 ///     hot-path query.
 /// </para>
 /// </summary>
-public interface IGlobalRateLimitRepository : IEntityRepository<GlobalRateLimit>
+public interface IGlobalRateLimitDatabase : IEntityRepository<GlobalRateLimit>
 {
     /// <summary>
     /// Retrieves a global rate limit by its target identifier and target type.

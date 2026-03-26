@@ -12,7 +12,7 @@ namespace ClientManager.DataAccess.Databases.Interfaces;
 ///     influenced by the specific rate limit enforcer's implementation.
 /// </para>
 /// </summary>
-public interface IRateLimitStateStore
+public interface IRateLimitStateDatabase
 {
     /// <summary>
     /// Atomically increments the counter for the given key within the specified window.
