@@ -5,9 +5,9 @@ namespace ClientManager.Api.Models.Configuration;
 /// <summary>
 /// Configuration options for the persistence layer. Bound from the <c>"Persistence"</c> section of <c>appsettings.json</c>.
 /// <para>
-/// Selects which storage backend (<see cref="PersistenceProvider"/>) is used and provides
-/// the connection details for that backend. All repositories and the document store
-/// are wired to the chosen provider at startup.
+/// Supports both single-provider and mixed-provider deployments. Set <see cref="DefaultProvider"/>
+/// and the matching <c>Default*</c> options block for a uniform backend, or use <see cref="Roles"/>
+/// to assign individual <see cref="StorageRole"/> values to different providers.
 /// </para>
 /// </summary>
 public class PersistenceOptions
@@ -18,27 +18,32 @@ public class PersistenceOptions
     public const string SectionName = "Persistence";
 
     /// <summary>
-    /// The storage backend to use.
+    /// The fallback storage backend used for any <see cref="StorageRole"/> that does not have
+    /// an explicit entry in <see cref="Roles"/>.
     /// </summary>
-    public PersistenceProvider Provider { get; set; } = PersistenceProvider.JsonFile;
+    public PersistenceProvider DefaultProvider { get; set; } = PersistenceProvider.JsonFile;
 
     /// <summary>
-    /// Directory path for JSON file storage. Only used when <see cref="Provider"/> is <see cref="PersistenceProvider.JsonFile"/>.
+    /// Default MongoDB settings applied to every role that uses <see cref="PersistenceProvider.MongoDb"/>
+    /// unless the role's <see cref="StorageRoleBinding"/> supplies its own.
     /// </summary>
-    public string JsonFileDataDirectory { get; set; } = "./data";
+    public MongoDbStoreOptions? DefaultMongoDb { get; set; }
 
     /// <summary>
-    /// MongoDB connection string. Required when <see cref="Provider"/> is <see cref="PersistenceProvider.MongoDb"/>.
+    /// Default Redis settings applied to every role that uses <see cref="PersistenceProvider.Redis"/>
+    /// unless the role's <see cref="StorageRoleBinding"/> supplies its own.
     /// </summary>
-    public string? MongoDbConnectionString { get; set; }
+    public RedisStoreOptions? DefaultRedis { get; set; }
 
     /// <summary>
-    /// MongoDB database name.
+    /// Default JSON file settings applied to every role that uses <see cref="PersistenceProvider.JsonFile"/>
+    /// unless the role's <see cref="StorageRoleBinding"/> supplies its own.
     /// </summary>
-    public string MongoDbDatabaseName { get; set; } = "ClientManager";
+    public JsonFileStoreOptions? DefaultJsonFile { get; set; }
 
     /// <summary>
-    /// Redis connection string. Required when <see cref="Provider"/> is <see cref="PersistenceProvider.Redis"/>.
+    /// Optional per-role overrides. When a <see cref="StorageRole"/> is present in this dictionary,
+    /// its binding takes precedence over <see cref="DefaultProvider"/> and the <c>Default*</c> options.
     /// </summary>
-    public string? RedisConnectionString { get; set; }
+    public Dictionary<StorageRole, StorageRoleBinding>? Roles { get; set; }
 }
