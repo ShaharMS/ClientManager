@@ -46,3 +46,15 @@ public async Task<IActionResult> GetById(int id) { ... }
 
 - Input validation belongs in the controller layer (model validation attributes, `ModelState`, or `FluentValidation`).
 - Services may assume valid input and should not duplicate controller-level validation.
+
+## Local Testing
+
+When starting the application for testing or verification:
+
+1. **Start the API** — run `ClientManager.Api` (default: `http://localhost:5062`).
+2. **Start the Admin UI** — run `ClientManager.AdminUI` (default: `http://localhost:5100`).
+3. **Seed data if empty** — run `python _scripts/seed_data.py --base-url http://localhost:5062`. Creates services, resource pools, global rate limits, and client configurations. Safe to re-run (existing items are skipped).
+4. **Start the traffic generator** — fire-and-forget `python _scripts/traffic_generator.py --base-url http://localhost:5062 --interval 2.0` in a background terminal. Sends continuous realistic traffic (access checks, resource acquire/release, reads) so the dashboard shows live data.
+5. **Shut down** — stop the traffic generator first (Ctrl+C), then stop both the API and Admin UI (Ctrl+C).
+
+**Shutdown order is critical.** The traffic generator sends continuous HTTP requests to the API. If the API is stopped while the traffic generator is still running, the generator floods the terminal with connection-refused errors that are noisy and slow to cancel. Always stop the traffic generator **before** the API. The Admin UI can be stopped in any order relative to the API.
