@@ -17,9 +17,9 @@ namespace ClientManager.Shared.Logging;
 /// <typeparam name="T">The category type for the logger.</typeparam>
 public class AppLogger<T> : IAppLogger<T>
 {
-    private readonly NLog.Logger _nlogLogger;
+    private readonly Logger _nlogLogger;
 
-    public AppLogger(ILogger<T> logger)
+    public AppLogger()
     {
         _nlogLogger = LogManager.GetLogger(typeof(T).FullName);
     }

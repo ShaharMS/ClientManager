@@ -1,0 +1,7 @@
+namespace ClientManager.Shared.Models.Requests;
+
+/// <summary>
+/// Request model for releasing a previously acquired resource.
+/// </summary>
+/// <param name="AllocationId">The ID of the resource allocation to release.</param>
+public record ReleaseResourceRequest(string AllocationId);

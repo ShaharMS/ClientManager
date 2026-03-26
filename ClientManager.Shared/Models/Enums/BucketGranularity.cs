@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using ClientManager.Shared.Models.Entities;
 
 namespace ClientManager.Shared.Models.Enums;
@@ -15,6 +16,7 @@ namespace ClientManager.Shared.Models.Enums;
 ///     re-aggregating.
 /// </para>
 /// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum BucketGranularity
 {
     /// <summary>
