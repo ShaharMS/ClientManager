@@ -55,7 +55,7 @@ public static class ChartBucketAggregator
             var bucketStart = from.Add(TimeSpan.FromTicks(bucketDuration.Ticks * i));
             var bucketEnd = i == bucketCount - 1 ? to : bucketStart.Add(bucketDuration);
             buckets.Add(new AggregatedBucket(
-                FormatBucketLabel(bucketStart, bucketEnd, totalDuration),
+                FormatBucketLabel(bucketStart, totalDuration),
                 0,
                 bucketStart,
                 bucketEnd));
@@ -97,7 +97,7 @@ public static class ChartBucketAggregator
         return results;
     }
 
-    private static string FormatBucketLabel(DateTime start, DateTime end, TimeSpan totalRange)
+    private static string FormatBucketLabel(DateTime start, TimeSpan totalRange)
     {
         var local = start.ToLocalTime();
 

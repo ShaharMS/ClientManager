@@ -1,4 +1,5 @@
 @page "/"
+@using ClientManager.Shared.Models.Responses
 @inject StatisticsApiService StatsService
 @inject ClientApiService ClientService
 @inject ServiceApiService ServiceService
@@ -138,16 +139,16 @@ else
                 Change="@OnTableSearchChanged" Style="width: 250px;" />
         </div>
 
-        <RadzenDataGrid Data="@_filteredClientSummaries" TItem="ClientSummaryRow"
+        <RadzenDataGrid Data="@_filteredClientSummaries" TItem="ClientSummaryTableRow"
             AllowSorting="true" AllowPaging="true" PageSize="10"
             PagerHorizontalAlign="HorizontalAlign.Center">
             <Columns>
-                <RadzenDataGridColumn TItem="ClientSummaryRow" Property="ClientId" Title="Client ID" Width="150px" />
-                <RadzenDataGridColumn TItem="ClientSummaryRow" Property="DisplayName" Title="Who Am I?" Width="150px" />
-                <RadzenDataGridColumn TItem="ClientSummaryRow" Property="AccessibleServices" Title="Services" Width="100px" />
-                <RadzenDataGridColumn TItem="ClientSummaryRow" Property="TotalRateLimitCap" Title="Rate Limit Cap" Width="140px" />
-                <RadzenDataGridColumn TItem="ClientSummaryRow" Property="AccessiblePools" Title="Pools" Width="100px" />
-                <RadzenDataGridColumn TItem="ClientSummaryRow" Property="SlotsDisplay" Title="Slots (Used/Total)" Width="160px" />
+                <RadzenDataGridColumn TItem="ClientSummaryTableRow" Property="ClientId" Title="Client ID" Width="150px" />
+                <RadzenDataGridColumn TItem="ClientSummaryTableRow" Property="DisplayName" Title="Who Am I?" Width="150px" />
+                <RadzenDataGridColumn TItem="ClientSummaryTableRow" Property="AccessibleServices" Title="Services" Width="100px" />
+                <RadzenDataGridColumn TItem="ClientSummaryTableRow" Property="TotalRateLimitCap" Title="Rate Limit Cap" Width="140px" />
+                <RadzenDataGridColumn TItem="ClientSummaryTableRow" Property="AccessiblePools" Title="Pools" Width="100px" />
+                <RadzenDataGridColumn TItem="ClientSummaryTableRow" Property="SlotsDisplay" Title="Slots (Used/Total)" Width="160px" />
             </Columns>
         </RadzenDataGrid>
     </div>
@@ -156,7 +157,7 @@ else
 @code {
     private bool _loading = true;
     private string? _error;
-    private SystemOverview? _overview;
+    private SystemOverviewResponse? _overview;
 
     private string _globalUsage = "-";
     private int _acquisitionPct;
@@ -191,8 +192,8 @@ else
 
     private const string AllTargetsId = "__all__";
 
-    private List<ClientSummaryRow> _clientSummaries = new();
-    private List<ClientSummaryRow> _filteredClientSummaries = new();
+    private List<ClientSummaryTableRow> _clientSummaries = new();
+    private List<ClientSummaryTableRow> _filteredClientSummaries = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -224,7 +225,7 @@ else
 
             // Load client summaries from dedicated endpoint
             var summaries = await StatsService.GetClientSummariesAsync();
-            _clientSummaries = summaries.Select(r => new ClientSummaryRow(
+            _clientSummaries = summaries.Select(r => new ClientSummaryTableRow(
                 r.ClientId, r.DisplayName, r.AccessibleServices,
                 r.TotalRateLimitCap, r.AccessiblePools,
                 $"{r.UsedSlots}/{r.TotalAccessibleSlots}"
@@ -412,7 +413,7 @@ else
         foreach (var (clientId, (client, agg)) in clientAggregations)
         {
             var points = agg.Buckets
-                .Select(b => new TimeSeriesPoint(b.Label, b.Value))
+                .Select(b => new ChartPoint(b.Label, b.Value))
                 .ToList();
             clientAreas.Add(new ClientAreaSeries(clientId, client.Name, points));
         }
@@ -426,7 +427,7 @@ else
         }
 
         var capPoints = bucketLabels
-            .Select(label => new TimeSeriesPoint(label, scaledCap))
+            .Select(label => new ChartPoint(label, scaledCap))
             .ToList();
 
         // Derive donut data from per-client aggregated values (no extra API call)
@@ -447,7 +448,7 @@ else
 
         clientAreas = aggregatedAreas.Select(a => new ClientAreaSeries(
             a.Id, a.Name,
-            a.Points.Select(p => new TimeSeriesPoint(p.Label, p.Value)).ToList()
+            a.Points.Select(p => new ChartPoint(p.Label, p.Value)).ToList()
         )).ToList();
 
         var targetName = _filterTargets.FirstOrDefault(t => t.Id == _selectedTargetId)?.Name ?? "";
@@ -522,10 +523,10 @@ else
         }
 
         var sortedPoints = aggregation.Buckets
-            .Select(b => new TimeSeriesPoint(b.Label, b.Value))
+            .Select(b => new ChartPoint(b.Label, b.Value))
             .ToList();
         var capPoints = sortedPoints
-            .Select(p => new TimeSeriesPoint(p.Label, scaledCap))
+            .Select(p => new ChartPoint(p.Label, scaledCap))
             .ToList();
 
         var label = _selectedFilterType == "Service" ? "All Services" : "All Resource Pools";
@@ -551,11 +552,11 @@ else
 
     private record FilterOption(string Label, string Value);
     private record NamedItem(string Id, string Name);
-    private record TimeSeriesPoint(string Label, double Value);
-    private record ClientAreaSeries(string ClientId, string ClientName, List<TimeSeriesPoint> Points);
-    private record TargetChartData(string TargetName, List<ClientAreaSeries> ClientSeries, List<TimeSeriesPoint> CapSeries);
+    private record ChartPoint(string Label, double Value);
+    private record ClientAreaSeries(string ClientId, string ClientName, List<ChartPoint> Points);
+    private record TargetChartData(string TargetName, List<ClientAreaSeries> ClientSeries, List<ChartPoint> CapSeries);
     private record ClientUsagePoint(string ClientId, string ClientName, double Value);
-    private record ClientSummaryRow(string ClientId, string DisplayName, int AccessibleServices,
+    private record ClientSummaryTableRow(string ClientId, string DisplayName, int AccessibleServices,
         string TotalRateLimitCap, int AccessiblePools, string SlotsDisplay);
 
     // --- Polling & Visibility ---
@@ -616,7 +617,7 @@ else
         return Task.CompletedTask;
     }
 
-    private List<TimeSeriesPoint> TransformPoints(List<TimeSeriesPoint> points) =>
+    private List<ChartPoint> TransformPoints(List<ChartPoint> points) =>
         _axisScaleType == AxisScaleType.Logarithmic
             ? points.Select(p => p with { Value = LogarithmicScaleHelper.Transform(p.Value) }).ToList()
             : points;

@@ -1,5 +1,5 @@
 using System.Net.Http.Json;
-using ClientManager.AdminUI.Models;
+using ClientManager.Shared.Models.Responses;
 
 namespace ClientManager.AdminUI.Services;
 
@@ -12,24 +12,24 @@ public class StatisticsApiService
         _httpClient = httpClientFactory.CreateClient("ClientManagerApi");
     }
 
-    public async Task<SystemOverview?> GetOverviewAsync()
+    public async Task<SystemOverviewResponse?> GetOverviewAsync()
     {
-        return await _httpClient.GetFromJsonAsync<SystemOverview>("api/v1/statistics/overview");
+        return await _httpClient.GetFromJsonAsync<SystemOverviewResponse>("api/v1/statistics/overview");
     }
 
-    public async Task<List<ResourcePoolStatistics>> GetResourcePoolStatsAsync()
+    public async Task<List<ResourcePoolStatisticsResponse>> GetResourcePoolStatsAsync()
     {
-        var response = await _httpClient.GetFromJsonAsync<PagedResponse<ResourcePoolStatistics>>(
+        var response = await _httpClient.GetFromJsonAsync<PagedResponse<ResourcePoolStatisticsResponse>>(
             "api/v1/statistics/resource-pools?pageSize=100");
-        return response?.Items ?? [];
+        return response?.Items?.ToList() ?? [];
     }
 
-    public async Task<GlobalUsageStats?> GetGlobalUsageStatsAsync()
+    public async Task<GlobalUsageStatsResponse?> GetGlobalUsageStatsAsync()
     {
-        return await _httpClient.GetFromJsonAsync<GlobalUsageStats>("api/v1/statistics/global-usage");
+        return await _httpClient.GetFromJsonAsync<GlobalUsageStatsResponse>("api/v1/statistics/global-usage");
     }
 
-    public async Task<List<TargetUsageTimeSeries>> GetUsageTimeSeriesAsync(
+    public async Task<List<TargetUsageTimeSeriesResponse>> GetUsageTimeSeriesAsync(
         string filterType, IEnumerable<string> targetIds, IEnumerable<string>? clientIds,
         DateTime? from = null, DateTime? to = null, string? granularity = null)
     {
@@ -45,10 +45,10 @@ public class StatisticsApiService
         if (granularity is not null)
             url += $"&granularity={Uri.EscapeDataString(granularity)}";
 
-        return await _httpClient.GetFromJsonAsync<List<TargetUsageTimeSeries>>(url) ?? [];
+        return await _httpClient.GetFromJsonAsync<List<TargetUsageTimeSeriesResponse>>(url) ?? [];
     }
 
-    public async Task<List<TargetClientUsageBreakdown>> GetClientUsageBreakdownAsync(
+    public async Task<List<TargetClientUsageBreakdownResponse>> GetClientUsageBreakdownAsync(
         string filterType, IEnumerable<string> targetIds, IEnumerable<string>? clientIds,
         DateTime? from = null, DateTime? to = null, string? granularity = null)
     {
@@ -64,17 +64,17 @@ public class StatisticsApiService
         if (granularity is not null)
             url += $"&granularity={Uri.EscapeDataString(granularity)}";
 
-        return await _httpClient.GetFromJsonAsync<List<TargetClientUsageBreakdown>>(url) ?? [];
+        return await _httpClient.GetFromJsonAsync<List<TargetClientUsageBreakdownResponse>>(url) ?? [];
     }
 
-    public async Task<List<ClientSummaryItem>> GetClientSummariesAsync()
+    public async Task<List<ClientSummaryRow>> GetClientSummariesAsync()
     {
-        var response = await _httpClient.GetFromJsonAsync<PagedResponse<ClientSummaryItem>>(
+        var response = await _httpClient.GetFromJsonAsync<PagedResponse<ClientSummaryRow>>(
             "api/v1/statistics/client-summaries?pageSize=100");
-        return response?.Items ?? [];
+        return response?.Items?.ToList() ?? [];
     }
 
-    public async Task<List<HistoricalUsageData>> GetHistoricalUsageAsync(
+    public async Task<List<HistoricalUsageResponse>> GetHistoricalUsageAsync(
         string filterType, IEnumerable<string> targetIds, string? clientId,
         DateTime from, DateTime to, string granularity)
     {
@@ -86,50 +86,6 @@ public class StatisticsApiService
         {
             url += $"&clientId={Uri.EscapeDataString(clientId)}";
         }
-        return await _httpClient.GetFromJsonAsync<List<HistoricalUsageData>>(url) ?? [];
+        return await _httpClient.GetFromJsonAsync<List<HistoricalUsageResponse>>(url) ?? [];
     }
 }
-
-public record SystemOverview(
-    int TotalClients, int EnabledClients,
-    int TotalServices, int EnabledServices,
-    int TotalResourcePools, int ActiveAllocations);
-
-public record ResourcePoolStatistics(
-    string ResourcePoolId, string Name,
-    int MaxSlots, int ActiveAllocations,
-    int AvailableSlots, bool HasGlobalRateLimit);
-
-public record GlobalUsageStats(
-    double RequestsPerMinute, int TotalPoolSlots,
-    int AcquiredPoolSlots, double AcquisitionPercentage);
-
-public record TargetUsageTimeSeries(
-    string TargetId,
-    List<UsageTimeSeriesPoint> UsagePoints,
-    List<UsageTimeSeriesPoint> CapPoints);
-
-public record UsageTimeSeriesPoint(DateTime Timestamp, double Value);
-
-public record TargetClientUsageBreakdown(string TargetId, List<ClientUsageItem> Entries);
-
-public record ClientUsageItem(
-    string ClientId,
-    string ClientName,
-    double Value,
-    long GrantedCount,
-    long DeniedCount,
-    long ActiveCount);
-
-public record ClientSummaryItem(
-    string ClientId, string DisplayName,
-    int AccessibleServices, string TotalRateLimitCap,
-    int AccessiblePools, int UsedSlots, int TotalAccessibleSlots);
-
-public record HistoricalUsageData(
-    string TargetId, string TargetType, string Granularity,
-    List<HistoricalUsagePoint> Points);
-
-public record HistoricalUsagePoint(
-    DateTime Timestamp, long GrantedCount, long DeniedCount,
-    long ReleasedCount, long ActiveCount);

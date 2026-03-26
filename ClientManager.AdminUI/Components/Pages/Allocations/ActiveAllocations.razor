@@ -1,4 +1,5 @@
 @page "/allocations"
+@using ClientManager.Shared.Models.Responses
 @inject StatisticsApiService StatsService
 @inject ClientApiService ClientService
 @inject EntityColorService Colors
@@ -118,15 +119,15 @@
     <div class="cm-dashboard__chart-header">
         <span class="cm-dashboard__chart-title">All Resource Pools</span>
     </div>
-    <RadzenDataGrid @ref="_allPoolsGrid" Data="@_pools" TItem="ResourcePoolStatistics"
+    <RadzenDataGrid @ref="_allPoolsGrid" Data="@_pools" TItem="ResourcePoolStatisticsResponse"
         AllowSorting="true" AllowPaging="true" PageSize="15"
         PagerHorizontalAlign="HorizontalAlign.Center">
         <Columns>
-            <RadzenDataGridColumn TItem="ResourcePoolStatistics" Property="Name" Title="Pool" />
-            <RadzenDataGridColumn TItem="ResourcePoolStatistics" Property="ActiveAllocations" Title="Active" Width="100px" />
-            <RadzenDataGridColumn TItem="ResourcePoolStatistics" Property="MaxSlots" Title="Max" Width="100px" />
-            <RadzenDataGridColumn TItem="ResourcePoolStatistics" Property="AvailableSlots" Title="Available" Width="100px" />
-            <RadzenDataGridColumn TItem="ResourcePoolStatistics" Title="Utilization" Width="200px">
+            <RadzenDataGridColumn TItem="ResourcePoolStatisticsResponse" Property="Name" Title="Pool" />
+            <RadzenDataGridColumn TItem="ResourcePoolStatisticsResponse" Property="ActiveAllocations" Title="Active" Width="100px" />
+            <RadzenDataGridColumn TItem="ResourcePoolStatisticsResponse" Property="MaxSlots" Title="Max" Width="100px" />
+            <RadzenDataGridColumn TItem="ResourcePoolStatisticsResponse" Property="AvailableSlots" Title="Available" Width="100px" />
+            <RadzenDataGridColumn TItem="ResourcePoolStatisticsResponse" Title="Utilization" Width="200px">
                 <Template Context="pool">
                     @{
                         var pct = pool.MaxSlots > 0
@@ -138,7 +139,7 @@
                         ProgressBarStyle="@barStyle" Style="height: 20px;" />
                 </Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn TItem="ResourcePoolStatistics" Title="Status" Width="110px" Sortable="false">
+            <RadzenDataGridColumn TItem="ResourcePoolStatisticsResponse" Title="Status" Width="110px" Sortable="false">
                 <Template Context="pool">
                     @if (pool.AvailableSlots == 0)
                     {
@@ -157,7 +158,7 @@
 @code {
     private const string AllPoolsId = "__all__";
 
-    private List<ResourcePoolStatistics> _pools = [];
+    private List<ResourcePoolStatisticsResponse> _pools = [];
     private List<NamedItem> _poolOptions = [];
     private List<ClientOption> _clientOptions = [];
     private List<ClientConfiguration> _allClients = [];
@@ -178,7 +179,7 @@
     private List<TargetChartData> _targetCharts = [];
     private List<AllocationClientRow> _clientDetailRows = [];
     private RadzenDataGrid<AllocationClientRow>? _clientDetailGrid;
-    private RadzenDataGrid<ResourcePoolStatistics>? _allPoolsGrid;
+    private RadzenDataGrid<ResourcePoolStatisticsResponse>? _allPoolsGrid;
 
     protected override async Task OnInitializedAsync()
     {

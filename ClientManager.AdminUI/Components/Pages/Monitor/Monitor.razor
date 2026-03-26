@@ -299,7 +299,7 @@
 
             var rateLimits = await RateLimitApi.GetByTargetTypeAsync(
                 ClientManager.Shared.Models.Enums.TargetType.Service);
-            var rateLimitLookup = rateLimits.ToDictionary(r => r.TargetId, StringComparer.OrdinalIgnoreCase);
+            var rateLimitLookup = rateLimits.ToDictionary(r => r.TargetId);
             var chartBucketDuration = GetBucketDuration(_timeRange.Granularity);
 
             var visibleServices = _selectedServiceId == AllServicesId
@@ -473,7 +473,7 @@
             foreach (var service in _allServices)
             {
                 var bd = summaryBreakdowns.FirstOrDefault(b => b.TargetId == service.Id);
-                var totalUsage = (long)(bd?.Entries.Sum(e => e.Value) ?? 0);
+                var totalUsage = bd?.Entries.Sum(e => e.GrantedCount) ?? 0;
                 var cap = GetScaledGlobalServiceCap(service.Id, rateLimitLookup, RecentWindow);
                 allServiceBreakdowns.Add(new ServiceSummaryRow(
                     service.Id, service.Name, totalUsage, cap));

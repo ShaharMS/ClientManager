@@ -1,7 +1,7 @@
 using System.Net.Http.Json;
-using ClientManager.AdminUI.Models;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Enums;
+using ClientManager.Shared.Models.Responses;
 
 namespace ClientManager.AdminUI.Services;
 
@@ -11,7 +11,7 @@ public class GlobalRateLimitApiService
     private static readonly TimeSpan CacheTtl = TimeSpan.FromSeconds(30);
     private List<GlobalRateLimit>? _cachedAll;
     private DateTime _cachedAllAt;
-    private readonly Dictionary<TargetType, (List<GlobalRateLimit> Data, DateTime At)> _cachedByTarget = new();
+    private readonly Dictionary<TargetType, (List<GlobalRateLimit> Data, DateTime At)> _cachedByTarget = [];
 
     public GlobalRateLimitApiService(IHttpClientFactory httpClientFactory)
     {
@@ -25,7 +25,7 @@ public class GlobalRateLimitApiService
 
         var response = await _httpClient.GetFromJsonAsync<PagedResponse<GlobalRateLimit>>(
             "api/v1/global-rate-limits?pageSize=100");
-        _cachedAll = response?.Items ?? [];
+        _cachedAll = response?.Items?.ToList() ?? [];
         _cachedAllAt = DateTime.UtcNow;
         return _cachedAll;
     }
@@ -37,7 +37,7 @@ public class GlobalRateLimitApiService
 
         var response = await _httpClient.GetFromJsonAsync<PagedResponse<GlobalRateLimit>>(
             $"api/v1/global-rate-limits?targetType={targetType}&pageSize=100");
-        var data = response?.Items ?? [];
+        var data = response?.Items?.ToList() ?? [];
         _cachedByTarget[targetType] = (data, DateTime.UtcNow);
         return data;
     }

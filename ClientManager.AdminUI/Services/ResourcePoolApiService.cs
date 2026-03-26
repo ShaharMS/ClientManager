@@ -1,6 +1,6 @@
 using System.Net.Http.Json;
-using ClientManager.AdminUI.Models;
 using ClientManager.Shared.Models.Entities;
+using ClientManager.Shared.Models.Responses;
 
 namespace ClientManager.AdminUI.Services;
 
@@ -23,7 +23,7 @@ public class ResourcePoolApiService
 
         var response = await _httpClient.GetFromJsonAsync<PagedResponse<ResourcePool>>(
             "api/v1/resource-pools?pageSize=100");
-        _cachedAll = response?.Items ?? [];
+        _cachedAll = response?.Items?.ToList() ?? [];
         _cachedAllAt = DateTime.UtcNow;
         return _cachedAll;
     }

@@ -17,8 +17,8 @@ public record TimeRangePreset(string Key, string Label, string Group, TimeSpan D
         };
     }
 
-    public static readonly List<TimeRangePreset> All = new()
-    {
+    public static readonly List<TimeRangePreset> All =
+    [
         new("1m",  "Last minute",     "Minutes", TimeSpan.FromMinutes(1),  "Second"),
         new("5m",  "Last 5 minutes",  "Minutes", TimeSpan.FromMinutes(5),  "FiveMinute"),
         new("15m", "Last 15 minutes", "Minutes", TimeSpan.FromMinutes(15), "FiveMinute"),
@@ -31,7 +31,7 @@ public record TimeRangePreset(string Key, string Label, string Group, TimeSpan D
         new("7d",  "Last 7 days",     "Days",    TimeSpan.FromDays(7),     "Hour"),
         new("30d", "Last 30 days",    "Days",    TimeSpan.FromDays(30),    "Day"),
         new("90d", "Last 90 days",    "Days",    TimeSpan.FromDays(90),    "Day"),
-    };
+    ];
 
     public static readonly TimeRangePreset Default = All.First(p => p.Key == "1h");
 

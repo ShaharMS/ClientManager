@@ -78,5 +78,6 @@ public class UserPreferencesService : IAsyncDisposable
         {
             await _module.DisposeAsync();
         }
+        GC.SuppressFinalize(this);
     }
 }
