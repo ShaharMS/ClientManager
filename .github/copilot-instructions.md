@@ -10,6 +10,7 @@
 - Every controller and every action method **must** have XML documentation comments (`/// <summary>`).
 - Controllers should remain thin: perform input validation, then delegate all business logic to a service.
 - Do not embed business logic directly in controllers.
+- Do **NOT** reference the UI project (AdminUI) from the API project. The API relies on DataAccess but should be completely standalone from the UI. DataAccess can be referenced from the UI.
 
 ## API Documentation (Swagger / OpenAPI)
 
@@ -39,6 +40,7 @@ public async Task<IActionResult> GetById(int id) { ... }
 - One service, one goal: each service class must have a single, clearly defined responsibility.
 - Do not create large, catch-all services. Split by domain concern (e.g., `ClientService`, `InvoiceService`).
 - Service interfaces must be defined and used for dependency injection.
+  When documenting service interfaces, do not reference other specific service classes. Document the interface with what it does and what it's responsible for. On the implementing class, you can reference other implementations more freely. Cross-referencing other interfaces from an interface is OK.
 
 ## Validation
 
