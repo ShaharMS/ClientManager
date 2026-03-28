@@ -1,6 +1,6 @@
 # Plan: Search, Query Layer & Lucene Store — Step 5: Controller Search Parameters
 
-> **Status**: 🔲 Not started
+> **Status**: ✅ Completed
 > **Prerequisite**: [search-query-layer-4-database-migration.md](search-query-layer-4-database-migration.md)
 > **Next**: [search-query-layer-6-ui-search.md](search-query-layer-6-ui-search.md)
 > **Parent**: [search-query-layer-overview.md](search-query-layer-overview.md)

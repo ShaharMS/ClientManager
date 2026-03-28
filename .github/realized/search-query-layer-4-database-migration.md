@@ -1,6 +1,6 @@
 # Plan: Search, Query Layer & Lucene Store — Step 4: Database Layer Migration
 
-> **Status**: 🔲 Not started
+> **Status**: ✅ Completed
 > **Prerequisite**: [search-query-layer-3-existing-store-search.md](search-query-layer-3-existing-store-search.md)
 > **Next**: [search-query-layer-5-controller-search.md](search-query-layer-5-controller-search.md)
 > **Parent**: [search-query-layer-overview.md](search-query-layer-overview.md)

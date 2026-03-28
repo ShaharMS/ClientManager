@@ -1,6 +1,6 @@
 # Plan: Search, Query Layer & Lucene Store — Step 2: Lucene.NET Store Implementation
 
-> **Status**: 🔲 Not started
+> **Status**: ✅ Completed
 > **Prerequisite**: [search-query-layer-1-query-abstraction.md](search-query-layer-1-query-abstraction.md)
 > **Next**: [search-query-layer-3-existing-store-search.md](search-query-layer-3-existing-store-search.md)
 > **Parent**: [search-query-layer-overview.md](search-query-layer-overview.md)

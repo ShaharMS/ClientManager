@@ -1,6 +1,6 @@
 # Plan: Search, Query Layer & Lucene Store — Step 3: Native Search for Existing Stores
 
-> **Status**: 🔲 Not started
+> **Status**: ✅ Completed
 > **Prerequisite**: [search-query-layer-2-lucene-store.md](search-query-layer-2-lucene-store.md)
 > **Next**: [search-query-layer-4-database-migration.md](search-query-layer-4-database-migration.md)
 > **Parent**: [search-query-layer-overview.md](search-query-layer-overview.md)
