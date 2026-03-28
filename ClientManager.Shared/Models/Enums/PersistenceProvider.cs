@@ -24,5 +24,11 @@ public enum PersistenceProvider
     /// <summary>
     /// A Redis in-memory data store, intended for production use where performance is critical and compromises on durability are acceptable.
     /// </summary>
-    Redis
+    Redis,
+
+    /// <summary>
+    /// A Lucene.NET embedded search index, intended for PVC-based deployments
+    /// that need full-text and field-level search without an external database.
+    /// </summary>
+    Lucene
 }
