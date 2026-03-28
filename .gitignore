@@ -43,7 +43,7 @@ Thumbs.db
 ## Application data
 data/
 logs/
-
+lucene-index/
 ## Dev scripts
 _scripts/
 
