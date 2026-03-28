@@ -1,9 +1,7 @@
 using Asp.Versioning;
 using ClientManager.Api.Models.Exceptions;
-using ClientManager.Shared.Models.Requests;
-using ClientManager.Shared.Models.Responses;
+using ClientManager.Shared.Models.Search;
 using ClientManager.Shared.Models.Entities;
-using ClientManager.Api.Utils.Extensions;
 using ClientManager.DataAccess.Repositories.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -31,27 +29,20 @@ public class ResourcePoolsController : ControllerBase
     }
 
     /// <summary>
-    /// Lists all resource pools with optional filtering and pagination.
+    /// Searches resource pools with optional filtering, sorting, and pagination.
     /// </summary>
-    /// <param name="paging">Pagination parameters.</param>
-    /// <param name="name">Optional case-insensitive name filter (contains match).</param>
+    /// <param name="query">Query with filters, sort, and pagination. Pass an empty body or null for all results.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>A paginated list of resource pools.</returns>
-    /// <response code="200">Returns the paginated resource pools.</response>
-    [HttpGet]
-    [ProducesResponseType(typeof(PagedResponse<ResourcePool>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetAll(
-        [FromQuery] PagedRequest paging,
-        [FromQuery] string? name,
+    /// <returns>Matching resource pools and total count.</returns>
+    /// <response code="200">Returns the matching resource pools.</response>
+    [HttpPost("search")]
+    [ProducesResponseType(typeof(SearchResult<ResourcePool>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Search(
+        [FromBody] DocumentQuery? query,
         CancellationToken cancellationToken)
     {
-        var pools = await _repository.GetAllAsync(cancellationToken);
-
-        IReadOnlyList<ResourcePool> filtered = pools
-            .Where(p => name is null || p.Name.Contains(name, StringComparison.OrdinalIgnoreCase))
-            .ToList();
-
-        return Ok(filtered.ToPagedResponse(paging));
+        var result = await _repository.SearchAsync(query ?? DocumentQuery.All, cancellationToken);
+        return Ok(result);
     }
 
     /// <summary>

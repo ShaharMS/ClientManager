@@ -1,9 +1,7 @@
 using Asp.Versioning;
-using ClientManager.Shared.Models.Requests;
-using ClientManager.Shared.Models.Responses;
+using ClientManager.Shared.Models.Search;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Api.Models.Exceptions;
-using ClientManager.Api.Utils.Extensions;
 using ClientManager.DataAccess.Repositories.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -31,30 +29,20 @@ public class ServicesController : ControllerBase
     }
 
     /// <summary>
-    /// Lists all services with optional filtering and pagination.
+    /// Searches services with optional filtering, sorting, and pagination.
     /// </summary>
-    /// <param name="paging">Pagination parameters.</param>
-    /// <param name="isEnabled">Optional filter by enabled state.</param>
-    /// <param name="name">Optional case-insensitive name filter (contains match).</param>
+    /// <param name="query">Query with filters, sort, and pagination. Pass an empty body or null for all results.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>A paginated list of services.</returns>
-    /// <response code="200">Returns the paginated services.</response>
-    [HttpGet]
-    [ProducesResponseType(typeof(PagedResponse<Service>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetAll(
-        [FromQuery] PagedRequest paging,
-        [FromQuery] bool? isEnabled,
-        [FromQuery] string? name,
+    /// <returns>Matching services and total count.</returns>
+    /// <response code="200">Returns the matching services.</response>
+    [HttpPost("search")]
+    [ProducesResponseType(typeof(SearchResult<Service>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Search(
+        [FromBody] DocumentQuery? query,
         CancellationToken cancellationToken)
     {
-        var services = await _repository.GetAllAsync(cancellationToken);
-
-        IReadOnlyList<Service> filtered = services
-            .Where(s => !isEnabled.HasValue || s.IsEnabled == isEnabled.Value)
-            .Where(s => name is null || s.Name.Contains(name, StringComparison.OrdinalIgnoreCase))
-            .ToList();
-
-        return Ok(filtered.ToPagedResponse(paging));
+        var result = await _repository.SearchAsync(query ?? DocumentQuery.All, cancellationToken);
+        return Ok(result);
     }
 
     /// <summary>

@@ -1,10 +1,7 @@
 using Asp.Versioning;
 using ClientManager.Api.Models.Exceptions;
-using ClientManager.Api.Utils.Extensions;
-using ClientManager.Shared.Models.Requests;
-using ClientManager.Shared.Models.Responses;
+using ClientManager.Shared.Models.Search;
 using ClientManager.Shared.Models.Entities;
-using ClientManager.Shared.Models.Enums;
 using ClientManager.DataAccess.Databases.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -32,32 +29,20 @@ public class GlobalRateLimitsController : ControllerBase
     }
 
     /// <summary>
-    /// Lists all global rate limits with optional filtering by target type and pagination.
+    /// Searches global rate limits with optional filtering, sorting, and pagination.
     /// </summary>
-    /// <param name="paging">Pagination parameters.</param>
-    /// <param name="targetType">Optional filter by target type (Service or ResourcePool).</param>
+    /// <param name="query">Query with filters, sort, and pagination. Pass an empty body or null for all results.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>A paginated list of global rate limits.</returns>
-    /// <response code="200">Returns the paginated global rate limits.</response>
-    [HttpGet]
-    [ProducesResponseType(typeof(PagedResponse<GlobalRateLimit>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetAll(
-        [FromQuery] PagedRequest paging,
-        [FromQuery] TargetType? targetType,
+    /// <returns>Matching global rate limits and total count.</returns>
+    /// <response code="200">Returns the matching global rate limits.</response>
+    [HttpPost("search")]
+    [ProducesResponseType(typeof(SearchResult<GlobalRateLimit>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Search(
+        [FromBody] DocumentQuery? query,
         CancellationToken cancellationToken)
     {
-        IReadOnlyList<GlobalRateLimit> limits;
-
-        if (targetType.HasValue)
-        {
-            limits = await _database.GetByTargetTypeAsync(targetType.Value, cancellationToken);
-        }
-        else
-        {
-            limits = await _database.GetAllAsync(cancellationToken);
-        }
-
-        return Ok(limits.ToPagedResponse(paging));
+        var result = await _database.SearchAsync(query ?? DocumentQuery.All, cancellationToken);
+        return Ok(result);
     }
 
     /// <summary>

@@ -263,9 +263,8 @@ public class StatisticsService : IStatisticsService
 
                     if (allBuckets.Count == 0) continue;
 
-                    var filteredBuckets = (from is not null && to is not null)
-                        ? allBuckets.Where(b => b.Timestamp >= from && b.Timestamp <= to)
-                        : allBuckets.Where(b => b.Timestamp == RoundDownToFiveMinutes(now).AddMinutes(-5));
+                    var filteredBuckets = allBuckets
+                        .Where(b => b.Timestamp >= effectiveFrom && b.Timestamp <= effectiveTo);
 
                     var grantedCount = filteredBuckets.Sum(b => b.GrantedCount);
                     var deniedCount = filteredBuckets.Sum(b => b.DeniedCount);
@@ -274,7 +273,7 @@ public class StatisticsService : IStatisticsService
                         .Select(b => b.ActiveCount)
                         .LastOrDefault();
 
-                    if (deniedCount > 0 || latestActiveCount > 0)
+                    if (grantedCount > 0 || deniedCount > 0 || latestActiveCount > 0)
                     {
                         entries.Add(new ClientUsageEntry(
                             client.Id,

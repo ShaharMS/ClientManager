@@ -1,5 +1,6 @@
 using Asp.Versioning;
 using ClientManager.Api.Models.Exceptions;
+using ClientManager.Shared.Models.Search;
 using ClientManager.Shared.Models.Requests;
 using ClientManager.Shared.Models.Responses;
 using ClientManager.Api.Utils.Extensions;
@@ -33,30 +34,20 @@ public class ClientConfigurationsController : ControllerBase
     #region Top-level client config CRUD
 
     /// <summary>
-    /// Lists all client configurations with optional filtering and pagination.
+    /// Searches client configurations with optional filtering, sorting, and pagination.
     /// </summary>
-    /// <param name="paging">Pagination parameters.</param>
-    /// <param name="isEnabled">Optional filter by enabled state.</param>
-    /// <param name="name">Optional case-insensitive name filter (contains match).</param>
+    /// <param name="query">Query with filters, sort, and pagination. Pass an empty body or null for all results.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>A paginated list of client configurations.</returns>
-    /// <response code="200">Returns the paginated client configurations.</response>
-    [HttpGet]
-    [ProducesResponseType(typeof(PagedResponse<ClientConfiguration>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetAll(
-        [FromQuery] PagedRequest paging,
-        [FromQuery] bool? isEnabled,
-        [FromQuery] string? name,
+    /// <returns>Matching client configurations and total count.</returns>
+    /// <response code="200">Returns the matching client configurations.</response>
+    [HttpPost("search")]
+    [ProducesResponseType(typeof(SearchResult<ClientConfiguration>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Search(
+        [FromBody] DocumentQuery? query,
         CancellationToken cancellationToken)
     {
-        var configs = await _database.GetAllAsync(cancellationToken);
-
-        IReadOnlyList<ClientConfiguration> filtered = configs
-            .Where(c => !isEnabled.HasValue || c.IsEnabled == isEnabled.Value)
-            .Where(c => name is null || c.Name.Contains(name, StringComparison.OrdinalIgnoreCase))
-            .ToList();
-
-        return Ok(filtered.ToPagedResponse(paging));
+        var result = await _database.SearchAsync(query ?? DocumentQuery.All, cancellationToken);
+        return Ok(result);
     }
 
     /// <summary>

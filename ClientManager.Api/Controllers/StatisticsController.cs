@@ -1,5 +1,6 @@
 using Asp.Versioning;
 using ClientManager.Api.Models.Exceptions;
+using ClientManager.Shared.Models.Search;
 using ClientManager.Shared.Models.Requests;
 using ClientManager.Shared.Models.Responses;
 using ClientManager.Api.Services.Interfaces;
@@ -64,39 +65,50 @@ public class StatisticsController : ControllerBase
     [ProducesResponseType(typeof(SystemOverviewResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetOverview(CancellationToken cancellationToken)
     {
-        var clients = await _clientConfigDatabase.GetAllAsync(cancellationToken);
-        var services = await _serviceRepository.GetAllAsync(cancellationToken);
-        var pools = await _poolRepository.GetAllAsync(cancellationToken);
+        var enabledClientQuery = new DocumentQuery()
+            .Where(nameof(ClientConfiguration.IsEnabled), FilterOperator.Equals, true)
+            .WithPagination(0, 1);
+        var enabledServiceQuery = new DocumentQuery()
+            .Where(nameof(Service.IsEnabled), FilterOperator.Equals, true)
+            .WithPagination(0, 1);
+
+        var allClients = await _clientConfigDatabase.SearchAsync(DocumentQuery.All.WithPagination(0, 1), cancellationToken);
+        var enabledClients = await _clientConfigDatabase.SearchAsync(enabledClientQuery, cancellationToken);
+        var allServices = await _serviceRepository.SearchAsync(DocumentQuery.All.WithPagination(0, 1), cancellationToken);
+        var enabledServices = await _serviceRepository.SearchAsync(enabledServiceQuery, cancellationToken);
+        var allPools = await _poolRepository.SearchAsync(DocumentQuery.All, cancellationToken);
 
         var activeAllocations = 0;
-        foreach (var pool in pools)
+        foreach (var pool in allPools.Items)
         {
             activeAllocations += await _allocationDatabase.GetActiveCountAsync(pool.Id, cancellationToken);
         }
 
         return Ok(new SystemOverviewResponse(
-            TotalClients: clients.Count,
-            EnabledClients: clients.Count(c => c.IsEnabled),
-            TotalServices: services.Count,
-            EnabledServices: services.Count(s => s.IsEnabled),
-            TotalResourcePools: pools.Count,
+            TotalClients: (int)allClients.TotalCount,
+            EnabledClients: (int)enabledClients.TotalCount,
+            TotalServices: (int)allServices.TotalCount,
+            EnabledServices: (int)enabledServices.TotalCount,
+            TotalResourcePools: (int)allPools.TotalCount,
             ActiveAllocations: activeAllocations));
     }
 
     /// <summary>
-    /// Returns paginated summary statistics for all clients.
+    /// Searches client configurations and returns paginated summary statistics.
     /// </summary>
-    /// <param name="paging">Pagination parameters.</param>
+    /// <param name="query">Query with filters, sort, and pagination. Pass an empty body or null for all results.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>A paginated list of per-client summary statistics.</returns>
-    /// <response code="200">Returns paginated per-client summaries.</response>
-    [HttpGet("clients")]
-    [ProducesResponseType(typeof(PagedResponse<ClientSummaryResponse>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetClients([FromQuery] PagedRequest paging, CancellationToken cancellationToken)
+    /// <returns>Matching per-client summary statistics and total count.</returns>
+    /// <response code="200">Returns matching per-client summaries.</response>
+    [HttpPost("clients/search")]
+    [ProducesResponseType(typeof(SearchResult<ClientSummaryResponse>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> SearchClients(
+        [FromBody] DocumentQuery? query,
+        CancellationToken cancellationToken)
     {
-        var clients = await _clientConfigDatabase.GetAllAsync(cancellationToken);
+        var result = await _clientConfigDatabase.SearchAsync(query ?? DocumentQuery.All, cancellationToken);
 
-        IReadOnlyList<ClientSummaryResponse> summaries = clients.Select(c => new ClientSummaryResponse(
+        var summaries = result.Items.Select(c => new ClientSummaryResponse(
             ClientId: c.Id,
             Name: c.Name,
             IsEnabled: c.IsEnabled,
@@ -104,7 +116,7 @@ public class StatisticsController : ControllerBase
             ResourcePoolCount: c.ResourcePools.Count,
             HasGlobalRateLimit: c.GlobalRateLimit is not null)).ToList();
 
-        return Ok(summaries.ToPagedResponse(paging));
+        return Ok(new SearchResult<ClientSummaryResponse>(summaries, result.TotalCount));
     }
 
     /// <summary>
@@ -166,21 +178,23 @@ public class StatisticsController : ControllerBase
     }
 
     /// <summary>
-    /// Returns paginated per-service usage statistics including client counts and global rate limit presence.
+    /// Searches services and returns paginated per-service usage statistics including client counts and global rate limit presence.
     /// </summary>
-    /// <param name="paging">Pagination parameters.</param>
+    /// <param name="query">Query with filters, sort, and pagination. Pass an empty body or null for all results.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>A paginated list of per-service statistics.</returns>
-    /// <response code="200">Returns paginated per-service statistics.</response>
-    [HttpGet("services")]
-    [ProducesResponseType(typeof(PagedResponse<ServiceStatisticsResponse>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetServices([FromQuery] PagedRequest paging, CancellationToken cancellationToken)
+    /// <returns>Matching per-service statistics and total count.</returns>
+    /// <response code="200">Returns matching per-service statistics.</response>
+    [HttpPost("services/search")]
+    [ProducesResponseType(typeof(SearchResult<ServiceStatisticsResponse>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> SearchServices(
+        [FromBody] DocumentQuery? query,
+        CancellationToken cancellationToken)
     {
-        var services = await _serviceRepository.GetAllAsync(cancellationToken);
+        var serviceResult = await _serviceRepository.SearchAsync(query ?? DocumentQuery.All, cancellationToken);
         var clients = await _clientConfigDatabase.GetAllAsync(cancellationToken);
 
         var results = new List<ServiceStatisticsResponse>();
-        foreach (var service in services)
+        foreach (var service in serviceResult.Items)
         {
             var clientCount = clients.Count(c => c.Services.ContainsKey(service.Id));
             var globalLimit = await _globalRateLimitDatabase.GetByTargetAsync(
@@ -194,7 +208,7 @@ public class StatisticsController : ControllerBase
                 HasGlobalRateLimit: globalLimit is not null));
         }
 
-        return Ok(((IReadOnlyList<ServiceStatisticsResponse>)results).ToPagedResponse(paging));
+        return Ok(new SearchResult<ServiceStatisticsResponse>(results, serviceResult.TotalCount));
     }
 
     /// <summary>
@@ -239,20 +253,22 @@ public class StatisticsController : ControllerBase
     }
 
     /// <summary>
-    /// Returns paginated per-resource-pool utilization statistics including active allocations and available slots.
+    /// Searches resource pools and returns paginated per-pool utilization statistics including active allocations and available slots.
     /// </summary>
-    /// <param name="paging">Pagination parameters.</param>
+    /// <param name="query">Query with filters, sort, and pagination. Pass an empty body or null for all results.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>A paginated list of per-pool statistics.</returns>
-    /// <response code="200">Returns paginated per-pool statistics.</response>
-    [HttpGet("resource-pools")]
-    [ProducesResponseType(typeof(PagedResponse<ResourcePoolStatisticsResponse>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetResourcePools([FromQuery] PagedRequest paging, CancellationToken cancellationToken)
+    /// <returns>Matching per-pool statistics and total count.</returns>
+    /// <response code="200">Returns matching per-pool statistics.</response>
+    [HttpPost("resource-pools/search")]
+    [ProducesResponseType(typeof(SearchResult<ResourcePoolStatisticsResponse>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> SearchResourcePools(
+        [FromBody] DocumentQuery? query,
+        CancellationToken cancellationToken)
     {
-        var pools = await _poolRepository.GetAllAsync(cancellationToken);
+        var poolResult = await _poolRepository.SearchAsync(query ?? DocumentQuery.All, cancellationToken);
 
         var results = new List<ResourcePoolStatisticsResponse>();
-        foreach (var pool in pools)
+        foreach (var pool in poolResult.Items)
         {
             var activeCount = await _allocationDatabase.GetActiveCountAsync(pool.Id, cancellationToken);
             var globalLimit = await _globalRateLimitDatabase.GetByTargetAsync(
@@ -267,7 +283,7 @@ public class StatisticsController : ControllerBase
                 HasGlobalRateLimit: globalLimit is not null));
         }
 
-        return Ok(((IReadOnlyList<ResourcePoolStatisticsResponse>)results).ToPagedResponse(paging));
+        return Ok(new SearchResult<ResourcePoolStatisticsResponse>(results, poolResult.TotalCount));
     }
 
     /// <summary>
