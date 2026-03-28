@@ -1,4 +1,5 @@
 using ClientManager.DataAccess.Stores.Interfaces;
+using ClientManager.Shared.Models.Search;
 using ClientManager.DataAccess.Databases.Interfaces;
 using ClientManager.Shared.Models.Entities;
 
@@ -30,6 +31,10 @@ public class ClientConfigurationDatabase : IClientConfigurationDatabase
     /// <inheritdoc />
     public Task<IReadOnlyList<ClientConfiguration>> GetAllAsync(CancellationToken cancellationToken = default) =>
         _store.GetAllAsync<ClientConfiguration>(Collection, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<SearchResult<ClientConfiguration>> SearchAsync(DocumentQuery query, CancellationToken cancellationToken = default) =>
+        _store.SearchAsync<ClientConfiguration>(Collection, query, cancellationToken);
 
     /// <inheritdoc />
     public Task CreateAsync(ClientConfiguration configuration, CancellationToken cancellationToken = default) =>

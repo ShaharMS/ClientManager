@@ -1,4 +1,5 @@
 using ClientManager.DataAccess.Stores.Interfaces;
+using ClientManager.Shared.Models.Search;
 using ClientManager.DataAccess.Databases.Interfaces;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Enums;
@@ -6,8 +7,9 @@ using ClientManager.Shared.Models.Enums;
 namespace ClientManager.DataAccess.Databases.Implementations;
 
 /// <summary>
-/// Persists usage snapshots in <see cref="IDocumentStore"/> and performs in-memory filtering for queries.
-/// Segment-aware methods construct deterministic segment IDs to avoid full-collection scans.
+/// Persists usage snapshots in <see cref="IDocumentStore"/> and pushes filtering down to the
+/// store via <see cref="DocumentQuery"/>. Segment-aware methods construct deterministic segment
+/// IDs to avoid full-collection scans.
 /// </summary>
 public class UsageSnapshotDatabase : IUsageSnapshotDatabase
 {
@@ -37,8 +39,13 @@ public class UsageSnapshotDatabase : IUsageSnapshotDatabase
         BucketGranularity granularity,
         CancellationToken cancellationToken = default)
     {
-        var all = await _store.GetAllAsync<UsageSnapshot>(Collection, cancellationToken);
-        return [.. all.Where(s => s.TargetId == targetId && s.TargetType == targetType && s.Granularity == granularity)];
+        var query = new DocumentQuery()
+            .Where(nameof(UsageSnapshot.TargetId), FilterOperator.Equals, targetId)
+            .Where(nameof(UsageSnapshot.TargetType), FilterOperator.Equals, targetType.ToString())
+            .Where(nameof(UsageSnapshot.Granularity), FilterOperator.Equals, granularity.ToString());
+
+        var result = await _store.SearchAsync<UsageSnapshot>(Collection, query, cancellationToken);
+        return [.. result.Items];
     }
 
     /// <inheritdoc />
@@ -66,8 +73,11 @@ public class UsageSnapshotDatabase : IUsageSnapshotDatabase
         BucketGranularity granularity,
         CancellationToken cancellationToken = default)
     {
-        var all = await _store.GetAllAsync<UsageSnapshot>(Collection, cancellationToken);
-        return [.. all.Where(s => s.Granularity == granularity)];
+        var query = new DocumentQuery()
+            .Where(nameof(UsageSnapshot.Granularity), FilterOperator.Equals, granularity.ToString());
+
+        var result = await _store.SearchAsync<UsageSnapshot>(Collection, query, cancellationToken);
+        return [.. result.Items];
     }
 
     /// <summary>

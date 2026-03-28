@@ -1,4 +1,5 @@
 using ClientManager.DataAccess.Stores.Interfaces;
+using ClientManager.Shared.Models.Search;
 using ClientManager.DataAccess.Repositories.Interfaces;
 
 namespace ClientManager.DataAccess.Repositories.Implementations;
@@ -46,4 +47,8 @@ public class EntityRepository<T> : IEntityRepository<T> where T : class
     /// <inheritdoc />
     public Task DeleteAsync(string id, CancellationToken cancellationToken = default) =>
         _store.DeleteAsync(_collection, id, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<SearchResult<T>> SearchAsync(DocumentQuery query, CancellationToken cancellationToken = default) =>
+        _store.SearchAsync<T>(_collection, query, cancellationToken);
 }

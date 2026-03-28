@@ -1,4 +1,5 @@
 using ClientManager.DataAccess.Stores.Interfaces;
+using ClientManager.Shared.Models.Search;
 using ClientManager.DataAccess.Databases.Interfaces;
 using ClientManager.Shared.Models.Entities;
 
@@ -45,10 +46,12 @@ public class ResourceAllocationDatabase : IResourceAllocationDatabase
     /// <inheritdoc />
     public async Task<Dictionary<string, int>> GetActiveCountsByPoolAsync(CancellationToken cancellationToken = default)
     {
-        var all = await _store.GetAllAsync<ResourceAllocation>(Collection, cancellationToken);
-        var now = DateTime.UtcNow;
-        return all
-            .Where(a => !a.IsReleased && a.ExpiresAt > now)
+        var query = new DocumentQuery()
+            .Where(nameof(ResourceAllocation.IsReleased), FilterOperator.Equals, false)
+            .Where(nameof(ResourceAllocation.ExpiresAt), FilterOperator.GreaterThan, DateTime.UtcNow);
+
+        var result = await _store.SearchAsync<ResourceAllocation>(Collection, query, cancellationToken);
+        return result.Items
             .GroupBy(a => a.ResourcePoolId)
             .ToDictionary(g => g.Key, g => g.Count());
     }
@@ -56,10 +59,12 @@ public class ResourceAllocationDatabase : IResourceAllocationDatabase
     /// <inheritdoc />
     public async Task<Dictionary<(string PoolId, string ClientId), int>> GetActiveCountsByPoolAndClientAsync(CancellationToken cancellationToken = default)
     {
-        var all = await _store.GetAllAsync<ResourceAllocation>(Collection, cancellationToken);
-        var now = DateTime.UtcNow;
-        return all
-            .Where(a => !a.IsReleased && a.ExpiresAt > now)
+        var query = new DocumentQuery()
+            .Where(nameof(ResourceAllocation.IsReleased), FilterOperator.Equals, false)
+            .Where(nameof(ResourceAllocation.ExpiresAt), FilterOperator.GreaterThan, DateTime.UtcNow);
+
+        var result = await _store.SearchAsync<ResourceAllocation>(Collection, query, cancellationToken);
+        return result.Items
             .GroupBy(a => (a.ResourcePoolId, a.ClientId))
             .ToDictionary(g => g.Key, g => g.Count());
     }
@@ -87,13 +92,16 @@ public class ResourceAllocationDatabase : IResourceAllocationDatabase
     /// <inheritdoc />
     public async Task<int> CleanupExpiredAsync(CancellationToken cancellationToken = default)
     {
-        var all = await _store.GetAllAsync<ResourceAllocation>(Collection, cancellationToken);
+        var query = new DocumentQuery()
+            .Where(nameof(ResourceAllocation.IsReleased), FilterOperator.Equals, false);
+
+        var result = await _store.SearchAsync<ResourceAllocation>(Collection, query, cancellationToken);
         var now = DateTime.UtcNow;
         var count = 0;
 
-        foreach (var allocation in all)
+        foreach (var allocation in result.Items)
         {
-            if (!allocation.IsReleased && allocation.ExpiresAt <= now)
+            if (allocation.ExpiresAt <= now)
             {
                 await _store.SetAsync(Collection, allocation.Id, allocation with { IsReleased = true }, cancellationToken);
                 await _store.DecrementCounterAsync(PoolCounterKey(allocation.ResourcePoolId), cancellationToken);

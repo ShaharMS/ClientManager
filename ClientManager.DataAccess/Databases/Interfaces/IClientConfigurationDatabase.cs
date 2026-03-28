@@ -1,3 +1,4 @@
+using ClientManager.Shared.Models.Search;
 using ClientManager.Shared.Models.Entities;
 
 namespace ClientManager.DataAccess.Databases.Interfaces;
@@ -41,6 +42,14 @@ public interface IClientConfigurationDatabase
     /// <param name="cancellationToken">Cancels the enumeration early if the caller is shutting down.</param>
     /// <returns>A read-only list of all client configurations.</returns>
     Task<IReadOnlyList<ClientConfiguration>> GetAllAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Searches for client configurations matching the given query, with server-side filtering and pagination.
+    /// </summary>
+    /// <param name="query">The query defining filters, sorting, and pagination.</param>
+    /// <param name="cancellationToken">Cancels the search if the store is unresponsive.</param>
+    /// <returns>The matching configurations and total count (ignoring pagination).</returns>
+    Task<SearchResult<ClientConfiguration>> SearchAsync(DocumentQuery query, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Creates a new client configuration.

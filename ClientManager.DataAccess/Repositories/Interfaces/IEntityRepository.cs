@@ -1,3 +1,5 @@
+using ClientManager.Shared.Models.Search;
+
 namespace ClientManager.DataAccess.Repositories.Interfaces;
 
 /// <summary>
@@ -52,4 +54,12 @@ public interface IEntityRepository<T> where T : class
     /// <param name="id">The unique identifier of the entity to delete.</param>
     /// <param name="cancellationToken">Cancels the delete before it completes.</param>
     Task DeleteAsync(string id, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Searches for entities matching the given query, with server-side filtering and pagination.
+    /// </summary>
+    /// <param name="query">The query defining filters, sorting, and pagination.</param>
+    /// <param name="cancellationToken">Cancels the search if the store is unresponsive.</param>
+    /// <returns>The matching entities and total count (ignoring pagination).</returns>
+    Task<SearchResult<T>> SearchAsync(DocumentQuery query, CancellationToken cancellationToken = default);
 }

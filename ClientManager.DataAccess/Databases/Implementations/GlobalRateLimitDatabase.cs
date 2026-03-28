@@ -1,4 +1,5 @@
 using ClientManager.DataAccess.Stores.Interfaces;
+using ClientManager.Shared.Models.Search;
 using ClientManager.DataAccess.Databases.Interfaces;
 using ClientManager.DataAccess.Repositories.Implementations;
 using ClientManager.Shared.Models.Entities;
@@ -8,7 +9,8 @@ namespace ClientManager.DataAccess.Databases.Implementations;
 
 /// <summary>
 /// Platform-agnostic implementation of <see cref="IGlobalRateLimitDatabase"/>.
-/// Delegates storage to <see cref="IDocumentStore"/> and filters in memory.
+/// Delegates storage to <see cref="IDocumentStore"/> and pushes filtering down
+/// to the store via <see cref="DocumentQuery"/>.
 /// </summary>
 public class GlobalRateLimitDatabase : EntityRepository<GlobalRateLimit>, IGlobalRateLimitDatabase
 {
@@ -28,14 +30,22 @@ public class GlobalRateLimitDatabase : EntityRepository<GlobalRateLimit>, IGloba
     /// <inheritdoc />
     public async Task<GlobalRateLimit?> GetByTargetAsync(string targetId, TargetType targetType, CancellationToken cancellationToken = default)
     {
-        var all = await _store.GetAllAsync<GlobalRateLimit>(Collection, cancellationToken);
-        return all.FirstOrDefault(g => g.TargetId == targetId && g.TargetType == targetType);
+        var query = new DocumentQuery()
+            .Where(nameof(GlobalRateLimit.TargetId), FilterOperator.Equals, targetId)
+            .Where(nameof(GlobalRateLimit.TargetType), FilterOperator.Equals, targetType.ToString())
+            .WithPagination(0, 1);
+
+        var result = await _store.SearchAsync<GlobalRateLimit>(Collection, query, cancellationToken);
+        return result.Items.FirstOrDefault();
     }
 
     /// <inheritdoc />
     public async Task<IReadOnlyList<GlobalRateLimit>> GetByTargetTypeAsync(TargetType targetType, CancellationToken cancellationToken = default)
     {
-        var all = await _store.GetAllAsync<GlobalRateLimit>(Collection, cancellationToken);
-        return [.. all.Where(g => g.TargetType == targetType)];
+        var query = new DocumentQuery()
+            .Where(nameof(GlobalRateLimit.TargetType), FilterOperator.Equals, targetType.ToString());
+
+        var result = await _store.SearchAsync<GlobalRateLimit>(Collection, query, cancellationToken);
+        return [.. result.Items];
     }
 }
