@@ -1,5 +1,8 @@
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using ClientManager.DataAccess.Stores.Interfaces;
+using ClientManager.Shared.Models.Search;
+using SearchDirection = ClientManager.Shared.Models.Search.SortDirection;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
 using MongoDB.Driver;
@@ -153,6 +156,89 @@ public class MongoDBDocumentStore : IDocumentStore
             { "WindowStart", DateTime.UtcNow }
         };
         await CounterCollection.ReplaceOneAsync(filter, doc, new ReplaceOptions { IsUpsert = true }, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<SearchResult<T>> SearchAsync<T>(
+        string collection, DocumentQuery query,
+        CancellationToken cancellationToken = default) where T : class
+    {
+        var mongoCollection = GetCollection(collection);
+        var filter = BuildFilter(query);
+
+        var totalCount = await mongoCollection.CountDocumentsAsync(filter, cancellationToken: cancellationToken);
+
+        var findFluent = mongoCollection.Find(filter);
+
+        if (query.Sort is not null)
+        {
+            var sort = query.Sort.Direction == SearchDirection.Ascending
+                ? Builders<BsonDocument>.Sort.Ascending(query.Sort.FieldName)
+                : Builders<BsonDocument>.Sort.Descending(query.Sort.FieldName);
+            findFluent = findFluent.Sort(sort);
+        }
+
+        if (query.Skip.HasValue)
+            findFluent = findFluent.Skip(query.Skip.Value);
+
+        if (query.Take.HasValue)
+            findFluent = findFluent.Limit(query.Take.Value);
+
+        var docs = await findFluent.ToListAsync(cancellationToken);
+        var items = docs.Select(DeserializeDocument<T>).ToList();
+
+        return new SearchResult<T>(items, totalCount);
+    }
+
+    /// <inheritdoc />
+    public async Task<long> CountAsync<T>(
+        string collection, DocumentQuery query,
+        CancellationToken cancellationToken = default) where T : class
+    {
+        var filter = BuildFilter(query);
+        return await GetCollection(collection).CountDocumentsAsync(filter, cancellationToken: cancellationToken);
+    }
+
+    private static FilterDefinition<BsonDocument> BuildFilter(DocumentQuery query)
+    {
+        var filters = new List<FilterDefinition<BsonDocument>>();
+
+        foreach (var clause in query.Filters)
+        {
+            filters.Add(TranslateFilter(clause));
+        }
+
+        if (!string.IsNullOrEmpty(query.TextSearch))
+        {
+            var escaped = Regex.Escape(query.TextSearch);
+            var regex = new BsonRegularExpression(escaped, "i");
+            filters.Add(Builders<BsonDocument>.Filter.Regex("$**", regex));
+        }
+
+        return filters.Count == 0
+            ? Builders<BsonDocument>.Filter.Empty
+            : Builders<BsonDocument>.Filter.And(filters);
+    }
+
+    private static FilterDefinition<BsonDocument> TranslateFilter(FilterClause clause)
+    {
+        var field = clause.FieldName;
+        var value = BsonValue.Create(clause.Value);
+
+        return clause.Operator switch
+        {
+            FilterOperator.Equals => Builders<BsonDocument>.Filter.Eq(field, value),
+            FilterOperator.NotEquals => Builders<BsonDocument>.Filter.Ne(field, value),
+            FilterOperator.Contains => Builders<BsonDocument>.Filter.Regex(
+                field, new BsonRegularExpression(Regex.Escape(clause.Value.ToString()!), "i")),
+            FilterOperator.StartsWith => Builders<BsonDocument>.Filter.Regex(
+                field, new BsonRegularExpression("^" + Regex.Escape(clause.Value.ToString()!), "i")),
+            FilterOperator.GreaterThan => Builders<BsonDocument>.Filter.Gt(field, value),
+            FilterOperator.GreaterThanOrEqual => Builders<BsonDocument>.Filter.Gte(field, value),
+            FilterOperator.LessThan => Builders<BsonDocument>.Filter.Lt(field, value),
+            FilterOperator.LessThanOrEqual => Builders<BsonDocument>.Filter.Lte(field, value),
+            _ => Builders<BsonDocument>.Filter.Empty
+        };
     }
 
     private static T DeserializeDocument<T>(BsonDocument doc)
