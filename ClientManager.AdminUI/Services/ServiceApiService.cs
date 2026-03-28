@@ -1,6 +1,6 @@
 using System.Net.Http.Json;
 using ClientManager.Shared.Models.Entities;
-using ClientManager.Shared.Models.Responses;
+using ClientManager.Shared.Models.Search;
 
 namespace ClientManager.AdminUI.Services;
 
@@ -21,11 +21,18 @@ public class ServiceApiService
         if (_cachedAll is not null && DateTime.UtcNow - _cachedAllAt < CacheTtl)
             return _cachedAll;
 
-        var response = await _httpClient.GetFromJsonAsync<PagedResponse<Service>>(
-            "api/v1/services?pageSize=100");
-        _cachedAll = response?.Items?.ToList() ?? [];
+        var result = await SearchAsync(new DocumentQuery { Take = 100 });
+        _cachedAll = result.Items.ToList();
         _cachedAllAt = DateTime.UtcNow;
         return _cachedAll;
+    }
+
+    public async Task<SearchResult<Service>> SearchAsync(DocumentQuery? query = null)
+    {
+        var response = await _httpClient.PostAsJsonAsync("api/v1/services/search", query ?? DocumentQuery.All);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<SearchResult<Service>>()
+            ?? new SearchResult<Service>([], 0);
     }
 
     public async Task<Service?> GetByIdAsync(string id)

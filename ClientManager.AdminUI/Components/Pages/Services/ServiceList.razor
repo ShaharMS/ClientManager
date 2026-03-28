@@ -21,10 +21,18 @@ else
 {
     <div class="cm-list-page__table-card">
         <div class="cm-list-page__header">
-            <RadzenTextBox Placeholder="Search services..."
-                Value="@_search"
-                ValueChanged="@((string v) => { _search = v; StateHasChanged(); })"
-                Style="width: 280px;" />
+            <div style="display: flex; gap: 12px; align-items: center;">
+                <RadzenTextBox Placeholder="Search services..."
+                    Value="@_search"
+                    ValueChanged="@((string v) => { _search = v; StateHasChanged(); })"
+                    Style="width: 280px;" />
+                <RadzenDropDown TValue="bool?" Data="@_enabledOptions"
+                    TextProperty="Label" ValueProperty="Value"
+                    Value="@_enabledFilter"
+                    ValueChanged="@((bool? v) => OnEnabledFilterChanged(v))"
+                    Placeholder="All statuses" AllowClear="true"
+                    Style="width: 160px;" />
+            </div>
             <RadzenButton Text="Create Service" Icon="add" Click="@(() => Nav.NavigateTo("/services/new"))"
                 ButtonStyle="ButtonStyle.Primary" />
         </div>
@@ -65,10 +73,17 @@ else
     private bool _loading = true;
     private string? _error;
     private string? _search;
+    private bool? _enabledFilter;
     private List<Service> _services = [];
     private int _pageSize = 10;
     private IJSObjectReference? _tableJs;
     private DotNetObjectReference<ServiceList>? _selfRef;
+
+    private static readonly List<object> _enabledOptions =
+    [
+        new { Label = "Enabled", Value = (bool?)true },
+        new { Label = "Disabled", Value = (bool?)false }
+    ];
 
     private IEnumerable<Service> _filteredServices =>
         string.IsNullOrWhiteSpace(_search)
@@ -113,7 +128,17 @@ else
     {
         try
         {
-            _services = await ServiceApi.GetAllAsync();
+            if (_enabledFilter.HasValue)
+            {
+                var query = new DocumentQuery { Take = 100 }
+                    .Where(nameof(Service.IsEnabled), ClientManager.Shared.Models.Search.FilterOperator.Equals, _enabledFilter.Value);
+                var result = await ServiceApi.SearchAsync(query);
+                _services = result.Items.ToList();
+            }
+            else
+            {
+                _services = await ServiceApi.GetAllAsync();
+            }
             _error = null;
         }
         catch (HttpRequestException ex)
@@ -124,6 +149,13 @@ else
         {
             _loading = false;
         }
+    }
+
+    private async Task OnEnabledFilterChanged(bool? value)
+    {
+        _enabledFilter = value;
+        _loading = true;
+        await LoadAsync();
     }
 
     private async Task DeleteAsync(string id)

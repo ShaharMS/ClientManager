@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using ClientManager.Shared.Models.Responses;
+using ClientManager.Shared.Models.Search;
 
 namespace ClientManager.AdminUI.Services;
 
@@ -19,9 +20,12 @@ public class StatisticsApiService
 
     public async Task<List<ResourcePoolStatisticsResponse>> GetResourcePoolStatsAsync()
     {
-        var response = await _httpClient.GetFromJsonAsync<PagedResponse<ResourcePoolStatisticsResponse>>(
-            "api/v1/statistics/resource-pools?pageSize=100");
-        return response?.Items?.ToList() ?? [];
+        var response = await _httpClient.PostAsJsonAsync(
+            "api/v1/statistics/resource-pools/search",
+            new DocumentQuery { Take = 100 });
+        response.EnsureSuccessStatusCode();
+        var result = await response.Content.ReadFromJsonAsync<SearchResult<ResourcePoolStatisticsResponse>>();
+        return result?.Items.ToList() ?? [];
     }
 
     public async Task<GlobalUsageStatsResponse?> GetGlobalUsageStatsAsync()

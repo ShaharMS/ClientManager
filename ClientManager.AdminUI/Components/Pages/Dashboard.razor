@@ -91,18 +91,26 @@ else
             <RadzenChart Style="height: 400px;">
                 @foreach (var targetChart in _targetCharts)
                 {
-                    @foreach (var clientArea in targetChart.ClientSeries)
+                    @foreach (var clientArea in GetChartSeries(targetChart))
                     {
-                        <RadzenStackedAreaSeries Data="@TransformPoints(clientArea.Points)"
+                        <RadzenStackedAreaSeries Data="@clientArea.Points"
                             CategoryProperty="Label" ValueProperty="Value"
                             Title="@clientArea.ClientName"
                             Fill="@Colors.GetColor(clientArea.ClientId)"
-                            Stroke="@Colors.GetColor(clientArea.ClientId)" />
+                            Stroke="@Colors.GetColor(clientArea.ClientId)">
+                            <TooltipTemplate Context="point">
+                                <span>@clientArea.ClientName: @(point.OriginalValue.ToString("N0"))</span>
+                            </TooltipTemplate>
+                        </RadzenStackedAreaSeries>
                     }
                     <RadzenLineSeries Data="@TransformPoints(targetChart.CapSeries)"
                         CategoryProperty="Label" ValueProperty="Value"
                         Title="Cap" LineType="LineType.Dashed"
-                        Stroke="var(--color-text-secondary)" />
+                        Stroke="var(--color-text-secondary)">
+                        <TooltipTemplate Context="point">
+                            <span>Cap: @(point.OriginalValue.ToString("N0"))</span>
+                        </TooltipTemplate>
+                    </RadzenLineSeries>
                 }
                 <RadzenCategoryAxis />
                 <RadzenValueAxis Formatter="@(_axisScaleType == AxisScaleType.Logarithmic ? LogarithmicScaleHelper.FormatAxisLabel : LogarithmicScaleHelper.FormatLinearAxisLabel)" />
@@ -552,7 +560,10 @@ else
 
     private record FilterOption(string Label, string Value);
     private record NamedItem(string Id, string Name);
-    private record ChartPoint(string Label, double Value);
+    private record ChartPoint(string Label, double Value)
+    {
+        public double OriginalValue { get; init; } = Value;
+    }
     private record ClientAreaSeries(string ClientId, string ClientName, List<ChartPoint> Points);
     private record TargetChartData(string TargetName, List<ClientAreaSeries> ClientSeries, List<ChartPoint> CapSeries);
     private record ClientUsagePoint(string ClientId, string ClientName, double Value);
@@ -619,8 +630,33 @@ else
 
     private List<ChartPoint> TransformPoints(List<ChartPoint> points) =>
         _axisScaleType == AxisScaleType.Logarithmic
-            ? points.Select(p => p with { Value = LogarithmicScaleHelper.Transform(p.Value) }).ToList()
+            ? points.Select(p => p with { Value = LogarithmicScaleHelper.Transform(p.Value), OriginalValue = p.Value }).ToList()
             : points;
+
+    private List<ClientAreaSeries> GetChartSeries(TargetChartData chart) =>
+        _axisScaleType == AxisScaleType.Logarithmic
+            ? TransformStackedLogarithmic(chart.ClientSeries)
+            : chart.ClientSeries;
+
+    private static List<ClientAreaSeries> TransformStackedLogarithmic(List<ClientAreaSeries> series)
+    {
+        if (series.Count == 0) return series;
+
+        var totals = new Dictionary<string, double>();
+        foreach (var s in series)
+            foreach (var p in s.Points)
+                totals[p.Label] = totals.GetValueOrDefault(p.Label) + p.Value;
+
+        return series.Select(s => new ClientAreaSeries(s.ClientId, s.ClientName,
+            s.Points.Select(p =>
+            {
+                var total = totals.GetValueOrDefault(p.Label);
+                if (total <= 0) return p with { Value = 0, OriginalValue = p.Value };
+                var logTotal = LogarithmicScaleHelper.Transform(total);
+                return p with { Value = (p.Value / total) * logTotal, OriginalValue = p.Value };
+            }).ToList()
+        )).ToList();
+    }
 
     private async Task RefreshDataAsync()
     {

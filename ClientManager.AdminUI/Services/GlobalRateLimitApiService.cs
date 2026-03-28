@@ -1,7 +1,7 @@
 using System.Net.Http.Json;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Enums;
-using ClientManager.Shared.Models.Responses;
+using ClientManager.Shared.Models.Search;
 
 namespace ClientManager.AdminUI.Services;
 
@@ -23,9 +23,8 @@ public class GlobalRateLimitApiService
         if (_cachedAll is not null && DateTime.UtcNow - _cachedAllAt < CacheTtl)
             return _cachedAll;
 
-        var response = await _httpClient.GetFromJsonAsync<PagedResponse<GlobalRateLimit>>(
-            "api/v1/global-rate-limits?pageSize=100");
-        _cachedAll = response?.Items?.ToList() ?? [];
+        var result = await SearchAsync(new DocumentQuery { Take = 100 });
+        _cachedAll = result.Items.ToList();
         _cachedAllAt = DateTime.UtcNow;
         return _cachedAll;
     }
@@ -35,11 +34,20 @@ public class GlobalRateLimitApiService
         if (_cachedByTarget.TryGetValue(targetType, out var cached) && DateTime.UtcNow - cached.At < CacheTtl)
             return cached.Data;
 
-        var response = await _httpClient.GetFromJsonAsync<PagedResponse<GlobalRateLimit>>(
-            $"api/v1/global-rate-limits?targetType={targetType}&pageSize=100");
-        var data = response?.Items?.ToList() ?? [];
+        var query = new DocumentQuery { Take = 100 }
+            .Where(nameof(GlobalRateLimit.TargetType), FilterOperator.Equals, targetType.ToString());
+        var result = await SearchAsync(query);
+        var data = result.Items.ToList();
         _cachedByTarget[targetType] = (data, DateTime.UtcNow);
         return data;
+    }
+
+    public async Task<SearchResult<GlobalRateLimit>> SearchAsync(DocumentQuery? query = null)
+    {
+        var response = await _httpClient.PostAsJsonAsync("api/v1/global-rate-limits/search", query ?? DocumentQuery.All);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<SearchResult<GlobalRateLimit>>()
+            ?? new SearchResult<GlobalRateLimit>([], 0);
     }
 
     public async Task<GlobalRateLimit?> GetByIdAsync(string id)

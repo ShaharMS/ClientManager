@@ -20,8 +20,8 @@ public static class LogarithmicScaleHelper
         {
             < 1 => original.ToString("F1"),
             < 1_000 => original.ToString("N0"),
-            < 1_000_000 => (original / 1_000).ToString("N1") + "K",
-            _ => (original / 1_000_000).ToString("N1") + "M"
+            < 1_000_000 => FormatCompact(original / 1_000) + "K",
+            _ => FormatCompact(original / 1_000_000) + "M"
         };
     }
 
@@ -32,8 +32,14 @@ public static class LogarithmicScaleHelper
         {
             < 1 => d.ToString("F1"),
             < 1_000 => d.ToString("N0"),
-            < 1_000_000 => (d / 1_000).ToString("N1") + "K",
-            _ => (d / 1_000_000).ToString("N1") + "M"
+            < 1_000_000 => FormatCompact(d / 1_000) + "K",
+            _ => FormatCompact(d / 1_000_000) + "M"
         };
+    }
+
+    private static string FormatCompact(double value)
+    {
+        var rounded = Math.Round(value, 1);
+        return rounded % 1 == 0 ? rounded.ToString("N0") : rounded.ToString("N1");
     }
 }

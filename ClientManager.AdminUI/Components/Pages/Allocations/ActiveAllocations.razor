@@ -43,18 +43,31 @@
         {
             <span class="cm-dashboard__chart-title">@targetChart.TargetName - Slot Usage</span>
             <RadzenChart Style="height: 400px;">
-                @foreach (var clientArea in targetChart.ClientSeries)
+                @{
+                    var allocSeries = _axisScaleType == AxisScaleType.Logarithmic
+                        ? TransformStackedLogarithmic(targetChart.ClientSeries)
+                        : targetChart.ClientSeries;
+                }
+                @foreach (var clientArea in allocSeries)
                 {
-                    <RadzenStackedAreaSeries Data="@TransformPoints(clientArea.Points)"
+                    <RadzenStackedAreaSeries Data="@clientArea.Points"
                         CategoryProperty="Label" ValueProperty="Value"
                         Title="@clientArea.ClientName"
                         Fill="@Colors.GetColor(clientArea.ClientId)"
-                        Stroke="@Colors.GetColor(clientArea.ClientId)" />
+                        Stroke="@Colors.GetColor(clientArea.ClientId)">
+                        <TooltipTemplate Context="point">
+                            <span>@clientArea.ClientName: @(point.OriginalValue.ToString("N0"))</span>
+                        </TooltipTemplate>
+                    </RadzenStackedAreaSeries>
                 }
                 <RadzenLineSeries Data="@TransformPoints(targetChart.CapSeries)"
                     CategoryProperty="Label" ValueProperty="Value"
                     Title="Max Slots" LineType="LineType.Dashed"
-                    Stroke="var(--color-text-secondary)" />
+                    Stroke="var(--color-text-secondary)">
+                    <TooltipTemplate Context="point">
+                        <span>Max Slots: @(point.OriginalValue.ToString("N0"))</span>
+                    </TooltipTemplate>
+                </RadzenLineSeries>
                 <RadzenCategoryAxis />
                 <RadzenValueAxis Formatter="@(_axisScaleType == AxisScaleType.Logarithmic ? LogarithmicScaleHelper.FormatAxisLabel : LogarithmicScaleHelper.FormatLinearAxisLabel)" />
                 <RadzenLegend Position="LegendPosition.Right" />
@@ -259,7 +272,7 @@
 
     private List<ChartPoint> TransformPoints(List<ChartPoint> points) =>
         _axisScaleType == AxisScaleType.Logarithmic
-            ? points.Select(p => p with { Value = LogarithmicScaleHelper.Transform(p.Value) }).ToList()
+            ? points.Select(p => p with { Value = LogarithmicScaleHelper.Transform(p.Value), OriginalValue = p.Value }).ToList()
             : points;
 
     private async Task OnTimeRangeChanged(TimeRangePreset preset)
@@ -469,7 +482,10 @@
     }
 
     private record NamedItem(string Id, string Name);
-    private record ChartPoint(string Label, double Value);
+    private record ChartPoint(string Label, double Value)
+    {
+        public double OriginalValue { get; init; } = Value;
+    }
     private record ClientOption(string Id, string Name);
     private record ClientAreaSeries(string ClientId, string ClientName, List<ChartPoint> Points);
     private record TargetChartData(
@@ -478,4 +494,24 @@
     private record AllocationClientRow(
         string ClientId, string ClientName, string PoolName,
         int ActiveSlots, int MaxSlots, long DeniedLast5Min);
+
+    private static List<ClientAreaSeries> TransformStackedLogarithmic(List<ClientAreaSeries> series)
+    {
+        if (series.Count == 0) return series;
+
+        var totals = new Dictionary<string, double>();
+        foreach (var s in series)
+            foreach (var p in s.Points)
+                totals[p.Label] = totals.GetValueOrDefault(p.Label) + p.Value;
+
+        return series.Select(s => new ClientAreaSeries(s.ClientId, s.ClientName,
+            s.Points.Select(p =>
+            {
+                var total = totals.GetValueOrDefault(p.Label);
+                if (total <= 0) return p with { Value = 0, OriginalValue = p.Value };
+                var logTotal = LogarithmicScaleHelper.Transform(total);
+                return p with { Value = (p.Value / total) * logTotal, OriginalValue = p.Value };
+            }).ToList()
+        )).ToList();
+    }
 }

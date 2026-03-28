@@ -21,10 +21,18 @@ else
 {
     <div class="cm-list-page__table-card">
         <div class="cm-list-page__header">
-            <RadzenTextBox Placeholder="Search rate limits..."
-                Value="@_search"
-                ValueChanged="@((string v) => { _search = v; StateHasChanged(); })"
-                Style="width: 280px;" />
+            <div style="display: flex; gap: 12px; align-items: center;">
+                <RadzenTextBox Placeholder="Search rate limits..."
+                    Value="@_search"
+                    ValueChanged="@((string v) => { _search = v; StateHasChanged(); })"
+                    Style="width: 280px;" />
+                <RadzenDropDown TValue="TargetType?" Data="@_targetTypeOptions"
+                    TextProperty="Label" ValueProperty="Value"
+                    Value="@_targetTypeFilter"
+                    ValueChanged="@((TargetType? v) => OnTargetTypeFilterChanged(v))"
+                    Placeholder="All target types" AllowClear="true"
+                    Style="width: 180px;" />
+            </div>
             <RadzenButton Text="Create Rate Limit" Icon="add" Click="@(() => Nav.NavigateTo("/rate-limits/new"))"
                 ButtonStyle="ButtonStyle.Primary" />
         </div>
@@ -62,10 +70,17 @@ else
     private bool _loading = true;
     private string? _error;
     private string? _search;
+    private TargetType? _targetTypeFilter;
     private List<GlobalRateLimit> _limits = [];
     private int _pageSize = 10;
     private IJSObjectReference? _tableJs;
     private DotNetObjectReference<RateLimitList>? _selfRef;
+
+    private static readonly List<object> _targetTypeOptions =
+    [
+        new { Label = "Service", Value = TargetType.Service },
+        new { Label = "Resource Pool", Value = TargetType.ResourcePool }
+    ];
 
     private IEnumerable<GlobalRateLimit> _filteredLimits =>
         string.IsNullOrWhiteSpace(_search)
@@ -110,7 +125,14 @@ else
     {
         try
         {
-            _limits = await RateLimitApi.GetByTargetTypeAsync(TargetType.Service);
+            if (_targetTypeFilter.HasValue)
+            {
+                _limits = await RateLimitApi.GetByTargetTypeAsync(_targetTypeFilter.Value);
+            }
+            else
+            {
+                _limits = await RateLimitApi.GetAllAsync();
+            }
             _error = null;
         }
         catch (HttpRequestException ex)
@@ -121,6 +143,13 @@ else
         {
             _loading = false;
         }
+    }
+
+    private async Task OnTargetTypeFilterChanged(TargetType? value)
+    {
+        _targetTypeFilter = value;
+        _loading = true;
+        await LoadAsync();
     }
 
     private async Task DeleteAsync(string id)
