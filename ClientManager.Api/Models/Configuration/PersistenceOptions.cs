@@ -42,6 +42,12 @@ public class PersistenceOptions
     public JsonFileStoreOptions? DefaultJsonFile { get; set; }
 
     /// <summary>
+    /// Default Lucene.NET settings applied to every role that uses <see cref="PersistenceProvider.Lucene"/>
+    /// unless the role's <see cref="StorageRoleBinding"/> supplies its own.
+    /// </summary>
+    public LuceneStoreOptions? DefaultLucene { get; set; }
+
+    /// <summary>
     /// Optional per-role overrides. When a <see cref="StorageRole"/> is present in this dictionary,
     /// its binding takes precedence over <see cref="DefaultProvider"/> and the <c>Default*</c> options.
     /// </summary>

@@ -34,4 +34,10 @@ public class StorageRoleBinding
     /// <see cref="PersistenceProvider.JsonFile"/>.
     /// </summary>
     public JsonFileStoreOptions? JsonFile { get; set; }
+
+    /// <summary>
+    /// Lucene.NET index settings. Populated when <see cref="Provider"/> is
+    /// <see cref="PersistenceProvider.Lucene"/>.
+    /// </summary>
+    public LuceneStoreOptions? Lucene { get; set; }
 }

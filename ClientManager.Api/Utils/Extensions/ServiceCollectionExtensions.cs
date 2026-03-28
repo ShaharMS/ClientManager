@@ -107,6 +107,15 @@ public static class ServiceCollectionExtensions
                             $"but DataDirectory is empty. Set either " +
                             $"Persistence:Roles:{role}:JsonFile:DataDirectory or Persistence:DefaultJsonFile:DataDirectory.");
                     break;
+
+                case PersistenceProvider.Lucene:
+                    var lucene = binding.Lucene ?? new LuceneStoreOptions();
+                    if (string.IsNullOrWhiteSpace(lucene.IndexDirectory))
+                        throw new PersistenceConfigurationException(
+                            $"Storage configuration invalid: role '{role}' is configured to use Lucene, " +
+                            $"but IndexDirectory is empty. Set either " +
+                            $"Persistence:Roles:{role}:Lucene:IndexDirectory or Persistence:DefaultLucene:IndexDirectory.");
+                    break;
             }
         }
     }
@@ -123,6 +132,7 @@ public static class ServiceCollectionExtensions
                 PersistenceProvider.JsonFile => binding.JsonFile?.DataDirectory ?? "./data",
                 PersistenceProvider.MongoDb => MaskConnectionString(binding.MongoDb?.ConnectionString),
                 PersistenceProvider.Redis => MaskConnectionString(binding.Redis?.ConnectionString),
+                PersistenceProvider.Lucene => binding.Lucene?.IndexDirectory ?? "./lucene-index",
                 _ => "unknown"
             };
 
@@ -158,7 +168,8 @@ public static class ServiceCollectionExtensions
             Provider = options.DefaultProvider,
             MongoDb = options.DefaultMongoDb,
             Redis = options.DefaultRedis,
-            JsonFile = options.DefaultJsonFile
+            JsonFile = options.DefaultJsonFile,
+            Lucene = options.DefaultLucene
         };
     }
 
@@ -172,6 +183,7 @@ public static class ServiceCollectionExtensions
             PersistenceProvider.JsonFile => CreateJsonFileStore(binding.JsonFile),
             PersistenceProvider.MongoDb => CreateMongoStore(binding.MongoDb, mongoClients),
             PersistenceProvider.Redis => CreateRedisStore(binding.Redis, redisMultiplexers),
+            PersistenceProvider.Lucene => CreateLuceneStore(binding.Lucene),
             _ => throw new PersistenceConfigurationException(
                 $"Unsupported persistence provider: {binding.Provider}")
         };
@@ -266,6 +278,12 @@ public static class ServiceCollectionExtensions
         }
 
         return new RedisDocumentStore(multiplexer);
+    }
+
+    private static LuceneDocumentStore CreateLuceneStore(LuceneStoreOptions? options)
+    {
+        var resolved = options ?? new LuceneStoreOptions();
+        return new LuceneDocumentStore(resolved.IndexDirectory);
     }
 
     private static void RegisterRepositories(IServiceCollection services)
