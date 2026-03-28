@@ -1,6 +1,8 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
+using ClientManager.DataAccess.Stores.Implementations.Helpers;
 using ClientManager.DataAccess.Stores.Interfaces;
+using ClientManager.Shared.Models.Search;
 
 namespace ClientManager.DataAccess.Stores.Implementations;
 
@@ -183,6 +185,38 @@ public class JsonFileDocumentStore : IDocumentStore
         {
             _writeLock.Release();
         }
+    }
+
+    /// <summary>
+    /// Executes a search query against the in-memory collection cache.
+    /// <para>
+    ///     The JSON file store maintains a full in-memory cache of all documents (loaded on first
+    ///     access and kept in sync via write-through). All filtering, sorting, and pagination are
+    ///     applied in memory using <see cref="InMemoryQueryEvaluator"/>. This is functionally
+    ///     correct but does not scale — for production workloads with large collections, use the
+    ///     Lucene, MongoDB, or Redis (with RediSearch) providers which support native server-side
+    ///     query execution.
+    /// </para>
+    /// </summary>
+    public async Task<SearchResult<T>> SearchAsync<T>(
+        string collection, DocumentQuery query,
+        CancellationToken cancellationToken = default) where T : class
+    {
+        var all = await GetAllAsync<T>(collection, cancellationToken);
+        return InMemoryQueryEvaluator.Apply(all, query);
+    }
+
+    /// <summary>
+    /// Counts documents matching the query by delegating to <see cref="SearchAsync{T}"/>
+    /// and returning the total. Since the JSON file store is entirely in-memory, there is
+    /// no performance benefit to a separate count path.
+    /// </summary>
+    public async Task<long> CountAsync<T>(
+        string collection, DocumentQuery query,
+        CancellationToken cancellationToken = default) where T : class
+    {
+        var result = await SearchAsync<T>(collection, query, cancellationToken);
+        return result.TotalCount;
     }
 
     private ConcurrentDictionary<string, JsonElement> GetOrLoadCollection(string collection)

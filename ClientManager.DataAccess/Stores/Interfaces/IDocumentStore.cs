@@ -1,3 +1,5 @@
+using ClientManager.Shared.Models.Search;
+
 namespace ClientManager.DataAccess.Stores.Interfaces;
 
 /// <summary>
@@ -120,4 +122,33 @@ public interface IDocumentStore
     /// <param name="key">The counter key.</param>
     /// <param name="cancellationToken">Cancels the reset before it completes.</param>
     Task ResetCounterAsync(string key, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Searches for documents matching the given query. Stores may implement native query
+    /// translation (e.g. Lucene, MongoDB filters, RediSearch) or fall back to loading all
+    /// documents and filtering in memory via <see cref="InMemoryQueryEvaluator"/>.
+    /// </summary>
+    /// <typeparam name="T">The document type to deserialize.</typeparam>
+    /// <param name="collection">The name of the collection to search.</param>
+    /// <param name="query">The composable query specifying filters, text search, sort, and pagination.</param>
+    /// <param name="cancellationToken">Cancels the search if the backing store is slow or unresponsive.</param>
+    /// <returns>A <see cref="SearchResult{T}"/> containing the matching page and total count.</returns>
+    Task<SearchResult<T>> SearchAsync<T>(
+        string collection,
+        DocumentQuery query,
+        CancellationToken cancellationToken = default) where T : class;
+
+    /// <summary>
+    /// Counts documents matching the given query without loading them. Useful when only the
+    /// count is needed (e.g. active allocation counts, pagination totals).
+    /// </summary>
+    /// <typeparam name="T">The document type to match against.</typeparam>
+    /// <param name="collection">The name of the collection to count in.</param>
+    /// <param name="query">The composable query specifying which documents to count.</param>
+    /// <param name="cancellationToken">Cancels the count if the backing store is unresponsive.</param>
+    /// <returns>The number of documents matching the query.</returns>
+    Task<long> CountAsync<T>(
+        string collection,
+        DocumentQuery query,
+        CancellationToken cancellationToken = default) where T : class;
 }
