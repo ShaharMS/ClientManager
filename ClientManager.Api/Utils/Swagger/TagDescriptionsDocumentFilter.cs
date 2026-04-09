@@ -27,11 +27,32 @@ public class TagDescriptionsDocumentFilter : IDocumentFilter
         var usedTags = new HashSet<string>();
         foreach (var path in swaggerDoc.Paths)
         {
-            foreach (var operation in path.Value.Operations)
+            var pathItem = path.Value;
+            if (pathItem is null)
             {
-                foreach (var tag in operation.Value.Tags)
+                continue;
+            }
+
+            var operations = pathItem.Operations;
+            if (operations is null)
+            {
+                continue;
+            }
+
+            foreach (var operation in operations)
+            {
+                var tags = operation.Value?.Tags;
+                if (tags is null)
                 {
-                    usedTags.Add(tag.Name);
+                    continue;
+                }
+
+                foreach (var tag in tags)
+                {
+                    if (tag.Name is not null)
+                    {
+                        usedTags.Add(tag.Name);
+                    }
                 }
             }
         }

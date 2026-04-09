@@ -53,15 +53,15 @@ public class ResourceAllocationController : ControllerBase
     /// </summary>
     /// <param name="request">The release request containing the allocation ID.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>Whether the allocation was released.</returns>
+    /// <returns>The release result.</returns>
     /// <response code="200">The allocation was released or was already released.</response>
     /// <response code="404">No allocation was found with the given identifier.</response>
     [HttpPost("release")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ResourceReleaseResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Release([FromBody] ReleaseResourceRequest request, CancellationToken cancellationToken)
     {
-        var released = await _allocationService.ReleaseAsync(request.AllocationId, cancellationToken);
-        return Ok(new { Released = released });
+        var response = await _allocationService.ReleaseAsync(request.AllocationId, cancellationToken);
+        return Ok(response);
     }
 }

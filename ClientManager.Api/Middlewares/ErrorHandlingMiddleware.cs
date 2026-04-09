@@ -70,6 +70,17 @@ public class ErrorHandlingMiddleware
 
             await WriteProblemDetailsAsync(context, StatusCodes.Status429TooManyRequests, "Too Many Requests", exception.Message);
         }
+        catch (StorageApiUnavailableException exception)
+        {
+            _logger.Warn("Storage API unavailable", new { Path = context.Request.Path.Value, Detail = exception.Message, exception.RetryAfterSeconds });
+
+            if (exception.RetryAfterSeconds.HasValue)
+            {
+                context.Response.Headers.RetryAfter = exception.RetryAfterSeconds.Value.ToString();
+            }
+
+            await WriteProblemDetailsAsync(context, StatusCodes.Status503ServiceUnavailable, "Service Unavailable", exception.Message);
+        }
         catch (Exception exception)
         {
             _logger.Error("Unhandled exception", exception, new { Path = context.Request.Path.Value, context.Request.Method });

@@ -79,3 +79,14 @@ public record ResourceAcquireResponse
     /// </summary>
     public DateTime ExpiresAt { get; init; }
 }
+
+/// <summary>
+/// Response returned when a resource allocation release request completes.
+/// </summary>
+public record ResourceReleaseResponse
+{
+    /// <summary>
+    /// Whether the allocation transitioned from active to released during this request.
+    /// </summary>
+    public bool Released { get; init; }
+}

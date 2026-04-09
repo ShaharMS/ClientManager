@@ -34,19 +34,10 @@ public interface IResourceAllocationService
 
     /// <summary>
     /// Releases a previously acquired resource allocation, returning the slot to the pool.
-    /// This is one of two release paths; the other is TTL-based cleanup via
-    /// <see cref="CleanupExpiredAllocationsAsync"/>.
+    /// Returns whether the allocation transitioned from active to released during this request.
     /// </summary>
     /// <param name="allocationId">The unique identifier of the allocation to release.</param>
     /// <param name="cancellationToken">Cancels the release operation.</param>
-    /// <returns><c>true</c> if the allocation was found and released; otherwise <c>false</c>.</returns>
-    Task<bool> ReleaseAsync(string allocationId, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Cleans up expired allocations across all resource pools.
-    /// Called periodically by a background service to reclaim slots from clients
-    /// that failed to release them before the TTL expired.
-    /// </summary>
-    /// <param name="cancellationToken">Cancels the cleanup sweep.</param>
-    Task CleanupExpiredAllocationsAsync(CancellationToken cancellationToken = default);
+    /// <returns>The release result.</returns>
+    Task<ResourceReleaseResponse> ReleaseAsync(string allocationId, CancellationToken cancellationToken = default);
 }

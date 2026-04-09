@@ -1,6 +1,6 @@
 using Asp.Versioning;
 using ClientManager.Shared.Models.Responses;
-using ClientManager.Api.Services.Interfaces;
+using ClientManager.Api.Services.InternalClients.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ClientManager.Api.Controllers;
@@ -14,20 +14,15 @@ namespace ClientManager.Api.Controllers;
 [Tags("Metrics")]
 public class MetricsController : ControllerBase
 {
-    private readonly IPrometheusExportService _prometheusExportService;
-    private readonly IGrafanaExportService _grafanaExportService;
+    private readonly IStatisticsReadClient _statisticsReadClient;
 
     /// <summary>
     /// Initializes a new instance of <see cref="MetricsController"/>.
     /// </summary>
-    /// <param name="prometheusExportService">Service that generates Prometheus metrics text.</param>
-    /// <param name="grafanaExportService">Service that generates Grafana JSON metrics.</param>
-    public MetricsController(
-        IPrometheusExportService prometheusExportService,
-        IGrafanaExportService grafanaExportService)
+    /// <param name="statisticsReadClient">Typed client for storage-side metrics endpoints.</param>
+    public MetricsController(IStatisticsReadClient statisticsReadClient)
     {
-        _prometheusExportService = prometheusExportService;
-        _grafanaExportService = grafanaExportService;
+        _statisticsReadClient = statisticsReadClient;
     }
 
     /// <summary>
@@ -40,7 +35,7 @@ public class MetricsController : ControllerBase
     [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetPrometheusMetrics(CancellationToken cancellationToken)
     {
-        var metrics = await _prometheusExportService.ExportMetricsAsync(cancellationToken);
+        var metrics = await _statisticsReadClient.GetPrometheusMetricsAsync(cancellationToken);
         return Content(metrics, "text/plain; version=0.0.4; charset=utf-8");
     }
 
@@ -54,7 +49,7 @@ public class MetricsController : ControllerBase
     [ProducesResponseType(typeof(GrafanaMetricsResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetGrafanaMetrics(CancellationToken cancellationToken)
     {
-        var metrics = await _grafanaExportService.ExportMetricsAsync(cancellationToken);
+        var metrics = await _statisticsReadClient.GetGrafanaMetricsAsync(cancellationToken);
         return Ok(metrics);
     }
 }

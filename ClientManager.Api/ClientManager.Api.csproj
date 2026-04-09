@@ -28,7 +28,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\ClientManager.DataAccess\ClientManager.DataAccess.csproj" />
     <ProjectReference Include="..\ClientManager.Shared\ClientManager.Shared.csproj" />
   </ItemGroup>
 

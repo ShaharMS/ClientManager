@@ -58,6 +58,8 @@ try
         options.DocumentFilter<TagDescriptionsDocumentFilter>();
     });
 
+    builder.Services.AddStorageApiClients(builder.Configuration, builder.Environment);
+
     // Application services, persistence, rate limiting, etc.
     builder.Services.AddClientManager(builder.Configuration);
 

@@ -51,10 +51,11 @@ public async Task<IActionResult> GetById(int id) { ... }
 
 When starting the application for testing or verification:
 
-1. **Start the API** — run `ClientManager.Api` (default: `http://localhost:5062`).
-2. **Start the Admin UI** — run `ClientManager.AdminUI` (default: `http://localhost:5100`).
-3. **Seed data if empty** — run `python _scripts/seed_data.py --base-url http://localhost:5062`. Creates services, resource pools, global rate limits, and client configurations. Safe to re-run (existing items are skipped).
-4. **Start the traffic generator** — fire-and-forget `python _scripts/traffic_generator.py --base-url http://localhost:5062 --interval 2.0` in a background terminal. Sends continuous realistic traffic (access checks, resource acquire/release, reads) so the dashboard shows live data.
-5. **Shut down** — stop the traffic generator first (Ctrl+C), then stop both the API and Admin UI (Ctrl+C).
+1. **Start the Storage API** — run `ClientManager.StorageApi` (default: `http://localhost:5063`). This host is the only app that talks to `ClientManager.DataAccess`.
+2. **Start the API** — run `ClientManager.Api` (default: `http://localhost:5062`). It depends on the Storage API being available first.
+3. **Start the Admin UI** — run `ClientManager.AdminUI` (default: `http://localhost:5100`).
+4. **Seed data if empty** — run `python _scripts/seed_data.py --base-url http://localhost:5062`. Creates services, resource pools, global rate limits, and client configurations through the public API. Safe to re-run (existing items are skipped).
+5. **Start the traffic generator** — fire-and-forget `python _scripts/traffic_generator.py --base-url http://localhost:5062 --interval 2.0` in a background terminal. Sends continuous realistic traffic (access checks, resource acquire/release, reads) so the dashboard shows live data.
+6. **Shut down** — stop the traffic generator first (Ctrl+C), then stop the API, Storage API, and Admin UI.
 
-**Shutdown order is critical.** The traffic generator sends continuous HTTP requests to the API. If the API is stopped while the traffic generator is still running, the generator floods the terminal with connection-refused errors that are noisy and slow to cancel. Always stop the traffic generator **before** the API. The Admin UI can be stopped in any order relative to the API.
+**Shutdown order is critical.** The traffic generator sends continuous HTTP requests to the API. If the API is stopped while the traffic generator is still running, the generator floods the terminal with connection-refused errors that are noisy and slow to cancel. Always stop the traffic generator **before** the API. Stop the Storage API after the API so the public host does not spend shutdown time failing internal calls.

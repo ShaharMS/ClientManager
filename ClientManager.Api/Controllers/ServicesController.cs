@@ -1,8 +1,8 @@
 using Asp.Versioning;
-using ClientManager.Shared.Models.Search;
-using ClientManager.Shared.Models.Entities;
 using ClientManager.Api.Models.Exceptions;
-using ClientManager.DataAccess.Repositories.Interfaces;
+using ClientManager.Api.Services.InternalClients.Interfaces.Configuration;
+using ClientManager.Shared.Models.Entities;
+using ClientManager.Shared.Models.Search;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -17,15 +17,15 @@ namespace ClientManager.Api.Controllers;
 [Tags("Services")]
 public class ServicesController : ControllerBase
 {
-    private readonly IEntityRepository<Service> _repository;
+    private readonly IServiceCatalogClient _serviceCatalogClient;
 
     /// <summary>
     /// Initializes a new instance of <see cref="ServicesController"/>.
     /// </summary>
-    /// <param name="repository">The service entity repository.</param>
-    public ServicesController(IEntityRepository<Service> repository)
+    /// <param name="serviceCatalogClient">The internal service catalog client.</param>
+    public ServicesController(IServiceCatalogClient serviceCatalogClient)
     {
-        _repository = repository;
+        _serviceCatalogClient = serviceCatalogClient;
     }
 
     /// <summary>
@@ -41,7 +41,7 @@ public class ServicesController : ControllerBase
         [FromBody] DocumentQuery? query,
         CancellationToken cancellationToken)
     {
-        var result = await _repository.SearchAsync(query ?? DocumentQuery.All, cancellationToken);
+        var result = await _serviceCatalogClient.SearchAsync(query ?? DocumentQuery.All, cancellationToken);
         return Ok(result);
     }
 
@@ -58,7 +58,7 @@ public class ServicesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetById(string id, CancellationToken cancellationToken)
     {
-        var service = await _repository.GetByIdAsync(id, cancellationToken)
+        var service = await _serviceCatalogClient.GetByIdAsync(id, cancellationToken)
             ?? throw new ServiceNotFoundException(id);
         return Ok(service);
     }
@@ -76,7 +76,7 @@ public class ServicesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Create([FromBody] Service service, CancellationToken cancellationToken)
     {
-        await _repository.CreateAsync(service, cancellationToken);
+        await _serviceCatalogClient.CreateAsync(service, cancellationToken);
         return CreatedAtAction(nameof(GetById), new { id = service.Id }, service);
     }
 
@@ -95,7 +95,7 @@ public class ServicesController : ControllerBase
     public async Task<IActionResult> Update(string id, [FromBody] Service service, CancellationToken cancellationToken)
     {
         var updated = service with { Id = id };
-        await _repository.UpdateAsync(updated, cancellationToken);
+        await _serviceCatalogClient.UpdateAsync(id, service, cancellationToken);
         return Ok(updated);
     }
 
@@ -111,7 +111,7 @@ public class ServicesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(string id, CancellationToken cancellationToken)
     {
-        await _repository.DeleteAsync(id, cancellationToken);
+        await _serviceCatalogClient.DeleteAsync(id, cancellationToken);
         return NoContent();
     }
 }
