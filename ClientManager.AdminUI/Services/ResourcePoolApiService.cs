@@ -30,34 +30,34 @@ public class ResourcePoolApiService
     public async Task<SearchResult<ResourcePool>> SearchAsync(DocumentQuery? query = null)
     {
         var response = await _httpClient.PostAsJsonAsync("api/v1/resource-pools/search", query ?? DocumentQuery.All);
-        response.EnsureSuccessStatusCode();
+        await ApiResponseHandler.EnsureSuccessAsync(response);
         return await response.Content.ReadFromJsonAsync<SearchResult<ResourcePool>>()
             ?? new SearchResult<ResourcePool>([], 0);
     }
 
     public async Task<ResourcePool?> GetByIdAsync(string id)
     {
-        return await _httpClient.GetFromJsonAsync<ResourcePool>($"api/v1/resource-pools/{id}");
+        return await ApiResponseHandler.GetOptionalFromJsonAsync<ResourcePool>(_httpClient, $"api/v1/resource-pools/{id}");
     }
 
     public async Task CreateAsync(ResourcePool pool)
     {
         var response = await _httpClient.PostAsJsonAsync("api/v1/resource-pools", pool);
-        response.EnsureSuccessStatusCode();
+        await ApiResponseHandler.EnsureSuccessAsync(response);
         _cachedAll = null;
     }
 
     public async Task UpdateAsync(string id, ResourcePool pool)
     {
         var response = await _httpClient.PutAsJsonAsync($"api/v1/resource-pools/{id}", pool);
-        response.EnsureSuccessStatusCode();
+        await ApiResponseHandler.EnsureSuccessAsync(response);
         _cachedAll = null;
     }
 
     public async Task DeleteAsync(string id)
     {
         var response = await _httpClient.DeleteAsync($"api/v1/resource-pools/{id}");
-        response.EnsureSuccessStatusCode();
+        await ApiResponseHandler.EnsureSuccessAsync(response);
         _cachedAll = null;
     }
 }

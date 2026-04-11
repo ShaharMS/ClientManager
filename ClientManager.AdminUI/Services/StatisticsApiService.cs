@@ -15,7 +15,7 @@ public class StatisticsApiService
 
     public async Task<SystemOverviewResponse?> GetOverviewAsync()
     {
-        return await _httpClient.GetFromJsonAsync<SystemOverviewResponse>("api/v1/statistics/overview");
+        return await ApiResponseHandler.GetFromJsonAsync<SystemOverviewResponse>(_httpClient, "api/v1/statistics/overview");
     }
 
     public async Task<List<ResourcePoolStatisticsResponse>> GetResourcePoolStatsAsync()
@@ -23,14 +23,14 @@ public class StatisticsApiService
         var response = await _httpClient.PostAsJsonAsync(
             "api/v1/statistics/resource-pools/search",
             new DocumentQuery { Take = 100 });
-        response.EnsureSuccessStatusCode();
+        await ApiResponseHandler.EnsureSuccessAsync(response);
         var result = await response.Content.ReadFromJsonAsync<SearchResult<ResourcePoolStatisticsResponse>>();
         return result?.Items.ToList() ?? [];
     }
 
     public async Task<GlobalUsageStatsResponse?> GetGlobalUsageStatsAsync()
     {
-        return await _httpClient.GetFromJsonAsync<GlobalUsageStatsResponse>("api/v1/statistics/global-usage");
+        return await ApiResponseHandler.GetFromJsonAsync<GlobalUsageStatsResponse>(_httpClient, "api/v1/statistics/global-usage");
     }
 
     public async Task<List<TargetUsageTimeSeriesResponse>> GetUsageTimeSeriesAsync(
@@ -49,7 +49,7 @@ public class StatisticsApiService
         if (granularity is not null)
             url += $"&granularity={Uri.EscapeDataString(granularity)}";
 
-        return await _httpClient.GetFromJsonAsync<List<TargetUsageTimeSeriesResponse>>(url) ?? [];
+        return await ApiResponseHandler.GetFromJsonAsync<List<TargetUsageTimeSeriesResponse>>(_httpClient, url) ?? [];
     }
 
     public async Task<List<TargetClientUsageBreakdownResponse>> GetClientUsageBreakdownAsync(
@@ -68,12 +68,13 @@ public class StatisticsApiService
         if (granularity is not null)
             url += $"&granularity={Uri.EscapeDataString(granularity)}";
 
-        return await _httpClient.GetFromJsonAsync<List<TargetClientUsageBreakdownResponse>>(url) ?? [];
+        return await ApiResponseHandler.GetFromJsonAsync<List<TargetClientUsageBreakdownResponse>>(_httpClient, url) ?? [];
     }
 
     public async Task<List<ClientSummaryRow>> GetClientSummariesAsync()
     {
-        var response = await _httpClient.GetFromJsonAsync<PagedResponse<ClientSummaryRow>>(
+        var response = await ApiResponseHandler.GetFromJsonAsync<PagedResponse<ClientSummaryRow>>(
+            _httpClient,
             "api/v1/statistics/client-summaries?pageSize=100");
         return response?.Items?.ToList() ?? [];
     }
@@ -90,6 +91,6 @@ public class StatisticsApiService
         {
             url += $"&clientId={Uri.EscapeDataString(clientId)}";
         }
-        return await _httpClient.GetFromJsonAsync<List<HistoricalUsageResponse>>(url) ?? [];
+        return await ApiResponseHandler.GetFromJsonAsync<List<HistoricalUsageResponse>>(_httpClient, url) ?? [];
     }
 }

@@ -196,6 +196,8 @@
 
     protected override async Task OnInitializedAsync()
     {
+        _loading = true;
+
         try
         {
             _pools = await StatsService.GetResourcePoolStatsAsync();
@@ -209,10 +211,16 @@
                 .Concat(_pools.Select(p => new NamedItem(p.ResourcePoolId, p.Name)))
                 .ToList();
             _selectedPoolId = AllPoolsId;
+
+            await LoadDataAsync();
         }
         catch (HttpRequestException ex)
         {
             _error = $"Unable to connect to the API: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
         }
 
         StartTimer();

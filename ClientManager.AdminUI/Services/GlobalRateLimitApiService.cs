@@ -45,34 +45,34 @@ public class GlobalRateLimitApiService
     public async Task<SearchResult<GlobalRateLimit>> SearchAsync(DocumentQuery? query = null)
     {
         var response = await _httpClient.PostAsJsonAsync("api/v1/global-rate-limits/search", query ?? DocumentQuery.All);
-        response.EnsureSuccessStatusCode();
+        await ApiResponseHandler.EnsureSuccessAsync(response);
         return await response.Content.ReadFromJsonAsync<SearchResult<GlobalRateLimit>>()
             ?? new SearchResult<GlobalRateLimit>([], 0);
     }
 
     public async Task<GlobalRateLimit?> GetByIdAsync(string id)
     {
-        return await _httpClient.GetFromJsonAsync<GlobalRateLimit>($"api/v1/global-rate-limits/{id}");
+        return await ApiResponseHandler.GetOptionalFromJsonAsync<GlobalRateLimit>(_httpClient, $"api/v1/global-rate-limits/{id}");
     }
 
     public async Task CreateAsync(GlobalRateLimit limit)
     {
         var response = await _httpClient.PostAsJsonAsync("api/v1/global-rate-limits", limit);
-        response.EnsureSuccessStatusCode();
+        await ApiResponseHandler.EnsureSuccessAsync(response);
         InvalidateCache();
     }
 
     public async Task UpdateAsync(string id, GlobalRateLimit limit)
     {
         var response = await _httpClient.PutAsJsonAsync($"api/v1/global-rate-limits/{id}", limit);
-        response.EnsureSuccessStatusCode();
+        await ApiResponseHandler.EnsureSuccessAsync(response);
         InvalidateCache();
     }
 
     public async Task DeleteAsync(string id)
     {
         var response = await _httpClient.DeleteAsync($"api/v1/global-rate-limits/{id}");
-        response.EnsureSuccessStatusCode();
+        await ApiResponseHandler.EnsureSuccessAsync(response);
         InvalidateCache();
     }
 

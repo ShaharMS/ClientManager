@@ -30,34 +30,34 @@ public class ClientApiService
     public async Task<SearchResult<ClientConfiguration>> SearchAsync(DocumentQuery? query = null)
     {
         var response = await _httpClient.PostAsJsonAsync("api/v1/clients/search", query ?? DocumentQuery.All);
-        response.EnsureSuccessStatusCode();
+        await ApiResponseHandler.EnsureSuccessAsync(response);
         return await response.Content.ReadFromJsonAsync<SearchResult<ClientConfiguration>>()
             ?? new SearchResult<ClientConfiguration>([], 0);
     }
 
     public async Task<ClientConfiguration?> GetByIdAsync(string id)
     {
-        return await _httpClient.GetFromJsonAsync<ClientConfiguration>($"api/v1/clients/{id}");
+        return await ApiResponseHandler.GetOptionalFromJsonAsync<ClientConfiguration>(_httpClient, $"api/v1/clients/{id}");
     }
 
     public async Task CreateAsync(ClientConfiguration config)
     {
         var response = await _httpClient.PostAsJsonAsync("api/v1/clients", config);
-        response.EnsureSuccessStatusCode();
+        await ApiResponseHandler.EnsureSuccessAsync(response);
         _cachedAll = null;
     }
 
     public async Task UpdateAsync(string id, ClientConfiguration config)
     {
         var response = await _httpClient.PutAsJsonAsync($"api/v1/clients/{id}", config);
-        response.EnsureSuccessStatusCode();
+        await ApiResponseHandler.EnsureSuccessAsync(response);
         _cachedAll = null;
     }
 
     public async Task DeleteAsync(string id)
     {
         var response = await _httpClient.DeleteAsync($"api/v1/clients/{id}");
-        response.EnsureSuccessStatusCode();
+        await ApiResponseHandler.EnsureSuccessAsync(response);
         _cachedAll = null;
     }
 }

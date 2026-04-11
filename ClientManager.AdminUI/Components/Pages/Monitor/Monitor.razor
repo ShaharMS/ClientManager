@@ -208,6 +208,8 @@
 
     protected override async Task OnInitializedAsync()
     {
+        _loading = true;
+
         try
         {
             _allServices = await ServiceService.GetAllAsync();
@@ -220,10 +222,16 @@
             _serviceOptions = new List<NamedItem> { new(AllServicesId, "All Services") }
                 .Concat(_allServices.Select(s => new NamedItem(s.Id, s.Name))).ToList();
             _selectedServiceId = AllServicesId;
+
+            await LoadDataAsync();
         }
         catch (HttpRequestException ex)
         {
             _error = $"Unable to connect to the API: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
         }
 
         StartTimer();
