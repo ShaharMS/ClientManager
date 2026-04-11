@@ -1,5 +1,8 @@
+using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using ClientManager.Api.Models.Exceptions;
+using ClientManager.Api.Services.InternalClients;
 using ClientManager.Api.Services.InternalClients.Interfaces;
 using ClientManager.Shared.Models.Enums;
 using ClientManager.Shared.Models.Responses;
@@ -11,11 +14,10 @@ internal sealed class StatisticsReadClient(HttpClient httpClient) : IStatisticsR
 {
     public async Task<SystemOverviewResponse> GetOverviewAsync(CancellationToken cancellationToken)
     {
-        var response = await httpClient.GetAsync(StorageApiRoutes.Statistics.Overview, cancellationToken);
-        response.EnsureSuccessStatusCode();
-
-        return await response.Content.ReadFromJsonAsync<SystemOverviewResponse>(cancellationToken)
-            ?? throw new InvalidOperationException("The storage API returned an empty overview response.");
+        return await GetAsync<SystemOverviewResponse>(
+            StorageApiRoutes.Statistics.Overview,
+            "The storage API returned an empty overview response.",
+            cancellationToken);
     }
 
     public Task<SearchResult<ClientSummaryResponse>> SearchClientSummariesAsync(
@@ -27,7 +29,11 @@ internal sealed class StatisticsReadClient(HttpClient httpClient) : IStatisticsR
 
     public Task<JsonElement> GetClientDetailsAsync(string clientId, CancellationToken cancellationToken)
     {
-        return GetJsonAsync(StorageApiRoutes.Statistics.ClientDetails(clientId), cancellationToken);
+        return GetJsonAsync(
+            StorageApiRoutes.Statistics.ClientDetails(clientId),
+            $"The storage API returned an empty response for '{StorageApiRoutes.Statistics.ClientDetails(clientId)}'.",
+            () => new ClientNotFoundException(clientId),
+            cancellationToken);
     }
 
     public Task<SearchResult<ServiceStatisticsResponse>> SearchServiceStatisticsAsync(
@@ -39,7 +45,11 @@ internal sealed class StatisticsReadClient(HttpClient httpClient) : IStatisticsR
 
     public Task<JsonElement> GetServiceDetailsAsync(string serviceId, CancellationToken cancellationToken)
     {
-        return GetJsonAsync(StorageApiRoutes.Statistics.ServiceDetails(serviceId), cancellationToken);
+        return GetJsonAsync(
+            StorageApiRoutes.Statistics.ServiceDetails(serviceId),
+            $"The storage API returned an empty response for '{StorageApiRoutes.Statistics.ServiceDetails(serviceId)}'.",
+            () => new ServiceNotFoundException(serviceId),
+            cancellationToken);
     }
 
     public Task<SearchResult<ResourcePoolStatisticsResponse>> SearchResourcePoolStatisticsAsync(
@@ -54,7 +64,11 @@ internal sealed class StatisticsReadClient(HttpClient httpClient) : IStatisticsR
 
     public Task<JsonElement> GetResourcePoolDetailsAsync(string resourcePoolId, CancellationToken cancellationToken)
     {
-        return GetJsonAsync(StorageApiRoutes.Statistics.ResourcePoolDetails(resourcePoolId), cancellationToken);
+        return GetJsonAsync(
+            StorageApiRoutes.Statistics.ResourcePoolDetails(resourcePoolId),
+            $"The storage API returned an empty response for '{StorageApiRoutes.Statistics.ResourcePoolDetails(resourcePoolId)}'.",
+            () => new ResourcePoolNotFoundException(resourcePoolId),
+            cancellationToken);
     }
 
     public Task<GlobalUsageStatsResponse> GetGlobalUsageStatsAsync(CancellationToken cancellationToken)
@@ -112,7 +126,11 @@ internal sealed class StatisticsReadClient(HttpClient httpClient) : IStatisticsR
     public async Task<string> GetPrometheusMetricsAsync(CancellationToken cancellationToken)
     {
         var response = await httpClient.GetAsync(StorageApiRoutes.Metrics.Prometheus, cancellationToken);
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+        {
+            throw await StorageApiResponseReader.CreateUnexpectedExceptionAsync(response, cancellationToken);
+        }
+
         return await response.Content.ReadAsStringAsync(cancellationToken);
     }
 
@@ -121,20 +139,52 @@ internal sealed class StatisticsReadClient(HttpClient httpClient) : IStatisticsR
         return GetAsync<GrafanaMetricsResponse>(StorageApiRoutes.Metrics.Grafana, cancellationToken);
     }
 
-    private async Task<T> GetAsync<T>(string path, CancellationToken cancellationToken)
+    private Task<T> GetAsync<T>(string path, CancellationToken cancellationToken)
     {
-        var response = await httpClient.GetAsync(path, cancellationToken);
-        response.EnsureSuccessStatusCode();
-
-        return await response.Content.ReadFromJsonAsync<T>(cancellationToken)
-            ?? throw new InvalidOperationException($"The storage API returned an empty response for '{path}'.");
+        return GetAsync<T>(
+            path,
+            $"The storage API returned an empty response for '{path}'.",
+            cancellationToken);
     }
 
-    private async Task<JsonElement> GetJsonAsync(string path, CancellationToken cancellationToken)
+    private async Task<T> GetAsync<T>(
+        string path,
+        string emptyMessage,
+        CancellationToken cancellationToken,
+        Func<Exception>? createNotFoundException = null)
     {
         var response = await httpClient.GetAsync(path, cancellationToken);
-        response.EnsureSuccessStatusCode();
-        return await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken);
+        if (response.IsSuccessStatusCode)
+        {
+            return await StorageApiResponseReader.ReadRequiredAsync<T>(response, cancellationToken, emptyMessage);
+        }
+
+        if (response.StatusCode == HttpStatusCode.NotFound && createNotFoundException is not null)
+        {
+            throw createNotFoundException();
+        }
+
+        throw await StorageApiResponseReader.CreateUnexpectedExceptionAsync(response, cancellationToken);
+    }
+
+    private async Task<JsonElement> GetJsonAsync(
+        string path,
+        string emptyMessage,
+        Func<Exception>? createNotFoundException,
+        CancellationToken cancellationToken)
+    {
+        var response = await httpClient.GetAsync(path, cancellationToken);
+        if (response.IsSuccessStatusCode)
+        {
+            return await StorageApiResponseReader.ReadRequiredAsync<JsonElement>(response, cancellationToken, emptyMessage);
+        }
+
+        if (response.StatusCode == HttpStatusCode.NotFound && createNotFoundException is not null)
+        {
+            throw createNotFoundException();
+        }
+
+        throw await StorageApiResponseReader.CreateUnexpectedExceptionAsync(response, cancellationToken);
     }
 
     private async Task<SearchResult<T>> SearchAsync<T>(
@@ -143,7 +193,10 @@ internal sealed class StatisticsReadClient(HttpClient httpClient) : IStatisticsR
         CancellationToken cancellationToken)
     {
         var response = await httpClient.PostAsJsonAsync(path, query, cancellationToken);
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+        {
+            throw await StorageApiResponseReader.CreateUnexpectedExceptionAsync(response, cancellationToken);
+        }
 
         return await response.Content.ReadFromJsonAsync<SearchResult<T>>(cancellationToken)
             ?? new SearchResult<T>([], 0);
