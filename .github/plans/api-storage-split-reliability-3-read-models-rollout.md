@@ -1,6 +1,6 @@
 # Plan: Harden API/Storage Split Reliability — Step 3: Read Models and Rollout
 
-> **Status**: 🔲 Not started
+> **Status**: ✅ Completed
 > **Prerequisite**: [api-storage-split-reliability-2-transport-contracts.md](api-storage-split-reliability-2-transport-contracts.md)
 > **Next**: None — this is the final step.
 > **Parent**: [api-storage-split-reliability-overview.md](api-storage-split-reliability-overview.md)

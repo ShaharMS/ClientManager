@@ -1,6 +1,6 @@
 # Plan: Harden API/Storage Split Reliability — Step 2: Transport Contracts
 
-> **Status**: 🔲 Not started
+> **Status**: ✅ Completed
 > **Prerequisite**: [api-storage-split-reliability-1-runtime-parity.md](api-storage-split-reliability-1-runtime-parity.md)
 > **Next**: [api-storage-split-reliability-3-read-models-rollout.md](api-storage-split-reliability-3-read-models-rollout.md)
 > **Parent**: [api-storage-split-reliability-overview.md](api-storage-split-reliability-overview.md)
