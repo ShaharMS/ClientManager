@@ -60,8 +60,8 @@ try
 
     builder.Services.AddStorageApiClients(builder.Configuration, builder.Environment);
 
-    // Application services, persistence, rate limiting, etc.
-    builder.Services.AddClientManager(builder.Configuration);
+    // Public API adapters that remain local after the storage split.
+    builder.Services.AddClientManager();
 
     // OpenTelemetry metrics + Prometheus
     builder.Services.AddSingleton<ClientManagerMetrics>();

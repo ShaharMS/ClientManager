@@ -1,4 +1,5 @@
 using ClientManager.Api.Models.Exceptions;
+using ClientManager.Shared.Models.Problems;
 using ClientManager.Shared.Logging;
 
 namespace ClientManager.Api.Middlewares;
@@ -94,12 +95,12 @@ public class ErrorHandlingMiddleware
         context.Response.StatusCode = statusCode;
         context.Response.ContentType = "application/problem+json";
 
-        var problemDetails = new
+        var problemDetails = new ProblemResponse
         {
-            title,
-            status = statusCode,
-            detail,
-            traceId = context.TraceIdentifier
+            Title = title,
+            Status = statusCode,
+            Detail = detail,
+            TraceId = context.TraceIdentifier
         };
 
         await context.Response.WriteAsJsonAsync(problemDetails);

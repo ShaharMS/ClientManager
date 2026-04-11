@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using ClientManager.Api.Models.Exceptions;
 using ClientManager.Api.Services.InternalClients.Interfaces;
+using ClientManager.Shared.Models.Problems;
 using ClientManager.Shared.Models.Requests;
 using ClientManager.Shared.Models.Responses;
 
@@ -105,14 +106,14 @@ internal sealed class RuntimeStateClient(HttpClient httpClient) : IRuntimeStateC
 
         return problem.ErrorCode switch
         {
-            "client_not_found" => new ClientNotFoundException(request.ClientId),
-            "service_not_found" => new ServiceNotFoundException(request.ServiceId),
-            "access_not_configured" => new AccessNotConfiguredException(request.ClientId, request.ServiceId),
-            "access_denied" => new AccessDeniedException(request.ClientId, request.ServiceId),
-            "client_disabled" => new ClientDisabledException(request.ClientId),
-            "service_disabled" => new ServiceDisabledException(request.ServiceId),
-            "global_service_rate_limit_exceeded" => new GlobalServiceRateLimitExceededException(retryAfterSeconds),
-            "client_rate_limit_exceeded" => new ClientRateLimitExceededException(retryAfterSeconds),
+            StorageErrorCodes.ClientNotFound => new ClientNotFoundException(request.ClientId),
+            StorageErrorCodes.ServiceNotFound => new ServiceNotFoundException(request.ServiceId),
+            StorageErrorCodes.AccessNotConfigured => new AccessNotConfiguredException(request.ClientId, request.ServiceId),
+            StorageErrorCodes.AccessDenied => new AccessDeniedException(request.ClientId, request.ServiceId),
+            StorageErrorCodes.ClientDisabled => new ClientDisabledException(request.ClientId),
+            StorageErrorCodes.ServiceDisabled => new ServiceDisabledException(request.ServiceId),
+            StorageErrorCodes.GlobalServiceRateLimitExceeded => new GlobalServiceRateLimitExceededException(retryAfterSeconds),
+            StorageErrorCodes.ClientRateLimitExceeded => new ClientRateLimitExceededException(retryAfterSeconds),
             _ => await CreateUnexpectedExceptionAsync(response, cancellationToken)
         };
     }
@@ -127,22 +128,22 @@ internal sealed class RuntimeStateClient(HttpClient httpClient) : IRuntimeStateC
 
         return problem.ErrorCode switch
         {
-            "client_not_found" => new ClientNotFoundException(request.ClientId),
-            "resource_pool_not_found" => new ResourcePoolNotFoundException(request.ResourcePoolId),
-            "client_disabled" => new ClientDisabledException(request.ClientId),
-            "client_slot_limit_reached" => new ClientSlotLimitReachedException(request.ResourcePoolId),
-            "global_resource_pool_rate_limit_exceeded" => new GlobalResourcePoolRateLimitExceededException(retryAfterSeconds),
-            "no_slots_available" => new NoSlotsAvailableException(request.ResourcePoolId),
+            StorageErrorCodes.ClientNotFound => new ClientNotFoundException(request.ClientId),
+            StorageErrorCodes.ResourcePoolNotFound => new ResourcePoolNotFoundException(request.ResourcePoolId),
+            StorageErrorCodes.ClientDisabled => new ClientDisabledException(request.ClientId),
+            StorageErrorCodes.ClientSlotLimitReached => new ClientSlotLimitReachedException(request.ResourcePoolId),
+            StorageErrorCodes.GlobalResourcePoolRateLimitExceeded => new GlobalResourcePoolRateLimitExceededException(retryAfterSeconds),
+            StorageErrorCodes.NoSlotsAvailable => new NoSlotsAvailableException(request.ResourcePoolId),
             _ => await CreateUnexpectedExceptionAsync(response, cancellationToken)
         };
     }
 
-    private static async Task<StorageApiProblemResponse> ReadProblemAsync(
+    private static async Task<StorageProblemResponse> ReadProblemAsync(
         HttpResponseMessage response,
         CancellationToken cancellationToken)
     {
-        return await response.Content.ReadFromJsonAsync<StorageApiProblemResponse>(cancellationToken)
-            ?? new StorageApiProblemResponse
+        return await response.Content.ReadFromJsonAsync<StorageProblemResponse>(cancellationToken)
+            ?? new StorageProblemResponse
             {
                 Status = (int)response.StatusCode,
                 Detail = $"The storage API returned status {(int)response.StatusCode}."
@@ -178,18 +179,5 @@ internal sealed class RuntimeStateClient(HttpClient httpClient) : IRuntimeStateC
         var problem = await ReadProblemAsync(response, cancellationToken);
         var detail = problem.Detail ?? $"The storage API returned status {(int)response.StatusCode}.";
         return new HttpRequestException(detail, null, response.StatusCode);
-    }
-
-    private sealed record StorageApiProblemResponse
-    {
-        public string? Title { get; init; }
-
-        public int? Status { get; init; }
-
-        public string? Detail { get; init; }
-
-        public string? ErrorCode { get; init; }
-
-        public string? TraceId { get; init; }
     }
 }

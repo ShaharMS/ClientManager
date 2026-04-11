@@ -1,5 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
+using ClientManager.Api.Models.Exceptions;
+using ClientManager.Api.Services.InternalClients;
 using ClientManager.Api.Services.InternalClients.Interfaces.Configuration;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Search;
@@ -29,23 +31,61 @@ internal sealed class ResourcePoolCatalogClient(HttpClient httpClient) : IResour
     }
 
     public Task CreateAsync(ResourcePool pool, CancellationToken cancellationToken) =>
-        SendAsync(HttpMethod.Post, StorageApiRoutes.ResourcePools.Search.Replace("/search", string.Empty), pool, cancellationToken);
+        CreateAsync(StorageApiRoutes.ResourcePools.Search.Replace("/search", string.Empty), pool, cancellationToken);
 
     public Task UpdateAsync(string poolId, ResourcePool pool, CancellationToken cancellationToken) =>
-        SendAsync(HttpMethod.Put, StorageApiRoutes.ResourcePools.ById(poolId), pool, cancellationToken);
+        SendWithNotFoundAsync(HttpMethod.Put, StorageApiRoutes.ResourcePools.ById(poolId), pool, () => new ResourcePoolNotFoundException(poolId), cancellationToken);
 
     public Task DeleteAsync(string poolId, CancellationToken cancellationToken) =>
-        SendAsync(HttpMethod.Delete, StorageApiRoutes.ResourcePools.ById(poolId), body: null, cancellationToken);
+        SendWithNotFoundAsync(HttpMethod.Delete, StorageApiRoutes.ResourcePools.ById(poolId), body: null, () => new ResourcePoolNotFoundException(poolId), cancellationToken);
 
-    private async Task SendAsync(HttpMethod method, string path, object? body, CancellationToken cancellationToken)
+    private async Task CreateAsync(string path, ResourcePool pool, CancellationToken cancellationToken)
     {
-        using var request = new HttpRequestMessage(method, path);
+        using var request = CreateRequest(HttpMethod.Post, path, pool);
+        var response = await httpClient.SendAsync(request, cancellationToken);
+        if (response.IsSuccessStatusCode)
+        {
+            return;
+        }
+
+        if (response.StatusCode == HttpStatusCode.Conflict)
+        {
+            throw new ResourcePoolAlreadyExistsException(pool.Id);
+        }
+
+        throw await StorageApiResponseReader.CreateUnexpectedExceptionAsync(response, cancellationToken);
+    }
+
+    private async Task SendWithNotFoundAsync(
+        HttpMethod method,
+        string path,
+        object? body,
+        Func<Exception> createNotFoundException,
+        CancellationToken cancellationToken)
+    {
+        using var request = CreateRequest(method, path, body);
+        var response = await httpClient.SendAsync(request, cancellationToken);
+        if (response.IsSuccessStatusCode)
+        {
+            return;
+        }
+
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            throw createNotFoundException();
+        }
+
+        throw await StorageApiResponseReader.CreateUnexpectedExceptionAsync(response, cancellationToken);
+    }
+
+    private static HttpRequestMessage CreateRequest(HttpMethod method, string path, object? body)
+    {
+        var request = new HttpRequestMessage(method, path);
         if (body is not null)
         {
             request.Content = JsonContent.Create(body);
         }
 
-        var response = await httpClient.SendAsync(request, cancellationToken);
-        response.EnsureSuccessStatusCode();
+        return request;
     }
 }

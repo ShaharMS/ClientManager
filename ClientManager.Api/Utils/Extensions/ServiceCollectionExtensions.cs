@@ -13,11 +13,9 @@ public static class ServiceCollectionExtensions
     /// Registers the public API's local adapter services.
     /// </summary>
     /// <param name="services">The service collection.</param>
-    /// <param name="configuration">The application configuration.</param>
     public static IServiceCollection AddClientManager(
-        this IServiceCollection services, IConfiguration configuration)
+        this IServiceCollection services)
     {
-        _ = configuration;
         services.AddSingleton(typeof(IAppLogger<>), typeof(AppLogger<>));
 
         services.AddScoped<IResourceAllocationService, ResourceAllocationService>();

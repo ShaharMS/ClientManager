@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using ClientManager.Api.Models.Exceptions;
+using ClientManager.Api.Services.InternalClients;
 using ClientManager.Api.Services.InternalClients.Interfaces.Configuration;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Search;
@@ -25,7 +26,11 @@ internal sealed class GlobalRateLimitCatalogClient(HttpClient httpClient) : IGlo
             return null;
         }
 
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+        {
+            throw await StorageApiResponseReader.CreateUnexpectedExceptionAsync(response, cancellationToken);
+        }
+
         return await response.Content.ReadFromJsonAsync<GlobalRateLimit>(cancellationToken);
     }
 
@@ -42,16 +47,24 @@ internal sealed class GlobalRateLimitCatalogClient(HttpClient httpClient) : IGlo
             throw new GlobalRateLimitAlreadyExistsException(limit.TargetId, limit.TargetType);
         }
 
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+        {
+            throw await StorageApiResponseReader.CreateUnexpectedExceptionAsync(response, cancellationToken);
+        }
     }
 
     public Task UpdateAsync(string id, GlobalRateLimit limit, CancellationToken cancellationToken) =>
-        SendAsync(HttpMethod.Put, StorageApiRoutes.GlobalRateLimits.ById(id), limit, cancellationToken);
+        SendAsync(HttpMethod.Put, StorageApiRoutes.GlobalRateLimits.ById(id), limit, () => new GlobalRateLimitNotFoundException(id), cancellationToken);
 
     public Task DeleteAsync(string id, CancellationToken cancellationToken) =>
-        SendAsync(HttpMethod.Delete, StorageApiRoutes.GlobalRateLimits.ById(id), body: null, cancellationToken);
+        SendAsync(HttpMethod.Delete, StorageApiRoutes.GlobalRateLimits.ById(id), body: null, () => new GlobalRateLimitNotFoundException(id), cancellationToken);
 
-    private async Task SendAsync(HttpMethod method, string path, object? body, CancellationToken cancellationToken)
+    private async Task SendAsync(
+        HttpMethod method,
+        string path,
+        object? body,
+        Func<Exception> createNotFoundException,
+        CancellationToken cancellationToken)
     {
         using var request = new HttpRequestMessage(method, path);
         if (body is not null)
@@ -60,6 +73,16 @@ internal sealed class GlobalRateLimitCatalogClient(HttpClient httpClient) : IGlo
         }
 
         var response = await httpClient.SendAsync(request, cancellationToken);
-        response.EnsureSuccessStatusCode();
+        if (response.IsSuccessStatusCode)
+        {
+            return;
+        }
+
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            throw createNotFoundException();
+        }
+
+        throw await StorageApiResponseReader.CreateUnexpectedExceptionAsync(response, cancellationToken);
     }
 }
