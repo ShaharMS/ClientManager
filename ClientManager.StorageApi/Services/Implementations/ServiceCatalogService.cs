@@ -1,6 +1,7 @@
 using ClientManager.DataAccess.Repositories.Interfaces;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Search;
+using ClientManager.StorageApi.Models.Exceptions;
 using ClientManager.StorageApi.Services.Interfaces;
 using System.Text.Json;
 
@@ -28,12 +29,22 @@ public class ServiceCatalogService : IServiceCatalogService
 
     public async Task CreateAsync(Service service, CancellationToken cancellationToken)
     {
+        if (await GetByIdAsync(service.Id, cancellationToken) is not null)
+        {
+            throw new ServiceAlreadyExistsException(service.Id);
+        }
+
         await _repository.CreateAsync(service, cancellationToken);
         _cache.InvalidateCatalog();
     }
 
     public async Task<Service> UpdateAsync(string id, Service service, CancellationToken cancellationToken)
     {
+        if (await GetByIdAsync(id, cancellationToken) is null)
+        {
+            throw new ServiceNotFoundException(id);
+        }
+
         var updated = service with { Id = id };
         await _repository.UpdateAsync(updated, cancellationToken);
         _cache.InvalidateCatalog();
@@ -42,6 +53,11 @@ public class ServiceCatalogService : IServiceCatalogService
 
     public async Task DeleteAsync(string id, CancellationToken cancellationToken)
     {
+        if (await GetByIdAsync(id, cancellationToken) is null)
+        {
+            throw new ServiceNotFoundException(id);
+        }
+
         await _repository.DeleteAsync(id, cancellationToken);
         _cache.InvalidateCatalog();
     }

@@ -29,7 +29,7 @@ public class FixedWindowStrategy : IRateLimitStrategy
         var windowKey = $"fixed:{key}:{windowNumber}";
 
         var count = await _stateDatabase.IncrementAsync(windowKey, rateLimit.Window, cancellationToken);
-        return CreateResult(rateLimit.MaxRequests, count, windowNumber, windowSeconds, now);
+        return CreateEvaluateResult(rateLimit.MaxRequests, count, windowNumber, windowSeconds, now);
     }
 
     /// <inheritdoc />
@@ -44,10 +44,29 @@ public class FixedWindowStrategy : IRateLimitStrategy
         var windowKey = $"fixed:{key}:{windowNumber}";
 
         var count = await _stateDatabase.GetCountAsync(windowKey, cancellationToken);
-        return CreateResult(rateLimit.MaxRequests, count, windowNumber, windowSeconds, now);
+        return CreatePeekResult(rateLimit.MaxRequests, count, windowNumber, windowSeconds, now);
     }
 
-    private static RateLimitResult CreateResult(
+    private static RateLimitResult CreateEvaluateResult(
+        int maxRequests,
+        long count,
+        long windowNumber,
+        long windowSeconds,
+        long now)
+    {
+        if (count <= maxRequests)
+        {
+            return new RateLimitResult
+            {
+                IsAllowed = true,
+                RemainingRequests = maxRequests - (int)count
+            };
+        }
+
+        return CreateDeniedResult(windowNumber, windowSeconds, now);
+    }
+
+    private static RateLimitResult CreatePeekResult(
         int maxRequests,
         long count,
         long windowNumber,
@@ -63,6 +82,14 @@ public class FixedWindowStrategy : IRateLimitStrategy
             };
         }
 
+        return CreateDeniedResult(windowNumber, windowSeconds, now);
+    }
+
+    private static RateLimitResult CreateDeniedResult(
+        long windowNumber,
+        long windowSeconds,
+        long now)
+    {
         var retryAfter = (windowNumber + 1) * windowSeconds - now;
         return new RateLimitResult
         {

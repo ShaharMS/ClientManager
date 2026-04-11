@@ -41,7 +41,13 @@ public partial class UsagePersistenceService
 
         foreach (var group in bucketsToRollUp.GroupBy(bucket => RoundDownToGranularity(bucket.Timestamp, targetGranularity)))
         {
-            await UpsertRolledUpSnapshotAsync(source, group.ToList(), targetGranularity, database, cancellationToken);
+            await UpsertRolledUpSnapshotAsync(
+                source,
+                group.Key,
+                group.ToList(),
+                targetGranularity,
+                database,
+                cancellationToken);
         }
 
         var remaining = source.Buckets.Where(bucket => bucket.Timestamp >= cutoff).ToList();
@@ -56,12 +62,12 @@ public partial class UsagePersistenceService
 
     private async Task UpsertRolledUpSnapshotAsync(
         UsageSnapshot source,
+        DateTime targetTimestamp,
         IReadOnlyList<UsageBucket> rolledUpBuckets,
         BucketGranularity targetGranularity,
         IUsageSnapshotDatabase database,
         CancellationToken cancellationToken)
     {
-        var targetTimestamp = rolledUpBuckets[0].Timestamp;
         var segmentStart = UsageSegmentHelper.GetSegmentStart(targetTimestamp, targetGranularity);
         var targetId = UsageSegmentHelper.BuildSegmentId(
             source.ClientId,

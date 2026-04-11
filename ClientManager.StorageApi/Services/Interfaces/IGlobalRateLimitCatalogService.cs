@@ -12,7 +12,7 @@ public interface IGlobalRateLimitCatalogService
 
     Task<GlobalRateLimit?> GetByIdAsync(string id, CancellationToken cancellationToken);
 
-    Task<bool> CreateAsync(GlobalRateLimit limit, CancellationToken cancellationToken);
+    Task CreateAsync(GlobalRateLimit limit, CancellationToken cancellationToken);
 
     Task<GlobalRateLimit> UpdateAsync(string id, GlobalRateLimit limit, CancellationToken cancellationToken);
 

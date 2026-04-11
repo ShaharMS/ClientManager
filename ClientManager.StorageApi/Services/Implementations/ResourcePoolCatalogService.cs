@@ -1,6 +1,7 @@
 using ClientManager.DataAccess.Repositories.Interfaces;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Search;
+using ClientManager.StorageApi.Models.Exceptions;
 using ClientManager.StorageApi.Services.Interfaces;
 using System.Text.Json;
 
@@ -28,12 +29,22 @@ public class ResourcePoolCatalogService : IResourcePoolCatalogService
 
     public async Task CreateAsync(ResourcePool pool, CancellationToken cancellationToken)
     {
+        if (await GetByIdAsync(pool.Id, cancellationToken) is not null)
+        {
+            throw new ResourcePoolAlreadyExistsException(pool.Id);
+        }
+
         await _repository.CreateAsync(pool, cancellationToken);
         _cache.InvalidateCatalog();
     }
 
     public async Task<ResourcePool> UpdateAsync(string id, ResourcePool pool, CancellationToken cancellationToken)
     {
+        if (await GetByIdAsync(id, cancellationToken) is null)
+        {
+            throw new ResourcePoolNotFoundException(id);
+        }
+
         var updated = pool with { Id = id };
         await _repository.UpdateAsync(updated, cancellationToken);
         _cache.InvalidateCatalog();
@@ -42,6 +53,11 @@ public class ResourcePoolCatalogService : IResourcePoolCatalogService
 
     public async Task DeleteAsync(string id, CancellationToken cancellationToken)
     {
+        if (await GetByIdAsync(id, cancellationToken) is null)
+        {
+            throw new ResourcePoolNotFoundException(id);
+        }
+
         await _repository.DeleteAsync(id, cancellationToken);
         _cache.InvalidateCatalog();
     }

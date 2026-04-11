@@ -135,7 +135,6 @@ public class ResourceAllocationService : IResourceAllocationService
             return configuration;
         }
 
-        RecordDenied(clientId, resourcePoolId, ResourceAllocationDenialReason.ClientCapReached);
         throw new ClientDisabledException(clientId);
     }
 
