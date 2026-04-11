@@ -2,6 +2,7 @@ using Asp.Versioning;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Requests;
 using ClientManager.Shared.Models.Responses;
+using ClientManager.StorageApi.Models.Exceptions;
 using ClientManager.StorageApi.Services.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -45,15 +46,25 @@ public class ClientConfigurationResourcePoolsController : ControllerBase
     /// </summary>
     /// <param name="id">The unique identifier of the client.</param>
     /// <param name="poolId">The unique identifier of the resource pool.</param>
-    /// <response code="200">Returns the resource pool settings or null when no entry exists.</response>
-    /// <response code="404">No client was found with the given identifier.</response>
+    /// <response code="200">Returns the resource pool settings.</response>
+    /// <response code="404">No client or matching resource pool settings were found.</response>
     [HttpGet("{id}/resource-pools/{poolId}")]
     [ProducesResponseType(typeof(ResourcePoolSettings), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetResourcePoolSettings(string id, string poolId, CancellationToken cancellationToken)
     {
         var result = await _service.GetResourcePoolSettingsAsync(id, poolId, cancellationToken);
-        return !result.ClientExists ? NotFound() : Ok(result.Value);
+        if (!result.ClientExists)
+        {
+            throw new ClientNotFoundException(id);
+        }
+
+        if (result.Value is null)
+        {
+            throw new ResourcePoolSettingsNotFoundException(id, poolId);
+        }
+
+        return Ok(result.Value);
     }
 
     /// <summary>

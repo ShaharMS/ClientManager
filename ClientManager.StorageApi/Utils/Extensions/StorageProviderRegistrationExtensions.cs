@@ -1,6 +1,7 @@
 using ClientManager.DataAccess.Stores.Interfaces;
 using ClientManager.Shared.Configuration.Storage;
 using ClientManager.Shared.Models.Enums;
+using Microsoft.Extensions.Hosting;
 using MongoDB.Driver;
 using StackExchange.Redis;
 
@@ -16,9 +17,11 @@ public static class StorageProviderRegistrationExtensions
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <param name="options">The bound persistence options.</param>
+    /// <param name="environment">The hosting environment.</param>
     public static IServiceCollection AddStorageProviders(
         this IServiceCollection services,
-        PersistenceOptions options)
+        PersistenceOptions options,
+        IHostEnvironment environment)
     {
         ValidateStorageConfiguration(options);
 
@@ -32,7 +35,7 @@ public static class StorageProviderRegistrationExtensions
             services.AddKeyedSingleton<IDocumentStore>(role, (_, _) => store);
         }
 
-        LogStorageConfiguration(options);
+        LogStorageConfiguration(options, environment);
         return services;
     }
 
@@ -68,7 +71,7 @@ public static class StorageProviderRegistrationExtensions
         }
     }
 
-    private static void LogStorageConfiguration(PersistenceOptions options)
+    private static void LogStorageConfiguration(PersistenceOptions options, IHostEnvironment environment)
     {
         var logger = NLog.LogManager.GetLogger("StorageConfiguration");
 
@@ -85,6 +88,15 @@ public static class StorageProviderRegistrationExtensions
             };
 
             logger.Info("Storage role {Role} -> {Provider} ({Detail})", role, binding.Provider, detail);
+
+            if (!environment.IsDevelopment()
+                && (binding.Provider == PersistenceProvider.JsonFile || binding.Provider == PersistenceProvider.Lucene))
+            {
+                logger.Warn(
+                    "Storage role {Role} is using {Provider}. This backend is intended for local or single-host use and is not safe for multi-instance production deployment.",
+                    role,
+                    binding.Provider);
+            }
         }
     }
 

@@ -1,5 +1,6 @@
 using Asp.Versioning;
 using ClientManager.Shared.Models.Entities;
+using ClientManager.StorageApi.Models.Exceptions;
 using ClientManager.StorageApi.Services.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -26,15 +27,25 @@ public class ClientConfigurationGlobalRateLimitController : ControllerBase
     /// Gets the client's global rate limit.
     /// </summary>
     /// <param name="id">The unique identifier of the client.</param>
-    /// <response code="200">Returns the global rate limit or null when no limit is configured.</response>
-    /// <response code="404">No client was found with the given identifier.</response>
+    /// <response code="200">Returns the global rate limit.</response>
+    /// <response code="404">No client or configured client rate limit was found.</response>
     [HttpGet("{id}/global-rate-limit")]
     [ProducesResponseType(typeof(ClientRateLimit), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetGlobalRateLimit(string id, CancellationToken cancellationToken)
     {
         var result = await _service.GetGlobalRateLimitAsync(id, cancellationToken);
-        return !result.ClientExists ? NotFound() : Ok(result.Value);
+        if (!result.ClientExists)
+        {
+            throw new ClientNotFoundException(id);
+        }
+
+        if (result.Value is null)
+        {
+            throw new ClientGlobalRateLimitNotFoundException(id);
+        }
+
+        return Ok(result.Value);
     }
 
     /// <summary>
@@ -50,7 +61,12 @@ public class ClientConfigurationGlobalRateLimitController : ControllerBase
     public async Task<IActionResult> SetGlobalRateLimit(string id, [FromBody] ClientRateLimit rateLimit, CancellationToken cancellationToken)
     {
         var updated = await _service.SetGlobalRateLimitAsync(id, rateLimit, cancellationToken);
-        return updated ? Ok(rateLimit) : NotFound();
+        if (!updated)
+        {
+            throw new ClientNotFoundException(id);
+        }
+
+        return Ok(rateLimit);
     }
 
     /// <summary>
@@ -65,6 +81,11 @@ public class ClientConfigurationGlobalRateLimitController : ControllerBase
     public async Task<IActionResult> RemoveGlobalRateLimit(string id, CancellationToken cancellationToken)
     {
         var removed = await _service.RemoveGlobalRateLimitAsync(id, cancellationToken);
-        return removed ? NoContent() : NotFound();
+        if (!removed)
+        {
+            throw new ClientNotFoundException(id);
+        }
+
+        return NoContent();
     }
 }

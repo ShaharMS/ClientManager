@@ -58,7 +58,7 @@ try
         options.DocumentFilter<TagDescriptionsDocumentFilter>();
     });
 
-    builder.Services.AddStorageApi(builder.Configuration);
+    builder.Services.AddStorageApi(builder.Configuration, builder.Environment);
 
     builder.Services.AddSingleton<StorageApiMetrics>();
     builder.Services.AddOpenTelemetry()

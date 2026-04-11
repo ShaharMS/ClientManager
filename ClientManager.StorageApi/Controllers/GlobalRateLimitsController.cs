@@ -1,6 +1,7 @@
 using Asp.Versioning;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Search;
+using ClientManager.StorageApi.Models.Exceptions;
 using ClientManager.StorageApi.Services.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -47,8 +48,9 @@ public class GlobalRateLimitsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetById(string id, CancellationToken cancellationToken)
     {
-        var limit = await _service.GetByIdAsync(id, cancellationToken);
-        return limit is null ? NotFound() : Ok(limit);
+        var limit = await _service.GetByIdAsync(id, cancellationToken)
+            ?? throw new GlobalRateLimitNotFoundException(id);
+        return Ok(limit);
     }
 
     /// <summary>
@@ -62,10 +64,8 @@ public class GlobalRateLimitsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Create([FromBody] GlobalRateLimit limit, CancellationToken cancellationToken)
     {
-        var created = await _service.CreateAsync(limit, cancellationToken);
-        return created
-            ? CreatedAtAction(nameof(GetById), new { version = "1.0", id = limit.Id }, limit)
-            : Conflict();
+        await _service.CreateAsync(limit, cancellationToken);
+        return CreatedAtAction(nameof(GetById), new { version = "1.0", id = limit.Id }, limit);
     }
 
     /// <summary>

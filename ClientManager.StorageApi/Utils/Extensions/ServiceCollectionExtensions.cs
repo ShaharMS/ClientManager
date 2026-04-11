@@ -20,9 +20,11 @@ public static class ServiceCollectionExtensions
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <param name="configuration">The application configuration.</param>
+    /// <param name="environment">The hosting environment.</param>
     public static IServiceCollection AddStorageApi(
         this IServiceCollection services,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IHostEnvironment environment)
     {
         services.AddSingleton(typeof(IAppLogger<>), typeof(AppLogger<>));
 
@@ -30,7 +32,7 @@ public static class ServiceCollectionExtensions
             .GetSection(PersistenceOptions.SectionName)
             .Get<PersistenceOptions>() ?? new PersistenceOptions();
 
-        services.AddStorageProviders(persistenceOptions);
+        services.AddStorageProviders(persistenceOptions, environment);
         services.AddStorageRepositories();
         services.AddMemoryCache();
         services.AddOptions<StorageReadCacheOptions>()

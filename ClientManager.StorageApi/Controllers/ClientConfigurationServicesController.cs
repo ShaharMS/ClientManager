@@ -2,6 +2,7 @@ using Asp.Versioning;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Requests;
 using ClientManager.Shared.Models.Responses;
+using ClientManager.StorageApi.Models.Exceptions;
 using ClientManager.StorageApi.Services.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -45,15 +46,25 @@ public class ClientConfigurationServicesController : ControllerBase
     /// </summary>
     /// <param name="id">The unique identifier of the client.</param>
     /// <param name="serviceId">The unique identifier of the service.</param>
-    /// <response code="200">Returns the service access settings or null when no entry exists.</response>
-    /// <response code="404">No client was found with the given identifier.</response>
+    /// <response code="200">Returns the service access settings.</response>
+    /// <response code="404">No client or matching service settings were found.</response>
     [HttpGet("{id}/services/{serviceId}")]
     [ProducesResponseType(typeof(ServiceAccessSettings), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetServiceSettings(string id, string serviceId, CancellationToken cancellationToken)
     {
         var result = await _service.GetServiceSettingsAsync(id, serviceId, cancellationToken);
-        return !result.ClientExists ? NotFound() : Ok(result.Value);
+        if (!result.ClientExists)
+        {
+            throw new ClientNotFoundException(id);
+        }
+
+        if (result.Value is null)
+        {
+            throw new ServiceSettingsNotFoundException(id, serviceId);
+        }
+
+        return Ok(result.Value);
     }
 
     /// <summary>

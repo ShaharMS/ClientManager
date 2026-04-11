@@ -1,6 +1,7 @@
 using Asp.Versioning;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Search;
+using ClientManager.StorageApi.Models.Exceptions;
 using ClientManager.StorageApi.Services.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -47,8 +48,9 @@ public class ServicesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetById(string id, CancellationToken cancellationToken)
     {
-        var service = await _service.GetByIdAsync(id, cancellationToken);
-        return service is null ? NotFound() : Ok(service);
+        var service = await _service.GetByIdAsync(id, cancellationToken)
+            ?? throw new ServiceNotFoundException(id);
+        return Ok(service);
     }
 
     /// <summary>

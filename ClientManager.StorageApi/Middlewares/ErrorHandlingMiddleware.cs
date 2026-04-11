@@ -1,5 +1,6 @@
 using ClientManager.StorageApi.Models.Exceptions;
 using ClientManager.Shared.Logging;
+using ClientManager.Shared.Models.Problems;
 
 namespace ClientManager.StorageApi.Middlewares;
 
@@ -83,13 +84,13 @@ public class ErrorHandlingMiddleware
         context.Response.StatusCode = statusCode;
         context.Response.ContentType = "application/problem+json";
 
-        await context.Response.WriteAsJsonAsync(new
+        await context.Response.WriteAsJsonAsync(new StorageProblemResponse
         {
-            title,
-            status = statusCode,
-            detail,
-            errorCode,
-            traceId = context.TraceIdentifier
+            Title = title,
+            Status = statusCode,
+            Detail = detail,
+            ErrorCode = errorCode,
+            TraceId = context.TraceIdentifier
         });
     }
 }
