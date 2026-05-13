@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using ClientManager.Api.Models.Exceptions;
+using ClientManager.Api.Services.InternalClients;
 using ClientManager.Api.Services.InternalClients.Interfaces;
 using ClientManager.Shared.Models.Problems;
 using ClientManager.Shared.Models.Requests;
@@ -21,8 +22,10 @@ internal sealed class RuntimeStateClient(HttpClient httpClient) : IRuntimeStateC
 
         if (response.IsSuccessStatusCode)
         {
-            return await ReadRequiredAsync<AccessCheckResponse>(response, cancellationToken)
-                ?? throw new InvalidOperationException("The storage API returned an empty access response.");
+            return await StorageApiResponseReader.ReadRequiredAsync<AccessCheckResponse>(
+                response,
+                cancellationToken,
+                "The storage API returned an empty access response.");
         }
 
         throw await MapAccessProblemAsync(response, request, cancellationToken);
@@ -38,8 +41,10 @@ internal sealed class RuntimeStateClient(HttpClient httpClient) : IRuntimeStateC
 
         if (response.IsSuccessStatusCode)
         {
-            return await ReadRequiredAsync<ClientAccessibilityResponse>(response, cancellationToken)
-                ?? throw new InvalidOperationException("The storage API returned an empty accessibility response.");
+            return await StorageApiResponseReader.ReadRequiredAsync<ClientAccessibilityResponse>(
+                response,
+                cancellationToken,
+                "The storage API returned an empty accessibility response.");
         }
 
         if (response.StatusCode == HttpStatusCode.NotFound)
@@ -47,7 +52,7 @@ internal sealed class RuntimeStateClient(HttpClient httpClient) : IRuntimeStateC
             throw new ClientNotFoundException(clientId);
         }
 
-        throw await CreateUnexpectedExceptionAsync(response, cancellationToken);
+        throw await StorageApiResponseReader.CreateUnexpectedExceptionAsync(response, cancellationToken);
     }
 
     public async Task<ResourceAcquireResponse> AcquireAsync(
@@ -61,8 +66,10 @@ internal sealed class RuntimeStateClient(HttpClient httpClient) : IRuntimeStateC
 
         if (response.IsSuccessStatusCode)
         {
-            return await ReadRequiredAsync<ResourceAcquireResponse>(response, cancellationToken)
-                ?? throw new InvalidOperationException("The storage API returned an empty resource acquire response.");
+            return await StorageApiResponseReader.ReadRequiredAsync<ResourceAcquireResponse>(
+                response,
+                cancellationToken,
+                "The storage API returned an empty resource acquire response.");
         }
 
         throw await MapAcquireProblemAsync(response, request, cancellationToken);
@@ -79,8 +86,10 @@ internal sealed class RuntimeStateClient(HttpClient httpClient) : IRuntimeStateC
 
         if (response.IsSuccessStatusCode)
         {
-            return await ReadRequiredAsync<ResourceReleaseResponse>(response, cancellationToken)
-                ?? throw new InvalidOperationException("The storage API returned an empty resource release response.");
+            return await StorageApiResponseReader.ReadRequiredAsync<ResourceReleaseResponse>(
+                response,
+                cancellationToken,
+                "The storage API returned an empty resource release response.");
         }
 
         if (response.StatusCode == HttpStatusCode.NotFound)
@@ -88,12 +97,7 @@ internal sealed class RuntimeStateClient(HttpClient httpClient) : IRuntimeStateC
             throw new AllocationNotFoundException(request.AllocationId);
         }
 
-        throw await CreateUnexpectedExceptionAsync(response, cancellationToken);
-    }
-
-    private static async Task<T?> ReadRequiredAsync<T>(HttpResponseMessage response, CancellationToken cancellationToken)
-    {
-        return await response.Content.ReadFromJsonAsync<T>(cancellationToken);
+        throw await StorageApiResponseReader.CreateUnexpectedExceptionAsync(response, cancellationToken);
     }
 
     private static async Task<Exception> MapAccessProblemAsync(
@@ -101,8 +105,8 @@ internal sealed class RuntimeStateClient(HttpClient httpClient) : IRuntimeStateC
         CheckAccessRequest request,
         CancellationToken cancellationToken)
     {
-        var problem = await ReadProblemAsync(response, cancellationToken);
-        var retryAfterSeconds = GetRetryAfterSeconds(response);
+        var problem = await StorageApiResponseReader.ReadProblemAsync(response, cancellationToken);
+        var retryAfterSeconds = StorageApiResponseReader.GetRetryAfterSeconds(response);
 
         return problem.ErrorCode switch
         {
@@ -114,7 +118,7 @@ internal sealed class RuntimeStateClient(HttpClient httpClient) : IRuntimeStateC
             StorageErrorCodes.ServiceDisabled => new ServiceDisabledException(request.ServiceId),
             StorageErrorCodes.GlobalServiceRateLimitExceeded => new GlobalServiceRateLimitExceededException(retryAfterSeconds),
             StorageErrorCodes.ClientRateLimitExceeded => new ClientRateLimitExceededException(retryAfterSeconds),
-            _ => await CreateUnexpectedExceptionAsync(response, cancellationToken)
+            _ => StorageApiResponseReader.CreateUnexpectedException(response, problem)
         };
     }
 
@@ -123,8 +127,8 @@ internal sealed class RuntimeStateClient(HttpClient httpClient) : IRuntimeStateC
         AcquireResourceRequest request,
         CancellationToken cancellationToken)
     {
-        var problem = await ReadProblemAsync(response, cancellationToken);
-        var retryAfterSeconds = GetRetryAfterSeconds(response);
+        var problem = await StorageApiResponseReader.ReadProblemAsync(response, cancellationToken);
+        var retryAfterSeconds = StorageApiResponseReader.GetRetryAfterSeconds(response);
 
         return problem.ErrorCode switch
         {
@@ -134,50 +138,7 @@ internal sealed class RuntimeStateClient(HttpClient httpClient) : IRuntimeStateC
             StorageErrorCodes.ClientSlotLimitReached => new ClientSlotLimitReachedException(request.ResourcePoolId),
             StorageErrorCodes.GlobalResourcePoolRateLimitExceeded => new GlobalResourcePoolRateLimitExceededException(retryAfterSeconds),
             StorageErrorCodes.NoSlotsAvailable => new NoSlotsAvailableException(request.ResourcePoolId),
-            _ => await CreateUnexpectedExceptionAsync(response, cancellationToken)
+            _ => StorageApiResponseReader.CreateUnexpectedException(response, problem)
         };
-    }
-
-    private static async Task<StorageProblemResponse> ReadProblemAsync(
-        HttpResponseMessage response,
-        CancellationToken cancellationToken)
-    {
-        return await response.Content.ReadFromJsonAsync<StorageProblemResponse>(cancellationToken)
-            ?? new StorageProblemResponse
-            {
-                Status = (int)response.StatusCode,
-                Detail = $"The storage API returned status {(int)response.StatusCode}."
-            };
-    }
-
-    private static int? GetRetryAfterSeconds(HttpResponseMessage response)
-    {
-        if (response.Headers.RetryAfter?.Delta is TimeSpan delta)
-        {
-            return Math.Max(1, (int)Math.Ceiling(delta.TotalSeconds));
-        }
-
-        if (response.Headers.RetryAfter?.Date is DateTimeOffset date)
-        {
-            var seconds = (int)Math.Ceiling((date - DateTimeOffset.UtcNow).TotalSeconds);
-            return Math.Max(1, seconds);
-        }
-
-        if (response.Headers.TryGetValues("Retry-After", out var values)
-            && int.TryParse(values.FirstOrDefault(), out var retryAfterSeconds))
-        {
-            return retryAfterSeconds;
-        }
-
-        return null;
-    }
-
-    private static async Task<Exception> CreateUnexpectedExceptionAsync(
-        HttpResponseMessage response,
-        CancellationToken cancellationToken)
-    {
-        var problem = await ReadProblemAsync(response, cancellationToken);
-        var detail = problem.Detail ?? $"The storage API returned status {(int)response.StatusCode}.";
-        return new HttpRequestException(detail, null, response.StatusCode);
     }
 }

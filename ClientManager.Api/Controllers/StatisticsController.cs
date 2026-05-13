@@ -257,6 +257,41 @@ public class StatisticsController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>
+    /// Retrieves historical usage data for one or more services or resource pools split by client.
+    /// </summary>
+    /// <param name="filterType">The target type: Service or ResourcePool.</param>
+    /// <param name="targetIds">Comma-separated IDs of the services or resource pools.</param>
+    /// <param name="clientIds">Comma-separated client IDs included in the response.</param>
+    /// <param name="from">Start of the time range (UTC, ISO 8601).</param>
+    /// <param name="to">End of the time range (UTC, ISO 8601).</param>
+    /// <param name="granularity">Bucket granularity: Second, FiveMinute, Hour, or Day.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Historical usage data points for each requested target-client pair.</returns>
+    /// <response code="200">Returns the historical usage data for each requested target-client pair.</response>
+    [HttpGet("historical-usage/by-client")]
+    [ProducesResponseType(typeof(List<ClientHistoricalUsageResponse>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetHistoricalUsageByClient(
+        [FromQuery] TargetType filterType,
+        [FromQuery] string targetIds,
+        [FromQuery] string clientIds,
+        [FromQuery] DateTime from,
+        [FromQuery] DateTime to,
+        [FromQuery] BucketGranularity granularity,
+        CancellationToken cancellationToken)
+    {
+        var result = await _statisticsReadClient.GetHistoricalUsageByClientAsync(
+            filterType,
+            ParseIds(targetIds),
+            ParseIds(clientIds),
+            from,
+            to,
+            granularity,
+            cancellationToken);
+
+        return Ok(result);
+    }
+
     private static IEnumerable<string> ParseIds(string ids)
     {
         return ids.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);

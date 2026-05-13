@@ -52,6 +52,16 @@ public record HistoricalUsageResponse(
     IReadOnlyList<HistoricalUsagePoint> Points);
 
 /// <summary>
+/// Response containing historical usage time-series data for a target and client pair.
+/// </summary>
+public record ClientHistoricalUsageResponse(
+    string TargetId,
+    TargetType TargetType,
+    string ClientId,
+    BucketGranularity Granularity,
+    IReadOnlyList<HistoricalUsagePoint> Points);
+
+/// <summary>
 /// A single data point in the historical usage time-series.
 /// </summary>
 public record HistoricalUsagePoint(

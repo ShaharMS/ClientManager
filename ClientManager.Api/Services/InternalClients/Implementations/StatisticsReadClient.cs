@@ -123,6 +123,20 @@ internal sealed class StatisticsReadClient(HttpClient httpClient) : IStatisticsR
             cancellationToken);
     }
 
+    public Task<IReadOnlyList<ClientHistoricalUsageResponse>> GetHistoricalUsageByClientAsync(
+        TargetType filterType,
+        IEnumerable<string> targetIds,
+        IEnumerable<string> clientIds,
+        DateTime from,
+        DateTime to,
+        BucketGranularity granularity,
+        CancellationToken cancellationToken)
+    {
+        return GetAsync<IReadOnlyList<ClientHistoricalUsageResponse>>(
+            StorageApiRoutes.Statistics.HistoricalUsageByClient(filterType, targetIds, clientIds, from, to, granularity),
+            cancellationToken);
+    }
+
     public async Task<string> GetPrometheusMetricsAsync(CancellationToken cancellationToken)
     {
         var response = await httpClient.GetAsync(StorageApiRoutes.Metrics.Prometheus, cancellationToken);

@@ -52,6 +52,15 @@ public interface IStatisticsReadClient
         BucketGranularity granularity,
         CancellationToken cancellationToken);
 
+    Task<IReadOnlyList<ClientHistoricalUsageResponse>> GetHistoricalUsageByClientAsync(
+        TargetType filterType,
+        IEnumerable<string> targetIds,
+        IEnumerable<string> clientIds,
+        DateTime from,
+        DateTime to,
+        BucketGranularity granularity,
+        CancellationToken cancellationToken);
+
     Task<string> GetPrometheusMetricsAsync(CancellationToken cancellationToken);
 
     Task<GrafanaMetricsResponse> GetGrafanaMetricsAsync(CancellationToken cancellationToken);

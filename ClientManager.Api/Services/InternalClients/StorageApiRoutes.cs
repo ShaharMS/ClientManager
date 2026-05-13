@@ -124,6 +124,22 @@ internal static class StorageApiRoutes
             BucketGranularity granularity) =>
             BuildHistoricalUsageQueryString(filterType, targetIds, clientId, from, to, granularity);
 
+        public static string HistoricalUsageByClient(
+            TargetType filterType,
+            IEnumerable<string> targetIds,
+            IEnumerable<string> clientIds,
+            DateTime from,
+            DateTime to,
+            BucketGranularity granularity) =>
+            BuildQueryString(
+                Base + "/historical-usage/by-client",
+                filterType,
+                targetIds,
+                string.Join(',', clientIds),
+                from,
+                to,
+                granularity);
+
         private static string BuildQueryString(
             string basePath,
             TargetType filterType,
