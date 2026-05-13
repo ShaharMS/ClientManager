@@ -3,7 +3,7 @@
 ## Iteration
 
 - Slug: hot-path-performance-observability-1-baseline-runtime
-- Status: Initial implementation complete; awaiting committed review
+- Status: Blocked during Step 1 verification closeout
 - Owning orchestrator: @Iterate
 
 ## Selected Scope
@@ -20,10 +20,10 @@
 
 ## Current Loop State
 
-- Next agent: @Inspect
+- Next agent: @Index
 - Review round: 0
 - Latest verification: Build, touched-file diagnostics, benchmark script syntax, source startup probes, seed data, traffic generation, benchmark artifact creation, and git diff hygiene passed. Runtime baseline verification is blocked by 503s/timeouts, 0 acquire successes, and 0 releases.
-- Latest decision: @Inscribe created feature/hot-path-performance-observability-1-baseline-runtime for the initial implementation pass because the work started on main.
+- Latest decision: Stop the loop as blocked because the selected step requires a clean rebuilt baseline with nonzero acquire/release activity, and the captured source baseline does not satisfy that gate.
 
 ## Packet Links
 
@@ -37,11 +37,11 @@
 
 ## Open Items
 
-- Blockers: Rebuilt baseline artifact is not clean because public API hot-path calls returned many 503s/timeouts, acquire successes were 0, and release count stayed 0.
+- Blockers: Rebuilt baseline artifact is not clean: 685 runtime 503s, acquire successes were 0, and release count stayed 0. Direct StorageApi access-check returned 200 after about 8084.8 ms, while the public API access-check returned 503 after about 5043.2 ms.
 - Outstanding findings: None recorded.
-- Next action: Review the committed initial implementation pass and decide whether the preserved runtime blocker should be remediated before accepting the baseline.
+- Next action: Close execution report, index the blocked stop, and commit/preserve closeout bookkeeping.
 
 ## Resume Notes
 
 - Current context: Specific user-selected plan step is active. The implementation pass restored source launchability and benchmark artifact writing, but the rebuilt baseline captured runtime degradation rather than a clean comparable baseline.
-- Recovery instructions: Continue the loop with review of the committed initial implementation pass. Preserve the runtime blocker unless a later plan step explicitly remediates it.
+- Recovery instructions: Resume from the blocked stop. First decide whether to remediate the hot-path timeout/circuit-breaker behavior inside Step 1 or revise the plan to accept a degraded before artifact before continuing review/finalization.

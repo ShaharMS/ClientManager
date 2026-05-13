@@ -47,13 +47,41 @@ API hot path times out under the StorageApi circuit-breaker budget.
 
 ## Result
 
-- Commit hash: Reported by @Inscribe final response after commit creation. It is not embedded here because this single plan-step commit cannot contain its own Git object hash without a second bookkeeping commit.
-- Push result: Reported by @Inscribe final response after pushing origin.
+- Commit hash: b0958b9
+- Push result: Initial implementation push result was recorded by the execution report; any later branch push is reported by the closeout @Inscribe final response.
 - Workspace status after commit: Reported by @Inscribe final response.
 - Remaining uncommitted files: Reported by @Inscribe final response.
 - Follow-up needed: Review the committed Step 1 pass and decide whether the preserved 503/timeouts baseline blocker belongs in Step 3/4 remediation before accepting the baseline as comparable.
+
+## Closeout Bookkeeping Intent
+
+- Pass type: Blocked closeout bookkeeping
+- Plan step: .github/plans/hot-path-performance-observability-1-baseline-runtime.md
+- Scope: Agent-authored packet, report, ledger, timeline, and progress-note updates for the blocked stop.
+- Reason this is one commit: These files all preserve the same blocked-stop state after the implementation commit and should move together for iteration recovery.
+- Included files: `.github/iterations/hot-path-performance-observability-1-baseline-runtime/commit-packet.md`, `.github/iterations/hot-path-performance-observability-1-baseline-runtime/execution-report.md`, `.github/iterations/hot-path-performance-observability-1-baseline-runtime/run-ledger.md`, `.github/iterations/hot-path-performance-observability-1-baseline-runtime/timeline.md`, `.github/agent-progress/hot-path-performance-observability-1-baseline-runtime.md`.
+- Excluded files: Source files, benchmark artifacts, plan files, generated build outputs, runtime data, and unrelated workspace changes.
+- Branch action: Stayed on existing branch `feature/hot-path-performance-observability-1-baseline-runtime`; no branch switch was needed.
+
+## Closeout Commit Message
+
+```text
+docs(iterations): record blocked baseline closeout
+
+Plan: .github/plans/hot-path-performance-observability-1-baseline-runtime.md
+Pass: blocked closeout bookkeeping
+```
+
+## Closeout Result
+
+- Commit hash: Reported by @Inscribe final response because this commit cannot contain its own Git object hash without a follow-up dirty-file loop.
+- Push result: Reported by @Inscribe final response after checking `origin`.
+- Workspace status after commit: Reported by @Inscribe final response.
+- Remaining uncommitted files: Reported by @Inscribe final response.
 
 ## Commit History
 
 | Pass | Commit | Branch | Notes |
 |------|--------|--------|-------|
+| Initial implementation | b0958b9 | feature/hot-path-performance-observability-1-baseline-runtime | Restored baseline runtime capture while preserving the 503-heavy verification blocker. |
+| Blocked closeout bookkeeping | Reported by @Inscribe final response | feature/hot-path-performance-observability-1-baseline-runtime | Commits only agent-authored closeout packet/report/progress-note updates. |
