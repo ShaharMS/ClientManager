@@ -116,7 +116,7 @@ public class ResourceAllocationService : IResourceAllocationService
             activity?.SetTag("operation.result", result);
             activity?.SetTag("denial.reason", reason);
             activity?.SetTag("duration_ms", durationMs);
-            RecordResourceDuration("acquire", clientId, resourcePoolId, null, durationMs, result, reason);
+            RecordResourceDuration("acquire", clientId, resourcePoolId, durationMs, result, reason);
             LogResourceCompletion("acquire", clientId, resourcePoolId, null, durationMs, result, reason, unexpectedException);
         }
     }
@@ -180,7 +180,7 @@ public class ResourceAllocationService : IResourceAllocationService
             activity?.SetTag("operation.result", result);
             activity?.SetTag("denial.reason", reason);
             activity?.SetTag("duration_ms", durationMs);
-            RecordResourceDuration("release", allocation?.ClientId, allocation?.ResourcePoolId, allocationId, durationMs, result, reason);
+            RecordResourceDuration("release", allocation?.ClientId, allocation?.ResourcePoolId, durationMs, result, reason);
             LogResourceCompletion("release", allocation?.ClientId, allocation?.ResourcePoolId, allocationId, durationMs, result, reason, unexpectedException);
         }
     }
@@ -464,7 +464,6 @@ public class ResourceAllocationService : IResourceAllocationService
         string operation,
         string? clientId,
         string? resourcePoolId,
-        string? allocationId,
         double durationMs,
         string result,
         string reason)
@@ -477,7 +476,6 @@ public class ResourceAllocationService : IResourceAllocationService
         };
         AddOptionalTag(ref tags, MetricTagKey.ClientId.ToTagName(), clientId);
         AddOptionalTag(ref tags, MetricTagKey.ResourcePoolId.ToTagName(), resourcePoolId);
-        AddOptionalTag(ref tags, MetricTagKey.AllocationId.ToTagName(), allocationId);
 
         if (operation == "acquire")
         {

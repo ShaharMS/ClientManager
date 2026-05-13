@@ -268,7 +268,7 @@ internal sealed class RuntimeStateClient : IRuntimeStateClient
         Activity.Current?.SetTag("operation.result", finalResult);
         Activity.Current?.SetTag("duration_ms", durationMs);
         SetExceptionTags(Activity.Current, finalResult, exception);
-        RecordStorageClientDuration(operation, durationMs, finalResult, response, clientId, serviceId, resourcePoolId, allocationId);
+        RecordStorageClientDuration(operation, durationMs, finalResult, response, clientId, serviceId, resourcePoolId);
         LogStorageClientCompletion(operation, durationMs, finalResult, response, exception, clientId, serviceId, resourcePoolId, allocationId);
     }
 
@@ -279,10 +279,9 @@ internal sealed class RuntimeStateClient : IRuntimeStateClient
         HttpResponseMessage? response,
         string? clientId,
         string? serviceId,
-        string? resourcePoolId,
-        string? allocationId)
+        string? resourcePoolId)
     {
-        var tags = CreateMetricTags(operation, result, response, clientId, serviceId, resourcePoolId, allocationId);
+        var tags = CreateMetricTags(operation, result, response, clientId, serviceId, resourcePoolId);
         _metrics.StorageClientCallDuration.Record(durationMs, tags);
 
         switch (operation.Name)
@@ -351,8 +350,7 @@ internal sealed class RuntimeStateClient : IRuntimeStateClient
         HttpResponseMessage? response,
         string? clientId,
         string? serviceId,
-        string? resourcePoolId,
-        string? allocationId)
+        string? resourcePoolId)
     {
         var tags = new TagList
         {
@@ -366,7 +364,6 @@ internal sealed class RuntimeStateClient : IRuntimeStateClient
         AddOptionalTag(ref tags, "client_id", clientId);
         AddOptionalTag(ref tags, "service_id", serviceId);
         AddOptionalTag(ref tags, "resource_pool_id", resourcePoolId);
-        AddOptionalTag(ref tags, "allocation_id", allocationId);
         return tags;
     }
 
