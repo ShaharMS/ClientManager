@@ -1,6 +1,6 @@
 # Plan: Hot Path Performance Observability
 
-## Status: 🔲 Not started
+## Status: 🚧 In progress
 
 ## Overview
 

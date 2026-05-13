@@ -3,7 +3,7 @@
 ## Iteration
 
 - Slug: hot-path-performance-observability-1-baseline-runtime
-- Status: DEC-001 follow-up and RVW-001 bookkeeping are applied; ready for @Inspect re-review/@Intake normalization
+- Status: Approved; Step 1 finalization ready for Step 2
 - Owning orchestrator: @Iterate
 
 ## Selected Scope
@@ -15,16 +15,16 @@
 ## Repo Baseline
 
 - Baseline commit: 029ea6bb4b870522758cf83903dfdfb8eadeec8d
-- Latest commit: RVW-001 commit-stable follow-up hash reported by @Inscribe final response; previous RVW-001 bookkeeping commit was 99160f2 fix(iterations): address RVW-001 bookkeeping
+- Latest commit: 60fcc38 fix(iterations): stabilize RVW-001 bookkeeping
 - Working branch: feature/hot-path-performance-observability-1-baseline-runtime
 - Comparison range: 029ea6bb4b870522758cf83903dfdfb8eadeec8d..HEAD
 
 ## Current Loop State
 
-- Next agent: @Inspect
-- Review round: 1
-- Latest verification: RVW-001 commit-stable bookkeeping check passed: the canonical run ledger and progress note no longer direct a follow-up commit for the already-committed RVW-001 remediation.
-- Latest decision: DEC-001 follow-up was applied and committed as d6099de. RVW-001 bookkeeping remediation was committed as 99160f2, and this commit-stable follow-up removes the remaining stale post-commit state. Canonical resume state is ready for @Inspect re-review/@Intake normalization.
+- Next agent: @Iterate
+- Review round: 3
+- Latest verification: @Inspect approved Step 1 after RVW-001 was fixed; @Intake normalized RVW-001 to FIXED and the approval gate to APPROVED.
+- Latest decision: Step 1 is approved. DEC-001 remains accepted: the before comparison artifact uses provisional baseline data, while the degraded rebuilt-source run remains preserved as problem evidence for later performance work.
 
 ## Packet Links
 
@@ -39,10 +39,10 @@
 ## Open Items
 
 - Blockers: None after user clarification. Preserve the degraded rebuilt-source evidence, but do not stop Step 1 solely because the current hot paths produce 503s.
-- Outstanding findings: RVW-001 bookkeeping content has been fixed/applied; awaiting @Inspect re-review and @Intake normalization.
-- Next action: Run @Inspect re-review, then @Intake normalization if review changes need normalization.
+- Outstanding findings: None; RVW-001 is fixed and the review packet is approved.
+- Next action: Advance to .github/plans/hot-path-performance-observability-2-tracing-logs.md.
 
 ## Resume Notes
 
-- Current context: Specific user-selected plan step is active. The implementation pass restored source launchability and benchmark artifact writing. User clarified that the degraded 503-heavy rebuilt run is acceptable evidence because later steps are meant to resolve it. Commit d6099de applied DEC-001 by replacing the before comparison artifact with provisional baseline data, and commit 99160f2 applied the RVW-001 bookkeeping remediation.
-- Recovery instructions: Rerun @Inspect. If approved, normalize review through @Intake and finalize Step 1.
+- Current context: Specific user-selected plan step is approved. The implementation pass restored source launchability and benchmark artifact writing. Commit d6099de applied DEC-001 by replacing the before comparison artifact with provisional baseline data; commit 60fcc38 stabilized RVW-001 bookkeeping; @Inspect approved and @Intake normalized approval.
+- Recovery instructions: Continue automatically to .github/plans/hot-path-performance-observability-2-tracing-logs.md after the finalization commit reported by @Inscribe.

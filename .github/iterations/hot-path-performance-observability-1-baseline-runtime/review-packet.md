@@ -2,9 +2,9 @@
 
 ## Review Source
 
-- Source type: @Inspect re-review
-- Scope: Re-review after commit 99160f2 on branch feature/hot-path-performance-observability-1-baseline-runtime for .github/plans/hot-path-performance-observability-1-baseline-runtime.md, focused on RVW-001 bookkeeping stability.
-- Baseline: 99160f2
+- Source type: @Inspect final re-review
+- Scope: Final re-review after commit 60fcc38 on branch feature/hot-path-performance-observability-1-baseline-runtime for .github/plans/hot-path-performance-observability-1-baseline-runtime.md, focused on RVW-001 commit-stable bookkeeping and DEC-001 baseline-anchor acceptance.
+- Baseline: 60fcc38
 - Reviewer: @Inspect
 
 ## Review Checklist
@@ -27,13 +27,13 @@
 
 | Finding ID | Status | Owner | Evidence | Reply |
 |------------|--------|-------|----------|-------|
-| RVW-001 | OPEN | @Iterate/@Index | Stale run-ledger/progress-note state remains committed according to the latest @Inspect re-review after 99160f2. | Accepted into the review packet. DEC-001 remains accepted; this finding is only about updating canonical resume bookkeeping to match the already-committed RVW-001 remediation. |
+| RVW-001 | FIXED | @Iterate/@Index | @Inspect final re-review after commit 60fcc38 approved the stabilization-only follow-up: run-ledger.md and the progress note no longer say the DEC-001 follow-up or RVW-001 remediation still needs implementation/commit, and loop state is ready for review/intake/finalization. | Applied. DEC-001 remains accepted; Step 1 is not rejected solely because the rebuilt source-run before evidence had many 503s. The provisional before artifact may remain the comparison anchor while degraded source-run evidence stays preserved in packet history. |
 
 ## Approval Gate
 
-- Current verdict: CHANGES REQUESTED
-- Approval blockers: RVW-001
-- Next reviewer: @Inspect after @Iterate/@Index update the stale bookkeeping to a commit-stable ready-for-review state.
+- Current verdict: APPROVED
+- Approval blockers: None
+- Next reviewer: None; next consumer is @Iterate for finalization.
 
 ## Review History
 
@@ -41,3 +41,4 @@
 |-------|---------|----------|-------|
 | 1 | CHANGES REQUESTED | @Inspect | Normalized review of committed delta 029ea6bb4b870522758cf83903dfdfb8eadeec8d..HEAD. DEC-001 remains accepted; RVW-001 blocks approval until canonical bookkeeping reflects commit d6099de and review/intake readiness. |
 | 2 | CHANGES REQUESTED | @Inspect | Normalized re-review after commit 99160f2. DEC-001 pending-baseline-anchor text is fixed, but RVW-001 remains open because run-ledger.md and the progress note still describe RVW-001 as being remediated or needing a bookkeeping commit instead of saying the remediation has been applied and the loop is ready for @Inspect re-review/@Intake normalization. |
+| 3 | APPROVED | @Inspect | Normalized final re-review after commit 60fcc38. RVW-001 is fixed/applied; DEC-001 remains accepted; degraded source-run evidence remains preserved, and the provisional before artifact may remain the comparison anchor. No fresh full runtime/UI benchmark was rerun for the stabilization-only commit; diagnostics/diff hygiene were clean. |

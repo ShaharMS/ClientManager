@@ -163,7 +163,37 @@ Pass: second review follow-up for RVW-001 stale post-commit state
 | Pass | Commit | Branch | Notes |
 |------|--------|--------|-------|
 | Initial implementation | b0958b9 | feature/hot-path-performance-observability-1-baseline-runtime | Restored baseline runtime capture while preserving the 503-heavy verification blocker. |
-| Blocked closeout bookkeeping | Reported by @Inscribe final response | feature/hot-path-performance-observability-1-baseline-runtime | Commits only agent-authored closeout packet/report/progress-note updates. |
-| User-decision follow-up | Reported by @Inscribe final response | feature/hot-path-performance-observability-1-baseline-runtime | Applies DEC-001 by using the provisional artifact as the before comparison anchor and preserving degraded rebuilt-run evidence. |
+| Blocked closeout bookkeeping | 28022b8 | feature/hot-path-performance-observability-1-baseline-runtime | Commits only agent-authored closeout packet/report/progress-note updates. |
+| User-decision follow-up | d6099de | feature/hot-path-performance-observability-1-baseline-runtime | Applies DEC-001 by using the provisional artifact as the before comparison anchor and preserving degraded rebuilt-run evidence. |
 | RVW-001 bookkeeping remediation | 99160f2 | feature/hot-path-performance-observability-1-baseline-runtime | Committed RVW-001 ledger/progress/review/handoff/timeline/commit-packet updates; re-review found stale post-commit wording remained. |
-| RVW-001 commit-stable follow-up | Reported by @Inscribe final response | feature/hot-path-performance-observability-1-baseline-runtime | Commits only the final RVW-001 commit-stable remediation files and related packet updates. |
+| RVW-001 commit-stable follow-up | 60fcc38 | feature/hot-path-performance-observability-1-baseline-runtime | Commits only the final RVW-001 commit-stable remediation files and related packet updates. |
+
+## Approved Step 1 Finalization Intent
+
+- Pass type: Approved Step 1 finalization
+- Plan step: .github/plans/hot-path-performance-observability-1-baseline-runtime.md
+- Parent overview: .github/plans/hot-path-performance-observability-overview.md
+- Scope: Final Step 1 plan status, overview status, iteration packet/report closeout, timeline, and progress-note updates.
+- Reason this is one commit: These markdown-only bookkeeping files all record the same approved Step 1 transition after @Inspect final re-review and @Intake normalization.
+- Verification disposition: Commit after confirming diff hygiene; no source or runtime files are included in this pass.
+- Included files: `.github/plans/hot-path-performance-observability-1-baseline-runtime.md`, `.github/plans/hot-path-performance-observability-overview.md`, `.github/iterations/hot-path-performance-observability-1-baseline-runtime/run-ledger.md`, `.github/iterations/hot-path-performance-observability-1-baseline-runtime/execution-report.md`, `.github/iterations/hot-path-performance-observability-1-baseline-runtime/review-packet.md`, `.github/iterations/hot-path-performance-observability-1-baseline-runtime/commit-packet.md`, `.github/iterations/hot-path-performance-observability-1-baseline-runtime/timeline.md`, `.github/agent-progress/hot-path-performance-observability-1-baseline-runtime.md`.
+- Excluded files: Source files, benchmark artifacts, generated build outputs, runtime data, and unrelated workspace changes.
+- Branch action: Stayed on existing branch `feature/hot-path-performance-observability-1-baseline-runtime`; no branch switch was needed.
+- Push expectation: Check `origin` after committing; push the branch when a remote exists, otherwise record the skipped push.
+
+## Approved Step 1 Finalization Commit Message
+
+```text
+docs(iterations): finalize Step 1 approval
+
+Plan: .github/plans/hot-path-performance-observability-1-baseline-runtime.md
+Parent: .github/plans/hot-path-performance-observability-overview.md
+Pass: approved Step 1 finalization
+```
+
+## Approved Step 1 Finalization Result
+
+- Commit hash: Reported by @Inscribe final response because this commit cannot contain its own Git object hash without a follow-up dirty-file loop.
+- Push result: Reported by @Inscribe final response after checking `origin`.
+- Workspace status after commit: Reported by @Inscribe final response.
+- Remaining uncommitted files: Reported by @Inscribe final response.

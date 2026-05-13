@@ -1,6 +1,6 @@
 # Plan: Hot Path Performance Observability — Step 1: Baseline Runtime
 
-> **Status**: 🔲 Not started
+> **Status**: ✅ Completed
 > **Prerequisite**: None — this is the first step.
 > **Next**: [hot-path-performance-observability-2-tracing-logs.md](hot-path-performance-observability-2-tracing-logs.md)
 > **Parent**: [hot-path-performance-observability-overview.md](hot-path-performance-observability-overview.md)
