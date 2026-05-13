@@ -3,7 +3,7 @@
 ## Iteration
 
 - Slug: hot-path-performance-observability-1-baseline-runtime
-- Status: Blocked during Step 1 verification closeout
+- Status: Reopened after user baseline decision; awaiting follow-up implementation
 - Owning orchestrator: @Iterate
 
 ## Selected Scope
@@ -20,10 +20,10 @@
 
 ## Current Loop State
 
-- Next agent: @Index
+- Next agent: @Implement
 - Review round: 0
-- Latest verification: Build, touched-file diagnostics, benchmark script syntax, source startup probes, seed data, traffic generation, benchmark artifact creation, and git diff hygiene passed. Runtime baseline verification is blocked by 503s/timeouts, 0 acquire successes, and 0 releases.
-- Latest decision: Stop the loop as blocked because the selected step requires a clean rebuilt baseline with nonzero acquire/release activity, and the captured source baseline does not satisfy that gate.
+- Latest verification: Build, touched-file diagnostics, benchmark script syntax, source startup probes, seed data, traffic generation, benchmark artifact creation, and git diff hygiene passed. The 503-heavy rebuilt source run is accepted as evidence of the current performance problem, not a Step 1 stopper.
+- Latest decision: User clarified that many 503s are part of the performance issue the later steps are meant to resolve. If the rebuilt before artifact is too degraded for comparison, use the provisional artifact as the before comparison anchor, including copying provisional data into the before artifact.
 
 ## Packet Links
 
@@ -37,11 +37,11 @@
 
 ## Open Items
 
-- Blockers: Rebuilt baseline artifact is not clean: 685 runtime 503s, acquire successes were 0, and release count stayed 0. Direct StorageApi access-check returned 200 after about 8084.8 ms, while the public API access-check returned 503 after about 5043.2 ms.
+- Blockers: None after user clarification. Preserve the degraded rebuilt-source evidence, but do not stop Step 1 solely because the current hot paths produce 503s.
 - Outstanding findings: None recorded.
-- Next action: Close execution report, index the blocked stop, and commit/preserve closeout bookkeeping.
+- Next action: Run a delegated follow-up to apply the baseline-anchor decision, then commit, inspect, normalize review, and finalize Step 1 if approved.
 
 ## Resume Notes
 
-- Current context: Specific user-selected plan step is active. The implementation pass restored source launchability and benchmark artifact writing, but the rebuilt baseline captured runtime degradation rather than a clean comparable baseline.
-- Recovery instructions: Resume from the blocked stop. First decide whether to remediate the hot-path timeout/circuit-breaker behavior inside Step 1 or revise the plan to accept a degraded before artifact before continuing review/finalization.
+- Current context: Specific user-selected plan step is active. The implementation pass restored source launchability and benchmark artifact writing. User clarified that the degraded 503-heavy rebuilt run is acceptable evidence because later steps are meant to resolve it; use the provisional baseline as the before anchor if needed for speedup comparison.
+- Recovery instructions: Continue with @Implement follow-up to apply the baseline-anchor decision, then @Inscribe, @Inspect, and @Intake before finalizing Step 1.

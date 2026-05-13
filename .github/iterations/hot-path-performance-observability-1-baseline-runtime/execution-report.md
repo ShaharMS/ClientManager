@@ -3,8 +3,8 @@
 ## Run Summary
 
 - Iteration slug: hot-path-performance-observability-1-baseline-runtime
-- Final state: Blocked
-- Stop reason: Step 1 verification requires a clean rebuilt source baseline with nonzero access/acquire/release counts, but the captured artifact is dominated by 503s and has zero successful acquires/releases.
+- Final state: Reopened after user baseline decision
+- Stop reason: Not stopped; user clarified that the 503-heavy before state should not block Step 1.
 - Report author: @Iterate
 - Scope: .github/plans/hot-path-performance-observability-1-baseline-runtime.md
 - Branch: feature/hot-path-performance-observability-1-baseline-runtime
@@ -18,7 +18,8 @@
 2. @Index recorded the bootstrap transition and progress note.
 3. @Implement restored source build/startup support, added local store reuse by path, fixed deterministic benchmark routing/output, and captured a rebuilt before artifact.
 4. @Inscribe created branch `feature/hot-path-performance-observability-1-baseline-runtime` and committed the initial implementation pass as `b0958b9 feat(storage): enable baseline runtime capture`.
-5. The run stopped before inspection because @Implement reported a real verification blocker: the rebuilt baseline artifact is 503-heavy and does not satisfy the plan's nonzero acquire/release requirement.
+5. The run initially stopped before inspection because @Implement reported the rebuilt baseline as 503-heavy.
+6. User clarified that the 503-heavy before state is expected problem evidence for later plan steps and authorized using the provisional baseline as the before comparison anchor if the rebuilt artifact is too degraded.
 
 ## Files Changed
 
@@ -54,7 +55,7 @@
 
 | Round | Verdict | Findings addressed | Notes |
 |-------|---------|--------------------|-------|
-| 0 | Not reviewed | N/A | Review was not invoked because the implementation pass reported a true verification blocker before inspection. |
+| 0 | Not reviewed | N/A | Review was deferred during the initial blocked stop; the iteration has been reopened for follow-up and review. |
 
 ## Commits And Pushes
 
@@ -65,8 +66,8 @@
 
 ## Waivers, Exceptions, And Blockers
 
-- Blocker: Rebuilt baseline artifact is not clean. It contains 685 runtime 503s, zero successful acquires, and zero release operations, so the plan's required baseline gate is not satisfied.
-- Blocker evidence: Direct StorageApi access-check succeeded only after about 8 seconds, while the public API returned 503 after about 5 seconds through its StorageApi timeout/circuit-breaker path.
+- Accepted decision: The 503-heavy rebuilt baseline is current-state evidence, not a Step 1 blocker. Use the provisional artifact as the before comparison anchor if needed.
+- Evidence preserved: Direct StorageApi access-check succeeded only after about 8 seconds, while the public API returned 503 after about 5 seconds through its StorageApi timeout/circuit-breaker path.
 
 ## Final Workspace State
 
@@ -76,5 +77,5 @@
 
 ## User-Facing Closeout
 
-- Summary: Step 1 implementation work is committed, but the iteration is blocked because the rebuilt baseline is not clean enough to accept.
-- Next recommended action: Decide whether Step 1 should also remediate the hot-path timeout/circuit-breaker behavior or whether the plan should explicitly accept the degraded before artifact as the baseline.
+- Summary: Step 1 implementation work is committed and the iteration is reopened to accept the baseline-anchor decision, then review/finalize.
+- Next recommended action: Run @Implement follow-up to apply the baseline artifact decision, then continue review.

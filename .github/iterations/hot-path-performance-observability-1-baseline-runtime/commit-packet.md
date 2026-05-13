@@ -79,9 +79,37 @@ Pass: blocked closeout bookkeeping
 - Workspace status after commit: Reported by @Inscribe final response.
 - Remaining uncommitted files: Reported by @Inscribe final response.
 
+## User-Decision Follow-up Intent
+
+- Pass type: User-decision follow-up for the Step 1 baseline artifact
+- Plan step: .github/plans/hot-path-performance-observability-1-baseline-runtime.md
+- Scope: DEC-001 baseline-anchor artifact replacement and related iteration/progress packet updates.
+- Reason this is one commit: The before artifact replacement, preserved degraded-run evidence, DEC-001 decision record, and reopened iteration notes all describe the same user-approved baseline-anchor follow-up.
+- Verification disposition: Commit the provisional-data replacement after confirming the before artifact parses as strict UTF-8 JSON, matches the provisional artifact as JSON data, has no BOM, and `git diff --check` passes.
+- Included files: `.github/plans/hot-path-performance-baseline-before.json`, `.github/iterations/hot-path-performance-observability-1-baseline-runtime/decision-log.md`, `.github/iterations/hot-path-performance-observability-1-baseline-runtime/execution-report.md`, `.github/iterations/hot-path-performance-observability-1-baseline-runtime/implementation-handoff.md`, `.github/iterations/hot-path-performance-observability-1-baseline-runtime/run-ledger.md`, `.github/iterations/hot-path-performance-observability-1-baseline-runtime/timeline.md`, `.github/iterations/hot-path-performance-observability-1-baseline-runtime/commit-packet.md`, `.github/agent-progress/hot-path-performance-observability-1-baseline-runtime.md`.
+- Excluded files: Source files, benchmark scripts, generated build outputs, runtime data, and unrelated workspace changes.
+- Branch action: Stayed on existing branch `feature/hot-path-performance-observability-1-baseline-runtime`; no branch switch was needed.
+
+## User-Decision Follow-up Commit Message
+
+```text
+docs(iterations): apply baseline artifact decision
+
+Plan: .github/plans/hot-path-performance-observability-1-baseline-runtime.md
+Pass: user-decision follow-up
+```
+
+## User-Decision Follow-up Result
+
+- Commit hash: Reported by @Inscribe final response because this commit cannot contain its own Git object hash without a follow-up dirty-file loop.
+- Push result: Reported by @Inscribe final response after checking `origin`.
+- Workspace status after commit: Reported by @Inscribe final response.
+- Remaining uncommitted files: Reported by @Inscribe final response.
+
 ## Commit History
 
 | Pass | Commit | Branch | Notes |
 |------|--------|--------|-------|
 | Initial implementation | b0958b9 | feature/hot-path-performance-observability-1-baseline-runtime | Restored baseline runtime capture while preserving the 503-heavy verification blocker. |
 | Blocked closeout bookkeeping | Reported by @Inscribe final response | feature/hot-path-performance-observability-1-baseline-runtime | Commits only agent-authored closeout packet/report/progress-note updates. |
+| User-decision follow-up | Reported by @Inscribe final response | feature/hot-path-performance-observability-1-baseline-runtime | Applies DEC-001 by using the provisional artifact as the before comparison anchor and preserving degraded rebuilt-run evidence. |
