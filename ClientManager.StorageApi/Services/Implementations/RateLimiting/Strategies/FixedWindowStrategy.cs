@@ -2,6 +2,7 @@ using ClientManager.DataAccess.Databases.Interfaces;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.StorageApi.Models.Entities;
 using ClientManager.StorageApi.Services.Interfaces;
+using ClientManager.StorageApi.Utils.Instrumentation;
 
 namespace ClientManager.StorageApi.Services.Implementations.RateLimiting.Strategies;
 
@@ -11,10 +12,12 @@ namespace ClientManager.StorageApi.Services.Implementations.RateLimiting.Strateg
 public class FixedWindowStrategy : IRateLimitStrategy
 {
     private readonly IRateLimitStateDatabase _stateDatabase;
+    private readonly StorageApiMetrics _metrics;
 
-    public FixedWindowStrategy(IRateLimitStateDatabase stateDatabase)
+    public FixedWindowStrategy(IRateLimitStateDatabase stateDatabase, StorageApiMetrics metrics)
     {
         _stateDatabase = stateDatabase;
+        _metrics = metrics;
     }
 
     /// <inheritdoc />
@@ -23,13 +26,21 @@ public class FixedWindowStrategy : IRateLimitStrategy
         ClientRateLimit rateLimit,
         CancellationToken cancellationToken = default)
     {
-        var windowSeconds = (long)rateLimit.Window.TotalSeconds;
-        var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-        var windowNumber = now / windowSeconds;
-        var windowKey = $"fixed:{key}:{windowNumber}";
+        return await RateLimitStrategyInstrumentation.TraceAsync(
+            _metrics,
+            nameof(FixedWindowStrategy),
+            "increment",
+            counterKeyCount: 1,
+            async () =>
+            {
+                var windowSeconds = (long)rateLimit.Window.TotalSeconds;
+                var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                var windowNumber = now / windowSeconds;
+                var windowKey = $"fixed:{key}:{windowNumber}";
 
-        var count = await _stateDatabase.IncrementAsync(windowKey, rateLimit.Window, cancellationToken);
-        return CreateEvaluateResult(rateLimit.MaxRequests, count, windowNumber, windowSeconds, now);
+                var count = await _stateDatabase.IncrementAsync(windowKey, rateLimit.Window, cancellationToken);
+                return CreateEvaluateResult(rateLimit.MaxRequests, count, windowNumber, windowSeconds, now);
+            });
     }
 
     /// <inheritdoc />
@@ -38,13 +49,21 @@ public class FixedWindowStrategy : IRateLimitStrategy
         ClientRateLimit rateLimit,
         CancellationToken cancellationToken = default)
     {
-        var windowSeconds = (long)rateLimit.Window.TotalSeconds;
-        var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-        var windowNumber = now / windowSeconds;
-        var windowKey = $"fixed:{key}:{windowNumber}";
+        return await RateLimitStrategyInstrumentation.TraceAsync(
+            _metrics,
+            nameof(FixedWindowStrategy),
+            "peek",
+            counterKeyCount: 1,
+            async () =>
+            {
+                var windowSeconds = (long)rateLimit.Window.TotalSeconds;
+                var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                var windowNumber = now / windowSeconds;
+                var windowKey = $"fixed:{key}:{windowNumber}";
 
-        var count = await _stateDatabase.GetCountAsync(windowKey, cancellationToken);
-        return CreatePeekResult(rateLimit.MaxRequests, count, windowNumber, windowSeconds, now);
+                var count = await _stateDatabase.GetCountAsync(windowKey, cancellationToken);
+                return CreatePeekResult(rateLimit.MaxRequests, count, windowNumber, windowSeconds, now);
+            });
     }
 
     private static RateLimitResult CreateEvaluateResult(

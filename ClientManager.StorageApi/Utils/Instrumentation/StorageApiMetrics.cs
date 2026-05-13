@@ -1,15 +1,22 @@
+using System.Diagnostics;
 using System.Diagnostics.Metrics;
 
 namespace ClientManager.StorageApi.Utils.Instrumentation;
 
 /// <summary>
 /// Holds request-level OpenTelemetry instruments for the internal storage API.
+/// Activity spans are emitted from <c>"ClientManager.StorageApi"</c>. Hot-path
+/// operation histograms record access checks, resource acquire/release calls,
+/// rate-limit strategy work, and document-store operations in milliseconds.
 /// </summary>
 public class StorageApiMetrics
 {
     public static readonly string MeterName = "ClientManager.StorageApi";
+    public static readonly string ActivitySourceName = "ClientManager.StorageApi";
 
     private readonly Meter _meter;
+
+    public ActivitySource ActivitySource { get; }
 
     public Counter<long> RequestsTotal { get; }
 
@@ -35,9 +42,20 @@ public class StorageApiMetrics
 
     public Counter<long> AccessDenied { get; }
 
+    public Histogram<double> AccessCheckDuration { get; }
+
+    public Histogram<double> ResourceAcquireDuration { get; }
+
+    public Histogram<double> ResourceReleaseDuration { get; }
+
+    public Histogram<double> RateLimitStrategyDuration { get; }
+
+    public Histogram<double> DocumentStoreOperationDuration { get; }
+
     public StorageApiMetrics(IMeterFactory meterFactory)
     {
         _meter = meterFactory.Create(MeterName);
+        ActivitySource = new ActivitySource(ActivitySourceName);
 
         RequestsTotal = _meter.CreateCounter<long>(
             "clientmanager.storageapi.requests.total",
@@ -87,5 +105,30 @@ public class StorageApiMetrics
         AccessDenied = _meter.CreateCounter<long>(
             "clientmanager.access.denied",
             description: "Access checks that were denied.");
+
+        AccessCheckDuration = _meter.CreateHistogram<double>(
+            "clientmanager.storageapi.access.duration",
+            unit: "ms",
+            description: "Storage API access-check duration in milliseconds.");
+
+        ResourceAcquireDuration = _meter.CreateHistogram<double>(
+            "clientmanager.storageapi.resources.acquire.duration",
+            unit: "ms",
+            description: "Storage API resource-acquire duration in milliseconds.");
+
+        ResourceReleaseDuration = _meter.CreateHistogram<double>(
+            "clientmanager.storageapi.resources.release.duration",
+            unit: "ms",
+            description: "Storage API resource-release duration in milliseconds.");
+
+        RateLimitStrategyDuration = _meter.CreateHistogram<double>(
+            "clientmanager.storageapi.ratelimit.strategy.duration",
+            unit: "ms",
+            description: "Rate-limit strategy evaluation duration in milliseconds.");
+
+        DocumentStoreOperationDuration = _meter.CreateHistogram<double>(
+            "clientmanager.storageapi.document_store.duration",
+            unit: "ms",
+            description: "Document-store operation duration in milliseconds.");
     }
 }

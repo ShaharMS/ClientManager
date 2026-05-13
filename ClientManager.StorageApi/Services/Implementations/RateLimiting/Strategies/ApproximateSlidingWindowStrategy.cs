@@ -2,6 +2,7 @@ using ClientManager.DataAccess.Databases.Interfaces;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.StorageApi.Models.Entities;
 using ClientManager.StorageApi.Services.Interfaces;
+using ClientManager.StorageApi.Utils.Instrumentation;
 
 namespace ClientManager.StorageApi.Services.Implementations.RateLimiting.Strategies;
 
@@ -11,10 +12,12 @@ namespace ClientManager.StorageApi.Services.Implementations.RateLimiting.Strateg
 public class ApproximateSlidingWindowStrategy : IRateLimitStrategy
 {
     private readonly IRateLimitStateDatabase _stateDatabase;
+    private readonly StorageApiMetrics _metrics;
 
-    public ApproximateSlidingWindowStrategy(IRateLimitStateDatabase stateDatabase)
+    public ApproximateSlidingWindowStrategy(IRateLimitStateDatabase stateDatabase, StorageApiMetrics metrics)
     {
         _stateDatabase = stateDatabase;
+        _metrics = metrics;
     }
 
     /// <inheritdoc />
@@ -23,11 +26,19 @@ public class ApproximateSlidingWindowStrategy : IRateLimitStrategy
         ClientRateLimit rateLimit,
         CancellationToken cancellationToken = default)
     {
-        var state = CreateWindowState(key, rateLimit.Window);
-        var previousCount = await _stateDatabase.GetCountAsync(state.PreviousWindowKey, cancellationToken);
-        var currentCount = await _stateDatabase.IncrementAsync(state.CurrentWindowKey, rateLimit.Window, cancellationToken);
+        return await RateLimitStrategyInstrumentation.TraceAsync(
+            _metrics,
+            nameof(ApproximateSlidingWindowStrategy),
+            "increment",
+            counterKeyCount: 2,
+            async () =>
+            {
+                var state = CreateWindowState(key, rateLimit.Window);
+                var previousCount = await _stateDatabase.GetCountAsync(state.PreviousWindowKey, cancellationToken);
+                var currentCount = await _stateDatabase.IncrementAsync(state.CurrentWindowKey, rateLimit.Window, cancellationToken);
 
-        return CreateResult(rateLimit.MaxRequests, previousCount, currentCount, state);
+                return CreateResult(rateLimit.MaxRequests, previousCount, currentCount, state);
+            });
     }
 
     /// <inheritdoc />
@@ -36,16 +47,24 @@ public class ApproximateSlidingWindowStrategy : IRateLimitStrategy
         ClientRateLimit rateLimit,
         CancellationToken cancellationToken = default)
     {
-        var state = CreateWindowState(key, rateLimit.Window);
-        var counts = await _stateDatabase.GetMultipleCountsAsync(
-            [state.PreviousWindowKey, state.CurrentWindowKey],
-            cancellationToken);
+        return await RateLimitStrategyInstrumentation.TraceAsync(
+            _metrics,
+            nameof(ApproximateSlidingWindowStrategy),
+            "peek",
+            counterKeyCount: 2,
+            async () =>
+            {
+                var state = CreateWindowState(key, rateLimit.Window);
+                var counts = await _stateDatabase.GetMultipleCountsAsync(
+                    [state.PreviousWindowKey, state.CurrentWindowKey],
+                    cancellationToken);
 
-        return CreateResult(
-            rateLimit.MaxRequests,
-            counts[state.PreviousWindowKey],
-            counts[state.CurrentWindowKey],
-            state);
+                return CreateResult(
+                    rateLimit.MaxRequests,
+                    counts[state.PreviousWindowKey],
+                    counts[state.CurrentWindowKey],
+                    state);
+            });
     }
 
     private static RateLimitResult CreateResult(

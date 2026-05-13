@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Diagnostics.Metrics;
 
 namespace ClientManager.Api.Utils.Instrumentation;
@@ -8,13 +9,19 @@ namespace ClientManager.Api.Utils.Instrumentation;
 /// Registered as a singleton and injected into services and middleware that emit metrics.
 /// All instruments share a single <see cref="Meter"/> named
 /// <c>"ClientManager"</c>, which external collectors (Prometheus, OTLP) can subscribe to.
+/// Activity spans are emitted from <c>"ClientManager.Api"</c>. Hot-path operation
+/// histograms record access checks, resource acquire/release calls, and storage-client
+/// round trips in milliseconds.
 /// </para>
 /// </summary>
 public class ClientManagerMetrics
 {
     public static readonly string MeterName = "ClientManager";
+    public static readonly string ActivitySourceName = "ClientManager.Api";
 
     private readonly Meter _meter;
+
+    public ActivitySource ActivitySource { get; }
 
     // Request tracking
     public Counter<long> RequestsTotal { get; }
@@ -36,9 +43,16 @@ public class ClientManagerMetrics
     public Counter<long> AccessGranted { get; }
     public Counter<long> AccessDenied { get; }
 
+    // Hot-path operation durations
+    public Histogram<double> AccessCheckDuration { get; }
+    public Histogram<double> ResourceAcquireDuration { get; }
+    public Histogram<double> ResourceReleaseDuration { get; }
+    public Histogram<double> StorageClientCallDuration { get; }
+
     public ClientManagerMetrics(IMeterFactory meterFactory)
     {
         _meter = meterFactory.Create(MeterName);
+        ActivitySource = new ActivitySource(ActivitySourceName);
 
         RequestsTotal = _meter.CreateCounter<long>(
             "clientmanager.requests.total",
@@ -88,5 +102,25 @@ public class ClientManagerMetrics
         AccessDenied = _meter.CreateCounter<long>(
             "clientmanager.access.denied",
             description: "Access checks that were denied");
+
+        AccessCheckDuration = _meter.CreateHistogram<double>(
+            "clientmanager.access.duration",
+            unit: "ms",
+            description: "Public API access-check duration in milliseconds");
+
+        ResourceAcquireDuration = _meter.CreateHistogram<double>(
+            "clientmanager.resources.acquire.duration",
+            unit: "ms",
+            description: "Public API resource-acquire duration in milliseconds");
+
+        ResourceReleaseDuration = _meter.CreateHistogram<double>(
+            "clientmanager.resources.release.duration",
+            unit: "ms",
+            description: "Public API resource-release duration in milliseconds");
+
+        StorageClientCallDuration = _meter.CreateHistogram<double>(
+            "clientmanager.storage_client.duration",
+            unit: "ms",
+            description: "Public API outbound storage-client call duration in milliseconds");
     }
 }

@@ -10,6 +10,8 @@ using Microsoft.OpenApi;
 using NLog;
 using NLog.Web;
 using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 
 var logger = LogManager.Setup()
     .LoadConfigurationFromAppSettings()
@@ -63,14 +65,28 @@ try
     // Public API adapters that remain local after the storage split.
     builder.Services.AddClientManager();
 
-    // OpenTelemetry metrics + Prometheus
+    // OpenTelemetry metrics, traces, and Prometheus
     builder.Services.AddSingleton<ClientManagerMetrics>();
+    var otlpEndpoint = builder.Configuration["Observability:OtlpEndpoint"];
     builder.Services.AddOpenTelemetry()
+        .ConfigureResource(resource => resource.AddService("ClientManager.Api"))
         .WithMetrics(metrics =>
         {
             metrics.AddAspNetCoreInstrumentation();
             metrics.AddMeter(ClientManagerMetrics.MeterName);
             metrics.AddPrometheusExporter();
+        })
+        .WithTracing(tracing =>
+        {
+            tracing.AddAspNetCoreInstrumentation();
+            tracing.AddHttpClientInstrumentation();
+            tracing.AddSource(ClientManagerMetrics.ActivitySourceName);
+            tracing.AddSource("ClientManager.StorageApi");
+
+            if (Uri.TryCreate(otlpEndpoint, UriKind.Absolute, out var endpoint))
+            {
+                tracing.AddOtlpExporter(options => options.Endpoint = endpoint);
+            }
         });
 
     var app = builder.Build();

@@ -1,7 +1,9 @@
 using ClientManager.DataAccess.Stores.Implementations;
 using ClientManager.DataAccess.Stores.Interfaces;
 using ClientManager.Shared.Configuration.Storage;
+using ClientManager.Shared.Logging;
 using ClientManager.Shared.Models.Enums;
+using ClientManager.StorageApi.Utils.Instrumentation;
 using Microsoft.Extensions.Hosting;
 using MongoDB.Driver;
 using StackExchange.Redis;
@@ -40,7 +42,14 @@ public static class StorageProviderRegistrationExtensions
                 luceneStores,
                 mongoClients,
                 redisMultiplexers);
-            services.AddKeyedSingleton<IDocumentStore>(role, (_, _) => store);
+            var provider = binding.Provider;
+            services.AddKeyedSingleton<IDocumentStore>(role, (serviceProvider, _) =>
+                new InstrumentedDocumentStore(
+                    store,
+                    role,
+                    provider,
+                    serviceProvider.GetRequiredService<StorageApiMetrics>(),
+                    serviceProvider.GetRequiredService<IAppLogger<InstrumentedDocumentStore>>()));
         }
 
         LogStorageConfiguration(options, environment);

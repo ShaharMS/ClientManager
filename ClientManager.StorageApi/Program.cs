@@ -10,6 +10,8 @@ using Microsoft.OpenApi;
 using NLog;
 using NLog.Web;
 using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 
 var logger = LogManager.Setup()
     .LoadConfigurationFromAppSettings()
@@ -61,12 +63,26 @@ try
     builder.Services.AddStorageApi(builder.Configuration, builder.Environment);
 
     builder.Services.AddSingleton<StorageApiMetrics>();
+    var otlpEndpoint = builder.Configuration["Observability:OtlpEndpoint"];
     builder.Services.AddOpenTelemetry()
+        .ConfigureResource(resource => resource.AddService("ClientManager.StorageApi"))
         .WithMetrics(metrics =>
         {
             metrics.AddAspNetCoreInstrumentation();
             metrics.AddMeter(StorageApiMetrics.MeterName);
             metrics.AddPrometheusExporter();
+        })
+        .WithTracing(tracing =>
+        {
+            tracing.AddAspNetCoreInstrumentation();
+            tracing.AddHttpClientInstrumentation();
+            tracing.AddSource("ClientManager.Api");
+            tracing.AddSource(StorageApiMetrics.ActivitySourceName);
+
+            if (Uri.TryCreate(otlpEndpoint, UriKind.Absolute, out var endpoint))
+            {
+                tracing.AddOtlpExporter(options => options.Endpoint = endpoint);
+            }
         });
 
     var app = builder.Build();

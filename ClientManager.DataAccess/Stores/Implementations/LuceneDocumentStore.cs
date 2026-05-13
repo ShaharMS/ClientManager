@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Diagnostics;
 using System.Text.Json;
 using ClientManager.DataAccess.Stores.Implementations.Helpers;
 using ClientManager.DataAccess.Stores.Interfaces;
@@ -172,7 +173,7 @@ public class LuceneDocumentStore : IDocumentStore, IDisposable
     /// <inheritdoc />
     public async Task SetAsync<T>(string collection, string id, T document, CancellationToken cancellationToken = default) where T : class
     {
-        await _writeLock.WaitAsync(cancellationToken);
+        await WaitForWriteLockAsync(cancellationToken);
         try
         {
             DeleteByCollectionAndId(collection, id);
@@ -189,7 +190,7 @@ public class LuceneDocumentStore : IDocumentStore, IDisposable
     /// <inheritdoc />
     public async Task DeleteAsync(string collection, string id, CancellationToken cancellationToken = default)
     {
-        await _writeLock.WaitAsync(cancellationToken);
+        await WaitForWriteLockAsync(cancellationToken);
         try
         {
             DeleteByCollectionAndId(collection, id);
@@ -222,7 +223,7 @@ public class LuceneDocumentStore : IDocumentStore, IDisposable
     /// <inheritdoc />
     public async Task<long> IncrementCounterAsync(string key, TimeSpan window, CancellationToken cancellationToken = default)
     {
-        await _writeLock.WaitAsync(cancellationToken);
+        await WaitForWriteLockAsync(cancellationToken);
         try
         {
             var now = DateTime.UtcNow;
@@ -258,7 +259,7 @@ public class LuceneDocumentStore : IDocumentStore, IDisposable
     /// <inheritdoc />
     public async Task<long> DecrementCounterAsync(string key, CancellationToken cancellationToken = default)
     {
-        await _writeLock.WaitAsync(cancellationToken);
+        await WaitForWriteLockAsync(cancellationToken);
         try
         {
             var existing = GetCounterDocument(key);
@@ -302,7 +303,7 @@ public class LuceneDocumentStore : IDocumentStore, IDisposable
     /// <inheritdoc />
     public async Task SetCounterAsync(string key, long value, TimeSpan window, CancellationToken cancellationToken = default)
     {
-        await _writeLock.WaitAsync(cancellationToken);
+        await WaitForWriteLockAsync(cancellationToken);
         try
         {
             WriteCounter(key, value, DateTime.UtcNow);
@@ -316,7 +317,7 @@ public class LuceneDocumentStore : IDocumentStore, IDisposable
     /// <inheritdoc />
     public async Task ResetCounterAsync(string key, CancellationToken cancellationToken = default)
     {
-        await _writeLock.WaitAsync(cancellationToken);
+        await WaitForWriteLockAsync(cancellationToken);
         try
         {
             DeleteByCollectionAndId(CountersCollection, key);
@@ -347,6 +348,14 @@ public class LuceneDocumentStore : IDocumentStore, IDisposable
             { new TermQuery(new Term(IdField, id)), Occur.MUST }
         };
         _writer.DeleteDocuments(deleteQuery);
+    }
+
+    private async Task WaitForWriteLockAsync(CancellationToken cancellationToken)
+    {
+        var stopwatch = Stopwatch.StartNew();
+        await _writeLock.WaitAsync(cancellationToken);
+        stopwatch.Stop();
+        Activity.Current?.SetTag("storage.lock_wait_ms", stopwatch.Elapsed.TotalMilliseconds);
     }
 
     private Document BuildDocument<T>(string collection, string id, T document)

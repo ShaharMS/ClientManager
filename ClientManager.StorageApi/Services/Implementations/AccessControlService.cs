@@ -19,6 +19,8 @@ namespace ClientManager.StorageApi.Services.Implementations;
 /// </summary>
 public class AccessControlService : IAccessControlService
 {
+    private const double SlowAccessCheckThresholdMs = 250;
+
     private readonly IAppLogger<AccessControlService> _logger;
     private readonly IClientConfigurationDatabase _clientConfigDatabase;
     private readonly IEntityRepository<Service> _serviceRepository;
@@ -48,28 +50,69 @@ public class AccessControlService : IAccessControlService
         string serviceId,
         CancellationToken cancellationToken = default)
     {
-        var configuration = await GetConfigurationAsync(clientId, serviceId, cancellationToken);
-        var service = await GetServiceAsync(serviceId, clientId, cancellationToken);
-        var serviceSettings = GetServiceSettings(configuration, clientId, service.Id);
+        using var activity = _metrics.ActivitySource.StartActivity(
+            "storage.access.check",
+            ActivityKind.Internal);
+        activity?.SetTag("client.id", clientId);
+        activity?.SetTag("service.id", serviceId);
 
-        EnsureServiceAccessAllowed(serviceSettings, clientId, service.Id);
-        await EnsureGlobalLimitAsync(configuration, clientId, service.Id, cancellationToken);
+        var stopwatch = Stopwatch.StartNew();
+        var result = "unknown";
+        var reason = "Unknown";
+        Exception? unexpectedException = null;
 
-        var rateLimitResult = await EnsureClientLimitAsync(
-            configuration,
-            clientId,
-            service.Id,
-            cancellationToken);
-
-        _logger.Info("Access granted", new { ClientId = clientId, ServiceId = service.Id });
-        RecordGranted(clientId, service.Id);
-
-        return new AccessCheckResponse
+        try
         {
-            ClientId = clientId,
-            ServiceId = service.Id,
-            RemainingRequests = rateLimitResult.RemainingRequests
-        };
+            var configuration = await GetConfigurationAsync(clientId, serviceId, cancellationToken);
+            var service = await GetServiceAsync(serviceId, clientId, cancellationToken);
+            var serviceSettings = GetServiceSettings(configuration, clientId, service.Id);
+
+            EnsureServiceAccessAllowed(serviceSettings, clientId, service.Id);
+            await EnsureGlobalLimitAsync(configuration, clientId, service.Id, cancellationToken);
+
+            var rateLimitResult = await EnsureClientLimitAsync(
+                configuration,
+                clientId,
+                service.Id,
+                cancellationToken);
+
+            _logger.Info("Access granted", new { ClientId = clientId, ServiceId = service.Id });
+            RecordGranted(clientId, service.Id);
+            result = "granted";
+            reason = "Allowed";
+
+            return new AccessCheckResponse
+            {
+                ClientId = clientId,
+                ServiceId = service.Id,
+                RemainingRequests = rateLimitResult.RemainingRequests
+            };
+        }
+        catch (StorageApiProblemException exception)
+        {
+            result = "denied";
+            reason = exception.ErrorCode;
+            throw;
+        }
+        catch (Exception exception)
+        {
+            result = "exception";
+            reason = exception.GetType().Name;
+            unexpectedException = exception;
+            activity?.SetTag("error.type", exception.GetType().Name);
+            activity?.SetStatus(ActivityStatusCode.Error);
+            throw;
+        }
+        finally
+        {
+            stopwatch.Stop();
+            var durationMs = stopwatch.Elapsed.TotalMilliseconds;
+            activity?.SetTag("operation.result", result);
+            activity?.SetTag("denial.reason", reason);
+            activity?.SetTag("duration_ms", durationMs);
+            RecordAccessCheckDuration(clientId, serviceId, durationMs, result, reason);
+            LogAccessCheckCompletion(clientId, serviceId, durationMs, result, reason, unexpectedException);
+        }
     }
 
     /// <inheritdoc />
@@ -114,8 +157,15 @@ public class AccessControlService : IAccessControlService
         string serviceId,
         CancellationToken cancellationToken)
     {
+        using var activity = _metrics.ActivitySource.StartActivity(
+            "storage.access.configuration_read",
+            ActivityKind.Internal);
+        activity?.SetTag("client.id", clientId);
+
         var configuration = await _clientConfigDatabase.GetByIdAsync(clientId, cancellationToken)
             ?? throw new ClientNotFoundException(clientId);
+
+        activity?.SetTag("configuration.enabled", configuration.IsEnabled);
 
         if (configuration.IsEnabled)
         {
@@ -131,8 +181,16 @@ public class AccessControlService : IAccessControlService
         string clientId,
         CancellationToken cancellationToken)
     {
+        using var activity = _metrics.ActivitySource.StartActivity(
+            "storage.access.service_read",
+            ActivityKind.Internal);
+        activity?.SetTag("client.id", clientId);
+        activity?.SetTag("service.id", serviceId);
+
         var service = await _serviceRepository.GetByIdAsync(serviceId, cancellationToken)
             ?? throw new ServiceNotFoundException(serviceId);
+
+        activity?.SetTag("service.enabled", service.IsEnabled);
 
         if (service.IsEnabled)
         {
@@ -148,11 +206,19 @@ public class AccessControlService : IAccessControlService
         string clientId,
         string serviceId)
     {
+        using var activity = _metrics.ActivitySource.StartActivity(
+            "storage.access.service_settings",
+            ActivityKind.Internal);
+        activity?.SetTag("client.id", clientId);
+        activity?.SetTag("service.id", serviceId);
+
         if (configuration.Services.TryGetValue(serviceId, out var settings))
         {
+            activity?.SetTag("access.configured", true);
             return settings;
         }
 
+        activity?.SetTag("access.configured", false);
         RecordDenied(clientId, serviceId, ServiceAccessDenialReason.NotConfigured);
         throw new AccessNotConfiguredException(clientId, serviceId);
     }
@@ -162,6 +228,13 @@ public class AccessControlService : IAccessControlService
         string clientId,
         string serviceId)
     {
+        using var activity = _metrics.ActivitySource.StartActivity(
+            "storage.access.policy_check",
+            ActivityKind.Internal);
+        activity?.SetTag("client.id", clientId);
+        activity?.SetTag("service.id", serviceId);
+        activity?.SetTag("access.allowed", settings.IsAllowed);
+
         if (settings.IsAllowed)
         {
             return;
@@ -177,10 +250,19 @@ public class AccessControlService : IAccessControlService
         string serviceId,
         CancellationToken cancellationToken)
     {
+        using var activity = _metrics.ActivitySource.StartActivity(
+            "storage.access.global_rate_limit",
+            ActivityKind.Internal);
+        activity?.SetTag("client.id", clientId);
+        activity?.SetTag("service.id", serviceId);
+
         var result = await _rateLimitService.CheckGlobalServiceLimitAsync(
             configuration,
             serviceId,
             cancellationToken);
+
+        activity?.SetTag("ratelimit.result", result.IsAllowed ? "allowed" : "denied");
+        activity?.SetTag("ratelimit.remaining_requests", result.RemainingRequests);
 
         if (result.IsAllowed)
         {
@@ -197,10 +279,19 @@ public class AccessControlService : IAccessControlService
         string serviceId,
         CancellationToken cancellationToken)
     {
+        using var activity = _metrics.ActivitySource.StartActivity(
+            "storage.access.client_rate_limit",
+            ActivityKind.Internal);
+        activity?.SetTag("client.id", clientId);
+        activity?.SetTag("service.id", serviceId);
+
         var result = await _rateLimitService.CheckAndIncrementAsync(
             configuration,
             serviceId,
             cancellationToken);
+
+        activity?.SetTag("ratelimit.result", result.IsAllowed ? "allowed" : "denied");
+        activity?.SetTag("ratelimit.remaining_requests", result.RemainingRequests);
 
         if (result.IsAllowed)
         {
@@ -213,12 +304,26 @@ public class AccessControlService : IAccessControlService
 
     private void RecordGranted(string clientId, string serviceId)
     {
-        _metrics.AccessGranted.Add(1, new TagList
+        using (var activity = _metrics.ActivitySource.StartActivity(
+            "storage.access.metrics",
+            ActivityKind.Internal))
         {
-            { MetricTagKey.ClientId.ToTagName(), clientId },
-            { MetricTagKey.ServiceId.ToTagName(), serviceId }
-        });
+            activity?.SetTag("client.id", clientId);
+            activity?.SetTag("service.id", serviceId);
+            activity?.SetTag("operation.result", "granted");
+            _metrics.AccessGranted.Add(1, new TagList
+            {
+                { MetricTagKey.ClientId.ToTagName(), clientId },
+                { MetricTagKey.ServiceId.ToTagName(), serviceId }
+            });
+        }
 
+        using var usageActivity = _metrics.ActivitySource.StartActivity(
+            "storage.access.usage_record",
+            ActivityKind.Internal);
+        usageActivity?.SetTag("client.id", clientId);
+        usageActivity?.SetTag("service.id", serviceId);
+        usageActivity?.SetTag("usage.event_type", UsageEventType.Granted.ToString());
         _usageRecorder.RecordServiceRequest(clientId, serviceId, UsageEventType.Granted);
     }
 
@@ -227,13 +332,81 @@ public class AccessControlService : IAccessControlService
         string serviceId,
         ServiceAccessDenialReason reason)
     {
-        _metrics.AccessDenied.Add(1, new TagList
+        using (var activity = _metrics.ActivitySource.StartActivity(
+            "storage.access.metrics",
+            ActivityKind.Internal))
+        {
+            activity?.SetTag("client.id", clientId);
+            activity?.SetTag("service.id", serviceId);
+            activity?.SetTag("denial.reason", reason.ToTagValue());
+            _metrics.AccessDenied.Add(1, new TagList
+            {
+                { MetricTagKey.ClientId.ToTagName(), clientId },
+                { MetricTagKey.ServiceId.ToTagName(), serviceId },
+                { MetricTagKey.Reason.ToTagName(), reason.ToTagValue() }
+            });
+        }
+
+        using var usageActivity = _metrics.ActivitySource.StartActivity(
+            "storage.access.usage_record",
+            ActivityKind.Internal);
+        usageActivity?.SetTag("client.id", clientId);
+        usageActivity?.SetTag("service.id", serviceId);
+        usageActivity?.SetTag("usage.event_type", UsageEventType.Denied.ToString());
+        _usageRecorder.RecordServiceRequest(clientId, serviceId, UsageEventType.Denied);
+    }
+
+    private void RecordAccessCheckDuration(
+        string clientId,
+        string serviceId,
+        double durationMs,
+        string result,
+        string reason)
+    {
+        _metrics.AccessCheckDuration.Record(durationMs, new TagList
         {
             { MetricTagKey.ClientId.ToTagName(), clientId },
             { MetricTagKey.ServiceId.ToTagName(), serviceId },
-            { MetricTagKey.Reason.ToTagName(), reason.ToTagValue() }
+            { "result", result },
+            { "reason", reason }
         });
+    }
 
-        _usageRecorder.RecordServiceRequest(clientId, serviceId, UsageEventType.Denied);
+    private void LogAccessCheckCompletion(
+        string clientId,
+        string serviceId,
+        double durationMs,
+        string result,
+        string reason,
+        Exception? unexpectedException)
+    {
+        var extraData = new
+        {
+            ClientId = clientId,
+            ServiceId = serviceId,
+            DurationMs = durationMs,
+            Result = result,
+            Reason = reason
+        };
+
+        if (unexpectedException is not null)
+        {
+            _logger.Error("Access check failed", unexpectedException, extraData);
+            return;
+        }
+
+        if (durationMs >= SlowAccessCheckThresholdMs)
+        {
+            _logger.Warn("Access check completed slowly", extraData);
+            return;
+        }
+
+        if (result == "denied")
+        {
+            _logger.Info("Access check denied", extraData);
+            return;
+        }
+
+        _logger.Debug("Access check completed", extraData);
     }
 }

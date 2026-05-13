@@ -2,6 +2,7 @@ using ClientManager.DataAccess.Databases.Interfaces;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.StorageApi.Models.Entities;
 using ClientManager.StorageApi.Services.Interfaces;
+using ClientManager.StorageApi.Utils.Instrumentation;
 
 namespace ClientManager.StorageApi.Services.Implementations.RateLimiting.Strategies;
 
@@ -11,10 +12,12 @@ namespace ClientManager.StorageApi.Services.Implementations.RateLimiting.Strateg
 public class TokenBucketStrategy : IRateLimitStrategy
 {
     private readonly IRateLimitStateDatabase _stateDatabase;
+    private readonly StorageApiMetrics _metrics;
 
-    public TokenBucketStrategy(IRateLimitStateDatabase stateDatabase)
+    public TokenBucketStrategy(IRateLimitStateDatabase stateDatabase, StorageApiMetrics metrics)
     {
         _stateDatabase = stateDatabase;
+        _metrics = metrics;
     }
 
     /// <inheritdoc />
@@ -23,21 +26,29 @@ public class TokenBucketStrategy : IRateLimitStrategy
         ClientRateLimit rateLimit,
         CancellationToken cancellationToken = default)
     {
-        var state = CreateState(key, rateLimit);
-        var counts = await _stateDatabase.GetMultipleCountsAsync([state.TokensKey, state.LastRefillKey], cancellationToken);
-        var bucketState = CalculateBucketState(counts[state.TokensKey], counts[state.LastRefillKey], state);
+        return await RateLimitStrategyInstrumentation.TraceAsync(
+            _metrics,
+            nameof(TokenBucketStrategy),
+            "increment",
+            counterKeyCount: 2,
+            async () =>
+            {
+                var state = CreateState(key, rateLimit);
+                var counts = await _stateDatabase.GetMultipleCountsAsync([state.TokensKey, state.LastRefillKey], cancellationToken);
+                var bucketState = CalculateBucketState(counts[state.TokensKey], counts[state.LastRefillKey], state);
 
-        if (bucketState.LastRefill == 0)
-        {
-            return await InitializeBucketAsync(state, cancellationToken);
-        }
+                if (bucketState.LastRefill == 0)
+                {
+                    return await InitializeBucketAsync(state, cancellationToken);
+                }
 
-        if (bucketState.Tokens <= 0)
-        {
-            return await PersistDeniedAsync(state, bucketState.NewLastRefill, cancellationToken);
-        }
+                if (bucketState.Tokens <= 0)
+                {
+                    return await PersistDeniedAsync(state, bucketState.NewLastRefill, cancellationToken);
+                }
 
-        return await PersistAllowedAsync(state, bucketState.Tokens - 1, bucketState.NewLastRefill, cancellationToken);
+                return await PersistAllowedAsync(state, bucketState.Tokens - 1, bucketState.NewLastRefill, cancellationToken);
+            });
     }
 
     /// <inheritdoc />
@@ -46,30 +57,38 @@ public class TokenBucketStrategy : IRateLimitStrategy
         ClientRateLimit rateLimit,
         CancellationToken cancellationToken = default)
     {
-        var state = CreateState(key, rateLimit);
-        var counts = await _stateDatabase.GetMultipleCountsAsync([state.TokensKey, state.LastRefillKey], cancellationToken);
-        var bucketState = CalculateBucketState(counts[state.TokensKey], counts[state.LastRefillKey], state);
-
-        if (bucketState.LastRefill == 0)
-        {
-            return new RateLimitResult { IsAllowed = true, RemainingRequests = state.BucketCapacity };
-        }
-
-        if (bucketState.Tokens <= 0)
-        {
-            return new RateLimitResult
+        return await RateLimitStrategyInstrumentation.TraceAsync(
+            _metrics,
+            nameof(TokenBucketStrategy),
+            "peek",
+            counterKeyCount: 2,
+            async () =>
             {
-                IsAllowed = false,
-                RemainingRequests = 0,
-                RetryAfterSeconds = Math.Max(1, (int)(state.RefillIntervalSeconds / state.TokensPerRefill))
-            };
-        }
+                var state = CreateState(key, rateLimit);
+                var counts = await _stateDatabase.GetMultipleCountsAsync([state.TokensKey, state.LastRefillKey], cancellationToken);
+                var bucketState = CalculateBucketState(counts[state.TokensKey], counts[state.LastRefillKey], state);
 
-        return new RateLimitResult
-        {
-            IsAllowed = true,
-            RemainingRequests = (int)bucketState.Tokens
-        };
+                if (bucketState.LastRefill == 0)
+                {
+                    return new RateLimitResult { IsAllowed = true, RemainingRequests = state.BucketCapacity };
+                }
+
+                if (bucketState.Tokens <= 0)
+                {
+                    return new RateLimitResult
+                    {
+                        IsAllowed = false,
+                        RemainingRequests = 0,
+                        RetryAfterSeconds = Math.Max(1, (int)(state.RefillIntervalSeconds / state.TokensPerRefill))
+                    };
+                }
+
+                return new RateLimitResult
+                {
+                    IsAllowed = true,
+                    RemainingRequests = (int)bucketState.Tokens
+                };
+            });
     }
 
     private async Task<RateLimitResult> InitializeBucketAsync(
