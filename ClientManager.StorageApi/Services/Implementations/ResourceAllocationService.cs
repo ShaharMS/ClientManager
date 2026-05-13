@@ -65,12 +65,17 @@ public class ResourceAllocationService : IResourceAllocationService
 
         try
         {
-            var pool = await GetPoolAsync(resourcePoolId, cancellationToken);
-            var configuration = await GetConfigurationAsync(clientId, resourcePoolId, cancellationToken);
+            var poolTask = GetPoolAsync(resourcePoolId, cancellationToken);
+            var configurationTask = GetConfigurationAsync(clientId, resourcePoolId, cancellationToken);
+            ObserveFault(configurationTask);
 
-            await EnsureClientCapacityAsync(configuration, clientId, resourcePoolId, cancellationToken);
+            var pool = await poolTask;
+            var configuration = await configurationTask;
+            var activeCounts = await GetActiveCountsAsync(clientId, resourcePoolId, cancellationToken);
+
+            EnsureClientCapacity(configuration, clientId, resourcePoolId, activeCounts.ClientCount);
             await EnsureGlobalLimitAsync(configuration, clientId, resourcePoolId, cancellationToken);
-            await EnsurePoolCapacityAsync(pool, clientId, resourcePoolId, cancellationToken);
+            EnsurePoolCapacity(pool, clientId, resourcePoolId, activeCounts.PoolCount);
 
             var allocation = CreateAllocation(clientId, resourcePoolId, pool.AllocationTtl);
             await WriteAllocationAsync(allocation, cancellationToken);
@@ -150,7 +155,7 @@ public class ResourceAllocationService : IResourceAllocationService
                 return new ResourceReleaseResponse { Released = false };
             }
 
-            await MarkReleasedAsync(allocationId, cancellationToken);
+            await MarkReleasedAsync(allocation, cancellationToken);
             RecordReleased(allocation);
             _logger.Info("Resource released", new { AllocationId = allocationId });
             result = "released";
@@ -254,11 +259,28 @@ public class ResourceAllocationService : IResourceAllocationService
         throw new ClientDisabledException(clientId);
     }
 
-    private async Task EnsureClientCapacityAsync(
-        ClientConfiguration configuration,
+    private async Task<(int PoolCount, int ClientCount)> GetActiveCountsAsync(
         string clientId,
         string resourcePoolId,
         CancellationToken cancellationToken)
+    {
+        using var activity = _metrics.ActivitySource.StartActivity(
+            "storage.resource.capacity_counts_read",
+            ActivityKind.Internal);
+        activity?.SetTag("client.id", clientId);
+        activity?.SetTag("resource_pool.id", resourcePoolId);
+
+        var counts = await _allocationDatabase.GetActiveCountsAsync(resourcePoolId, clientId, cancellationToken);
+        activity?.SetTag("capacity.pool_active_count", counts.PoolCount);
+        activity?.SetTag("capacity.client_active_count", counts.ClientCount);
+        return counts;
+    }
+
+    private void EnsureClientCapacity(
+        ClientConfiguration configuration,
+        string clientId,
+        string resourcePoolId,
+        int clientActiveCount)
     {
         using var activity = _metrics.ActivitySource.StartActivity(
             "storage.resource.client_capacity_check",
@@ -274,12 +296,6 @@ public class ResourceAllocationService : IResourceAllocationService
 
         activity?.SetTag("capacity.configured", true);
         activity?.SetTag("capacity.max_slots", poolSettings.MaxSlots);
-
-        var clientActiveCount = await _allocationDatabase.GetActiveCountByClientAsync(
-            resourcePoolId,
-            clientId,
-            cancellationToken);
-
         activity?.SetTag("capacity.active_count", clientActiveCount);
 
         if (clientActiveCount < poolSettings.MaxSlots)
@@ -320,11 +336,11 @@ public class ResourceAllocationService : IResourceAllocationService
         throw new GlobalResourcePoolRateLimitExceededException(result.RetryAfterSeconds);
     }
 
-    private async Task EnsurePoolCapacityAsync(
+    private void EnsurePoolCapacity(
         ResourcePool pool,
         string clientId,
         string resourcePoolId,
-        CancellationToken cancellationToken)
+        int activeCount)
     {
         using var activity = _metrics.ActivitySource.StartActivity(
             "storage.resource.pool_capacity_check",
@@ -333,7 +349,6 @@ public class ResourceAllocationService : IResourceAllocationService
         activity?.SetTag("resource_pool.id", resourcePoolId);
         activity?.SetTag("capacity.max_slots", pool.MaxSlots);
 
-        var activeCount = await _allocationDatabase.GetActiveCountAsync(resourcePoolId, cancellationToken);
         activity?.SetTag("capacity.active_count", activeCount);
         if (activeCount < pool.MaxSlots)
         {
@@ -377,15 +392,17 @@ public class ResourceAllocationService : IResourceAllocationService
     }
 
     private async Task MarkReleasedAsync(
-        string allocationId,
+        ResourceAllocation allocation,
         CancellationToken cancellationToken)
     {
         using var activity = _metrics.ActivitySource.StartActivity(
             "storage.resource.release_write",
             ActivityKind.Internal);
-        activity?.SetTag("allocation.id", allocationId);
+        activity?.SetTag("allocation.id", allocation.Id);
+        activity?.SetTag("client.id", allocation.ClientId);
+        activity?.SetTag("resource_pool.id", allocation.ResourcePoolId);
 
-        await _allocationDatabase.MarkReleasedAsync(allocationId, cancellationToken);
+        await _allocationDatabase.MarkReleasedAsync(allocation, cancellationToken);
     }
 
     private void RecordGranted(string clientId, string resourcePoolId)
@@ -534,5 +551,14 @@ public class ResourceAllocationService : IResourceAllocationService
         {
             tags.Add(name, value);
         }
+    }
+
+    private static void ObserveFault<T>(Task<T> task)
+    {
+        _ = task.ContinueWith(
+            completedTask => _ = completedTask.Exception,
+            CancellationToken.None,
+            TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
     }
 }

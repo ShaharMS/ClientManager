@@ -49,16 +49,19 @@ public interface IRateLimitService
 {
     /// <summary>
     /// Checks and increments the per-client rate limits that apply to a service request.
+    /// If the service-specific limit denies the request, broader client-global counters are not incremented.
     /// </summary>
     Task<RateLimitResult> CheckAndIncrementAsync(ClientConfiguration config, string serviceId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Checks the aggregate global rate limit for a service.
+    /// Contributing, non-exempt clients are enforced from the same increment result used for accounting.
     /// </summary>
     Task<RateLimitResult> CheckGlobalServiceLimitAsync(ClientConfiguration config, string serviceId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Checks the aggregate global rate limit for a resource pool.
+    /// Contributing, non-exempt clients are enforced from the same increment result used for accounting.
     /// </summary>
     Task<RateLimitResult> CheckGlobalResourcePoolLimitAsync(ClientConfiguration config, string resourcePoolId, CancellationToken cancellationToken = default);
 

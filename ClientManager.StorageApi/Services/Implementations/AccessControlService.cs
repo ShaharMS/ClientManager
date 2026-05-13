@@ -63,8 +63,15 @@ public class AccessControlService : IAccessControlService
 
         try
         {
-            var configuration = await GetConfigurationAsync(clientId, serviceId, cancellationToken);
-            var service = await GetServiceAsync(serviceId, clientId, cancellationToken);
+            var configurationTask = GetConfigurationAsync(clientId, cancellationToken);
+            var serviceTask = GetServiceAsync(serviceId, clientId, cancellationToken);
+            ObserveFault(serviceTask);
+
+            var configuration = await configurationTask;
+            EnsureClientEnabled(configuration, clientId, serviceId);
+
+            var service = await serviceTask;
+            EnsureServiceEnabled(service, clientId);
             var serviceSettings = GetServiceSettings(configuration, clientId, service.Id);
 
             EnsureServiceAccessAllowed(serviceSettings, clientId, service.Id);
@@ -154,7 +161,6 @@ public class AccessControlService : IAccessControlService
 
     private async Task<ClientConfiguration> GetConfigurationAsync(
         string clientId,
-        string serviceId,
         CancellationToken cancellationToken)
     {
         using var activity = _metrics.ActivitySource.StartActivity(
@@ -166,10 +172,17 @@ public class AccessControlService : IAccessControlService
             ?? throw new ClientNotFoundException(clientId);
 
         activity?.SetTag("configuration.enabled", configuration.IsEnabled);
+        return configuration;
+    }
 
+    private void EnsureClientEnabled(
+        ClientConfiguration configuration,
+        string clientId,
+        string serviceId)
+    {
         if (configuration.IsEnabled)
         {
-            return configuration;
+            return;
         }
 
         RecordDenied(clientId, serviceId, ServiceAccessDenialReason.ClientDisabled);
@@ -191,14 +204,20 @@ public class AccessControlService : IAccessControlService
             ?? throw new ServiceNotFoundException(serviceId);
 
         activity?.SetTag("service.enabled", service.IsEnabled);
+        return service;
+    }
 
+    private void EnsureServiceEnabled(
+        Service service,
+        string clientId)
+    {
         if (service.IsEnabled)
         {
-            return service;
+            return;
         }
 
-        RecordDenied(clientId, serviceId, ServiceAccessDenialReason.ServiceDisabled);
-        throw new ServiceDisabledException(serviceId);
+        RecordDenied(clientId, service.Id, ServiceAccessDenialReason.ServiceDisabled);
+        throw new ServiceDisabledException(service.Id);
     }
 
     private ServiceAccessSettings GetServiceSettings(
@@ -408,5 +427,14 @@ public class AccessControlService : IAccessControlService
         }
 
         _logger.Debug("Access check completed", extraData);
+    }
+
+    private static void ObserveFault<T>(Task<T> task)
+    {
+        _ = task.ContinueWith(
+            completedTask => _ = completedTask.Exception,
+            CancellationToken.None,
+            TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
     }
 }

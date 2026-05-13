@@ -69,24 +69,18 @@ public class RateLimitService : IRateLimitService
                     increment: true,
                     cancellationToken);
 
+                if (serviceResult is { IsAllowed: false })
+                {
+                    return CompleteClientDecision(serviceResult, configuration.Id, serviceId);
+                }
+
                 var globalResult = await EvaluateAsync(
                     configuration.GlobalRateLimit,
                     $"{configuration.Id}:global",
                     increment: true,
                     cancellationToken);
-
                 var result = Combine(serviceResult, globalResult);
-                RecordClientRateLimitDecision(result, configuration.Id, serviceId);
-
-                _logger.Debug("Rate limit evaluated", new
-                {
-                    ClientId = configuration.Id,
-                    ServiceId = serviceId,
-                    result.IsAllowed,
-                    result.RemainingRequests
-                });
-
-                return result;
+                return CompleteClientDecision(result, configuration.Id, serviceId);
             });
     }
 
@@ -224,10 +218,12 @@ public class RateLimitService : IRateLimitService
                 var globalKey = targetType == TargetType.Service
                     ? $"global:service:{targetId}"
                     : $"global:pool:{targetId}";
+                var rateLimit = ToClientRateLimit(globalLimit);
 
                 if (contributesToGlobal)
                 {
-                    await strategy.EvaluateAsync(globalKey, ToClientRateLimit(globalLimit), cancellationToken);
+                    var result = await strategy.EvaluateAsync(globalKey, rateLimit, cancellationToken);
+                    return exemptFromGlobal ? Allowed() : CompleteGlobalDecision(result, configuration.Id, targetId, targetType);
                 }
 
                 if (exemptFromGlobal)
@@ -235,15 +231,42 @@ public class RateLimitService : IRateLimitService
                     return Allowed();
                 }
 
-                var result = await strategy.PeekAsync(globalKey, ToClientRateLimit(globalLimit), cancellationToken);
-                if (result.IsAllowed)
-                {
-                    return result;
-                }
-
-                RecordGlobalHit(configuration.Id, targetId, targetType);
-                return result with { IsGlobalLimitHit = true };
+                var peekResult = await strategy.PeekAsync(globalKey, rateLimit, cancellationToken);
+                return CompleteGlobalDecision(peekResult, configuration.Id, targetId, targetType);
             });
+    }
+
+    private RateLimitResult CompleteClientDecision(
+        RateLimitResult result,
+        string clientId,
+        string serviceId)
+    {
+        RecordClientRateLimitDecision(result, clientId, serviceId);
+
+        _logger.Debug("Rate limit evaluated", new
+        {
+            ClientId = clientId,
+            ServiceId = serviceId,
+            result.IsAllowed,
+            result.RemainingRequests
+        });
+
+        return result;
+    }
+
+    private RateLimitResult CompleteGlobalDecision(
+        RateLimitResult result,
+        string clientId,
+        string targetId,
+        TargetType targetType)
+    {
+        if (result.IsAllowed)
+        {
+            return result;
+        }
+
+        RecordGlobalHit(clientId, targetId, targetType);
+        return result with { IsGlobalLimitHit = true };
     }
 
     private async Task<RateLimitResult?> EvaluateAsync(

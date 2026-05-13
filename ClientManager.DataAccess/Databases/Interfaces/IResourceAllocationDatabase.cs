@@ -16,7 +16,8 @@ namespace ClientManager.DataAccess.Databases.Interfaces;
 /// <para><strong>Count queries</strong></para>
 /// <para>
 ///     Two families exist: <em>single-key</em> counts (<see cref="GetActiveCountAsync"/>,
-///     <see cref="GetActiveCountByClientAsync"/>) for the hot acquire path, and
+///     <see cref="GetActiveCountByClientAsync"/>) plus a paired hot-path read
+///     (<see cref="GetActiveCountsAsync"/>) for acquire, and
 ///     <em>bulk-grouped</em> counts (<see cref="GetActiveCountsByPoolAsync"/>,
 ///     <see cref="GetActiveCountsByPoolAndClientAsync"/>) for dashboard/statistics
 ///     screens that need a full overview without N+1 queries.
@@ -54,6 +55,18 @@ public interface IResourceAllocationDatabase
     Task<int> GetActiveCountByClientAsync(string resourcePoolId, string clientId, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Gets both active allocation counters needed by the acquire hot path in one storage call.
+    /// </summary>
+    /// <param name="resourcePoolId">The unique identifier of the resource pool.</param>
+    /// <param name="clientId">The unique identifier of the client.</param>
+    /// <param name="cancellationToken">Cancels the paired count query if the backing store is unresponsive.</param>
+    /// <returns>The active pool-wide count and the active count for the client within that pool.</returns>
+    Task<(int PoolCount, int ClientCount)> GetActiveCountsAsync(
+        string resourcePoolId,
+        string clientId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Gets the count of active (non-released, non-expired) allocations grouped by resource pool ID.
     /// Loads the collection once and groups in memory to avoid N+1 queries.
     /// </summary>
@@ -82,6 +95,13 @@ public interface IResourceAllocationDatabase
     /// <param name="allocationId">The unique identifier of the allocation to release.</param>
     /// <param name="cancellationToken">Cancels the update before the release is persisted.</param>
     Task MarkReleasedAsync(string allocationId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Marks a previously loaded allocation as released without rereading it from storage.
+    /// </summary>
+    /// <param name="allocation">The allocation state already loaded by the caller.</param>
+    /// <param name="cancellationToken">Cancels the update before the release is persisted.</param>
+    Task MarkReleasedAsync(ResourceAllocation allocation, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Marks all expired, non-released allocations as released.

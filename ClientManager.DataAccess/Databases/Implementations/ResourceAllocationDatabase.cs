@@ -44,6 +44,19 @@ public class ResourceAllocationDatabase : IResourceAllocationDatabase
     }
 
     /// <inheritdoc />
+    public async Task<(int PoolCount, int ClientCount)> GetActiveCountsAsync(
+        string resourcePoolId,
+        string clientId,
+        CancellationToken cancellationToken = default)
+    {
+        var poolKey = PoolCounterKey(resourcePoolId);
+        var clientKey = ClientCounterKey(resourcePoolId, clientId);
+        var counts = await _store.GetManyCountersAsync([poolKey, clientKey], cancellationToken);
+
+        return (NormalizeCount(GetCount(counts, poolKey)), NormalizeCount(GetCount(counts, clientKey)));
+    }
+
+    /// <inheritdoc />
     public async Task<Dictionary<string, int>> GetActiveCountsByPoolAsync(CancellationToken cancellationToken = default)
     {
         var query = new DocumentQuery()
@@ -83,7 +96,16 @@ public class ResourceAllocationDatabase : IResourceAllocationDatabase
         if (allocation is null)
             return;
 
-        await _store.SetAsync(Collection, allocationId, allocation with { IsReleased = true }, cancellationToken);
+        await MarkReleasedAsync(allocation, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task MarkReleasedAsync(ResourceAllocation allocation, CancellationToken cancellationToken = default)
+    {
+        if (allocation.IsReleased)
+            return;
+
+        await _store.SetAsync(Collection, allocation.Id, allocation with { IsReleased = true }, cancellationToken);
         await DecrementAllocationCountersAsync(allocation, cancellationToken);
     }
 
@@ -166,6 +188,13 @@ public class ResourceAllocationDatabase : IResourceAllocationDatabase
         var current = counters.TryGetValue(key, out var entry) ? entry.value : 0;
         counters[key] = (current + 1, CounterTtl);
     }
+
+    private static long GetCount(IReadOnlyDictionary<string, long> counts, string key)
+    {
+        return counts.TryGetValue(key, out var count) ? count : 0;
+    }
+
+    private static int NormalizeCount(long count) => (int)Math.Max(0, count);
 
     private static string PoolCounterKey(string poolId) => $"alloc-count:pool:{poolId}";
     private static string ClientCounterKey(string poolId, string clientId) => $"alloc-count:client:{poolId}:{clientId}";
