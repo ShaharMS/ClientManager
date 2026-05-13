@@ -2,6 +2,69 @@
 
 ## Commit Intent
 
+- Pass type: Approved Step 2 finalization
+- Plan step: .github/plans/hot-path-performance-observability-2-tracing-logs.md
+- Scope: Close the Step 2 tracing/logs plan and preserve approved iteration state
+- Reason this is one commit: These files are the final plan/packet/progress bookkeeping for the approved Step 2 loop. They record the @Inspect approval, RVW-001 disposition, remaining test gaps, and the handoff to Step 3 without changing source code.
+- Verification disposition: Finalization follows @Inspect approval after RVW-001 was fixed and @Intake normalized the approval. Earlier full solution build and targeted Api/StorageApi builds passed; this pass contains documentation/bookkeeping only.
+- Remaining risk: Real OTLP collector export remains unverified. The full solution rebuild could not be rerun during re-review because an already-running AdminUI process locked ClientManager.Shared.dll, but the earlier full solution build and targeted Api/StorageApi builds passed.
+
+## Candidate Files
+
+| Path | Include | Reason |
+|------|---------|--------|
+| .github/plans/hot-path-performance-observability-2-tracing-logs.md | Yes | Marks the approved Step 2 plan completed and points to Step 3. |
+| .github/plans/hot-path-performance-observability-overview.md | No | Read for parent-plan context; unchanged in this finalization pass. |
+| .github/iterations/hot-path-performance-observability-2-tracing-logs/run-ledger.md | Yes | Records the approved Step 2 state, latest approved commit, and Step 3 handoff. |
+| .github/iterations/hot-path-performance-observability-2-tracing-logs/review-packet.md | Yes | Preserves @Inspect re-review approval and RVW-001 fixed disposition. |
+| .github/iterations/hot-path-performance-observability-2-tracing-logs/execution-report.md | Yes | Records the completed run summary, verification evidence, residual risks, and finalization handoff. |
+| .github/iterations/hot-path-performance-observability-2-tracing-logs/commit-packet.md | Yes | Records this approved finalization commit grouping and gitflow decision. |
+| .github/iterations/hot-path-performance-observability-2-tracing-logs/timeline.md | Yes | Appends the @Inscribe finalization transition. |
+| .github/agent-progress/hot-path-performance-observability-2-tracing-logs.md | Yes | Updates durable resume state after approval and before Step 3. |
+| .github/iterations/hot-path-performance-observability-2-tracing-logs/implementation-handoff.md | No | Previously committed implementation/CR context; no finalization edits are needed. |
+| .github/iterations/hot-path-performance-observability-2-tracing-logs/decision-log.md | No | No waiver or new design decision was added for finalization. |
+| Source files | No | This pass is bookkeeping-only and intentionally excludes implementation files. |
+
+## Gitflow Decision
+
+- Starting branch: feature/hot-path-performance-observability-1-baseline-runtime
+- Target branch: feature/hot-path-performance-observability-1-baseline-runtime
+- Branch action: Stayed on the existing feature branch; no branch switch was needed because the current branch already satisfies gitflow for this approved plan finalization pass.
+
+## Commit Message
+
+```text
+docs(plans): finalize Step 2 tracing logs
+
+Plan: .github/plans/hot-path-performance-observability-2-tracing-logs.md
+Pass: approved Step 2 finalization
+
+Records the approved Step 2 closeout after RVW-001 was fixed, marks
+the plan complete, and preserves resume context for Step 3.
+
+Real OTLP collector export remains unverified; the full solution rebuild
+during re-review was blocked by the running AdminUI process, while earlier
+full solution and targeted Api/StorageApi builds passed.
+```
+
+## Result
+
+- Commit hash: Reported by @Inscribe final response because this finalization commit cannot contain its own Git object hash without a follow-up dirty-file loop.
+- Push result: Reported by @Inscribe final response after checking `origin`.
+- Workspace status after commit: Reported by @Inscribe final response.
+- Remaining uncommitted files: Reported by @Inscribe final response.
+- Follow-up needed: Continue to .github/plans/hot-path-performance-observability-3-storage-counters.md.
+
+## Commit History
+
+| Pass | Commit | Branch | Notes |
+|------|--------|--------|-------|
+| Initial implementation | 27e173d | feature/hot-path-performance-observability-1-baseline-runtime | Added Step 2 tracing, histograms, document-store instrumentation, and structured timing logs while preserving OTLP and JSON-file contention follow-ups. |
+| Review follow-up for Step 2 RVW-001 | c360238 | feature/hot-path-performance-observability-1-baseline-runtime | Removed allocation IDs from hot-path histogram tag sets and preserved allocation IDs on spans/logs/request values and existing non-histogram counter behavior outside the finding scope. |
+| Approved Step 2 finalization | Reported by @Inscribe final response | feature/hot-path-performance-observability-1-baseline-runtime | Closes Step 2 plan/packet/progress state after @Inspect approval and points the loop to Step 3. |# Commit Packet
+
+## Commit Intent
+
 - Pass type: Review follow-up for Step 2 RVW-001
 - Plan step: .github/plans/hot-path-performance-observability-2-tracing-logs.md
 - Scope: Remove high-cardinality allocation IDs from hot-path histogram tag sets

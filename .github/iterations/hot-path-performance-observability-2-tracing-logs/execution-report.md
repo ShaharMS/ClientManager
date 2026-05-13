@@ -3,19 +3,23 @@
 ## Run Summary
 
 - Iteration slug: hot-path-performance-observability-2-tracing-logs
-- Final state: In progress after initial implementation commit
-- Stop reason: Not stopped yet; ready for review after @Inscribe reports commit and push results
+- Final state: Approved
+- Stop reason: Step 2 completed and approved; iteration will advance to Step 3.
 - Report author: @Iterate
 - Scope: .github/plans/hot-path-performance-observability-2-tracing-logs.md
 - Branch: feature/hot-path-performance-observability-1-baseline-runtime
 - Baseline commit: 4fc55826f413194b36697123a56a0d3326cc71c5
-- Final commit: Reported by @Inscribe final response
+- Latest approved commit before finalization: c36023825bd52f6ec5ec2fc289bfe89c5011e132
+- Finalization commit: Reported by @Inscribe final response
 
 ## What Actually Happened
 
 1. Iteration packets were bootstrapped for Step 2 after Step 1 approval.
 2. The initial implementation pass added Api and StorageApi ActivitySource tracing, hot-path histograms, RuntimeStateClient spans, StorageApi service/rate-limit/document-store instrumentation, and structured timing logs.
 3. @Inscribe scoped the implementation and Step 2 iteration/progress files into one plan-step commit on the existing feature branch.
+4. @Inspect requested RVW-001 because allocation IDs were included in histogram tags.
+5. @Implement removed allocation IDs from histogram tag sets while keeping them available on spans/logs/request values where appropriate.
+6. @Inspect approved after commit `c360238`, and @Intake normalized RVW-001 to fixed with no open findings.
 
 ## Files Changed
 
@@ -39,6 +43,7 @@
 | ClientManager.StorageApi/Utils/Instrumentation/InstrumentedDocumentStore.cs | Included | Adds document-store operation spans, metrics, logs, and lock-wait reporting. |
 | .github/iterations/hot-path-performance-observability-2-tracing-logs/* | Included | Preserves Step 2 packet state for resume/review. |
 | .github/agent-progress/hot-path-performance-observability-2-tracing-logs.md | Included | Preserves Step 2 progress state for resume/review. |
+| .github/plans/hot-path-performance-observability-2-tracing-logs.md | Included | Marked completed after @Inspect approval. |
 
 ## Verification Run
 
@@ -52,31 +57,37 @@
 | AdminUI smoke | `/monitor` and `/allocations` | Passed | Pages rendered against the current Api/StorageApi stack. |
 | Diff hygiene | `git diff --check` | Passed | No whitespace errors were reported. |
 | OTLP collector export | Real collector-backed run | Not run | No local collector endpoint was available. |
+| Review follow-up builds | `dotnet build .\ClientManager.Api\ClientManager.Api.csproj`; `dotnet build .\ClientManager.StorageApi\ClientManager.StorageApi.csproj` | Passed | Both targeted builds passed after RVW-001. StorageApi retained the existing 31 XML-doc warnings. |
+| Histogram cardinality check | Search/inspection for allocation ID histogram tags | Passed | `allocation_id`/`allocationId` were removed from histogram tag builders; remaining allocation IDs are limited to spans, logs, request values, or existing non-histogram counter behavior. |
 
 ## Review And Remediation
 
 | Round | Verdict | Findings addressed | Notes |
 |-------|---------|--------------------|-------|
+| 1 | CHANGES REQUESTED | RVW-001 opened | @Inspect found per-allocation IDs on histogram tags, violating bounded-cardinality guidance. |
+| 2 | APPROVED | RVW-001 fixed | Allocation IDs were removed from histogram tags; approval normalized by @Intake. |
 
 ## Commits And Pushes
 
 | Commit | Branch | Push result | Notes |
 |--------|--------|-------------|-------|
-| Reported by @Inscribe final response | feature/hot-path-performance-observability-1-baseline-runtime | Reported by @Inscribe final response | Initial Step 2 tracing/logs implementation commit. |
+| 27e173d | feature/hot-path-performance-observability-1-baseline-runtime | Skipped; no `origin` remote configured | Initial Step 2 tracing/logs implementation commit. |
+| c360238 | feature/hot-path-performance-observability-1-baseline-runtime | Skipped; no `origin` remote configured | RVW-001 follow-up removing allocation IDs from histogram tags. |
+| Reported by @Inscribe final response | feature/hot-path-performance-observability-1-baseline-runtime | Reported by @Inscribe final response | Final Step 2 plan/packet closeout. |
 
 ## Waivers, Exceptions, And Blockers
 
-- No approval blockers are recorded for the initial implementation pass.
+- No approval blockers remain. RVW-001 was fixed and approved.
 - OTLP export against a real collector was not run.
 - Telemetry exposed known JSON-file lock-wait/counter contention that remains planned for later steps.
 
 ## Final Workspace State
 
-- Git status summary: Reported by @Inscribe final response.
-- Diagnostics summary: No VS Code diagnostics errors were reported during implementation verification.
-- Remaining uncommitted files: Reported by @Inscribe final response.
+- Git status summary: Reported by @Inscribe final response after the finalization commit.
+- Diagnostics summary: No VS Code diagnostics errors were reported during implementation or RVW-001 verification.
+- Remaining uncommitted files: Reported by @Inscribe final response after the finalization commit.
 
 ## User-Facing Closeout
 
-- Summary: Step 2 initial implementation added tracing, histograms, document-store instrumentation, and structured timing logs across Api and StorageApi hot paths.
-- Next recommended action: Review the committed Step 2 implementation, then continue with the storage-counter/contention follow-up in later plan steps.
+- Summary: Step 2 is approved. Tracing, histograms, document-store instrumentation, and structured timing logs are in place across Api and StorageApi hot paths.
+- Next recommended action: Continue automatically to Step 3 storage-counter/contention remediation.

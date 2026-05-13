@@ -2,19 +2,19 @@
 
 ## Review Source
 
-- Source type: @Inspect review of committed delta
-- Scope: .github/plans/hot-path-performance-observability-2-tracing-logs.md; 4fc55826f413194b36697123a56a0d3326cc71c5..HEAD on feature/hot-path-performance-observability-1-baseline-runtime
-- Baseline: 4fc55826f413194b36697123a56a0d3326cc71c5
+- Source type: @Inspect re-review after commit c360238
+- Scope: .github/plans/hot-path-performance-observability-2-tracing-logs.md; RVW-001 resolution in committed Step 2 delta on feature/hot-path-performance-observability-1-baseline-runtime
+- Baseline: 4fc55826f413194b36697123a56a0d3326cc71c5; re-review commit c360238
 - Reviewer: @Inspect
 
 ## Review Checklist
 
 - [x] Plan intent reviewed
-- [ ] Verification claims checked
-- [ ] Repository conventions checked
-- [ ] Shared package boundaries checked
-- [ ] Naming and structure checked
-- [ ] Nesting and complexity checked
+- [x] Verification claims checked
+- [x] Repository conventions checked
+- [x] Shared package boundaries checked
+- [x] Naming and structure checked
+- [x] Nesting and complexity checked
 - [x] Risks and regressions checked
 
 ## Findings
@@ -27,16 +27,18 @@
 
 | Finding ID | Status | Owner | Evidence | Reply |
 |------------|--------|-------|----------|-------|
-| RVW-001 | FIXED | @Implement | Removed allocation ID tags from the Api storage-client histogram tag builder and the StorageApi resource duration histogram tag builder. Focused searches found no removed histogram allocation-tag patterns. | Allocation IDs remain on spans, structured logs, request values, and existing non-histogram counter behavior outside the finding scope. |
+| RVW-001 | FIXED | @Implement | @Inspect confirmed RuntimeStateClient.cs and ResourceAllocationService.cs histogram tag builders no longer include allocation_id/allocationId. Api and StorageApi targeted builds pass; VS Code diagnostics are clean; git diff --check is clean. | Allocation IDs remain only on spans, structured logs, request values, or the existing non-histogram ResourceReleased counter. |
 
 ## Approval Gate
 
-- Current verdict: CHANGES REQUESTED pending re-review
-- Approval blockers: RVW-001 addressed by @Implement; pending @Inspect confirmation
-- Next reviewer: @Inspect
+- Current verdict: APPROVED
+- Approval blockers: None
+- Next reviewer: None; return to @Iterate
+- Residual risks/test gaps: Full solution build could not be re-run cleanly during re-review because an already-running ClientManager.AdminUI process locked ClientManager.Shared.dll; an earlier full solution build passed during implementation. OTLP export against a real collector remains unverified because no local collector endpoint was available.
 
 ## Review History
 
 | Round | Verdict | Reviewer | Notes |
 |-------|---------|----------|-------|
 | 1 | CHANGES REQUESTED | @Inspect | Normalized latest committed-delta review; opened RVW-001 for high-cardinality allocation ID tags on hot-path histograms. |
+| 2 | APPROVED | @Inspect | Re-review after commit c360238 confirmed RVW-001 fixed. RuntimeStateClient.cs and ResourceAllocationService.cs histogram tag builders no longer include allocation_id/allocationId; remaining allocation IDs are outside hot-path histogram tags. Targeted Api and StorageApi builds, VS Code diagnostics, and git diff --check were clean; full solution rebuild and real OTLP collector export remain noted test gaps. |
