@@ -1,6 +1,6 @@
 # Plan: Hot Path Performance Observability — Step 3: Storage Counters
 
-> **Status**: 🔲 Not started
+> **Status**: ✅ Completed
 > **Prerequisite**: [hot-path-performance-observability-2-tracing-logs.md](hot-path-performance-observability-2-tracing-logs.md)
 > **Next**: [hot-path-performance-observability-4-hot-path-logic.md](hot-path-performance-observability-4-hot-path-logic.md)
 > **Parent**: [hot-path-performance-observability-overview.md](hot-path-performance-observability-overview.md)

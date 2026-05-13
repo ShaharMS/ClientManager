@@ -2,15 +2,15 @@
 
 ## Review Source
 
-- Source type: @Inspect review of committed delta
-- Scope: .github/plans/hot-path-performance-observability-3-storage-counters.md; comparison 18c8a67ea9633abd0e044a3eafdce29ddefc4d8d..HEAD on feature/hot-path-performance-observability-1-baseline-runtime
-- Baseline: 18c8a67ea9633abd0e044a3eafdce29ddefc4d8d
+- Source type: @Inspect re-review approval after commit 8d3e217
+- Scope: .github/plans/hot-path-performance-observability-3-storage-counters.md; re-review of RVW-001 through RVW-004 follow-up fixes on feature/hot-path-performance-observability-1-baseline-runtime
+- Baseline: Original implementation baseline 18c8a67ea9633abd0e044a3eafdce29ddefc4d8d; latest reviewed follow-up commit 8d3e217
 - Reviewer: @Inspect
 
 ## Review Checklist
 
 - [x] Plan intent reviewed
-- [ ] Verification claims checked
+- [x] Verification claims checked
 - [x] Repository conventions checked
 - [x] Shared package boundaries checked
 - [ ] Naming and structure checked
@@ -30,19 +30,20 @@
 
 | Finding ID | Status | Owner | Evidence | Reply |
 |------------|--------|-------|----------|-------|
-| RVW-001 | OPEN | @Implement | Normalized from latest @Inspect review; no implementer response has been recorded for this round. | Awaiting implementation change or supported disposition. |
-| RVW-002 | OPEN | @Implement | Normalized from latest @Inspect review; no implementer response has been recorded for this round. | Awaiting implementation change or supported disposition. |
-| RVW-003 | OPEN | @Implement | Normalized from latest @Inspect review; no implementer response has been recorded for this round. | Awaiting implementation change or supported disposition. |
-| RVW-004 | OPEN | @Implement | Normalized from latest @Inspect review; no implementer response has been recorded for this round. | Awaiting documentation update or supported disposition. |
+| RVW-001 | FIXED | @Implement | @Inspect re-review after commit 8d3e217 verified MongoDB decrement floors inside the `FindOneAndUpdate` pipeline, so no negative intermediate counter value is persisted. | Resolved by the follow-up implementation; no approval blocker remains. |
+| RVW-002 | FIXED | @Implement | @Inspect re-review after commit 8d3e217 verified Redis decrement uses Lua to compute and store `max(0, current - amount)` atomically while preserving TTL. | Resolved by the follow-up implementation; no approval blocker remains. |
+| RVW-003 | FIXED | @Implement | @Inspect re-review after commit 8d3e217 verified MongoDB expired-window increment reset-vs-increment decisions occur inside the update pipeline. | Resolved by the follow-up implementation; no approval blocker remains. |
+| RVW-004 | FIXED | @Implement | @Inspect re-review after commit 8d3e217 verified `IDocumentStore` docs cover decrement APIs and `ResourceAllocationDatabase` usage. | Resolved by the documentation follow-up; no approval blocker remains. |
 
 ## Approval Gate
 
-- Current verdict: CHANGES REQUESTED
-- Approval blockers: RVW-001, RVW-002, RVW-003. RVW-004 remains open as a minor documentation finding.
-- Next reviewer: @Inspect after @Implement addresses the open findings.
+- Current verdict: APPROVED
+- Approval blockers: None.
+- Next reviewer: None; next consumer is @Iterate to record Step 3 approval and continue the loop.
 
 ## Review History
 
 | Round | Verdict | Reviewer | Notes |
 |-------|---------|----------|-------|
 | 1 | CHANGES REQUESTED | @Inspect | Normalized RVW-001 through RVW-004 from review of committed delta 18c8a67ea9633abd0e044a3eafdce29ddefc4d8d..HEAD on feature/hot-path-performance-observability-1-baseline-runtime. |
+| 2 | APPROVED | @Inspect | Re-review after commit 8d3e217 marked RVW-001, RVW-002, RVW-003, and RVW-004 fixed. Residual risks remain: Redis and MongoDB had compile/review verification only with no live backend execution, StorageApi still has 31 existing XML-doc warnings, and low-interval runtime lock-wait 503/timeouts plus missing browser screenshots remain for later verification. |

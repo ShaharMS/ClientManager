@@ -3,7 +3,7 @@
 ## Iteration
 
 - Slug: hot-path-performance-observability-3-storage-counters
-- Status: Initial implementation committed; review pending
+- Status: Approved; finalization bookkeeping ready for commit
 - Owning orchestrator: @Iterate
 
 ## Selected Scope
@@ -15,16 +15,16 @@
 ## Repo Baseline
 
 - Baseline commit: 18c8a67ea9633abd0e044a3eafdce29ddefc4d8d
-- Latest implementation commit: Reported by @Inscribe final response
+- Latest approved commit: 8d3e21731124a026f1face6278f070ef321c360f
 - Working branch: feature/hot-path-performance-observability-1-baseline-runtime
 - Comparison range: 18c8a67ea9633abd0e044a3eafdce29ddefc4d8d..HEAD
 
 ## Current Loop State
 
-- Next agent: @Inspect
-- Review round: 0
-- Latest verification: `dotnet build .\ClientManager.slnx`, focused DataAccess verifier run plus five repeated verifier runs, diagnostics, `git diff --check`, and runtime smoke through StorageApi/Api/AdminUI/seed/live traffic passed. No `_counters.json.tmp` collision signatures were found.
-- Latest decision: Step 3 initial implementation was committed as one pass on the existing feature branch. Remaining intermittent 503/timeouts from lock waits are deferred to later hot-path work; MongoDB/Redis were compile-verified only and browser screenshots were not captured.
+- Next agent: @Iterate
+- Review round: 2
+- Latest verification: @Inspect approved after RVW-001 through RVW-004 were fixed. Full solution build, DataAccess verifier, repeated verifier stress, diagnostics, diff hygiene, and runtime smoke passed. MongoDB/Redis were compile/review verified only because local services were unavailable.
+- Latest decision: Step 3 is approved. JsonFile counter writes are hardened, batch counter APIs are implemented, MongoDB/Redis negative-counter gaps were fixed, and IDocumentStore docs were updated.
 
 ## Packet Links
 
@@ -39,10 +39,10 @@
 ## Open Items
 
 - Blockers: None recorded.
-- Outstanding findings: None recorded.
-- Next action: Ask @Inspect to review the committed Step 3 implementation before Step 4 begins.
+- Outstanding findings: None; RVW-001 through RVW-004 are fixed and the review packet is approved.
+- Next action: Commit plan/packet finalization, then advance to Step 4.
 
 ## Resume Notes
 
-- Current context: Steps 1 and 2 are approved and finalized. Step 3 added backend-neutral batch counter APIs, JsonFile shared state and GUID temp writes, batched rate-limit/allocation usage, and a focused JsonFile verifier on the existing feature branch.
-- Recovery instructions: Use @Inscribe's final response for the Step 3 implementation commit hash and push result, then continue with @Inspect for the initial implementation review.
+- Current context: Steps 1 and 2 are approved and finalized. Step 3 added backend-neutral batch counter APIs, JsonFile shared state and GUID temp writes, batched rate-limit/allocation usage, MongoDB/Redis atomic fixes, and a focused JsonFile verifier on the existing feature branch.
+- Recovery instructions: Commit finalization bookkeeping, then continue automatically to .github/plans/hot-path-performance-observability-4-hot-path-logic.md.
