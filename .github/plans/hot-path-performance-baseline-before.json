@@ -1,0 +1,190 @@
+{
+  "profile": {
+    "base_url": "http://localhost:5062",
+    "seed": 42,
+    "duration_seconds": 60,
+    "target_requests_per_day": 1000000,
+    "target_requests_per_second": 11.574,
+    "virtual_clients": 100,
+    "distinct_services": 19,
+    "distinct_resource_pools": 10,
+    "graph_reads_enabled": false,
+    "graph_ranges": [
+      "7d",
+      "30d",
+      "90d"
+    ]
+  },
+  "operations": {
+    "access": {
+      "count": 451,
+      "successes": 8,
+      "service_unavailable_count": 443,
+      "status_counts": {
+        "200": 8,
+        "503": 443
+      },
+      "throughput_per_second": 5.078,
+      "average_latency_ms": 140.306,
+      "p95_latency_ms": 12.907,
+      "max_latency_ms": 5026.507
+    },
+    "acquire": {
+      "count": 105,
+      "successes": 0,
+      "service_unavailable_count": 105,
+      "status_counts": {
+        "503": 105
+      },
+      "throughput_per_second": 1.182,
+      "average_latency_ms": 100.864,
+      "p95_latency_ms": 10.293,
+      "max_latency_ms": 5017.454
+    },
+    "release": {
+      "count": 0,
+      "successes": 0,
+      "service_unavailable_count": 0,
+      "status_counts": {},
+      "throughput_per_second": 0.0,
+      "average_latency_ms": 0.0,
+      "p95_latency_ms": 0.0,
+      "max_latency_ms": 0.0
+    },
+    "dashboard": {
+      "count": 74,
+      "successes": 0,
+      "service_unavailable_count": 74,
+      "status_counts": {
+        "503": 74
+      },
+      "throughput_per_second": 0.833,
+      "average_latency_ms": 21.277,
+      "p95_latency_ms": 34.447,
+      "max_latency_ms": 60.049
+    },
+    "monitor": {
+      "count": 64,
+      "successes": 1,
+      "service_unavailable_count": 63,
+      "status_counts": {
+        "200": 1,
+        "503": 63
+      },
+      "throughput_per_second": 0.721,
+      "average_latency_ms": 11.668,
+      "p95_latency_ms": 17.767,
+      "max_latency_ms": 110.516
+    }
+  },
+  "runtime_summary": {
+    "count": 694,
+    "successes": 9,
+    "service_unavailable_count": 685,
+    "status_counts": {
+      "200": 9,
+      "503": 685
+    },
+    "throughput_per_second": 7.814,
+    "average_latency_ms": 109.784,
+    "p95_latency_ms": 23.099,
+    "max_latency_ms": 5026.507
+  },
+  "hot_path_summary": {
+    "access_checks": {
+      "count": 451,
+      "successes": 8,
+      "service_unavailable_count": 443,
+      "status_counts": {
+        "200": 8,
+        "503": 443
+      },
+      "throughput_per_second": 5.078,
+      "average_latency_ms": 140.306,
+      "p95_latency_ms": 12.907,
+      "max_latency_ms": 5026.507,
+      "expected_client_error_count": 0,
+      "unexpected_error_count": 443
+    },
+    "resource_acquires": {
+      "count": 105,
+      "successes": 0,
+      "service_unavailable_count": 105,
+      "status_counts": {
+        "503": 105
+      },
+      "throughput_per_second": 1.182,
+      "average_latency_ms": 100.864,
+      "p95_latency_ms": 10.293,
+      "max_latency_ms": 5017.454,
+      "expected_client_error_count": 0,
+      "unexpected_error_count": 105
+    },
+    "resource_releases": {
+      "count": 0,
+      "successes": 0,
+      "service_unavailable_count": 0,
+      "status_counts": {},
+      "throughput_per_second": 0.0,
+      "average_latency_ms": 0.0,
+      "p95_latency_ms": 0.0,
+      "max_latency_ms": 0.0,
+      "expected_client_error_count": 0,
+      "unexpected_error_count": 0
+    }
+  },
+  "runtime_unexpected_failures": [
+    {
+      "operation": "access",
+      "count": 443,
+      "status_counts": {
+        "503": 443
+      },
+      "max_latency_ms": 5026.507
+    },
+    {
+      "operation": "acquire",
+      "count": 105,
+      "status_counts": {
+        "503": 105
+      },
+      "max_latency_ms": 5017.454
+    },
+    {
+      "operation": "dashboard",
+      "count": 74,
+      "status_counts": {
+        "503": 74
+      },
+      "max_latency_ms": 60.049
+    },
+    {
+      "operation": "monitor",
+      "count": 63,
+      "status_counts": {
+        "503": 63
+      },
+      "max_latency_ms": 21.641
+    }
+  ],
+  "graph_operations": {},
+  "graph_summary": {
+    "count": 0,
+    "successes": 0,
+    "service_unavailable_count": 0,
+    "graph_p95_latency_ms": 0.0,
+    "graph_max_latency_ms": 0.0,
+    "status_counts": {}
+  },
+  "graph_scenarios": [],
+  "storage_bytes": {
+    "before": {
+      "UsageSnapshots": 129887620,
+      "_counters": 15910
+    },
+    "after": {
+      "UsageSnapshots": 129887491,
+      "_counters": 18869
+    }
+  }
+}

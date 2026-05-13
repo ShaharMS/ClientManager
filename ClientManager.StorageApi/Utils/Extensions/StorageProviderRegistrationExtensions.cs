@@ -1,3 +1,4 @@
+using ClientManager.DataAccess.Stores.Implementations;
 using ClientManager.DataAccess.Stores.Interfaces;
 using ClientManager.Shared.Configuration.Storage;
 using ClientManager.Shared.Models.Enums;
@@ -27,11 +28,18 @@ public static class StorageProviderRegistrationExtensions
 
         var mongoClients = new Dictionary<string, IMongoClient>();
         var redisMultiplexers = new Dictionary<string, IConnectionMultiplexer>();
+        var jsonFileStores = new Dictionary<string, JsonFileDocumentStore>(GetPathComparer());
+        var luceneStores = new Dictionary<string, LuceneDocumentStore>(GetPathComparer());
 
         foreach (var role in Enum.GetValues<StorageRole>())
         {
             var binding = ResolveBinding(options, role);
-            var store = DocumentStoreFactory.CreateDocumentStore(binding, mongoClients, redisMultiplexers);
+            var store = DocumentStoreFactory.CreateDocumentStore(
+                binding,
+                jsonFileStores,
+                luceneStores,
+                mongoClients,
+                redisMultiplexers);
             services.AddKeyedSingleton<IDocumentStore>(role, (_, _) => store);
         }
 
@@ -117,6 +125,13 @@ public static class StorageProviderRegistrationExtensions
             var parts = connectionString.Split(',');
             return parts.Length > 0 ? parts[0] : "(masked)";
         }
+    }
+
+    private static StringComparer GetPathComparer()
+    {
+        return OperatingSystem.IsWindows()
+            ? StringComparer.OrdinalIgnoreCase
+            : StringComparer.Ordinal;
     }
 
     private static StorageRoleBinding ResolveBinding(PersistenceOptions options, StorageRole role)

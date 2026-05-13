@@ -14,23 +14,34 @@ internal static class DocumentStoreFactory
 {
     internal static IDocumentStore CreateDocumentStore(
         StorageRoleBinding binding,
+        Dictionary<string, JsonFileDocumentStore> jsonFileStores,
+        Dictionary<string, LuceneDocumentStore> luceneStores,
         Dictionary<string, IMongoClient> mongoClients,
         Dictionary<string, IConnectionMultiplexer> redisMultiplexers)
     {
         return binding.Provider switch
         {
-            ClientManager.Shared.Models.Enums.PersistenceProvider.JsonFile => CreateJsonFileStore(binding.JsonFile),
+            ClientManager.Shared.Models.Enums.PersistenceProvider.JsonFile => CreateJsonFileStore(binding.JsonFile, jsonFileStores),
             ClientManager.Shared.Models.Enums.PersistenceProvider.MongoDb => CreateMongoStore(binding.MongoDb, mongoClients),
             ClientManager.Shared.Models.Enums.PersistenceProvider.Redis => CreateRedisStore(binding.Redis, redisMultiplexers),
-            ClientManager.Shared.Models.Enums.PersistenceProvider.Lucene => CreateLuceneStore(binding.Lucene),
+            ClientManager.Shared.Models.Enums.PersistenceProvider.Lucene => CreateLuceneStore(binding.Lucene, luceneStores),
             _ => throw new InvalidOperationException($"Unsupported persistence provider: {binding.Provider}")
         };
     }
 
-    private static JsonFileDocumentStore CreateJsonFileStore(JsonFileStoreOptions? options)
+    private static JsonFileDocumentStore CreateJsonFileStore(
+        JsonFileStoreOptions? options,
+        Dictionary<string, JsonFileDocumentStore> storeCache)
     {
         var resolved = options ?? new JsonFileStoreOptions();
-        return new JsonFileDocumentStore(resolved.DataDirectory);
+        var dataDirectory = ResolvePath(resolved.DataDirectory);
+        if (!storeCache.TryGetValue(dataDirectory, out var store))
+        {
+            store = new JsonFileDocumentStore(dataDirectory);
+            storeCache[dataDirectory] = store;
+        }
+
+        return store;
     }
 
     private static MongoDBDocumentStore CreateMongoStore(
@@ -130,9 +141,20 @@ internal static class DocumentStoreFactory
         return new RedisDocumentStore(multiplexer);
     }
 
-    private static LuceneDocumentStore CreateLuceneStore(LuceneStoreOptions? options)
+    private static LuceneDocumentStore CreateLuceneStore(
+        LuceneStoreOptions? options,
+        Dictionary<string, LuceneDocumentStore> storeCache)
     {
         var resolved = options ?? new LuceneStoreOptions();
-        return new LuceneDocumentStore(resolved.IndexDirectory);
+        var indexDirectory = ResolvePath(resolved.IndexDirectory);
+        if (!storeCache.TryGetValue(indexDirectory, out var store))
+        {
+            store = new LuceneDocumentStore(indexDirectory);
+            storeCache[indexDirectory] = store;
+        }
+
+        return store;
     }
+
+    private static string ResolvePath(string path) => Path.GetFullPath(path);
 }

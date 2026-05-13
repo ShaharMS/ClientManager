@@ -46,9 +46,21 @@ public class LuceneDocumentStore : IDocumentStore, IDisposable
     /// <summary>
     /// Initializes a new instance of <see cref="LuceneDocumentStore"/>.
     /// </summary>
-    public LuceneDocumentStore()
+    public LuceneDocumentStore() : this(new RAMDirectory())
     {
-        _directory = new RAMDirectory();
+    }
+
+    /// <summary>
+    /// Initializes a new instance of <see cref="LuceneDocumentStore"/> using an on-disk index directory.
+    /// </summary>
+    /// <param name="indexDirectory">The directory where Lucene index files are stored.</param>
+    public LuceneDocumentStore(string indexDirectory) : this(FSDirectory.Open(new DirectoryInfo(indexDirectory)))
+    {
+    }
+
+    private LuceneDocumentStore(Lucene.Net.Store.Directory directory)
+    {
+        _directory = directory;
 
         var analyzer = new StandardAnalyzer(AppLuceneVersion);
         var config = new IndexWriterConfig(AppLuceneVersion, analyzer)
