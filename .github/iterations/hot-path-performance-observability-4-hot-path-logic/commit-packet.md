@@ -80,3 +80,55 @@ Pass: initial implementation
 | Pass | Commit | Branch | Notes |
 |------|--------|--------|-------|
 | Initial implementation | Local commit containing this packet | feature/hot-path-performance-observability-1-baseline-runtime | Push skipped because no `origin` remote is configured. |
+
+## Finalization Commit Intent
+
+- Pass type: Approved Step 4 finalization
+- Plan step: .github/plans/hot-path-performance-observability-4-hot-path-logic.md
+- Scope: Step 4 plan, packet, report, timeline, and progress closeout
+- Reason this is one commit: The included files only record the approved Step 4 outcome after @Inspect review and @Intake normalization; they should move together before Step 5 starts.
+
+## Finalization Candidate Files
+
+| Path | Include | Reason |
+|------|---------|--------|
+| .github/plans/hot-path-performance-observability-4-hot-path-logic.md | Yes | Marks Step 4 completed after approval. |
+| .github/iterations/hot-path-performance-observability-4-hot-path-logic/run-ledger.md | Yes | Records approved state, latest approved commit, and Step 5 handoff. |
+| .github/iterations/hot-path-performance-observability-4-hot-path-logic/execution-report.md | Yes | Captures approved run summary, verification, residual risks, and finalization status. |
+| .github/iterations/hot-path-performance-observability-4-hot-path-logic/review-packet.md | Yes | Preserves the normalized @Inspect approval with no findings. |
+| .github/iterations/hot-path-performance-observability-4-hot-path-logic/commit-packet.md | Yes | Records this finalization pass intent and gitflow decision. |
+| .github/iterations/hot-path-performance-observability-4-hot-path-logic/timeline.md | Yes | Adds the approval and finalization handoff events. |
+| .github/agent-progress/hot-path-performance-observability-4-hot-path-logic.md | Yes | Records the resumable Step 4 approved closeout state. |
+
+## Finalization Excluded Files
+
+| Path | Reason |
+|------|--------|
+| ClientManager.StorageApi/ and ClientManager.DataAccess/ source files | Already committed in 5612ad7282cae526d55e910d3e09e40dcde033c8; not part of finalization bookkeeping. |
+| .github/plans/hot-path-performance-observability-overview.md | Read for context only; no finalization diff is pending. |
+
+## Finalization Gitflow Decision
+
+- Starting branch: feature/hot-path-performance-observability-1-baseline-runtime
+- Target branch: feature/hot-path-performance-observability-1-baseline-runtime
+- Branch action: Reuse the existing feature branch; it is gitflow-compatible for this approved Step 4 finalization pass.
+
+## Finalization Commit Message
+
+```text
+docs(plans): finalize Step 4 hot-path logic approval
+
+Record the approved Step 4 plan, packet, report, timeline, and progress
+state after @Inspect review and @Intake normalization.
+
+Plan: .github/plans/hot-path-performance-observability-4-hot-path-logic.md
+Pass: approved Step 4 finalization
+```
+
+## Finalization Result
+
+- Commit hash: Produced by the local finalization commit containing this packet; @Inscribe final response reports the exact hash.
+- Push result: Pending remote check by @Inscribe.
+- Workspace status after commit: Pending final `git status --short` check by @Inscribe.
+- Remaining uncommitted files: Pending final `git status --short` check by @Inscribe.
+- Follow-up needed: Continue to .github/plans/hot-path-performance-observability-5-verification.md for accepted p95 benchmark comparison and remaining regression-risk coverage decisions.

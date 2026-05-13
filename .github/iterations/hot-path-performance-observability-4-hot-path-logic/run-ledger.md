@@ -3,7 +3,7 @@
 ## Iteration
 
 - Slug: hot-path-performance-observability-4-hot-path-logic
-- Status: Initial implementation completed; awaiting review
+- Status: Approved; Step 4 plan finalization in progress
 - Owning orchestrator: @Iterate
 
 ## Selected Scope
@@ -15,15 +15,16 @@
 ## Repo Baseline
 
 - Baseline commit: c0528ea43924fa8751786dad0c03bbf24fc58c77
+- Latest approved commit: 5612ad7282cae526d55e910d3e09e40dcde033c8
 - Working branch: feature/hot-path-performance-observability-1-baseline-runtime
 - Comparison range: c0528ea43924fa8751786dad0c03bbf24fc58c77..HEAD
 
 ## Current Loop State
 
 - Next agent: @Index
-- Review round: 0
-- Latest verification: Build, diagnostics, access/resource behavior smoke, storage log smoke, and UI route smoke passed; short p95 benchmark attempt hung and is deferred to Step 5.
-- Latest decision: Initial Step 4 implementation pass is committed locally on the existing feature branch; push is skipped because no `origin` remote is configured.
+- Review round: 1
+- Latest verification: @Inspect approved Step 4. Build, diagnostics, access/resource behavior smoke, storage log smoke, and UI route smoke passed; short p95 benchmark attempt hung and is deferred to Step 5.
+- Latest decision: Step 4 is approved. Hot-path logic reductions landed with documented rate-limit counter-consumption semantics and no review findings.
 
 ## Packet Links
 
@@ -39,9 +40,9 @@
 
 - Blockers: None recorded.
 - Outstanding findings: None recorded.
-- Next action: Ask @Inspect to review the initial Step 4 implementation pass.
+- Next action: Index the approved transition, commit plan/packet finalization, then advance to Step 5.
 
 ## Resume Notes
 
-- Current context: Steps 1 through 3 are approved and finalized. Step 4 initial implementation reduced hot-path storage work and is ready for review.
-- Recovery instructions: Continue with @Inspect review for the active Step 4 plan, then move to Step 5 verification after approval.
+- Current context: Steps 1 through 3 are approved and finalized. Step 4 reduced hot-path storage work and was approved after @Inspect review with no material findings.
+- Recovery instructions: Commit finalization bookkeeping, then continue automatically to .github/plans/hot-path-performance-observability-5-verification.md.
