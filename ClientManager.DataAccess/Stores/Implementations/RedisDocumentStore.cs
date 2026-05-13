@@ -44,6 +44,7 @@ public class RedisDocumentStore : IDocumentStore
     private static string HashKey(string collection) => $"collection:{collection}";
     private static string DocKey(string collection, string id) => $"doc:{collection}:{id}";
     private static string IndexName(string collection) => $"idx:{collection}";
+    private static RedisKey CounterKey(string key) => $"{CounterPrefix}{key}";
     private const string CounterPrefix = "counter:";
     private const string JsonRootPath = "$";
 
@@ -155,11 +156,45 @@ public class RedisDocumentStore : IDocumentStore
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyDictionary<string, long>> IncrementManyCountersAsync(
+        IReadOnlyDictionary<string, (long amount, TimeSpan window)> entries,
+        CancellationToken cancellationToken = default)
+    {
+        if (entries.Count == 0)
+            return new Dictionary<string, long>();
+
+        cancellationToken.ThrowIfCancellationRequested();
+        var batch = Database.CreateBatch();
+        var tasks = entries.ToDictionary(
+            entry => entry.Key,
+            entry => batch.StringIncrementAsync(CounterKey(entry.Key), entry.Value.amount),
+            StringComparer.Ordinal);
+
+        batch.Execute();
+        return await CompleteIncrementBatchAsync(entries, tasks, cancellationToken);
+    }
+
+    /// <inheritdoc />
     public async Task<long> GetCounterAsync(string key, CancellationToken cancellationToken = default)
     {
         var redisKey = $"{CounterPrefix}{key}";
         var value = await Database.StringGetAsync(redisKey);
         return value.IsNullOrEmpty ? 0 : (long)value;
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyDictionary<string, long>> GetManyCountersAsync(
+        IEnumerable<string> keys,
+        CancellationToken cancellationToken = default)
+    {
+        var requestedKeys = keys.Distinct(StringComparer.Ordinal).ToArray();
+        if (requestedKeys.Length == 0)
+            return new Dictionary<string, long>();
+
+        cancellationToken.ThrowIfCancellationRequested();
+        var redisKeys = requestedKeys.Select(CounterKey).ToArray();
+        var values = await Database.StringGetAsync(redisKeys);
+        return MapCounterValues(requestedKeys, values);
     }
 
     /// <inheritdoc />
@@ -176,6 +211,25 @@ public class RedisDocumentStore : IDocumentStore
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyDictionary<string, long>> DecrementManyCountersAsync(
+        IReadOnlyDictionary<string, long> entries,
+        CancellationToken cancellationToken = default)
+    {
+        if (entries.Count == 0)
+            return new Dictionary<string, long>();
+
+        cancellationToken.ThrowIfCancellationRequested();
+        var batch = Database.CreateBatch();
+        var tasks = entries.ToDictionary(
+            entry => entry.Key,
+            entry => batch.StringDecrementAsync(CounterKey(entry.Key), entry.Value),
+            StringComparer.Ordinal);
+
+        batch.Execute();
+        return await CompleteDecrementBatchAsync(tasks, cancellationToken);
+    }
+
+    /// <inheritdoc />
     public async Task ResetCounterAsync(string key, CancellationToken cancellationToken = default)
     {
         var redisKey = $"{CounterPrefix}{key}";
@@ -188,6 +242,23 @@ public class RedisDocumentStore : IDocumentStore
         var redisKey = $"{CounterPrefix}{key}";
         var db = Database;
         await db.StringSetAsync(redisKey, value, window);
+    }
+
+    /// <inheritdoc />
+    public async Task SetManyCountersAsync(
+        IReadOnlyDictionary<string, (long value, TimeSpan window)> entries,
+        CancellationToken cancellationToken = default)
+    {
+        if (entries.Count == 0)
+            return;
+
+        cancellationToken.ThrowIfCancellationRequested();
+        var batch = Database.CreateBatch();
+        var tasks = entries.Select(entry =>
+            batch.StringSetAsync(CounterKey(entry.Key), entry.Value.value, entry.Value.window)).ToArray();
+
+        batch.Execute();
+        await Task.WhenAll(tasks);
     }
 
     /// <inheritdoc />
@@ -435,5 +506,67 @@ public class RedisDocumentStore : IDocumentStore
         return array is { Length: > 0 }
             ? JsonSerializer.Deserialize<T>(array[0].GetRawText(), JsonOptions)
             : null;
+    }
+
+    private async Task<IReadOnlyDictionary<string, long>> CompleteIncrementBatchAsync(
+        IReadOnlyDictionary<string, (long amount, TimeSpan window)> entries,
+        IReadOnlyDictionary<string, Task<long>> tasks,
+        CancellationToken cancellationToken)
+    {
+        var result = new Dictionary<string, long>(entries.Count, StringComparer.Ordinal);
+        var expiryTasks = new List<Task>(entries.Count);
+
+        foreach (var (key, task) in tasks)
+        {
+            var count = await task;
+            result[key] = count;
+            AddExpiryIfNewCounter(entries, key, count, expiryTasks);
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+        await Task.WhenAll(expiryTasks);
+        return result;
+    }
+
+    private void AddExpiryIfNewCounter(
+        IReadOnlyDictionary<string, (long amount, TimeSpan window)> entries,
+        string key,
+        long count,
+        ICollection<Task> expiryTasks)
+    {
+        var (amount, window) = entries[key];
+        if (amount > 0 && count == amount)
+            expiryTasks.Add(Database.KeyExpireAsync(CounterKey(key), window));
+    }
+
+    private async Task<IReadOnlyDictionary<string, long>> CompleteDecrementBatchAsync(
+        IReadOnlyDictionary<string, Task<long>> tasks,
+        CancellationToken cancellationToken)
+    {
+        var result = new Dictionary<string, long>(tasks.Count, StringComparer.Ordinal);
+        var floorTasks = new List<Task>(tasks.Count);
+
+        foreach (var (key, task) in tasks)
+        {
+            var count = await task;
+            result[key] = Math.Max(0, count);
+            if (count < 0)
+                floorTasks.Add(Database.StringSetAsync(CounterKey(key), 0));
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+        await Task.WhenAll(floorTasks);
+        return result;
+    }
+
+    private static IReadOnlyDictionary<string, long> MapCounterValues(
+        IReadOnlyList<string> keys,
+        IReadOnlyList<RedisValue> values)
+    {
+        var result = new Dictionary<string, long>(keys.Count, StringComparer.Ordinal);
+        for (var index = 0; index < keys.Count; index++)
+            result[keys[index]] = values[index].IsNullOrEmpty ? 0 : (long)values[index];
+
+        return result;
     }
 }

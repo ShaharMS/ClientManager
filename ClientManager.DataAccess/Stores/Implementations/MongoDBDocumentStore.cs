@@ -124,11 +124,46 @@ public class MongoDBDocumentStore : IDocumentStore
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyDictionary<string, long>> IncrementManyCountersAsync(
+        IReadOnlyDictionary<string, (long amount, TimeSpan window)> entries,
+        CancellationToken cancellationToken = default)
+    {
+        if (entries.Count == 0)
+            return new Dictionary<string, long>();
+
+        var existing = await LoadCounterDocumentsAsync(entries.Keys, cancellationToken);
+        var models = new List<WriteModel<BsonDocument>>(entries.Count);
+        var result = new Dictionary<string, long>(entries.Count, StringComparer.Ordinal);
+        var now = DateTime.UtcNow;
+
+        foreach (var (key, (amount, window)) in entries)
+            result[key] = QueueIncrementModel(models, existing, key, amount, window, now);
+
+        await BulkWriteCountersAsync(models, cancellationToken);
+        return result;
+    }
+
+    /// <inheritdoc />
     public async Task<long> GetCounterAsync(string key, CancellationToken cancellationToken = default)
     {
         var filter = Builders<BsonDocument>.Filter.Eq("_id", key);
         var doc = await CounterCollection.Find(filter).FirstOrDefaultAsync(cancellationToken);
         return doc?["Count"].AsInt64 ?? 0;
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyDictionary<string, long>> GetManyCountersAsync(
+        IEnumerable<string> keys,
+        CancellationToken cancellationToken = default)
+    {
+        var requestedKeys = keys.Distinct(StringComparer.Ordinal).ToArray();
+        var existing = await LoadCounterDocumentsAsync(requestedKeys, cancellationToken);
+        var result = new Dictionary<string, long>(requestedKeys.Length, StringComparer.Ordinal);
+
+        foreach (var requestedKey in requestedKeys)
+            result[requestedKey] = existing.TryGetValue(requestedKey, out var document) ? GetCounterCount(document) : 0;
+
+        return result;
     }
 
     /// <inheritdoc />
@@ -156,6 +191,26 @@ public class MongoDBDocumentStore : IDocumentStore
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyDictionary<string, long>> DecrementManyCountersAsync(
+        IReadOnlyDictionary<string, long> entries,
+        CancellationToken cancellationToken = default)
+    {
+        if (entries.Count == 0)
+            return new Dictionary<string, long>();
+
+        var existing = await LoadCounterDocumentsAsync(entries.Keys, cancellationToken);
+        var models = new List<WriteModel<BsonDocument>>(entries.Count);
+        var result = new Dictionary<string, long>(entries.Count, StringComparer.Ordinal);
+
+        foreach (var (key, amount) in entries)
+            result[key] = QueueDecrementModel(models, existing, key, amount);
+
+        await BulkWriteCountersAsync(models, cancellationToken);
+        await FloorCountersAtZeroAsync(entries.Keys, cancellationToken);
+        return result;
+    }
+
+    /// <inheritdoc />
     public async Task ResetCounterAsync(string key, CancellationToken cancellationToken = default)
     {
         var filter = Builders<BsonDocument>.Filter.Eq("_id", key);
@@ -173,6 +228,27 @@ public class MongoDBDocumentStore : IDocumentStore
             { "WindowStart", DateTime.UtcNow }
         };
         await CounterCollection.ReplaceOneAsync(filter, doc, new ReplaceOptions { IsUpsert = true }, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task SetManyCountersAsync(
+        IReadOnlyDictionary<string, (long value, TimeSpan window)> entries,
+        CancellationToken cancellationToken = default)
+    {
+        if (entries.Count == 0)
+            return;
+
+        var now = DateTime.UtcNow;
+        var models = entries.Select(entry =>
+        {
+            var filter = Builders<BsonDocument>.Filter.Eq("_id", entry.Key);
+            return new ReplaceOneModel<BsonDocument>(filter, CreateCounterDocument(entry.Key, entry.Value.value, now))
+            {
+                IsUpsert = true
+            };
+        }).ToList<WriteModel<BsonDocument>>();
+
+        await BulkWriteCountersAsync(models, cancellationToken);
     }
 
     /// <inheritdoc />
@@ -264,4 +340,107 @@ public class MongoDBDocumentStore : IDocumentStore
         var json = doc.ToJson();
         return JsonSerializer.Deserialize<T>(json, JsonOptions)!;
     }
+
+    private async Task<Dictionary<string, BsonDocument>> LoadCounterDocumentsAsync(
+        IEnumerable<string> keys,
+        CancellationToken cancellationToken)
+    {
+        var requestedKeys = keys.Distinct(StringComparer.Ordinal).ToArray();
+        if (requestedKeys.Length == 0)
+            return new Dictionary<string, BsonDocument>(StringComparer.Ordinal);
+
+        var filter = Builders<BsonDocument>.Filter.In("_id", requestedKeys);
+        var docs = await CounterCollection.Find(filter).ToListAsync(cancellationToken);
+        return docs.ToDictionary(document => document["_id"].AsString, StringComparer.Ordinal);
+    }
+
+    private long QueueIncrementModel(
+        ICollection<WriteModel<BsonDocument>> models,
+        IReadOnlyDictionary<string, BsonDocument> existing,
+        string key,
+        long amount,
+        TimeSpan window,
+        DateTime now)
+    {
+        if (amount <= 0)
+            return existing.TryGetValue(key, out var current) ? GetCounterCount(current) : 0;
+
+        var count = GetIncrementedCount(existing, key, amount, window, now);
+        models.Add(CreateIncrementModel(existing, key, amount, window, now));
+        return count;
+    }
+
+    private static long GetIncrementedCount(
+        IReadOnlyDictionary<string, BsonDocument> existing,
+        string key,
+        long amount,
+        TimeSpan window,
+        DateTime now)
+    {
+        if (!existing.TryGetValue(key, out var document))
+            return amount;
+
+        return now - GetCounterWindowStart(document) >= window
+            ? amount
+            : GetCounterCount(document) + amount;
+    }
+
+    private static WriteModel<BsonDocument> CreateIncrementModel(
+        IReadOnlyDictionary<string, BsonDocument> existing,
+        string key,
+        long amount,
+        TimeSpan window,
+        DateTime now)
+    {
+        var filter = Builders<BsonDocument>.Filter.Eq("_id", key);
+        if (existing.TryGetValue(key, out var document) && now - GetCounterWindowStart(document) >= window)
+            return new ReplaceOneModel<BsonDocument>(filter, CreateCounterDocument(key, amount, now)) { IsUpsert = true };
+
+        var update = Builders<BsonDocument>.Update.Inc("Count", amount).SetOnInsert("WindowStart", now);
+        return new UpdateOneModel<BsonDocument>(filter, update) { IsUpsert = true };
+    }
+
+    private long QueueDecrementModel(
+        ICollection<WriteModel<BsonDocument>> models,
+        IReadOnlyDictionary<string, BsonDocument> existing,
+        string key,
+        long amount)
+    {
+        if (amount <= 0 || !existing.TryGetValue(key, out var document))
+            return existing.TryGetValue(key, out var current) ? GetCounterCount(current) : 0;
+
+        var filter = Builders<BsonDocument>.Filter.Eq("_id", key);
+        var update = Builders<BsonDocument>.Update.Inc("Count", -amount);
+        models.Add(new UpdateOneModel<BsonDocument>(filter, update));
+        return Math.Max(0, GetCounterCount(document) - amount);
+    }
+
+    private async Task BulkWriteCountersAsync(
+        IReadOnlyCollection<WriteModel<BsonDocument>> models,
+        CancellationToken cancellationToken)
+    {
+        if (models.Count > 0)
+            await CounterCollection.BulkWriteAsync(models, cancellationToken: cancellationToken);
+    }
+
+    private async Task FloorCountersAtZeroAsync(IEnumerable<string> keys, CancellationToken cancellationToken)
+    {
+        var filter = Builders<BsonDocument>.Filter.In("_id", keys)
+            & Builders<BsonDocument>.Filter.Lt("Count", 0L);
+        await CounterCollection.UpdateManyAsync(filter, Builders<BsonDocument>.Update.Set("Count", 0L), cancellationToken: cancellationToken);
+    }
+
+    private static BsonDocument CreateCounterDocument(string key, long count, DateTime windowStart)
+    {
+        return new BsonDocument
+        {
+            { "_id", key },
+            { "Count", count },
+            { "WindowStart", windowStart }
+        };
+    }
+
+    private static long GetCounterCount(BsonDocument document) => document["Count"].AsInt64;
+
+    private static DateTime GetCounterWindowStart(BsonDocument document) => document["WindowStart"].ToUniversalTime();
 }

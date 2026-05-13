@@ -10,6 +10,7 @@
   <Project Path="ClientManager.AdminUI/ClientManager.AdminUI.csproj" />
   <Project Path="ClientManager.Api/ClientManager.Api.csproj" />
   <Project Path="ClientManager.DataAccess/ClientManager.DataAccess.csproj" />
+  <Project Path="ClientManager.DataAccess.Tests/ClientManager.DataAccess.Tests.csproj" />
   <Project Path="ClientManager.Shared/ClientManager.Shared.csproj" />
   <Project Path="ClientManager.StorageApi/ClientManager.StorageApi.csproj" />
 </Solution>

@@ -73,8 +73,7 @@ public class ResourceAllocationDatabase : IResourceAllocationDatabase
     public async Task CreateAsync(ResourceAllocation allocation, CancellationToken cancellationToken = default)
     {
         await _store.SetAsync(Collection, allocation.Id, allocation, cancellationToken);
-        await _store.IncrementCounterAsync(PoolCounterKey(allocation.ResourcePoolId), CounterTtl, cancellationToken);
-        await _store.IncrementCounterAsync(ClientCounterKey(allocation.ResourcePoolId, allocation.ClientId), CounterTtl, cancellationToken);
+        await IncrementAllocationCountersAsync(allocation, cancellationToken);
     }
 
     /// <inheritdoc />
@@ -85,8 +84,7 @@ public class ResourceAllocationDatabase : IResourceAllocationDatabase
             return;
 
         await _store.SetAsync(Collection, allocationId, allocation with { IsReleased = true }, cancellationToken);
-        await _store.DecrementCounterAsync(PoolCounterKey(allocation.ResourcePoolId), cancellationToken);
-        await _store.DecrementCounterAsync(ClientCounterKey(allocation.ResourcePoolId, allocation.ClientId), cancellationToken);
+        await DecrementAllocationCountersAsync(allocation, cancellationToken);
     }
 
     /// <inheritdoc />
@@ -97,18 +95,21 @@ public class ResourceAllocationDatabase : IResourceAllocationDatabase
 
         var result = await _store.SearchAsync<ResourceAllocation>(Collection, query, cancellationToken);
         var now = DateTime.UtcNow;
+        var counterDecrements = new Dictionary<string, long>(StringComparer.Ordinal);
         var count = 0;
 
         foreach (var allocation in result.Items)
         {
-            if (allocation.ExpiresAt <= now)
-            {
-                await _store.SetAsync(Collection, allocation.Id, allocation with { IsReleased = true }, cancellationToken);
-                await _store.DecrementCounterAsync(PoolCounterKey(allocation.ResourcePoolId), cancellationToken);
-                await _store.DecrementCounterAsync(ClientCounterKey(allocation.ResourcePoolId, allocation.ClientId), cancellationToken);
-                count++;
-            }
+            if (allocation.ExpiresAt > now)
+                continue;
+
+            await _store.SetAsync(Collection, allocation.Id, allocation with { IsReleased = true }, cancellationToken);
+            AddCounterDelta(counterDecrements, PoolCounterKey(allocation.ResourcePoolId), 1);
+            AddCounterDelta(counterDecrements, ClientCounterKey(allocation.ResourcePoolId, allocation.ClientId), 1);
+            count++;
         }
+
+        await _store.DecrementManyCountersAsync(counterDecrements, cancellationToken);
 
         return count;
     }
@@ -119,8 +120,7 @@ public class ResourceAllocationDatabase : IResourceAllocationDatabase
         var all = await _store.GetAllAsync<ResourceAllocation>(Collection, cancellationToken);
         var now = DateTime.UtcNow;
 
-        var poolCounts = new Dictionary<string, long>();
-        var clientCounts = new Dictionary<string, long>();
+        var counterValues = new Dictionary<string, (long value, TimeSpan window)>(StringComparer.Ordinal);
 
         foreach (var allocation in all)
         {
@@ -128,21 +128,43 @@ public class ResourceAllocationDatabase : IResourceAllocationDatabase
                 continue;
 
             var poolKey = PoolCounterKey(allocation.ResourcePoolId);
-            poolCounts[poolKey] = poolCounts.GetValueOrDefault(poolKey) + 1;
+            AddCounterValue(counterValues, poolKey);
 
             var clientKey = ClientCounterKey(allocation.ResourcePoolId, allocation.ClientId);
-            clientCounts[clientKey] = clientCounts.GetValueOrDefault(clientKey) + 1;
+            AddCounterValue(counterValues, clientKey);
         }
 
-        foreach (var (key, value) in poolCounts)
-        {
-            await _store.SetCounterAsync(key, value, CounterTtl, cancellationToken);
-        }
+        await _store.SetManyCountersAsync(counterValues, cancellationToken);
+    }
 
-        foreach (var (key, value) in clientCounts)
+    private Task IncrementAllocationCountersAsync(ResourceAllocation allocation, CancellationToken cancellationToken)
+    {
+        return _store.IncrementManyCountersAsync(new Dictionary<string, (long amount, TimeSpan window)>
         {
-            await _store.SetCounterAsync(key, value, CounterTtl, cancellationToken);
-        }
+            [PoolCounterKey(allocation.ResourcePoolId)] = (1, CounterTtl),
+            [ClientCounterKey(allocation.ResourcePoolId, allocation.ClientId)] = (1, CounterTtl)
+        }, cancellationToken);
+    }
+
+    private Task DecrementAllocationCountersAsync(ResourceAllocation allocation, CancellationToken cancellationToken)
+    {
+        return _store.DecrementManyCountersAsync(new Dictionary<string, long>
+        {
+            [PoolCounterKey(allocation.ResourcePoolId)] = 1,
+            [ClientCounterKey(allocation.ResourcePoolId, allocation.ClientId)] = 1
+        }, cancellationToken);
+    }
+
+    private static void AddCounterDelta(IDictionary<string, long> counters, string key, long amount)
+    {
+        var current = counters.TryGetValue(key, out var value) ? value : 0;
+        counters[key] = current + amount;
+    }
+
+    private static void AddCounterValue(IDictionary<string, (long value, TimeSpan window)> counters, string key)
+    {
+        var current = counters.TryGetValue(key, out var entry) ? entry.value : 0;
+        counters[key] = (current + 1, CounterTtl);
     }
 
     private static string PoolCounterKey(string poolId) => $"alloc-count:pool:{poolId}";

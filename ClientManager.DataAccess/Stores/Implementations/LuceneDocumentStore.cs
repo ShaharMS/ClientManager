@@ -247,7 +247,8 @@ public class LuceneDocumentStore : IDocumentStore, IDisposable
                 count = 1;
             }
 
-            WriteCounter(key, count, now);
+            WriteCounterDocument(key, count, now);
+            _writer.Commit();
             return count;
         }
         finally
@@ -272,7 +273,8 @@ public class LuceneDocumentStore : IDocumentStore, IDisposable
 
             count--;
             var windowStart = new DateTime(existing.GetField(CounterWindowStartField).GetInt64Value()!.Value, DateTimeKind.Utc);
-            WriteCounter(key, count, windowStart);
+            WriteCounterDocument(key, count, windowStart);
+            _writer.Commit();
             return count;
         }
         finally
@@ -284,20 +286,19 @@ public class LuceneDocumentStore : IDocumentStore, IDisposable
     /// <inheritdoc />
     public Task<long> GetCounterAsync(string key, CancellationToken cancellationToken = default)
     {
-        _searcherManager.MaybeRefreshBlocking();
-        var searcher = _searcherManager.Acquire();
-        try
-        {
-            var doc = GetCounterDocument(key, searcher);
-            if (doc is null)
-                return Task.FromResult(0L);
+        var result = GetCounterValues([key]);
+        return Task.FromResult(result[key]);
+    }
 
-            return Task.FromResult(doc.GetField(CounterCountField).GetInt64Value()!.Value);
-        }
-        finally
-        {
-            _searcherManager.Release(searcher);
-        }
+    /// <inheritdoc />
+    public Task<IReadOnlyDictionary<string, long>> GetManyCountersAsync(
+        IEnumerable<string> keys,
+        CancellationToken cancellationToken = default)
+    {
+        var requestedKeys = keys.Distinct(StringComparer.Ordinal).ToArray();
+        cancellationToken.ThrowIfCancellationRequested();
+
+        return Task.FromResult<IReadOnlyDictionary<string, long>>(GetCounterValues(requestedKeys));
     }
 
     /// <inheritdoc />
@@ -306,7 +307,69 @@ public class LuceneDocumentStore : IDocumentStore, IDisposable
         await WaitForWriteLockAsync(cancellationToken);
         try
         {
-            WriteCounter(key, value, DateTime.UtcNow);
+            WriteCounterDocument(key, value, DateTime.UtcNow);
+            _writer.Commit();
+        }
+        finally
+        {
+            _writeLock.Release();
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task SetManyCountersAsync(
+        IReadOnlyDictionary<string, (long value, TimeSpan window)> entries,
+        CancellationToken cancellationToken = default)
+    {
+        if (entries.Count == 0)
+            return;
+
+        await WaitForWriteLockAsync(cancellationToken);
+        try
+        {
+            var now = DateTime.UtcNow;
+            foreach (var (key, (value, _)) in entries)
+                WriteCounterDocument(key, value, now);
+
+            _writer.Commit();
+        }
+        finally
+        {
+            _writeLock.Release();
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyDictionary<string, long>> IncrementManyCountersAsync(
+        IReadOnlyDictionary<string, (long amount, TimeSpan window)> entries,
+        CancellationToken cancellationToken = default)
+    {
+        if (entries.Count == 0)
+            return new Dictionary<string, long>();
+
+        await WaitForWriteLockAsync(cancellationToken);
+        try
+        {
+            return IncrementCountersUnderLock(entries);
+        }
+        finally
+        {
+            _writeLock.Release();
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyDictionary<string, long>> DecrementManyCountersAsync(
+        IReadOnlyDictionary<string, long> entries,
+        CancellationToken cancellationToken = default)
+    {
+        if (entries.Count == 0)
+            return new Dictionary<string, long>();
+
+        await WaitForWriteLockAsync(cancellationToken);
+        try
+        {
+            return DecrementCountersUnderLock(entries);
         }
         finally
         {
@@ -466,7 +529,134 @@ public class LuceneDocumentStore : IDocumentStore, IDisposable
         return JsonSerializer.Deserialize<T>(json, JsonOptions);
     }
 
-    private void WriteCounter(string key, long count, DateTime windowStart)
+    private Dictionary<string, long> GetCounterValues(IReadOnlyCollection<string> keys)
+    {
+        var result = keys.ToDictionary(key => key, _ => 0L, StringComparer.Ordinal);
+        if (keys.Count == 0)
+            return result;
+
+        foreach (var (key, document) in GetCounterDocuments(keys))
+            result[key] = GetCounterCount(document);
+
+        return result;
+    }
+
+    private Dictionary<string, Document> GetCounterDocuments(IReadOnlyCollection<string> keys)
+    {
+        _searcherManager.MaybeRefreshBlocking();
+        var searcher = _searcherManager.Acquire();
+        try
+        {
+            return SearchCounterDocuments(keys, searcher);
+        }
+        finally
+        {
+            _searcherManager.Release(searcher);
+        }
+    }
+
+    private static Dictionary<string, Document> SearchCounterDocuments(
+        IReadOnlyCollection<string> keys,
+        IndexSearcher searcher)
+    {
+        var result = new Dictionary<string, Document>(StringComparer.Ordinal);
+        foreach (var keyChunk in keys.Chunk(MaxIdsPerBatch))
+        {
+            var topDocs = searcher.Search(BuildCollectionIdsQuery(CountersCollection, keyChunk), keyChunk.Length);
+            foreach (var scoreDoc in topDocs.ScoreDocs)
+            {
+                var document = searcher.Doc(scoreDoc.Doc);
+                result[document.Get(IdField)] = document;
+            }
+        }
+
+        return result;
+    }
+
+    private IReadOnlyDictionary<string, long> IncrementCountersUnderLock(
+        IReadOnlyDictionary<string, (long amount, TimeSpan window)> entries)
+    {
+        var existing = GetCounterDocuments(entries.Keys.ToArray());
+        var result = new Dictionary<string, long>(entries.Count, StringComparer.Ordinal);
+        var now = DateTime.UtcNow;
+
+        foreach (var (key, (amount, window)) in entries)
+            result[key] = IncrementCounterDocument(existing, key, amount, window, now);
+
+        _writer.Commit();
+        return result;
+    }
+
+    private long IncrementCounterDocument(
+        IReadOnlyDictionary<string, Document> existing,
+        string key,
+        long amount,
+        TimeSpan window,
+        DateTime now)
+    {
+        if (amount <= 0)
+            return existing.TryGetValue(key, out var current) ? GetCounterCount(current) : 0;
+
+        var count = GetIncrementedCount(existing, key, amount, window, now);
+        WriteCounterDocument(key, count, now);
+        return count;
+    }
+
+    private static long GetIncrementedCount(
+        IReadOnlyDictionary<string, Document> existing,
+        string key,
+        long amount,
+        TimeSpan window,
+        DateTime now)
+    {
+        if (!existing.TryGetValue(key, out var document))
+            return amount;
+
+        var windowStart = GetCounterWindowStart(document);
+        return now - windowStart >= window ? amount : GetCounterCount(document) + amount;
+    }
+
+    private IReadOnlyDictionary<string, long> DecrementCountersUnderLock(IReadOnlyDictionary<string, long> entries)
+    {
+        var existing = GetCounterDocuments(entries.Keys.ToArray());
+        var result = new Dictionary<string, long>(entries.Count, StringComparer.Ordinal);
+        var changed = false;
+
+        foreach (var (key, amount) in entries)
+        {
+            result[key] = DecrementCounterDocument(existing, key, amount, out var keyChanged);
+            changed = changed || keyChanged;
+        }
+
+        if (changed)
+            _writer.Commit();
+
+        return result;
+    }
+
+    private long DecrementCounterDocument(
+        IReadOnlyDictionary<string, Document> existing,
+        string key,
+        long amount,
+        out bool changed)
+    {
+        changed = false;
+        if (amount <= 0 || !existing.TryGetValue(key, out var document))
+            return existing.TryGetValue(key, out var current) ? GetCounterCount(current) : 0;
+
+        var count = Math.Max(0, GetCounterCount(document) - amount);
+        WriteCounterDocument(key, count, GetCounterWindowStart(document));
+        changed = true;
+        return count;
+    }
+
+    private static long GetCounterCount(Document document) =>
+        document.GetField(CounterCountField).GetInt64Value()!.Value;
+
+    private static DateTime GetCounterWindowStart(Document document) =>
+        new(document.GetField(CounterWindowStartField).GetInt64Value()!.Value, DateTimeKind.Utc);
+
+    private void WriteCounterDocument(string key, long count, DateTime windowStart)
     {
         DeleteByCollectionAndId(CountersCollection, key);
 
@@ -479,6 +669,5 @@ public class LuceneDocumentStore : IDocumentStore, IDisposable
         };
 
         _writer.AddDocument(doc);
-        _writer.Commit();
     }
 }

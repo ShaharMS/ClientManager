@@ -55,14 +55,34 @@ public sealed class InstrumentedDocumentStore : IDocumentStore
     public Task<long> IncrementCounterAsync(string key, TimeSpan window, CancellationToken cancellationToken = default) =>
         TraceAsync(CounterCollection, "counter_increment", () => _inner.IncrementCounterAsync(key, window, cancellationToken));
 
+    public Task<IReadOnlyDictionary<string, long>> IncrementManyCountersAsync(
+        IReadOnlyDictionary<string, (long amount, TimeSpan window)> entries,
+        CancellationToken cancellationToken = default) =>
+        TraceAsync(CounterCollection, "counter_increment_many", () => _inner.IncrementManyCountersAsync(entries, cancellationToken));
+
     public Task<long> DecrementCounterAsync(string key, CancellationToken cancellationToken = default) =>
         TraceAsync(CounterCollection, "counter_decrement", () => _inner.DecrementCounterAsync(key, cancellationToken));
+
+    public Task<IReadOnlyDictionary<string, long>> DecrementManyCountersAsync(
+        IReadOnlyDictionary<string, long> entries,
+        CancellationToken cancellationToken = default) =>
+        TraceAsync(CounterCollection, "counter_decrement_many", () => _inner.DecrementManyCountersAsync(entries, cancellationToken));
 
     public Task<long> GetCounterAsync(string key, CancellationToken cancellationToken = default) =>
         TraceAsync(CounterCollection, "counter_get", () => _inner.GetCounterAsync(key, cancellationToken));
 
+    public Task<IReadOnlyDictionary<string, long>> GetManyCountersAsync(
+        IEnumerable<string> keys,
+        CancellationToken cancellationToken = default) =>
+        TraceAsync(CounterCollection, "counter_get_many", () => _inner.GetManyCountersAsync(keys, cancellationToken));
+
     public Task SetCounterAsync(string key, long value, TimeSpan window, CancellationToken cancellationToken = default) =>
         TraceAsync(CounterCollection, "counter_set", () => _inner.SetCounterAsync(key, value, window, cancellationToken));
+
+    public Task SetManyCountersAsync(
+        IReadOnlyDictionary<string, (long value, TimeSpan window)> entries,
+        CancellationToken cancellationToken = default) =>
+        TraceAsync(CounterCollection, "counter_set_many", () => _inner.SetManyCountersAsync(entries, cancellationToken));
 
     public Task ResetCounterAsync(string key, CancellationToken cancellationToken = default) =>
         TraceAsync(CounterCollection, "counter_reset", () => _inner.ResetCounterAsync(key, cancellationToken));

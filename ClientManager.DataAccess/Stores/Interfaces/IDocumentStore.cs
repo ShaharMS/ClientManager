@@ -24,8 +24,9 @@ namespace ClientManager.DataAccess.Stores.Interfaces;
 ///     <item>
 ///         <description>
 ///             <strong>Atomic counters</strong> (<see cref="IncrementCounterAsync"/>,
-///             <see cref="GetCounterAsync"/>, <see cref="SetCounterAsync"/>,
-///             <see cref="ResetCounterAsync"/>): simple numeric values with built-in TTL.
+///             <see cref="IncrementManyCountersAsync"/>, <see cref="GetCounterAsync"/>,
+///             <see cref="GetManyCountersAsync"/>, <see cref="SetCounterAsync"/>,
+///             <see cref="SetManyCountersAsync"/>, <see cref="ResetCounterAsync"/>): simple numeric values with built-in TTL.
 ///             Used exclusively by <see cref="Databases.Interfaces.IRateLimitStateDatabase"/>
 ///             to track sliding/fixed window counts and token-bucket levels.
 ///         </description>
@@ -106,6 +107,16 @@ public interface IDocumentStore
     Task<long> IncrementCounterAsync(string key, TimeSpan window, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Atomically increments multiple counters in one backend-neutral batch operation.
+    /// </summary>
+    /// <param name="entries">The counter keys mapped to the amount to add and the expiry window to use for newly reset counters.</param>
+    /// <param name="cancellationToken">Cancels the batch increment. Counters already written by the backend may remain advanced.</param>
+    /// <returns>A dictionary mapping each key to its counter value after incrementing.</returns>
+    Task<IReadOnlyDictionary<string, long>> IncrementManyCountersAsync(
+        IReadOnlyDictionary<string, (long amount, TimeSpan window)> entries,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Atomically decrements a counter identified by key, flooring at zero.
     /// Unlike a read-modify-write cycle through <see cref="GetCounterAsync"/> and
     /// <see cref="SetCounterAsync"/>, this is safe under concurrent access because
@@ -117,12 +128,32 @@ public interface IDocumentStore
     Task<long> DecrementCounterAsync(string key, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Atomically decrements multiple counters in one backend-neutral batch operation, flooring each value at zero.
+    /// </summary>
+    /// <param name="entries">The counter keys mapped to the amount to subtract from each counter.</param>
+    /// <param name="cancellationToken">Cancels the batch decrement. Counters already written by the backend may remain decremented.</param>
+    /// <returns>A dictionary mapping each key to its counter value after decrementing.</returns>
+    Task<IReadOnlyDictionary<string, long>> DecrementManyCountersAsync(
+        IReadOnlyDictionary<string, long> entries,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Gets the current value of a counter.
     /// </summary>
     /// <param name="key">The counter key.</param>
     /// <param name="cancellationToken">Cancels the read if the backing store is unresponsive.</param>
     /// <returns>The current counter value, or <c>0</c> if the counter does not exist.</returns>
     Task<long> GetCounterAsync(string key, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets the current values for multiple counters in one backend-neutral batch operation.
+    /// </summary>
+    /// <param name="keys">The counter keys to read.</param>
+    /// <param name="cancellationToken">Cancels the batch read if the backing store is unresponsive.</param>
+    /// <returns>A dictionary mapping each requested key to its current value, or <c>0</c> if the counter does not exist.</returns>
+    Task<IReadOnlyDictionary<string, long>> GetManyCountersAsync(
+        IEnumerable<string> keys,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Sets a counter to the specified value with an expiry window.
@@ -132,6 +163,15 @@ public interface IDocumentStore
     /// <param name="window">The time window after which the counter expires.</param>
     /// <param name="cancellationToken">Cancels the set before it completes.</param>
     Task SetCounterAsync(string key, long value, TimeSpan window, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sets multiple counters in one backend-neutral batch operation.
+    /// </summary>
+    /// <param name="entries">The counter keys mapped to the value and expiry window to store.</param>
+    /// <param name="cancellationToken">Cancels the batch set before all entries are persisted.</param>
+    Task SetManyCountersAsync(
+        IReadOnlyDictionary<string, (long value, TimeSpan window)> entries,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Resets a counter to zero.
