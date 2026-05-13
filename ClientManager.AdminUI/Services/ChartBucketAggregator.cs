@@ -8,6 +8,12 @@ public static class ChartBucketAggregator
 {
     public const int DefaultBucketCount = 12;
 
+    public enum AggregationMode
+    {
+        Sum,
+        Latest
+    }
+
     /// <summary>
     /// A raw time-series point with a UTC timestamp.
     /// </summary>
@@ -38,7 +44,8 @@ public static class ChartBucketAggregator
         IEnumerable<RawPoint> points,
         DateTime from,
         DateTime to,
-        int bucketCount = DefaultBucketCount)
+        int bucketCount = DefaultBucketCount,
+        AggregationMode mode = AggregationMode.Sum)
     {
         var totalDuration = to - from;
         if (totalDuration <= TimeSpan.Zero || bucketCount <= 0)
@@ -61,6 +68,10 @@ public static class ChartBucketAggregator
                 bucketEnd));
         }
 
+        var latestPointsByBucket = mode == AggregationMode.Latest
+            ? new Dictionary<int, RawPoint>()
+            : null;
+
         // Aggregate points into buckets
         foreach (var point in points)
         {
@@ -72,9 +83,27 @@ public static class ChartBucketAggregator
                 bucketIndex = bucketCount - 1;
             if (bucketIndex < 0)
                 bucketIndex = 0;
+            if (mode == AggregationMode.Sum)
+            {
+                var existing = buckets[bucketIndex];
+                buckets[bucketIndex] = existing with { Value = existing.Value + point.Value };
+                continue;
+            }
 
-            var existing = buckets[bucketIndex];
-            buckets[bucketIndex] = existing with { Value = existing.Value + point.Value };
+            if (!latestPointsByBucket!.TryGetValue(bucketIndex, out var existingLatest)
+                || point.TimestampUtc >= existingLatest.TimestampUtc)
+            {
+                latestPointsByBucket[bucketIndex] = point;
+            }
+        }
+
+        if (mode == AggregationMode.Latest && latestPointsByBucket is not null)
+        {
+            foreach (var (bucketIndex, point) in latestPointsByBucket)
+            {
+                var existing = buckets[bucketIndex];
+                buckets[bucketIndex] = existing with { Value = point.Value };
+            }
         }
 
         return new AggregationResult(buckets, bucketDuration);
@@ -87,12 +116,13 @@ public static class ChartBucketAggregator
         Dictionary<string, IEnumerable<RawPoint>> seriesPoints,
         DateTime from,
         DateTime to,
-        int bucketCount = DefaultBucketCount)
+        int bucketCount = DefaultBucketCount,
+        AggregationMode mode = AggregationMode.Sum)
     {
         var results = new Dictionary<string, AggregationResult>();
         foreach (var (seriesId, points) in seriesPoints)
         {
-            results[seriesId] = Aggregate(points, from, to, bucketCount);
+            results[seriesId] = Aggregate(points, from, to, bucketCount, mode);
         }
         return results;
     }

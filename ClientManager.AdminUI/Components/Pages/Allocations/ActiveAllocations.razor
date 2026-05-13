@@ -2,6 +2,7 @@
 @using ClientManager.Shared.Models.Responses
 @inject StatisticsApiService StatsService
 @inject ClientApiService ClientService
+@inject GlobalRateLimitApiService RateLimitApi
 @inject EntityColorService Colors
 @inject IJSRuntime JS
 @implements IAsyncDisposable
@@ -32,6 +33,10 @@
                 Data="@_clientOptions" TextProperty="Name" ValueProperty="Id"
                 Placeholder="All clients" Style="width: 200px;"
                 Change="@OnFilterChanged" />
+            <RadzenDropDown TValue="string" @bind-Value="_selectedMetric"
+                Data="@_metricOptions" TextProperty="Name" ValueProperty="Value"
+                Style="width: 220px;"
+                Change="@OnMetricChanged" />
         </div>
         <ChartSettingsDropdown OnTimeRangeChanged="OnTimeRangeChanged"
                                    OnPollingIntervalChanged="OnPollingIntervalChanged"
@@ -41,7 +46,7 @@
     {
         @foreach (var targetChart in _targetCharts)
         {
-            <span class="cm-dashboard__chart-title">@targetChart.TargetName - Slot Usage</span>
+            <span class="cm-dashboard__chart-title">@targetChart.TargetName - @(IsAccessMetric ? "Access Requests" : "Active Allocations")</span>
             <RadzenChart Style="height: 400px;">
                 @{
                     var allocSeries = _axisScaleType == AxisScaleType.Logarithmic
@@ -62,10 +67,10 @@
                 }
                 <RadzenLineSeries Data="@TransformPoints(targetChart.CapSeries)"
                     CategoryProperty="Label" ValueProperty="Value"
-                    Title="Max Slots" LineType="LineType.Dashed"
+                    Title="@(IsAccessMetric ? "Access Cap" : "Max Slots")" LineType="LineType.Dashed"
                     Stroke="var(--color-text-secondary)">
                     <TooltipTemplate Context="point">
-                        <span>Max Slots: @(point.OriginalValue.ToString("N0"))</span>
+                        <span>@(IsAccessMetric ? "Access Cap" : "Max Slots"): @(point.OriginalValue.ToString("N0"))</span>
                     </TooltipTemplate>
                 </RadzenLineSeries>
                 <RadzenCategoryAxis />
@@ -83,7 +88,7 @@
 
 <div class="cm-list-page__table-card" style="margin-top: var(--space-lg);">
     <div class="cm-dashboard__chart-header">
-        <span class="cm-dashboard__chart-title">Client Allocation Detail</span>
+        <span class="cm-dashboard__chart-title">@(IsAccessMetric ? "Client Access Detail" : "Client Allocation Detail")</span>
     </div>
     <RadzenDataGrid @ref="_clientDetailGrid" Data="@_clientDetailRows" TItem="AllocationClientRow"
         AllowSorting="true" AllowPaging="true" PageSize="15"
@@ -91,34 +96,54 @@
         <Columns>
             <RadzenDataGridColumn TItem="AllocationClientRow" Property="ClientName" Title="Client" />
             <RadzenDataGridColumn TItem="AllocationClientRow" Property="PoolName" Title="Pool" />
-            <RadzenDataGridColumn TItem="AllocationClientRow" Property="ActiveSlots" Title="Active" Width="90px" />
-            <RadzenDataGridColumn TItem="AllocationClientRow" Property="MaxSlots" Title="Max" Width="80px" />
+            <RadzenDataGridColumn TItem="AllocationClientRow" Title="@(IsAccessMetric ? "Requests" : "Active")" Width="90px">
+                <Template Context="row">@row.CurrentValue.ToString("N0")</Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="AllocationClientRow" Title="@(IsAccessMetric ? "Cap (5m)" : "Max")" Width="90px">
+                <Template Context="row">@(IsAccessMetric ? FormatCap(row.CapValue) : row.CapValue.ToString("N0"))</Template>
+            </RadzenDataGridColumn>
             <RadzenDataGridColumn TItem="AllocationClientRow" Title="Utilization" Width="180px">
                 <Template Context="row">
-                    @{
-                        var pct = row.MaxSlots > 0
-                            ? (int)(row.ActiveSlots * 100.0 / row.MaxSlots) : 0;
-                        var barStyle = pct >= 100 ? ProgressBarStyle.Danger
-                            : pct >= 75 ? ProgressBarStyle.Warning : ProgressBarStyle.Success;
+                    @if (row.CapValue > 0 || !IsAccessMetric)
+                    {
+                        var pct = row.CapValue > 0
+                            ? (int)(row.CurrentValue * 100.0 / row.CapValue) : 0;
+                        var barStyle = GetProgressBarStyle(pct);
+                        <RadzenProgressBar Value="@pct" Max="100" ShowValue="true"
+                            ProgressBarStyle="@barStyle" Style="height: 18px;" />
                     }
-                    <RadzenProgressBar Value="@pct" Max="100" ShowValue="true"
-                        ProgressBarStyle="@barStyle" Style="height: 18px;" />
+                    else
+                    {
+                        <span>-</span>
+                    }
                 </Template>
             </RadzenDataGridColumn>
             <RadzenDataGridColumn TItem="AllocationClientRow" Property="DeniedLast5Min" Title="Denied (5m)" Width="110px" />
             <RadzenDataGridColumn TItem="AllocationClientRow" Title="Status" Width="120px" Sortable="false">
                 <Template Context="row">
-                    @if (row.ActiveSlots >= row.MaxSlots && row.MaxSlots > 0)
+                    @if (!IsAccessMetric && row.CapValue > 0 && row.CurrentValue >= row.CapValue)
                     {
                         <span class="cm-badge" style="background: #fee2e2; color: #991b1b;">At Capacity</span>
                     }
-                    else if (row.DeniedLast5Min > 0)
+                    else if (!IsAccessMetric && row.DeniedLast5Min > 0)
                     {
                         <span class="cm-badge" style="background: #fef3c7; color: #92400e;">Contention</span>
                     }
+                    else if (IsAccessMetric && row.DeniedLast5Min > 0 && row.CapValue > 0 && row.CurrentValue >= row.CapValue * 0.9)
+                    {
+                        <span class="cm-badge" style="background: #fee2e2; color: #991b1b;">Hitting Limit</span>
+                    }
+                    else if (IsAccessMetric && row.DeniedLast5Min > 0)
+                    {
+                        <span class="cm-badge" style="background: #fef3c7; color: #92400e;">Denied</span>
+                    }
+                    else if (IsAccessMetric && row.CapValue > 0 && row.CurrentValue >= row.CapValue * 0.9)
+                    {
+                        <span class="cm-badge" style="background: #fef3c7; color: #92400e;">Near Limit</span>
+                    }
                     else
                     {
-                        <span class="cm-badge cm-badge--success">Available</span>
+                        <span class="cm-badge cm-badge--success">@(IsAccessMetric ? "Healthy" : "Available")</span>
                     }
                 </Template>
             </RadzenDataGridColumn>
@@ -132,31 +157,53 @@
     <div class="cm-dashboard__chart-header">
         <span class="cm-dashboard__chart-title">All Resource Pools</span>
     </div>
-    <RadzenDataGrid @ref="_allPoolsGrid" Data="@_pools" TItem="ResourcePoolStatisticsResponse"
+    <RadzenDataGrid @ref="_allPoolsGrid" Data="@_poolSummaryRows" TItem="PoolSummaryRow"
         AllowSorting="true" AllowPaging="true" PageSize="15"
         PagerHorizontalAlign="HorizontalAlign.Center">
         <Columns>
-            <RadzenDataGridColumn TItem="ResourcePoolStatisticsResponse" Property="Name" Title="Pool" />
-            <RadzenDataGridColumn TItem="ResourcePoolStatisticsResponse" Property="ActiveAllocations" Title="Active" Width="100px" />
-            <RadzenDataGridColumn TItem="ResourcePoolStatisticsResponse" Property="MaxSlots" Title="Max" Width="100px" />
-            <RadzenDataGridColumn TItem="ResourcePoolStatisticsResponse" Property="AvailableSlots" Title="Available" Width="100px" />
-            <RadzenDataGridColumn TItem="ResourcePoolStatisticsResponse" Title="Utilization" Width="200px">
+            <RadzenDataGridColumn TItem="PoolSummaryRow" Property="Name" Title="Pool" />
+            <RadzenDataGridColumn TItem="PoolSummaryRow" Title="@(IsAccessMetric ? "Requests" : "Active")" Width="100px">
+                <Template Context="pool">@pool.CurrentValue.ToString("N0")</Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="PoolSummaryRow" Title="@(IsAccessMetric ? "Cap (5m)" : "Max")" Width="100px">
+                <Template Context="pool">@(IsAccessMetric ? FormatCap(pool.CapValue) : pool.CapValue.ToString("N0"))</Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="PoolSummaryRow" Title="@(IsAccessMetric ? "Remaining" : "Available")" Width="110px">
+                <Template Context="pool">@(IsAccessMetric ? FormatRemaining(pool.RemainingValue) : (pool.RemainingValue ?? 0).ToString("N0"))</Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="PoolSummaryRow" Title="Utilization" Width="200px">
                 <Template Context="pool">
-                    @{
-                        var pct = pool.MaxSlots > 0
-                            ? (int)(pool.ActiveAllocations * 100.0 / pool.MaxSlots) : 0;
-                        var barStyle = pct >= 100 ? ProgressBarStyle.Danger
-                            : pct >= 75 ? ProgressBarStyle.Warning : ProgressBarStyle.Success;
+                    @if (pool.CapValue > 0 || !IsAccessMetric)
+                    {
+                        var pct = pool.CapValue > 0
+                            ? (int)(pool.CurrentValue * 100.0 / pool.CapValue) : 0;
+                        var barStyle = GetProgressBarStyle(pct);
+                        <RadzenProgressBar Value="@pct" Max="100" ShowValue="true"
+                            ProgressBarStyle="@barStyle" Style="height: 20px;" />
                     }
-                    <RadzenProgressBar Value="@pct" Max="100" ShowValue="true"
-                        ProgressBarStyle="@barStyle" Style="height: 20px;" />
+                    else
+                    {
+                        <span>-</span>
+                    }
                 </Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn TItem="ResourcePoolStatisticsResponse" Title="Status" Width="110px" Sortable="false">
+            <RadzenDataGridColumn TItem="PoolSummaryRow" Title="Status" Width="120px" Sortable="false">
                 <Template Context="pool">
-                    @if (pool.AvailableSlots == 0)
+                    @if (!IsAccessMetric && pool.RemainingValue == 0)
                     {
                         <span class="cm-badge" style="background: #fee2e2; color: #991b1b;">At Capacity</span>
+                    }
+                    else if (IsAccessMetric && pool.DeniedLast5Min > 0 && pool.CapValue > 0 && pool.CurrentValue >= pool.CapValue * 0.9)
+                    {
+                        <span class="cm-badge" style="background: #fee2e2; color: #991b1b;">Hitting Limit</span>
+                    }
+                    else if (IsAccessMetric && pool.DeniedLast5Min > 0)
+                    {
+                        <span class="cm-badge" style="background: #fef3c7; color: #92400e;">Denied</span>
+                    }
+                    else if (IsAccessMetric && pool.CapValue > 0 && pool.CurrentValue >= pool.CapValue * 0.9)
+                    {
+                        <span class="cm-badge" style="background: #fef3c7; color: #92400e;">Near Limit</span>
                     }
                     else
                     {
@@ -170,8 +217,17 @@
 
 @code {
     private const string AllPoolsId = "__all__";
+    private const string ActiveAllocationsMetricValue = "ActiveAllocations";
+    private const string AccessRequestsMetricValue = "AccessRequests";
+    private static readonly TimeSpan RecentWindow = TimeSpan.FromMinutes(5);
+    private static readonly List<MetricOption> _metricOptions =
+    [
+        new(ActiveAllocationsMetricValue, "Active Allocations"),
+        new(AccessRequestsMetricValue, "Access Requests")
+    ];
 
     private List<ResourcePoolStatisticsResponse> _pools = [];
+    private List<PoolSummaryRow> _poolSummaryRows = [];
     private List<NamedItem> _poolOptions = [];
     private List<ClientOption> _clientOptions = [];
     private List<ClientConfiguration> _allClients = [];
@@ -185,14 +241,18 @@
     private bool _isVisible = true;
     private IJSObjectReference? _visibilityModule;
     private DotNetObjectReference<ActiveAllocations>? _dotNetRef;
+    private int _loadVersion;
 
     private TimeRangePreset _timeRange = TimeRangePreset.Default;
     private AxisScaleType _axisScaleType = AxisScaleType.Linear;
+    private string _selectedMetric = ActiveAllocationsMetricValue;
 
     private List<TargetChartData> _targetCharts = [];
     private List<AllocationClientRow> _clientDetailRows = [];
     private RadzenDataGrid<AllocationClientRow>? _clientDetailGrid;
-    private RadzenDataGrid<ResourcePoolStatisticsResponse>? _allPoolsGrid;
+    private RadzenDataGrid<PoolSummaryRow>? _allPoolsGrid;
+
+    private bool IsAccessMetric => _selectedMetric == AccessRequestsMetricValue;
 
     protected override async Task OnInitializedAsync()
     {
@@ -289,6 +349,15 @@
         await LoadDataAsync();
     }
 
+    private async Task OnMetricChanged()
+    {
+        _loading = true;
+        StateHasChanged();
+        await LoadDataAsync();
+        _loading = false;
+        StateHasChanged();
+    }
+
     private async Task OnFilterChanged()
     {
         _loading = true;
@@ -300,15 +369,27 @@
 
     private async Task LoadDataAsync()
     {
+        var loadVersion = System.Threading.Interlocked.Increment(ref _loadVersion);
+
         try
         {
             var newPools = await StatsService.GetResourcePoolStatsAsync();
 
-            var from = _timeRange.GetFrom();
             var now = _timeRange.GetTo();
+            var from = _timeRange.GetFrom(now);
             var granularity = _timeRange.Granularity;
-            var recentFrom = DateTime.UtcNow.AddMinutes(-5);
-            var recentTo = DateTime.UtcNow;
+            var recentFrom = now.Subtract(RecentWindow);
+            var recentTo = now;
+            var chartAggregationMode = GetChartAggregationMode();
+            var chartTemplate = ChartBucketAggregator.Aggregate([], from, now, mode: chartAggregationMode);
+            var chartBucketDuration = chartTemplate.BucketDuration;
+
+            IReadOnlyDictionary<string, GlobalRateLimit> rateLimitLookup = new Dictionary<string, GlobalRateLimit>();
+            if (IsAccessMetric)
+            {
+                rateLimitLookup = (await RateLimitApi.GetByTargetTypeAsync(TargetType.ResourcePool))
+                    .ToDictionary(limit => limit.TargetId);
+            }
 
             var visiblePools = _selectedPoolId == AllPoolsId
                 ? newPools
@@ -316,58 +397,88 @@
 
             var visiblePoolIds = visiblePools.Select(p => p.ResourcePoolId).ToList();
 
+            if (visiblePoolIds.Count == 0)
+            {
+                if (loadVersion != _loadVersion)
+                {
+                    return;
+                }
+
+                _targetCharts = [];
+                _clientDetailRows.Clear();
+                _pools.Clear();
+                _pools.AddRange(newPools);
+                _poolSummaryRows.Clear();
+                _poolSummaryRows.AddRange(BuildPoolSummaryRows(newPools, [], rateLimitLookup));
+
+                if (_clientDetailGrid is not null) await InvokeAsync(_clientDetailGrid.Reload);
+                if (_allPoolsGrid is not null) await InvokeAsync(_allPoolsGrid.Reload);
+
+                _error = null;
+                return;
+            }
+
             // Batch: one call for all breakdowns
             var breakdowns = await StatsService.GetClientUsageBreakdownAsync(
                 "ResourcePool", visiblePoolIds, _selectedClientIds, from, now, granularity);
             var recentBreakdowns = await StatsService.GetClientUsageBreakdownAsync(
                 "ResourcePool", visiblePoolIds, _selectedClientIds, recentFrom, recentTo, "FiveMinute");
 
+            var summaryRecentBreakdowns = recentBreakdowns;
+            if (IsAccessMetric && _selectedPoolId != AllPoolsId)
+            {
+                summaryRecentBreakdowns = await StatsService.GetClientUsageBreakdownAsync(
+                    "ResourcePool",
+                    newPools.Select(pool => pool.ResourcePoolId),
+                    _selectedClientIds,
+                    recentFrom,
+                    recentTo,
+                    "FiveMinute");
+            }
+
             var charts = new List<TargetChartData>();
             var rows = new List<AllocationClientRow>();
+            var poolRows = BuildPoolSummaryRows(newPools, summaryRecentBreakdowns, rateLimitLookup);
             
             if (_selectedPoolId == AllPoolsId)
             {
-                var aggregated = new Dictionary<string, double>();
+                var poolAggregations = new List<ChartBucketAggregator.AggregationResult>();
                 var totalMaxSlots = 0;
 
                 // Batch: one call for all histories across all visible pools
                 var allHistories = await StatsService.GetHistoricalUsageAsync(
                     "ResourcePool", visiblePoolIds, null, from, now, granularity);
-                var allRecents = await StatsService.GetHistoricalUsageAsync(
-                    "ResourcePool", visiblePoolIds, null, recentFrom, recentTo, "FiveMinute");
 
                 foreach (var pool in visiblePools)
                 {
-                    totalMaxSlots += pool.MaxSlots;
+                    totalMaxSlots += GetPoolChartCap(pool, rateLimitLookup, chartBucketDuration);
 
                     var breakdown = breakdowns.FirstOrDefault(b => b.TargetId == pool.ResourcePoolId);
                     var history = allHistories.FirstOrDefault(h => h.TargetId == pool.ResourcePoolId);
                     var recentEntries = recentBreakdowns
                         .FirstOrDefault(b => b.TargetId == pool.ResourcePoolId)?.Entries ?? [];
 
-                    foreach (var point in history?.Points ?? [])
+                    var rawPoints = (history?.Points ?? [])
+                        .Select(point => new ChartBucketAggregator.RawPoint(point.Timestamp, GetHistoricalPointValue(point)))
+                        .ToList();
+                    if (rawPoints.Count > 0)
                     {
-                        var label = _timeRange.FormatTimestamp(point.Timestamp.ToLocalTime());
-                        if (!aggregated.ContainsKey(label))
-                            aggregated[label] = 0;
-                        aggregated[label] += (double)point.ActiveCount;
+                        poolAggregations.Add(ChartBucketAggregator.Aggregate(rawPoints, from, now, mode: chartAggregationMode));
                     }
 
                     foreach (var entry in breakdown?.Entries ?? [])
                     {
-                        var clientMax = GetClientPoolMaxSlots(entry.ClientId, pool.ResourcePoolId, pool.MaxSlots);
                         var recentEntry = recentEntries.FirstOrDefault(e => e.ClientId == entry.ClientId);
-                        rows.Add(new AllocationClientRow(
-                            entry.ClientId, entry.ClientName, pool.Name,
-                            (int)(recentEntry?.ActiveCount ?? 0),
-                            clientMax,
-                            recentEntry?.DeniedCount ?? 0));
+                        rows.Add(CreateClientRow(entry.ClientId, entry.ClientName, pool, recentEntry, rateLimitLookup));
                     }
                 }
 
-                var sortedPoints = aggregated
-                    .OrderBy(kv => kv.Key)
-                    .Select(kv => new ChartPoint(kv.Key, kv.Value))
+                var referenceBuckets = poolAggregations.FirstOrDefault()?.Buckets
+                    ?? chartTemplate.Buckets;
+                var sortedPoints = referenceBuckets
+                    .Select((bucket, index) => new ChartPoint(
+                        bucket.Label,
+                        poolAggregations.Sum(aggregation => aggregation.Buckets[index].Value)))
                     .ToList();
 
                 var capPoints = sortedPoints
@@ -386,56 +497,58 @@
                     var recentEntries = recentBreakdowns
                         .FirstOrDefault(b => b.TargetId == pool.ResourcePoolId)?.Entries ?? [];
                     var entries = breakdown?.Entries ?? [];
+                    var chartCap = GetPoolChartCap(pool, rateLimitLookup, chartBucketDuration);
 
-                    // Per-client histories for this specific pool
-                    var perClientHistoryTasks = entries.Select(entry =>
-                        StatsService.GetHistoricalUsageAsync(
-                            "ResourcePool", new[] { pool.ResourcePoolId }, entry.ClientId,
-                            from, now, granularity)).ToList();
-
-                    var perClientHistories = await Task.WhenAll(perClientHistoryTasks);
+                    var historiesByClientId = (await StatsService.GetHistoricalUsageByClientAsync(
+                            "ResourcePool",
+                            new[] { pool.ResourcePoolId },
+                            entries.Select(entry => entry.ClientId),
+                            from,
+                            now,
+                            granularity))
+                        .ToDictionary(history => history.ClientId);
 
                     var clientAreas = new List<ClientAreaSeries>();
+                    var clientAggregations = new Dictionary<string, ChartBucketAggregator.AggregationResult>();
 
-                    var allTimestampSet = new SortedSet<string>();
-                    var rawPointsByClient = new List<Dictionary<string, double>>();
-
-                    for (var i = 0; i < entries.Count; i++)
+                    foreach (var entry in entries)
                     {
-                        var lookup = new Dictionary<string, double>();
-                        var historyData = perClientHistories[i].FirstOrDefault();
-                        foreach (var p in historyData?.Points ?? [])
+                        historiesByClientId.TryGetValue(entry.ClientId, out var historyData);
+                        var rawPoints = (historyData?.Points ?? [])
+                            .Select(point => new ChartBucketAggregator.RawPoint(point.Timestamp, GetHistoricalPointValue(point)))
+                            .ToList();
+
+                        if (rawPoints.Count == 0)
                         {
-                            var label = _timeRange.FormatTimestamp(p.Timestamp.ToLocalTime());
-                            allTimestampSet.Add(label);
-                            lookup[label] = (double)p.ActiveCount;
+                            continue;
                         }
-                        rawPointsByClient.Add(lookup);
+
+                        clientAggregations[entry.ClientId] = ChartBucketAggregator.Aggregate(rawPoints, from, now, mode: chartAggregationMode);
                     }
 
-                    var allTimestamps = allTimestampSet.ToList();
+                    var referenceBuckets = clientAggregations.Values.FirstOrDefault()?.Buckets
+                        ?? chartTemplate.Buckets;
 
                     for (var i = 0; i < entries.Count; i++)
                     {
                         var entry = entries[i];
-                        var lookup = rawPointsByClient[i];
-                        var points = allTimestamps
-                            .Select(t => new ChartPoint(t, lookup.GetValueOrDefault(t, 0)))
+                        if (!clientAggregations.TryGetValue(entry.ClientId, out var aggregation))
+                        {
+                            continue;
+                        }
+
+                        var points = aggregation.Buckets
+                            .Select(bucket => new ChartPoint(bucket.Label, bucket.Value))
                             .ToList();
 
                         clientAreas.Add(new ClientAreaSeries(entry.ClientId, entry.ClientName, points));
 
                         var recentEntry = recentEntries.FirstOrDefault(e => e.ClientId == entry.ClientId);
-                        var clientMax = GetClientPoolMaxSlots(entry.ClientId, pool.ResourcePoolId, pool.MaxSlots);
-                        rows.Add(new AllocationClientRow(
-                            entry.ClientId, entry.ClientName, pool.Name,
-                            (int)(recentEntry?.ActiveCount ?? 0),
-                            clientMax,
-                            recentEntry?.DeniedCount ?? 0));
+                        rows.Add(CreateClientRow(entry.ClientId, entry.ClientName, pool, recentEntry, rateLimitLookup));
                     }
 
-                    var capPoints = allTimestamps
-                        .Select(t => new ChartPoint(t, pool.MaxSlots))
+                    var capPoints = referenceBuckets
+                        .Select(bucket => new ChartPoint(bucket.Label, chartCap))
                         .ToList();
 
                     var aggregatedAreas = ChartAggregator.Aggregate(
@@ -453,11 +566,18 @@
                 }
             }
 
+            if (loadVersion != _loadVersion)
+            {
+                return;
+            }
+
             _targetCharts = charts;
             _clientDetailRows.Clear();
             _clientDetailRows.AddRange(rows);
             _pools.Clear();
             _pools.AddRange(newPools);
+            _poolSummaryRows.Clear();
+            _poolSummaryRows.AddRange(poolRows);
 
             if (_clientDetailGrid is not null) await InvokeAsync(_clientDetailGrid.Reload);
             if (_allPoolsGrid is not null) await InvokeAsync(_allPoolsGrid.Reload);
@@ -466,6 +586,11 @@
         }
         catch (HttpRequestException ex)
         {
+            if (loadVersion != _loadVersion)
+            {
+                return;
+            }
+
             _error = $"Unable to load data: {ex.Message}";
         }
     }
@@ -477,6 +602,150 @@
             return (int)settings.MaxSlots;
         return poolMaxSlots;
     }
+
+    private AllocationClientRow CreateClientRow(
+        string clientId,
+        string clientName,
+        ResourcePoolStatisticsResponse pool,
+        ClientUsageEntry? recentEntry,
+        IReadOnlyDictionary<string, GlobalRateLimit> rateLimitLookup)
+    {
+        var currentValue = IsAccessMetric
+            ? recentEntry?.GrantedCount ?? 0
+            : recentEntry?.ActiveCount ?? 0;
+        var capValue = IsAccessMetric
+            ? GetEffectiveClientPoolCap(clientId, pool.ResourcePoolId, rateLimitLookup, RecentWindow)
+            : GetClientPoolMaxSlots(clientId, pool.ResourcePoolId, pool.MaxSlots);
+
+        return new AllocationClientRow(
+            clientId,
+            clientName,
+            pool.Name,
+            currentValue,
+            capValue,
+            recentEntry?.DeniedCount ?? 0);
+    }
+
+    private List<PoolSummaryRow> BuildPoolSummaryRows(
+        IEnumerable<ResourcePoolStatisticsResponse> pools,
+        IReadOnlyList<TargetClientUsageBreakdownResponse> recentBreakdowns,
+        IReadOnlyDictionary<string, GlobalRateLimit> rateLimitLookup)
+    {
+        if (!IsAccessMetric)
+        {
+            return pools
+                .Select(pool => new PoolSummaryRow(
+                    pool.ResourcePoolId,
+                    pool.Name,
+                    pool.ActiveAllocations,
+                    pool.MaxSlots,
+                    pool.AvailableSlots,
+                    0))
+                .ToList();
+        }
+
+        var rows = new List<PoolSummaryRow>();
+        foreach (var pool in pools)
+        {
+            var recentEntries = recentBreakdowns
+                .FirstOrDefault(breakdown => breakdown.TargetId == pool.ResourcePoolId)?.Entries ?? [];
+            var currentValue = recentEntries.Sum(entry => entry.GrantedCount);
+            var capValue = GetScaledGlobalPoolCap(pool.ResourcePoolId, rateLimitLookup, RecentWindow);
+            long? remainingValue = capValue > 0
+                ? Math.Max((long)capValue - currentValue, 0)
+                : null;
+            var deniedCount = recentEntries.Sum(entry => entry.DeniedCount);
+
+            rows.Add(new PoolSummaryRow(
+                pool.ResourcePoolId,
+                pool.Name,
+                currentValue,
+                capValue,
+                remainingValue,
+                deniedCount));
+        }
+
+        return rows;
+    }
+
+    private ChartBucketAggregator.AggregationMode GetChartAggregationMode()
+        => IsAccessMetric
+            ? ChartBucketAggregator.AggregationMode.Sum
+            : ChartBucketAggregator.AggregationMode.Latest;
+
+    private double GetHistoricalPointValue(HistoricalUsagePoint point)
+        => IsAccessMetric ? point.GrantedCount : point.ActiveCount;
+
+    private int GetPoolChartCap(
+        ResourcePoolStatisticsResponse pool,
+        IReadOnlyDictionary<string, GlobalRateLimit> rateLimitLookup,
+        TimeSpan comparisonWindow)
+        => IsAccessMetric
+            ? GetScaledGlobalPoolCap(pool.ResourcePoolId, rateLimitLookup, comparisonWindow)
+            : pool.MaxSlots;
+
+    private int GetEffectiveClientPoolCap(
+        string clientId,
+        string poolId,
+        IReadOnlyDictionary<string, GlobalRateLimit> globalLimitsByPool,
+        TimeSpan comparisonWindow)
+    {
+        var client = _allClients.FirstOrDefault(c => c.Id == clientId);
+        if (client is null)
+        {
+            return GetScaledGlobalPoolCap(poolId, globalLimitsByPool, comparisonWindow);
+        }
+
+        var caps = new List<int>();
+
+        if (client.GlobalRateLimit is not null)
+        {
+            caps.Add(ScaleRateLimitCap(client.GlobalRateLimit.MaxRequests, client.GlobalRateLimit.Window, comparisonWindow));
+        }
+
+        if (!client.ExemptFromGlobalLimits)
+        {
+            var globalCap = GetScaledGlobalPoolCap(poolId, globalLimitsByPool, comparisonWindow);
+            if (globalCap > 0)
+            {
+                caps.Add(globalCap);
+            }
+        }
+
+        return caps.Count > 0 ? caps.Min() : 0;
+    }
+
+    private static int GetScaledGlobalPoolCap(
+        string poolId,
+        IReadOnlyDictionary<string, GlobalRateLimit> globalLimitsByPool,
+        TimeSpan comparisonWindow)
+    {
+        return globalLimitsByPool.TryGetValue(poolId, out var globalLimit)
+            ? ScaleRateLimitCap(globalLimit.MaxRequests, globalLimit.Window, comparisonWindow)
+            : 0;
+    }
+
+    private static int ScaleRateLimitCap(int maxRequests, TimeSpan configuredWindow, TimeSpan comparisonWindow)
+    {
+        if (maxRequests <= 0 || configuredWindow <= TimeSpan.Zero || comparisonWindow <= TimeSpan.Zero)
+        {
+            return 0;
+        }
+
+        var scaled = maxRequests * comparisonWindow.TotalSeconds / configuredWindow.TotalSeconds;
+        return scaled > 0
+            ? Math.Max(1, (int)Math.Round(scaled, MidpointRounding.AwayFromZero))
+            : 0;
+    }
+
+    private static ProgressBarStyle GetProgressBarStyle(int percent)
+        => percent >= 100 ? ProgressBarStyle.Danger
+            : percent >= 75 ? ProgressBarStyle.Warning : ProgressBarStyle.Success;
+
+    private static string FormatCap(int capValue) => capValue > 0 ? capValue.ToString("N0") : "-";
+
+    private static string FormatRemaining(long? remainingValue)
+        => remainingValue.HasValue ? remainingValue.Value.ToString("N0") : "-";
 
     public async ValueTask DisposeAsync()
     {
@@ -490,6 +759,7 @@
     }
 
     private record NamedItem(string Id, string Name);
+    private record MetricOption(string Value, string Name);
     private record ChartPoint(string Label, double Value)
     {
         public double OriginalValue { get; init; } = Value;
@@ -501,7 +771,10 @@
         List<ChartPoint> CapSeries);
     private record AllocationClientRow(
         string ClientId, string ClientName, string PoolName,
-        int ActiveSlots, int MaxSlots, long DeniedLast5Min);
+        long CurrentValue, int CapValue, long DeniedLast5Min);
+    private record PoolSummaryRow(
+        string PoolId, string Name, long CurrentValue,
+        int CapValue, long? RemainingValue, long DeniedLast5Min);
 
     private static List<ClientAreaSeries> TransformStackedLogarithmic(List<ClientAreaSeries> series)
     {

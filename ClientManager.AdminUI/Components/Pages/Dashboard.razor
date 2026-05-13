@@ -194,6 +194,7 @@ else
 
     private List<TargetChartData> _targetCharts = new();
     private List<ClientUsagePoint> _perClientUsage = new();
+    private int _chartLoadVersion;
 
     private TimeRangePreset _timeRange = TimeRangePreset.Default;
     private AxisScaleType _axisScaleType = AxisScaleType.Linear;
@@ -286,6 +287,8 @@ else
     {
         if (_selectedTargetId is null) return;
 
+        var loadVersion = System.Threading.Interlocked.Increment(ref _chartLoadVersion);
+
         try
         {
             var newCharts = new List<TargetChartData>();
@@ -296,8 +299,8 @@ else
                 await LoadAllTargetsChartDataAsync(newCharts);
 
                 // For "All" mode, derive per-client donut from historical API (same path as line chart)
-                var donutFrom = _timeRange.GetFrom();
                 var donutTo = _timeRange.GetTo();
+                var donutFrom = _timeRange.GetFrom(donutTo);
                 var isRateBased = _selectedFilterType == "Service";
 
                 var targets = _selectedFilterType == "Service"
@@ -309,20 +312,30 @@ else
                     ? _clients.Where(c => _selectedClientIds.Contains(c.Id)).ToList()
                     : _clients;
 
-                var perClientTasks = donutClients.Select(client =>
-                    StatsService.GetHistoricalUsageAsync(
-                        _selectedFilterType, targetIds, client.Id, donutFrom, donutTo, _timeRange.Granularity));
-                var perClientResults = await Task.WhenAll(perClientTasks);
+                var donutBreakdowns = await StatsService.GetClientUsageBreakdownAsync(
+                    _selectedFilterType,
+                    targetIds,
+                    _selectedClientIds,
+                    donutFrom,
+                    donutTo,
+                    _timeRange.Granularity);
+                var totalsByClientId = donutBreakdowns
+                    .SelectMany(breakdown => breakdown.Entries)
+                    .GroupBy(entry => entry.ClientId)
+                    .ToDictionary(
+                        group => group.Key,
+                        group => isRateBased
+                            ? group.Sum(entry => (double)entry.GrantedCount)
+                            : group.Sum(entry => (double)entry.ActiveCount));
 
                 newDonut = new List<ClientUsagePoint>();
-                for (var i = 0; i < donutClients.Count; i++)
+                foreach (var client in donutClients)
                 {
-                    var client = donutClients[i];
-                    var totalValue = perClientResults[i]
-                        .SelectMany(h => h.Points)
-                        .Sum(p => isRateBased ? (double)p.GrantedCount : (double)p.ActiveCount);
+                    var totalValue = totalsByClientId.GetValueOrDefault(client.Id);
                     if (totalValue > 0)
+                    {
                         newDonut.Add(new ClientUsagePoint(client.Id, client.Name, totalValue));
+                    }
                 }
             }
             else
@@ -341,20 +354,31 @@ else
                 newDonut = top;
             }
 
+            if (loadVersion != _chartLoadVersion)
+            {
+                return;
+            }
+
             _targetCharts = newCharts;
             _perClientUsage = newDonut;
         }
         catch (HttpRequestException)
         {
+            if (loadVersion != _chartLoadVersion)
+            {
+                return;
+            }
+
             // Chart data load failed - leave current data in place
         }
     }
 
     private async Task<List<ClientUsagePoint>> LoadSingleTargetChartDataAsync(List<TargetChartData> charts)
     {
-        var from = _timeRange.GetFrom();
         var now = _timeRange.GetTo();
+        var from = _timeRange.GetFrom(now);
         var isRateBased = _selectedFilterType == "Service";
+        var chartAggregationMode = GetChartAggregationMode(isRateBased);
 
         // Use _clients list directly for client discovery (reliable path)
         var clientsToQuery = _selectedClientIds?.Any() == true
@@ -381,34 +405,37 @@ else
             baseCap = pools.FirstOrDefault(p => p.Id == _selectedTargetId)?.MaxSlots ?? 0;
         }
 
-        // Fetch per-client histories using the reliable historical API
-        var perClientHistoryTasks = clientsToQuery.Select(client =>
-            StatsService.GetHistoricalUsageAsync(
-                _selectedFilterType, new[] { _selectedTargetId! }, client.Id,
-                from, now, _timeRange.Granularity)).ToList();
-        var perClientHistories = await Task.WhenAll(perClientHistoryTasks);
+        var historiesByClientId = (await StatsService.GetHistoricalUsageByClientAsync(
+                _selectedFilterType,
+                new[] { _selectedTargetId! },
+                clientsToQuery.Select(client => client.Id),
+                from,
+                now,
+                _timeRange.Granularity))
+            .ToDictionary(history => history.ClientId);
 
         // Aggregate each client's data to 12 buckets (skip clients with no data)
         var clientAggregations = new Dictionary<string, (NamedItem Client, ChartBucketAggregator.AggregationResult Result)>();
+        var clientUsageValues = new Dictionary<string, double>();
 
         // Always generate bucket structure for the time range (cap line needs it even with no data)
-        var emptyAggregation = ChartBucketAggregator.Aggregate([], from, now);
+        var emptyAggregation = ChartBucketAggregator.Aggregate([], from, now, mode: chartAggregationMode);
         var bucketDuration = emptyAggregation.BucketDuration;
 
-        for (var i = 0; i < clientsToQuery.Count; i++)
+        foreach (var client in clientsToQuery)
         {
-            var client = clientsToQuery[i];
-            var clientHistory = perClientHistories[i].FirstOrDefault();
+            historiesByClientId.TryGetValue(client.Id, out var clientHistory);
             var rawPoints = (clientHistory?.Points ?? [])
                 .Select(p => new ChartBucketAggregator.RawPoint(
                     p.Timestamp,
-                    isRateBased ? (double)p.GrantedCount : (double)p.ActiveCount))
+                    GetHistoricalPointValue(p, isRateBased)))
                 .ToList();
 
             if (rawPoints.Count == 0) continue;
 
-            var aggregation = ChartBucketAggregator.Aggregate(rawPoints, from, now);
+            var aggregation = ChartBucketAggregator.Aggregate(rawPoints, from, now, mode: chartAggregationMode);
             clientAggregations[client.Id] = (client, aggregation);
+            clientUsageValues[client.Id] = GetClientUsageValue(clientHistory?.Points ?? [], isRateBased);
         }
 
         // Build common bucket labels (use first client's aggregation, or empty buckets for cap line)
@@ -442,7 +469,7 @@ else
         var donutData = new List<ClientUsagePoint>();
         foreach (var (clientId, (client, agg)) in clientAggregations)
         {
-            var totalValue = agg.Buckets.Sum(b => b.Value);
+            var totalValue = clientUsageValues.GetValueOrDefault(clientId);
             if (totalValue > 0)
                 donutData.Add(new ClientUsagePoint(clientId, client.Name, totalValue));
         }
@@ -467,8 +494,11 @@ else
 
     private async Task LoadAllTargetsChartDataAsync(List<TargetChartData> charts)
     {
-        var from = _timeRange.GetFrom();
         var now = _timeRange.GetTo();
+        var from = _timeRange.GetFrom(now);
+        var isRateBased = _selectedFilterType == "Service";
+        var chartAggregationMode = GetChartAggregationMode(isRateBased);
+        var emptyAggregation = ChartBucketAggregator.Aggregate([], from, now, mode: chartAggregationMode);
 
         var targets = (_selectedFilterType == "Service"
             ? _allServices : _allPools).Where(t => t.Id != AllTargetsId).ToList();
@@ -478,7 +508,6 @@ else
         // Collect cap info for scaling
         double totalBaseCap = 0;
         TimeSpan? rateWindow = null;
-        bool isRateBased = _selectedFilterType == "Service";
 
         if (isRateBased)
         {
@@ -508,31 +537,27 @@ else
         var histories = await StatsService.GetHistoricalUsageAsync(
             _selectedFilterType, targetIds, null, from, now, _timeRange.Granularity);
 
-        // Collect all raw points
-        var rawPoints = new List<ChartBucketAggregator.RawPoint>();
-        foreach (var history in histories)
-        {
-            foreach (var point in history.Points)
-            {
-                var value = isRateBased ? (double)point.GrantedCount : (double)point.ActiveCount;
-                rawPoints.Add(new ChartBucketAggregator.RawPoint(point.Timestamp, value));
-            }
-        }
-
-        // Aggregate to 12 buckets
-        var aggregation = ChartBucketAggregator.Aggregate(rawPoints, from, now);
+        var targetAggregations = histories
+            .Select(history => ChartBucketAggregator.Aggregate(
+                history.Points.Select(point => new ChartBucketAggregator.RawPoint(
+                    point.Timestamp,
+                    GetHistoricalPointValue(point, isRateBased))),
+                from,
+                now,
+                mode: chartAggregationMode))
+            .ToList();
+        var referenceBuckets = targetAggregations.FirstOrDefault()?.Buckets
+            ?? emptyAggregation.Buckets;
+        var sortedPoints = SumBuckets(targetAggregations, referenceBuckets);
 
         // Scale cap for rate-based limits
         var scaledCap = totalBaseCap;
         if (isRateBased && rateWindow.HasValue && rateWindow.Value > TimeSpan.Zero)
         {
-            var scaleFactor = aggregation.BucketDuration.TotalSeconds / rateWindow.Value.TotalSeconds;
+            var scaleFactor = emptyAggregation.BucketDuration.TotalSeconds / rateWindow.Value.TotalSeconds;
             scaledCap = totalBaseCap * scaleFactor;
         }
 
-        var sortedPoints = aggregation.Buckets
-            .Select(b => new ChartPoint(b.Label, b.Value))
-            .ToList();
         var capPoints = sortedPoints
             .Select(p => new ChartPoint(p.Label, scaledCap))
             .ToList();
@@ -541,6 +566,39 @@ else
         charts.Add(new TargetChartData(label,
             new List<ClientAreaSeries> { new("total", "Total", sortedPoints) },
             capPoints));
+    }
+
+    private static ChartBucketAggregator.AggregationMode GetChartAggregationMode(bool isRateBased)
+        => isRateBased
+            ? ChartBucketAggregator.AggregationMode.Sum
+            : ChartBucketAggregator.AggregationMode.Latest;
+
+    private static double GetHistoricalPointValue(HistoricalUsagePoint point, bool isRateBased)
+        => isRateBased ? point.GrantedCount : point.ActiveCount;
+
+    private static double GetClientUsageValue(IEnumerable<HistoricalUsagePoint> points, bool isRateBased)
+    {
+        if (isRateBased)
+        {
+            return points.Sum(point => (double)point.GrantedCount);
+        }
+
+        return points
+            .OrderByDescending(point => point.Timestamp)
+            .Select(point => (double)point.ActiveCount)
+            .FirstOrDefault();
+    }
+
+    private static List<ChartPoint> SumBuckets(
+        IEnumerable<ChartBucketAggregator.AggregationResult> aggregations,
+        IReadOnlyList<ChartBucketAggregator.AggregatedBucket> referenceBuckets)
+    {
+        var aggregationList = aggregations.ToList();
+        return referenceBuckets
+            .Select((bucket, index) => new ChartPoint(
+                bucket.Label,
+                aggregationList.Sum(aggregation => aggregation.Buckets[index].Value)))
+            .ToList();
     }
 
     private void OnTableSearchChanged()

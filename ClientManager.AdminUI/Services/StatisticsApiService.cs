@@ -93,4 +93,23 @@ public class StatisticsApiService
         }
         return await ApiResponseHandler.GetFromJsonAsync<List<HistoricalUsageResponse>>(_httpClient, url) ?? [];
     }
+
+    public async Task<List<ClientHistoricalUsageResponse>> GetHistoricalUsageByClientAsync(
+        string filterType, IEnumerable<string> targetIds, IEnumerable<string> clientIds,
+        DateTime from, DateTime to, string granularity)
+    {
+        var clientIdList = clientIds.Distinct().ToList();
+        if (clientIdList.Count == 0)
+        {
+            return [];
+        }
+
+        var url = $"api/v1/statistics/historical-usage/by-client?filterType={Uri.EscapeDataString(filterType)}"
+            + $"&targetIds={Uri.EscapeDataString(string.Join(",", targetIds))}"
+            + $"&clientIds={Uri.EscapeDataString(string.Join(",", clientIdList))}"
+            + $"&from={from:O}&to={to:O}"
+            + $"&granularity={Uri.EscapeDataString(granularity)}";
+
+        return await ApiResponseHandler.GetFromJsonAsync<List<ClientHistoricalUsageResponse>>(_httpClient, url) ?? [];
+    }
 }

@@ -2,6 +2,7 @@ namespace ClientManager.AdminUI.Models;
 
 public record TimeRangePreset(string Key, string Label, string Group, TimeSpan Duration, string Granularity)
 {
+    public DateTime GetFrom(DateTime to) => to - Duration;
     public DateTime GetFrom() => DateTime.UtcNow - Duration;
     public DateTime GetTo() => DateTime.UtcNow;
 
@@ -20,7 +21,7 @@ public record TimeRangePreset(string Key, string Label, string Group, TimeSpan D
     public static readonly List<TimeRangePreset> All =
     [
         new("1m",  "Last minute",     "Minutes", TimeSpan.FromMinutes(1),  "Second"),
-        new("5m",  "Last 5 minutes",  "Minutes", TimeSpan.FromMinutes(5),  "FiveMinute"),
+        new("5m",  "Last 5 minutes",  "Minutes", TimeSpan.FromMinutes(5),  "Second"),
         new("15m", "Last 15 minutes", "Minutes", TimeSpan.FromMinutes(15), "FiveMinute"),
         new("30m", "Last 30 minutes", "Minutes", TimeSpan.FromMinutes(30), "FiveMinute"),
         new("1h",  "Last hour",       "Hours",   TimeSpan.FromHours(1),    "FiveMinute"),

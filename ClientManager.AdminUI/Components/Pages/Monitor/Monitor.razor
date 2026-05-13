@@ -196,6 +196,7 @@
     private bool _isVisible = true;
     private IJSObjectReference? _visibilityModule;
     private DotNetObjectReference<Monitor>? _dotNetRef;
+    private int _loadVersion;
 
     private List<TargetChartData> _targetCharts = [];
     private List<MonitorClientRow> _clientRows = [];
@@ -312,16 +313,19 @@
 
     private async Task LoadDataAsync()
     {
+        var loadVersion = System.Threading.Interlocked.Increment(ref _loadVersion);
+
         try
         {
             var now = DateTime.UtcNow;
-            var from = _timeRange.GetFrom();
+            var from = _timeRange.GetFrom(now);
             var recentFrom = now.Subtract(RecentWindow);
+            var chartTemplate = ChartBucketAggregator.Aggregate([], from, now);
+            var chartBucketDuration = chartTemplate.BucketDuration;
 
             var rateLimits = await RateLimitApi.GetByTargetTypeAsync(
                 ClientManager.Shared.Models.Enums.TargetType.Service);
             var rateLimitLookup = rateLimits.ToDictionary(r => r.TargetId);
-            var chartBucketDuration = GetBucketDuration(_timeRange.Granularity);
 
             var visibleServices = _selectedServiceId == AllServicesId
                 ? _allServices
@@ -332,7 +336,7 @@
             // Batch: one call for all breakdowns
             var breakdowns = await StatsService.GetClientUsageBreakdownAsync(
                 "Service", visibleServiceIds, _selectedClientIds,
-                from, _timeRange.GetTo(), _timeRange.Granularity);
+                from, now, _timeRange.Granularity);
             var recentBreakdowns = await StatsService.GetClientUsageBreakdownAsync(
                 "Service", visibleServiceIds, _selectedClientIds,
                 recentFrom, now, "FiveMinute");
@@ -360,7 +364,7 @@
 
             if (_selectedServiceId == AllServicesId)
             {
-                var aggregated = new Dictionary<string, double>();
+                var rawPoints = new List<ChartBucketAggregator.RawPoint>();
                 var totalCap = 0;
 
                 foreach (var service in visibleServices)
@@ -372,13 +376,8 @@
                     var recentEntries = recentBreakdowns
                         .FirstOrDefault(b => b.TargetId == service.Id)?.Entries ?? [];
 
-                    foreach (var point in history?.Points ?? [])
-                    {
-                        var label = _timeRange.FormatTimestamp(point.Timestamp.ToLocalTime());
-                        if (!aggregated.ContainsKey(label))
-                            aggregated[label] = 0;
-                        aggregated[label] += (double)point.GrantedCount;
-                    }
+                    rawPoints.AddRange((history?.Points ?? [])
+                        .Select(point => new ChartBucketAggregator.RawPoint(point.Timestamp, point.GrantedCount)));
 
                     foreach (var entry in breakdown?.Entries ?? [])
                     {
@@ -391,9 +390,10 @@
                     }
                 }
 
-                var sortedPoints = aggregated
-                    .OrderBy(kv => kv.Key)
-                    .Select(kv => new ChartPoint(kv.Key, kv.Value))
+                var aggregation = ChartBucketAggregator.Aggregate(rawPoints, from, now);
+
+                var sortedPoints = aggregation.Buckets
+                    .Select(bucket => new ChartPoint(bucket.Label, bucket.Value))
                     .ToList();
 
                 var capPoints = sortedPoints
@@ -415,40 +415,46 @@
                         .FirstOrDefault(b => b.TargetId == service.Id)?.Entries ?? [];
                     var entries = breakdown?.Entries ?? [];
 
-                    // For per-client chart data, we need individual client histories
-                    var perClientHistoryTasks = entries.Select(entry =>
-                        StatsService.GetHistoricalUsageAsync(
-                            "Service", new[] { service.Id }, entry.ClientId,
-                            from, now, _timeRange.Granularity)).ToList();
-
-                    var perClientHistories = await Task.WhenAll(perClientHistoryTasks);
+                    var historiesByClientId = (await StatsService.GetHistoricalUsageByClientAsync(
+                            "Service",
+                            new[] { service.Id },
+                            entries.Select(entry => entry.ClientId),
+                            from,
+                            now,
+                            _timeRange.Granularity))
+                        .ToDictionary(history => history.ClientId);
 
                     var clientAreas = new List<ClientAreaSeries>();
+                    var clientAggregations = new Dictionary<string, ChartBucketAggregator.AggregationResult>();
 
-                    var allTimestampSet = new SortedSet<string>();
-                    var rawPointsByClient = new List<Dictionary<string, double>>();
-
-                    for (var i = 0; i < entries.Count; i++)
+                    foreach (var entry in entries)
                     {
-                        var lookup = new Dictionary<string, double>();
-                        var historyData = perClientHistories[i].FirstOrDefault();
-                        foreach (var p in historyData?.Points ?? [])
+                        historiesByClientId.TryGetValue(entry.ClientId, out var historyData);
+                        var rawPoints = (historyData?.Points ?? [])
+                            .Select(point => new ChartBucketAggregator.RawPoint(point.Timestamp, point.GrantedCount))
+                            .ToList();
+
+                        if (rawPoints.Count == 0)
                         {
-                            var label = _timeRange.FormatTimestamp(p.Timestamp.ToLocalTime());
-                            allTimestampSet.Add(label);
-                            lookup[label] = (double)p.GrantedCount;
+                            continue;
                         }
-                        rawPointsByClient.Add(lookup);
+
+                        clientAggregations[entry.ClientId] = ChartBucketAggregator.Aggregate(rawPoints, from, now);
                     }
 
-                    var allTimestamps = allTimestampSet.ToList();
+                    var referenceBuckets = clientAggregations.Values.FirstOrDefault()?.Buckets
+                        ?? chartTemplate.Buckets;
 
                     for (var i = 0; i < entries.Count; i++)
                     {
                         var entry = entries[i];
-                        var lookup = rawPointsByClient[i];
-                        var points = allTimestamps
-                            .Select(t => new ChartPoint(t, lookup.GetValueOrDefault(t, 0)))
+                        if (!clientAggregations.TryGetValue(entry.ClientId, out var aggregation))
+                        {
+                            continue;
+                        }
+
+                        var points = aggregation.Buckets
+                            .Select(bucket => new ChartPoint(bucket.Label, bucket.Value))
                             .ToList();
 
                         clientAreas.Add(new ClientAreaSeries(entry.ClientId, entry.ClientName, points));
@@ -462,8 +468,8 @@
                             GetEffectiveClientServiceCap(entry.ClientId, service.Id, rateLimitLookup, RecentWindow)));
                     }
 
-                    var chartCapPoints = allTimestamps
-                        .Select(t => new ChartPoint(t, chartCap))
+                    var chartCapPoints = referenceBuckets
+                        .Select(bucket => new ChartPoint(bucket.Label, chartCap))
                         .ToList();
 
                     var aggregated = ChartAggregator.Aggregate(
@@ -479,6 +485,11 @@
 
                     charts.Add(new TargetChartData(service.Name, clientAreas, chartCapPoints));
                 }
+            }
+
+            if (loadVersion != _loadVersion)
+            {
+                return;
             }
 
             _targetCharts = charts;
@@ -509,6 +520,11 @@
         }
         catch (HttpRequestException ex)
         {
+            if (loadVersion != _loadVersion)
+            {
+                return;
+            }
+
             _error = $"Unable to load data: {ex.Message}";
         }
     }
@@ -580,14 +596,6 @@
             ? Math.Max(1, (int)Math.Round(scaled, MidpointRounding.AwayFromZero))
             : 0;
     }
-
-    private static TimeSpan GetBucketDuration(string granularity) => granularity switch
-    {
-        "Second" => TimeSpan.FromSeconds(1),
-        "Hour" => TimeSpan.FromHours(1),
-        "Day" => TimeSpan.FromDays(1),
-        _ => TimeSpan.FromMinutes(5)
-    };
 
     private static List<ClientAreaSeries> TransformStackedLogarithmic(List<ClientAreaSeries> series)
     {
