@@ -132,6 +132,32 @@ Pass: review follow-up for RVW-001
 - Workspace status after commit: Reported by @Inscribe final response.
 - Remaining uncommitted files: Reported by @Inscribe final response.
 
+## RVW-001 Commit-Stable Follow-up Intent
+
+- Pass type: Second review follow-up for RVW-001 stale post-commit state
+- Plan step: .github/plans/hot-path-performance-observability-1-baseline-runtime.md
+- Scope: Commit-stable canonical RVW-001 bookkeeping and related packet updates.
+- Reason this is one commit: The ledger, progress note, handoff, normalized review, timeline, and commit packet all describe the same final RVW-001 remediation: the bookkeeping is already applied, no further remediation commit is pending, and the loop is ready for @Inspect re-review/@Intake normalization.
+- Included files: `.github/iterations/hot-path-performance-observability-1-baseline-runtime/run-ledger.md`, `.github/agent-progress/hot-path-performance-observability-1-baseline-runtime.md`, `.github/iterations/hot-path-performance-observability-1-baseline-runtime/review-packet.md`, `.github/iterations/hot-path-performance-observability-1-baseline-runtime/implementation-handoff.md`, `.github/iterations/hot-path-performance-observability-1-baseline-runtime/timeline.md`, `.github/iterations/hot-path-performance-observability-1-baseline-runtime/commit-packet.md`.
+- Excluded files: Source files, benchmark artifacts, plan artifacts, generated build outputs, runtime data, execution-report.md, decision-log.md, and unrelated workspace changes.
+- Branch action: Stayed on existing branch `feature/hot-path-performance-observability-1-baseline-runtime`; no branch switch was needed.
+
+## RVW-001 Commit-Stable Follow-up Commit Message
+
+```text
+fix(iterations): stabilize RVW-001 bookkeeping
+
+Plan: .github/plans/hot-path-performance-observability-1-baseline-runtime.md
+Pass: second review follow-up for RVW-001 stale post-commit state
+```
+
+## RVW-001 Commit-Stable Follow-up Result
+
+- Commit hash: Reported by @Inscribe final response because this commit cannot contain its own Git object hash without a follow-up dirty-file loop.
+- Push result: Reported by @Inscribe final response after checking `origin`.
+- Workspace status after commit: Reported by @Inscribe final response.
+- Remaining uncommitted files: Reported by @Inscribe final response.
+
 ## Commit History
 
 | Pass | Commit | Branch | Notes |
@@ -139,4 +165,5 @@ Pass: review follow-up for RVW-001
 | Initial implementation | b0958b9 | feature/hot-path-performance-observability-1-baseline-runtime | Restored baseline runtime capture while preserving the 503-heavy verification blocker. |
 | Blocked closeout bookkeeping | Reported by @Inscribe final response | feature/hot-path-performance-observability-1-baseline-runtime | Commits only agent-authored closeout packet/report/progress-note updates. |
 | User-decision follow-up | Reported by @Inscribe final response | feature/hot-path-performance-observability-1-baseline-runtime | Applies DEC-001 by using the provisional artifact as the before comparison anchor and preserving degraded rebuilt-run evidence. |
-| RVW-001 bookkeeping remediation | Reported by @Inscribe final response | feature/hot-path-performance-observability-1-baseline-runtime | Commits only RVW-001 ledger/progress/review/handoff/timeline/commit-packet updates. |
+| RVW-001 bookkeeping remediation | 99160f2 | feature/hot-path-performance-observability-1-baseline-runtime | Committed RVW-001 ledger/progress/review/handoff/timeline/commit-packet updates; re-review found stale post-commit wording remained. |
+| RVW-001 commit-stable follow-up | Reported by @Inscribe final response | feature/hot-path-performance-observability-1-baseline-runtime | Commits only the final RVW-001 commit-stable remediation files and related packet updates. |

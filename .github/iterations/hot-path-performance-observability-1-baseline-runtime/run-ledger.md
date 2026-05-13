@@ -3,7 +3,7 @@
 ## Iteration
 
 - Slug: hot-path-performance-observability-1-baseline-runtime
-- Status: DEC-001 follow-up committed; review finding RVW-001 being remediated
+- Status: DEC-001 follow-up and RVW-001 bookkeeping are applied; ready for @Inspect re-review/@Intake normalization
 - Owning orchestrator: @Iterate
 
 ## Selected Scope
@@ -15,6 +15,7 @@
 ## Repo Baseline
 
 - Baseline commit: 029ea6bb4b870522758cf83903dfdfb8eadeec8d
+- Latest commit: RVW-001 commit-stable follow-up hash reported by @Inscribe final response; previous RVW-001 bookkeeping commit was 99160f2 fix(iterations): address RVW-001 bookkeeping
 - Working branch: feature/hot-path-performance-observability-1-baseline-runtime
 - Comparison range: 029ea6bb4b870522758cf83903dfdfb8eadeec8d..HEAD
 
@@ -22,8 +23,8 @@
 
 - Next agent: @Inspect
 - Review round: 1
-- Latest verification: DEC-001 follow-up verification passed: the before artifact parses as strict UTF-8 JSON, has no BOM, is JSON-data equivalent to the provisional artifact, and git diff hygiene passed.
-- Latest decision: DEC-001 follow-up was applied and committed as d6099de. The before comparison anchor now uses the provisional baseline data, while the degraded rebuilt source run remains preserved as current-state evidence.
+- Latest verification: RVW-001 commit-stable bookkeeping check passed: the canonical run ledger and progress note no longer direct a follow-up commit for the already-committed RVW-001 remediation.
+- Latest decision: DEC-001 follow-up was applied and committed as d6099de. RVW-001 bookkeeping remediation was committed as 99160f2, and this commit-stable follow-up removes the remaining stale post-commit state. Canonical resume state is ready for @Inspect re-review/@Intake normalization.
 
 ## Packet Links
 
@@ -38,10 +39,10 @@
 ## Open Items
 
 - Blockers: None after user clarification. Preserve the degraded rebuilt-source evidence, but do not stop Step 1 solely because the current hot paths produce 503s.
-- Outstanding findings: RVW-001 is being remediated by updating canonical bookkeeping to match commit d6099de.
-- Next action: Commit the RVW-001 bookkeeping fix, then rerun @Inspect and @Intake.
+- Outstanding findings: RVW-001 bookkeeping content has been fixed/applied; awaiting @Inspect re-review and @Intake normalization.
+- Next action: Run @Inspect re-review, then @Intake normalization if review changes need normalization.
 
 ## Resume Notes
 
-- Current context: Specific user-selected plan step is active. The implementation pass restored source launchability and benchmark artifact writing. User clarified that the degraded 503-heavy rebuilt run is acceptable evidence because later steps are meant to resolve it. Commit d6099de applied DEC-001 by replacing the before comparison artifact with provisional baseline data.
-- Recovery instructions: Continue with RVW-001 bookkeeping commit, then rerun @Inspect. If approved, normalize review and finalize Step 1.
+- Current context: Specific user-selected plan step is active. The implementation pass restored source launchability and benchmark artifact writing. User clarified that the degraded 503-heavy rebuilt run is acceptable evidence because later steps are meant to resolve it. Commit d6099de applied DEC-001 by replacing the before comparison artifact with provisional baseline data, and commit 99160f2 applied the RVW-001 bookkeeping remediation.
+- Recovery instructions: Rerun @Inspect. If approved, normalize review through @Intake and finalize Step 1.
