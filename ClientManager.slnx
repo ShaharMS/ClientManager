@@ -1,7 +1,15 @@
 <Solution>
-  <Project Path="ClientManager.Api/ClientManager.Api.csproj" />
-  <Project Path="ClientManager.StorageApi/ClientManager.StorageApi.csproj" />
-  <Project Path="ClientManager.Shared/ClientManager.Shared.csproj" />
-  <Project Path="ClientManager.DataAccess/ClientManager.DataAccess.csproj" />
+  <Folder Name="/Solution Items/">
+    <File Path=".gitignore" />
+  </Folder>
+  <Folder Name="/Solution Items/Scripts/">
+    <File Path="_scripts/performance_baseline.py" />
+    <File Path="_scripts/seed_data.py" />
+    <File Path="_scripts/traffic_generator.py" />
+  </Folder>
   <Project Path="ClientManager.AdminUI/ClientManager.AdminUI.csproj" />
+  <Project Path="ClientManager.Api/ClientManager.Api.csproj" />
+  <Project Path="ClientManager.DataAccess/ClientManager.DataAccess.csproj" />
+  <Project Path="ClientManager.Shared/ClientManager.Shared.csproj" />
+  <Project Path="ClientManager.StorageApi/ClientManager.StorageApi.csproj" />
 </Solution>

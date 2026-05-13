@@ -48,3 +48,4 @@ lucene-index/
 _scripts/
 
 TempBlazor/
+.artifacts/
