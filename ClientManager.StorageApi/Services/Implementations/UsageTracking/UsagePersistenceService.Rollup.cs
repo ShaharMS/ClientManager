@@ -10,7 +10,7 @@ namespace ClientManager.StorageApi.Services.Implementations.UsageTracking;
 /// </summary>
 public partial class UsagePersistenceService
 {
-    private async Task RollUpAsync(
+    private async Task<bool> RollUpAsync(
         IUsageSnapshotDatabase database,
         BucketGranularity sourceGranularity,
         BucketGranularity targetGranularity,
@@ -19,14 +19,17 @@ public partial class UsagePersistenceService
     {
         var cutoff = DateTime.UtcNow - ageThreshold;
         var snapshots = await database.GetAllByGranularityAsync(sourceGranularity, cancellationToken);
+        var mutated = false;
 
         foreach (var snapshot in snapshots)
         {
-            await RollUpSnapshotAsync(snapshot, cutoff, targetGranularity, database, cancellationToken);
+            mutated |= await RollUpSnapshotAsync(snapshot, cutoff, targetGranularity, database, cancellationToken);
         }
+
+        return mutated;
     }
 
-    private async Task RollUpSnapshotAsync(
+    private async Task<bool> RollUpSnapshotAsync(
         UsageSnapshot source,
         DateTime cutoff,
         BucketGranularity targetGranularity,
@@ -36,7 +39,7 @@ public partial class UsagePersistenceService
         var bucketsToRollUp = source.Buckets.Where(bucket => bucket.Timestamp < cutoff).ToList();
         if (bucketsToRollUp.Count == 0)
         {
-            return;
+            return false;
         }
 
         foreach (var group in bucketsToRollUp.GroupBy(bucket => RoundDownToGranularity(bucket.Timestamp, targetGranularity)))
@@ -54,10 +57,11 @@ public partial class UsagePersistenceService
         if (remaining.Count == 0)
         {
             await database.DeleteAsync(source.Id, cancellationToken);
-            return;
+            return true;
         }
 
         await database.UpsertAsync(source with { Buckets = remaining }, cancellationToken);
+        return true;
     }
 
     private async Task UpsertRolledUpSnapshotAsync(
@@ -118,25 +122,29 @@ public partial class UsagePersistenceService
         return merged;
     }
 
-    private async Task PruneExpiredAsync(
+    private async Task<bool> PruneExpiredAsync(
         IUsageSnapshotDatabase database,
         CancellationToken cancellationToken)
     {
         var now = DateTime.UtcNow;
+        var mutated = false;
 
-        await PruneGranularityAsync(database, BucketGranularity.Second, now - _options.SecondRetention, cancellationToken);
-        await PruneGranularityAsync(database, BucketGranularity.FiveMinute, now - _options.FiveMinuteRetention, cancellationToken);
-        await PruneGranularityAsync(database, BucketGranularity.Hour, now - _options.HourlyRetention, cancellationToken);
-        await PruneGranularityAsync(database, BucketGranularity.Day, now - _options.DailyRetention, cancellationToken);
+        mutated |= await PruneGranularityAsync(database, BucketGranularity.Second, now - _options.SecondRetention, cancellationToken);
+        mutated |= await PruneGranularityAsync(database, BucketGranularity.FiveMinute, now - _options.FiveMinuteRetention, cancellationToken);
+        mutated |= await PruneGranularityAsync(database, BucketGranularity.Hour, now - _options.HourlyRetention, cancellationToken);
+        mutated |= await PruneGranularityAsync(database, BucketGranularity.Day, now - _options.DailyRetention, cancellationToken);
+
+        return mutated;
     }
 
-    private static async Task PruneGranularityAsync(
+    private static async Task<bool> PruneGranularityAsync(
         IUsageSnapshotDatabase database,
         BucketGranularity granularity,
         DateTime cutoff,
         CancellationToken cancellationToken)
     {
         var snapshots = await database.GetAllByGranularityAsync(granularity, cancellationToken);
+        var mutated = false;
 
         foreach (var snapshot in snapshots)
         {
@@ -146,6 +154,7 @@ public partial class UsagePersistenceService
                 if (segmentEnd <= cutoff)
                 {
                     await database.DeleteAsync(snapshot.Id, cancellationToken);
+                    mutated = true;
                     continue;
                 }
             }
@@ -154,14 +163,18 @@ public partial class UsagePersistenceService
             if (remaining.Count == 0)
             {
                 await database.DeleteAsync(snapshot.Id, cancellationToken);
+                mutated = true;
                 continue;
             }
 
             if (remaining.Count < snapshot.Buckets.Count)
             {
                 await database.UpsertAsync(snapshot with { Buckets = remaining }, cancellationToken);
+                mutated = true;
             }
         }
+
+        return mutated;
     }
 
     private static (long Granted, long Denied, long Released, long Active) SumBuckets(

@@ -50,7 +50,7 @@ public class UsageTrackingOptions
     /// <summary>
     /// Retention window for per-second buckets.
     /// </summary>
-    public TimeSpan SecondRetention { get; set; } = TimeSpan.FromMinutes(3);
+    public TimeSpan SecondRetention { get; set; } = TimeSpan.FromMinutes(5);
 
     /// <summary>
     /// Retention window for five-minute buckets.

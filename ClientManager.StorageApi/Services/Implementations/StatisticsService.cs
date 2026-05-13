@@ -11,7 +11,7 @@ namespace ClientManager.StorageApi.Services.Implementations;
 /// <summary>
 /// Builds dashboard and export read models inside the storage-owning host.
 /// </summary>
-public class StatisticsService : IStatisticsService
+public partial class StatisticsService : IStatisticsService
 {
     private readonly IClientConfigurationDatabase _clientConfigDatabase;
     private readonly IEntityRepository<Service> _serviceRepository;
@@ -55,66 +55,44 @@ public class StatisticsService : IStatisticsService
         BucketGranularity? granularity = null,
         CancellationToken cancellationToken = default)
     {
-        var targetList = targetIds.ToList();
-        var clientList = clientIds?.ToList();
+        var targetList = NormalizeIds(targetIds);
+        var clientList = NormalizeOptionalIds(clientIds);
 
         return await _cache.GetOrCreateStatisticsAsync(
-            $"usage-timeseries:{targetType}:{string.Join(',', targetList)}:{string.Join(',', clientList ?? [])}:{from:O}:{to:O}:{granularity}",
+            $"usage-timeseries:{targetType}:{CreateIdsCacheKey(targetList)}:{CreateOptionalIdsCacheKey(clientList)}:{from:O}:{to:O}:{granularity}",
             async token =>
             {
                 var effectiveGranularity = granularity ?? BucketGranularity.FiveMinute;
                 var now = DateTime.UtcNow;
                 var effectiveTo = to ?? now;
                 var effectiveFrom = from ?? RoundDownToFiveMinutes(now).AddHours(-1);
-                var clientIdSet = clientList?.ToHashSet();
+                var capValues = await LoadTargetCapValuesAsync(targetType, targetList, token);
+                var totalsByTarget = clientList is null
+                    ? await GetContinuousBucketTotalsByTargetAsync(
+                        targetList,
+                        targetType,
+                        null,
+                        effectiveFrom,
+                        effectiveTo,
+                        effectiveGranularity,
+                        token)
+                    : null;
+                var totalsByClient = clientList is null
+                    ? null
+                    : await GetContinuousBucketTotalsByTargetClientAsync(
+                        targetList,
+                        targetType,
+                        clientList,
+                        effectiveFrom,
+                        effectiveTo,
+                        effectiveGranularity,
+                        token);
                 var results = new List<TargetUsageTimeSeriesResponse>();
 
                 foreach (var targetId in targetList)
                 {
-                    double capValue = 0;
-
-                    if (targetType == TargetType.Service)
-                    {
-                        var globalLimit = await _globalRateLimitDatabase.GetByTargetAsync(
-                            targetId,
-                            TargetType.Service,
-                            token);
-                        capValue = globalLimit?.MaxRequests ?? 0;
-                    }
-                    else
-                    {
-                        var pool = await _poolRepository.GetByIdAsync(targetId, token);
-                        capValue = pool?.MaxSlots ?? 0;
-                    }
-
-                    var snapshots = await _usageSnapshotDatabase.GetByTargetAndRangeAsync(
-                        targetId,
-                        targetType,
-                        effectiveGranularity,
-                        effectiveFrom,
-                        effectiveTo,
-                        token);
-
-                    if (clientIdSet is not null)
-                    {
-                        snapshots = [.. snapshots.Where(snapshot => clientIdSet.Contains(snapshot.ClientId))];
-                    }
-
-                    var aggregated = new SortedDictionary<DateTime, double>();
-                    foreach (var snapshot in snapshots)
-                    {
-                        foreach (var bucket in snapshot.Buckets)
-                        {
-                            if (bucket.Timestamp < effectiveFrom || bucket.Timestamp > effectiveTo)
-                            {
-                                continue;
-                            }
-
-                            aggregated[bucket.Timestamp] = aggregated.GetValueOrDefault(bucket.Timestamp) + bucket.GrantedCount;
-                        }
-                    }
-
-                    var usagePoints = aggregated.Select(kvp => new TimeSeriesPoint(kvp.Key, kvp.Value)).ToList();
+                    var usagePoints = GetUsageTimeSeriesPoints(targetId, clientList, totalsByTarget, totalsByClient);
+                    var capValue = capValues.GetValueOrDefault(targetId);
                     var capPoints = usagePoints.Select(point => new TimeSeriesPoint(point.Timestamp, capValue)).ToList();
 
                     results.Add(new TargetUsageTimeSeriesResponse(targetId, usagePoints, capPoints));
@@ -134,76 +112,50 @@ public class StatisticsService : IStatisticsService
         BucketGranularity? granularity = null,
         CancellationToken cancellationToken = default)
     {
-        var targetList = targetIds.ToList();
-        var clientList = clientIds?.ToList();
+        var targetList = NormalizeIds(targetIds);
+        var clientList = NormalizeOptionalIds(clientIds);
 
         return await _cache.GetOrCreateStatisticsAsync(
-            $"client-usage-breakdown:{targetType}:{string.Join(',', targetList)}:{string.Join(',', clientList ?? [])}:{from:O}:{to:O}:{granularity}",
+            $"client-usage-breakdown:{targetType}:{CreateIdsCacheKey(targetList)}:{CreateOptionalIdsCacheKey(clientList)}:{from:O}:{to:O}:{granularity}",
             async token =>
             {
                 var effectiveGranularity = granularity ?? BucketGranularity.FiveMinute;
                 var now = DateTime.UtcNow;
-                var fallbackOrder = GetGranularityFallbackOrder(effectiveGranularity);
+                var effectiveFrom = from ?? RoundDownToFiveMinutes(now).AddMinutes(-5);
+                var effectiveTo = to ?? now;
                 var clients = await _clientConfigDatabase.GetAllAsync(token);
-                var clientIdSet = clientList?.ToHashSet();
+                var clientMap = clients.ToDictionary(client => client.Id, StringComparer.Ordinal);
+                var selectedClientIds = clientList ?? NormalizeIds(clients.Select(client => client.Id));
+                var knownClientIds = selectedClientIds.Where(clientMap.ContainsKey).ToList();
+                var totalsByClient = await GetContinuousBucketTotalsByTargetClientAsync(
+                    targetList,
+                    targetType,
+                    knownClientIds,
+                    effectiveFrom,
+                    effectiveTo,
+                    effectiveGranularity,
+                    token);
                 var results = new List<TargetClientUsageBreakdownResponse>();
 
                 foreach (var targetId in targetList)
                 {
                     var entries = new List<ClientUsageEntry>();
 
-                    foreach (var tryGranularity in fallbackOrder)
+                    foreach (var clientId in knownClientIds)
                     {
-                        entries.Clear();
-
-                        var effectiveFrom = from ?? RoundDownToFiveMinutes(now).AddMinutes(-5);
-                        var effectiveTo = to ?? now;
-
-                        foreach (var client in clients)
+                        if (!totalsByClient.TryGetValue((targetId, clientId), out var totals) || totals.Buckets.Count == 0)
                         {
-                            if (clientIdSet is not null && !clientIdSet.Contains(client.Id))
-                            {
-                                continue;
-                            }
-
-                            var segmentStarts = UsageSegmentHelper.EnumerateSegmentStarts(effectiveFrom, effectiveTo, tryGranularity);
-                            var allBuckets = new List<UsageBucket>();
-
-                            foreach (var segmentStart in segmentStarts)
-                            {
-                                var snapshot = await _usageSnapshotDatabase.GetByClientTargetAndSegmentAsync(
-                                    client.Id,
-                                    targetId,
-                                    targetType,
-                                    tryGranularity,
-                                    segmentStart,
-                                    token);
-
-                                if (snapshot is not null)
-                                {
-                                    allBuckets.AddRange(snapshot.Buckets);
-                                }
-                            }
-
-                            if (allBuckets.Count == 0)
-                            {
-                                continue;
-                            }
-
-                            var filteredBuckets = allBuckets.Where(bucket => bucket.Timestamp >= effectiveFrom && bucket.Timestamp <= effectiveTo);
-                            var grantedCount = filteredBuckets.Sum(bucket => bucket.GrantedCount);
-                            var deniedCount = filteredBuckets.Sum(bucket => bucket.DeniedCount);
-                            var latestActiveCount = filteredBuckets.OrderBy(bucket => bucket.Timestamp).Select(bucket => bucket.ActiveCount).LastOrDefault();
-
-                            if (grantedCount > 0 || deniedCount > 0 || latestActiveCount > 0)
-                            {
-                                entries.Add(new ClientUsageEntry(client.Id, client.Name, grantedCount, deniedCount, latestActiveCount));
-                            }
+                            continue;
                         }
 
-                        if (entries.Count > 0)
+                        var grantedCount = totals.Buckets.Values.Sum(bucket => bucket.Granted);
+                        var deniedCount = totals.Buckets.Values.Sum(bucket => bucket.Denied);
+                        var latestActiveCount = totals.Buckets.Last().Value.Active;
+
+                        if (grantedCount > 0 || deniedCount > 0 || latestActiveCount > 0)
                         {
-                            break;
+                            var client = clientMap[clientId];
+                            entries.Add(new ClientUsageEntry(client.Id, client.Name, grantedCount, deniedCount, latestActiveCount));
                         }
                     }
 
@@ -230,30 +182,93 @@ public class StatisticsService : IStatisticsService
         BucketGranularity granularity,
         CancellationToken cancellationToken = default)
     {
-        var targetList = targetIds.ToList();
+        var targetList = NormalizeIds(targetIds);
+        var normalizedClientId = string.IsNullOrWhiteSpace(clientId) ? null : clientId.Trim();
+        IReadOnlyList<string>? clientList = normalizedClientId is null ? null : [normalizedClientId];
 
         return await _cache.GetOrCreateStatisticsAsync(
-            $"historical-usage:{targetType}:{string.Join(',', targetList)}:{clientId}:{from:O}:{to:O}:{granularity}",
+            $"historical-usage:{targetType}:{CreateIdsCacheKey(targetList)}:{normalizedClientId}:{from:O}:{to:O}:{granularity}",
             async token =>
             {
+                var totalsByTarget = await GetContinuousBucketTotalsByTargetAsync(
+                    targetList,
+                    targetType,
+                    clientList,
+                    from,
+                    to,
+                    granularity,
+                    token);
                 var results = new List<HistoricalUsageResponse>();
-                var fallbackOrder = GetGranularityFallbackOrder(granularity);
 
                 foreach (var targetId in targetList)
                 {
-                    var (points, actualGranularity) = await FetchHistoricalPointsWithFallbackAsync(
-                        targetId,
-                        targetType,
-                        clientId,
-                        from,
-                        to,
-                        fallbackOrder,
-                        token);
+                    var points = new List<HistoricalUsagePoint>();
+                    var actualGranularity = granularity;
+
+                    if (totalsByTarget.TryGetValue(targetId, out var totals))
+                    {
+                        points = ToHistoricalUsagePoints(totals.Buckets);
+                        actualGranularity = totals.ActualGranularity;
+                    }
 
                     results.Add(new HistoricalUsageResponse(targetId, targetType, actualGranularity, points));
                 }
 
                 return (IReadOnlyList<HistoricalUsageResponse>)results;
+            },
+            cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<ClientHistoricalUsageResponse>> GetHistoricalUsageByClientAsync(
+        IEnumerable<string> targetIds,
+        TargetType targetType,
+        IEnumerable<string> clientIds,
+        DateTime from,
+        DateTime to,
+        BucketGranularity granularity,
+        CancellationToken cancellationToken = default)
+    {
+        var targetList = NormalizeIds(targetIds);
+        var clientList = NormalizeIds(clientIds);
+
+        if (targetList.Count == 0 || clientList.Count == 0)
+        {
+            return [];
+        }
+
+        return await _cache.GetOrCreateStatisticsAsync(
+            $"historical-usage-by-client:{targetType}:{CreateIdsCacheKey(targetList)}:{CreateIdsCacheKey(clientList)}:{from:O}:{to:O}:{granularity}",
+            async token =>
+            {
+                var totalsByTargetClient = await GetContinuousBucketTotalsByTargetClientAsync(
+                    targetList,
+                    targetType,
+                    clientList,
+                    from,
+                    to,
+                    granularity,
+                    token);
+                var results = new List<ClientHistoricalUsageResponse>();
+
+                foreach (var targetId in targetList)
+                {
+                    foreach (var clientId in clientList)
+                    {
+                        if (!totalsByTargetClient.TryGetValue((targetId, clientId), out var totals) || totals.Buckets.Count == 0)
+                        {
+                            continue;
+                        }
+
+                        results.Add(new ClientHistoricalUsageResponse(
+                            targetId,
+                            targetType,
+                            clientId,
+                            totals.ActualGranularity,
+                            ToHistoricalUsagePoints(totals.Buckets)));
+                    }
+                }
+
+                return (IReadOnlyList<ClientHistoricalUsageResponse>)results;
             },
             cancellationToken);
     }
@@ -275,49 +290,22 @@ public class StatisticsService : IStatisticsService
             : 0;
 
         var now = DateTime.UtcNow;
-        var secondCutoff = now.AddSeconds(-60);
+        var recentWindowStart = now.AddMinutes(-5);
         var services = await _serviceRepository.GetAllAsync(cancellationToken);
+        var clients = await _clientConfigDatabase.GetAllAsync(cancellationToken);
+        var serviceIds = NormalizeIds(services.Select(service => service.Id));
+        var clientIds = NormalizeIds(clients.Select(client => client.Id));
+        var totalsByService = await GetContinuousBucketTotalsByTargetAsync(
+            serviceIds,
+            TargetType.Service,
+            clientIds,
+            recentWindowStart,
+            now,
+            BucketGranularity.FiveMinute,
+            cancellationToken);
 
-        long recentSecondRequests = 0;
-        foreach (var service in services)
-        {
-            var snapshots = await _usageSnapshotDatabase.GetByTargetAndRangeAsync(
-                service.Id,
-                TargetType.Service,
-                BucketGranularity.Second,
-                secondCutoff,
-                now,
-                cancellationToken);
-
-            recentSecondRequests += snapshots
-                .SelectMany(snapshot => snapshot.Buckets)
-                .Where(bucket => bucket.Timestamp >= secondCutoff)
-                .Sum(bucket => bucket.GrantedCount);
-        }
-
-        if (recentSecondRequests > 0)
-        {
-            return new GlobalUsageStatsResponse(recentSecondRequests, totalSlots, acquiredSlots, acquisitionPercentage);
-        }
-
-        var latestBucketTime = RoundDownToFiveMinutes(now).AddMinutes(-5);
-        long recentRequests = 0;
-
-        foreach (var service in services)
-        {
-            var snapshots = await _usageSnapshotDatabase.GetByTargetAndRangeAsync(
-                service.Id,
-                TargetType.Service,
-                BucketGranularity.FiveMinute,
-                latestBucketTime,
-                latestBucketTime.AddMinutes(5),
-                cancellationToken);
-
-            recentRequests += snapshots
-                .SelectMany(snapshot => snapshot.Buckets)
-                .Where(bucket => bucket.Timestamp == latestBucketTime)
-                .Sum(bucket => bucket.GrantedCount);
-        }
+        var recentRequests = totalsByService.Values
+            .Sum(service => service.Buckets.Values.Sum(bucket => bucket.Granted));
 
         return new GlobalUsageStatsResponse(
             Math.Round(recentRequests / 5.0, 1),
@@ -359,6 +347,95 @@ public class StatisticsService : IStatisticsService
         return new ClientSummariesResponse(rows);
     }
 
+    private async Task<IReadOnlyDictionary<string, double>> LoadTargetCapValuesAsync(
+        TargetType targetType,
+        IReadOnlyCollection<string> targetIds,
+        CancellationToken cancellationToken)
+    {
+        if (targetIds.Count == 0)
+        {
+            return new Dictionary<string, double>(StringComparer.Ordinal);
+        }
+
+        var targetIdSet = targetIds.ToHashSet(StringComparer.Ordinal);
+        if (targetType == TargetType.Service)
+        {
+            var limits = await _globalRateLimitDatabase.GetByTargetTypeAsync(TargetType.Service, cancellationToken);
+            return limits
+                .Where(limit => targetIdSet.Contains(limit.TargetId))
+                .GroupBy(limit => limit.TargetId, StringComparer.Ordinal)
+                .ToDictionary(group => group.Key, group => (double)group.First().MaxRequests, StringComparer.Ordinal);
+        }
+
+        var pools = await _poolRepository.GetAllAsync(cancellationToken);
+        return pools
+            .Where(pool => targetIdSet.Contains(pool.Id))
+            .ToDictionary(pool => pool.Id, pool => (double)pool.MaxSlots, StringComparer.Ordinal);
+    }
+
+    private static List<TimeSeriesPoint> ToUsageTimeSeriesPoints(
+        SortedDictionary<DateTime, AggregatedBucketTotals> buckets)
+    {
+        return buckets
+            .Select(kvp => new TimeSeriesPoint(kvp.Key, kvp.Value.Granted))
+            .ToList();
+    }
+
+    private static List<TimeSeriesPoint> GetUsageTimeSeriesPoints(
+        string targetId,
+        IReadOnlyCollection<string>? clientIds,
+        IReadOnlyDictionary<string, (SortedDictionary<DateTime, AggregatedBucketTotals> Buckets, BucketGranularity ActualGranularity)>? totalsByTarget,
+        IReadOnlyDictionary<(string TargetId, string ClientId), (SortedDictionary<DateTime, AggregatedBucketTotals> Buckets, BucketGranularity ActualGranularity)>? totalsByClient)
+    {
+        if (clientIds is null)
+        {
+            return totalsByTarget is not null && totalsByTarget.TryGetValue(targetId, out var targetTotals)
+                ? ToUsageTimeSeriesPoints(targetTotals.Buckets)
+                : [];
+        }
+
+        var aggregated = new SortedDictionary<DateTime, double>();
+        foreach (var clientId in clientIds)
+        {
+            if (totalsByClient is null || !totalsByClient.TryGetValue((targetId, clientId), out var clientTotals))
+            {
+                continue;
+            }
+
+            foreach (var bucket in clientTotals.Buckets)
+            {
+                aggregated[bucket.Key] = aggregated.GetValueOrDefault(bucket.Key) + bucket.Value.Granted;
+            }
+        }
+
+        return aggregated.Select(kvp => new TimeSeriesPoint(kvp.Key, kvp.Value)).ToList();
+    }
+
+    private static IReadOnlyList<string> NormalizeIds(IEnumerable<string> ids)
+    {
+        return ids
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Select(id => id.Trim())
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(id => id, StringComparer.Ordinal)
+            .ToList();
+    }
+
+    private static IReadOnlyList<string>? NormalizeOptionalIds(IEnumerable<string>? ids)
+    {
+        return ids is null ? null : NormalizeIds(ids);
+    }
+
+    private static string CreateIdsCacheKey(IReadOnlyCollection<string> ids)
+    {
+        return string.Join(',', ids);
+    }
+
+    private static string CreateOptionalIdsCacheKey(IReadOnlyCollection<string>? ids)
+    {
+        return ids is null ? "*" : string.Join(',', ids);
+    }
+
     private static BucketGranularity[] GetGranularityFallbackOrder(BucketGranularity requested)
     {
         return requested switch
@@ -371,95 +448,6 @@ public class StatisticsService : IStatisticsService
         };
     }
 
-    private async Task<(List<HistoricalUsagePoint> Points, BucketGranularity ActualGranularity)> FetchHistoricalPointsWithFallbackAsync(
-        string targetId,
-        TargetType targetType,
-        string? clientId,
-        DateTime from,
-        DateTime to,
-        BucketGranularity[] fallbackOrder,
-        CancellationToken cancellationToken)
-    {
-        foreach (var granularity in fallbackOrder)
-        {
-            IReadOnlyList<UsageSnapshot> snapshots;
-
-            if (clientId is not null)
-            {
-                var segmentStarts = UsageSegmentHelper.EnumerateSegmentStarts(from, to, granularity);
-                var collected = new List<UsageSnapshot>();
-
-                foreach (var segmentStart in segmentStarts)
-                {
-                    var snapshot = await _usageSnapshotDatabase.GetByClientTargetAndSegmentAsync(
-                        clientId,
-                        targetId,
-                        targetType,
-                        granularity,
-                        segmentStart,
-                        cancellationToken);
-
-                    if (snapshot is not null)
-                    {
-                        collected.Add(snapshot);
-                    }
-                }
-
-                snapshots = collected;
-            }
-            else
-            {
-                snapshots = await _usageSnapshotDatabase.GetByTargetAndRangeAsync(
-                    targetId,
-                    targetType,
-                    granularity,
-                    from,
-                    to,
-                    cancellationToken);
-            }
-
-            var aggregated = new SortedDictionary<DateTime, (long granted, long denied, long released, long active)>();
-
-            foreach (var snapshot in snapshots)
-            {
-                foreach (var bucket in snapshot.Buckets)
-                {
-                    if (bucket.Timestamp < from || bucket.Timestamp > to)
-                    {
-                        continue;
-                    }
-
-                    if (aggregated.TryGetValue(bucket.Timestamp, out var existing))
-                    {
-                        aggregated[bucket.Timestamp] = (
-                            existing.granted + bucket.GrantedCount,
-                            existing.denied + bucket.DeniedCount,
-                            existing.released + bucket.ReleasedCount,
-                            existing.active + bucket.ActiveCount);
-                    }
-                    else
-                    {
-                        aggregated[bucket.Timestamp] = (
-                            bucket.GrantedCount,
-                            bucket.DeniedCount,
-                            bucket.ReleasedCount,
-                            bucket.ActiveCount);
-                    }
-                }
-            }
-
-            if (aggregated.Count > 0)
-            {
-                var points = aggregated
-                    .Select(kvp => new HistoricalUsagePoint(kvp.Key, kvp.Value.granted, kvp.Value.denied, kvp.Value.released, kvp.Value.active))
-                    .ToList();
-
-                return (points, granularity);
-            }
-        }
-
-        return ([], fallbackOrder[0]);
-    }
 
     private static DateTime RoundDownToFiveMinutes(DateTime utc)
     {

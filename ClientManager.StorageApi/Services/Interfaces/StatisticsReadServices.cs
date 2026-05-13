@@ -38,6 +38,15 @@ public interface IStatisticsService
         DateTime to,
         BucketGranularity granularity,
         CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<ClientHistoricalUsageResponse>> GetHistoricalUsageByClientAsync(
+        IEnumerable<string> targetIds,
+        TargetType targetType,
+        IEnumerable<string> clientIds,
+        DateTime from,
+        DateTime to,
+        BucketGranularity granularity,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>

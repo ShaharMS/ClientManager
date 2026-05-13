@@ -4,6 +4,7 @@ using ClientManager.Shared.Logging;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Enums;
 using ClientManager.StorageApi.Models.Configuration;
+using ClientManager.StorageApi.Services.Interfaces;
 using Microsoft.Extensions.Options;
 
 namespace ClientManager.StorageApi.Services.Implementations.UsageTracking;
@@ -17,16 +18,19 @@ public partial class UsagePersistenceService : BackgroundService
     private readonly UsageBuffer _buffer;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly UsageTrackingOptions _options;
+    private readonly IStorageReadCache _cache;
 
     public UsagePersistenceService(
         IAppLogger<UsagePersistenceService> logger,
         UsageBuffer buffer,
         IServiceScopeFactory scopeFactory,
+        IStorageReadCache cache,
         IOptions<UsageTrackingOptions> options)
     {
         _logger = logger;
         _buffer = buffer;
         _scopeFactory = scopeFactory;
+        _cache = cache;
         _options = options.Value;
     }
 
@@ -72,10 +76,17 @@ public partial class UsagePersistenceService : BackgroundService
             {
                 using var scope = _scopeFactory.CreateScope();
                 var database = scope.ServiceProvider.GetRequiredService<IUsageSnapshotDatabase>();
-                await RollUpAsync(database, BucketGranularity.Second, BucketGranularity.FiveMinute, TimeSpan.FromMinutes(5), stoppingToken);
-                await RollUpAsync(database, BucketGranularity.FiveMinute, BucketGranularity.Hour, TimeSpan.FromHours(1), stoppingToken);
-                await RollUpAsync(database, BucketGranularity.Hour, BucketGranularity.Day, TimeSpan.FromHours(24), stoppingToken);
-                await PruneExpiredAsync(database, stoppingToken);
+                var mutated = false;
+
+                mutated |= await RollUpAsync(database, BucketGranularity.Second, BucketGranularity.FiveMinute, TimeSpan.FromMinutes(5), stoppingToken);
+                mutated |= await RollUpAsync(database, BucketGranularity.FiveMinute, BucketGranularity.Hour, TimeSpan.FromHours(1), stoppingToken);
+                mutated |= await RollUpAsync(database, BucketGranularity.Hour, BucketGranularity.Day, TimeSpan.FromHours(24), stoppingToken);
+                mutated |= await PruneExpiredAsync(database, stoppingToken);
+
+                if (mutated)
+                {
+                    _cache.InvalidateStatistics();
+                }
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -107,6 +118,7 @@ public partial class UsagePersistenceService : BackgroundService
             await FlushGroupAsync(group.ToList(), bucketTimestamp, database, allocationDatabase, cancellationToken);
         }
 
+        _cache.InvalidateStatistics();
         _logger.Debug("Flushed usage counter groups to storage", new { Count = counts.Count });
     }
 
