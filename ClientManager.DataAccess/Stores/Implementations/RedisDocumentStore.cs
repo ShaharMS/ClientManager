@@ -47,6 +47,26 @@ public class RedisDocumentStore : IDocumentStore
     private static RedisKey CounterKey(string key) => $"{CounterPrefix}{key}";
     private const string CounterPrefix = "counter:";
     private const string JsonRootPath = "$";
+    private const string DecrementCounterScript = """
+local ttl = redis.call('PTTL', KEYS[1])
+if ttl == -2 then
+    return 0
+end
+local current = tonumber(redis.call('GET', KEYS[1]) or '0')
+local amount = tonumber(ARGV[1])
+if amount <= 0 then
+    return current
+end
+local next = current - amount
+if next < 0 then
+    next = 0
+end
+redis.call('SET', KEYS[1], next)
+if ttl > 0 then
+    redis.call('PEXPIRE', KEYS[1], ttl)
+end
+return next
+""";
 
     /// <inheritdoc />
     public async Task<T?> GetAsync<T>(string collection, string id, CancellationToken cancellationToken = default) where T : class
@@ -200,14 +220,7 @@ public class RedisDocumentStore : IDocumentStore
     /// <inheritdoc />
     public async Task<long> DecrementCounterAsync(string key, CancellationToken cancellationToken = default)
     {
-        var redisKey = $"{CounterPrefix}{key}";
-        var count = await Database.StringDecrementAsync(redisKey);
-        if (count < 0)
-        {
-            await Database.StringSetAsync(redisKey, 0);
-            return 0;
-        }
-        return count;
+        return await DecrementCounterByAsync(key, 1, cancellationToken);
     }
 
     /// <inheritdoc />
@@ -222,7 +235,10 @@ public class RedisDocumentStore : IDocumentStore
         var batch = Database.CreateBatch();
         var tasks = entries.ToDictionary(
             entry => entry.Key,
-            entry => batch.StringDecrementAsync(CounterKey(entry.Key), entry.Value),
+            entry => batch.ScriptEvaluateAsync(
+                DecrementCounterScript,
+                new[] { CounterKey(entry.Key) },
+                new RedisValue[] { entry.Value }),
             StringComparer.Ordinal);
 
         batch.Execute();
@@ -540,23 +556,30 @@ public class RedisDocumentStore : IDocumentStore
     }
 
     private async Task<IReadOnlyDictionary<string, long>> CompleteDecrementBatchAsync(
-        IReadOnlyDictionary<string, Task<long>> tasks,
+        IReadOnlyDictionary<string, Task<RedisResult>> tasks,
         CancellationToken cancellationToken)
     {
         var result = new Dictionary<string, long>(tasks.Count, StringComparer.Ordinal);
-        var floorTasks = new List<Task>(tasks.Count);
 
         foreach (var (key, task) in tasks)
-        {
-            var count = await task;
-            result[key] = Math.Max(0, count);
-            if (count < 0)
-                floorTasks.Add(Database.StringSetAsync(CounterKey(key), 0));
-        }
+            result[key] = (long)await task;
 
         cancellationToken.ThrowIfCancellationRequested();
-        await Task.WhenAll(floorTasks);
         return result;
+    }
+
+    private async Task<long> DecrementCounterByAsync(
+        string key,
+        long amount,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var result = await Database.ScriptEvaluateAsync(
+            DecrementCounterScript,
+            new[] { CounterKey(key) },
+            new RedisValue[] { amount });
+
+        return (long)result;
     }
 
     private static IReadOnlyDictionary<string, long> MapCounterValues(

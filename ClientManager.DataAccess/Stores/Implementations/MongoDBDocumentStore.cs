@@ -89,38 +89,7 @@ public class MongoDBDocumentStore : IDocumentStore
     /// <inheritdoc />
     public async Task<long> IncrementCounterAsync(string key, TimeSpan window, CancellationToken cancellationToken = default)
     {
-        var now = DateTime.UtcNow;
-        var filter = Builders<BsonDocument>.Filter.Eq("_id", key);
-
-        var existing = await CounterCollection.Find(filter).FirstOrDefaultAsync(cancellationToken);
-        if (existing != null)
-        {
-            var windowStart = existing["WindowStart"].ToUniversalTime();
-            if (now - windowStart >= window)
-            {
-                var resetDoc = new BsonDocument
-                {
-                    { "_id", key },
-                    { "Count", 1L },
-                    { "WindowStart", now }
-                };
-                await CounterCollection.ReplaceOneAsync(filter, resetDoc, new ReplaceOptions { IsUpsert = true }, cancellationToken);
-                return 1;
-            }
-        }
-
-        var update = Builders<BsonDocument>.Update
-            .Inc("Count", 1L)
-            .SetOnInsert("WindowStart", now);
-
-        var options = new FindOneAndUpdateOptions<BsonDocument>
-        {
-            IsUpsert = true,
-            ReturnDocument = ReturnDocument.After
-        };
-
-        var result = await CounterCollection.FindOneAndUpdateAsync(filter, update, options, cancellationToken);
-        return result["Count"].AsInt64;
+        return await IncrementCounterByAsync(key, 1, window, cancellationToken);
     }
 
     /// <inheritdoc />
@@ -131,16 +100,12 @@ public class MongoDBDocumentStore : IDocumentStore
         if (entries.Count == 0)
             return new Dictionary<string, long>();
 
-        var existing = await LoadCounterDocumentsAsync(entries.Keys, cancellationToken);
-        var models = new List<WriteModel<BsonDocument>>(entries.Count);
-        var result = new Dictionary<string, long>(entries.Count, StringComparer.Ordinal);
-        var now = DateTime.UtcNow;
+        var tasks = entries.ToDictionary(
+            entry => entry.Key,
+            entry => IncrementCounterByAsync(entry.Key, entry.Value.amount, entry.Value.window, cancellationToken),
+            StringComparer.Ordinal);
 
-        foreach (var (key, (amount, window)) in entries)
-            result[key] = QueueIncrementModel(models, existing, key, amount, window, now);
-
-        await BulkWriteCountersAsync(models, cancellationToken);
-        return result;
+        return await CompleteCounterTasksAsync(tasks);
     }
 
     /// <inheritdoc />
@@ -169,25 +134,7 @@ public class MongoDBDocumentStore : IDocumentStore
     /// <inheritdoc />
     public async Task<long> DecrementCounterAsync(string key, CancellationToken cancellationToken = default)
     {
-        var filter = Builders<BsonDocument>.Filter.Eq("_id", key);
-        var update = Builders<BsonDocument>.Update.Inc("Count", -1L);
-        var options = new FindOneAndUpdateOptions<BsonDocument>
-        {
-            ReturnDocument = ReturnDocument.After
-        };
-
-        var result = await CounterCollection.FindOneAndUpdateAsync(filter, update, options, cancellationToken);
-        if (result is null)
-            return 0;
-
-        var count = result["Count"].AsInt64;
-        if (count < 0)
-        {
-            await SetCounterAsync(key, 0, TimeSpan.FromHours(24), cancellationToken);
-            return 0;
-        }
-
-        return count;
+        return await DecrementCounterByAsync(key, 1, cancellationToken);
     }
 
     /// <inheritdoc />
@@ -198,16 +145,12 @@ public class MongoDBDocumentStore : IDocumentStore
         if (entries.Count == 0)
             return new Dictionary<string, long>();
 
-        var existing = await LoadCounterDocumentsAsync(entries.Keys, cancellationToken);
-        var models = new List<WriteModel<BsonDocument>>(entries.Count);
-        var result = new Dictionary<string, long>(entries.Count, StringComparer.Ordinal);
+        var tasks = entries.ToDictionary(
+            entry => entry.Key,
+            entry => DecrementCounterByAsync(entry.Key, entry.Value, cancellationToken),
+            StringComparer.Ordinal);
 
-        foreach (var (key, amount) in entries)
-            result[key] = QueueDecrementModel(models, existing, key, amount);
-
-        await BulkWriteCountersAsync(models, cancellationToken);
-        await FloorCountersAtZeroAsync(entries.Keys, cancellationToken);
-        return result;
+        return await CompleteCounterTasksAsync(tasks);
     }
 
     /// <inheritdoc />
@@ -354,65 +297,112 @@ public class MongoDBDocumentStore : IDocumentStore
         return docs.ToDictionary(document => document["_id"].AsString, StringComparer.Ordinal);
     }
 
-    private long QueueIncrementModel(
-        ICollection<WriteModel<BsonDocument>> models,
-        IReadOnlyDictionary<string, BsonDocument> existing,
+    private async Task<long> IncrementCounterByAsync(
         string key,
         long amount,
         TimeSpan window,
-        DateTime now)
+        CancellationToken cancellationToken)
     {
         if (amount <= 0)
-            return existing.TryGetValue(key, out var current) ? GetCounterCount(current) : 0;
-
-        var count = GetIncrementedCount(existing, key, amount, window, now);
-        models.Add(CreateIncrementModel(existing, key, amount, window, now));
-        return count;
-    }
-
-    private static long GetIncrementedCount(
-        IReadOnlyDictionary<string, BsonDocument> existing,
-        string key,
-        long amount,
-        TimeSpan window,
-        DateTime now)
-    {
-        if (!existing.TryGetValue(key, out var document))
-            return amount;
-
-        return now - GetCounterWindowStart(document) >= window
-            ? amount
-            : GetCounterCount(document) + amount;
-    }
-
-    private static WriteModel<BsonDocument> CreateIncrementModel(
-        IReadOnlyDictionary<string, BsonDocument> existing,
-        string key,
-        long amount,
-        TimeSpan window,
-        DateTime now)
-    {
-        var filter = Builders<BsonDocument>.Filter.Eq("_id", key);
-        if (existing.TryGetValue(key, out var document) && now - GetCounterWindowStart(document) >= window)
-            return new ReplaceOneModel<BsonDocument>(filter, CreateCounterDocument(key, amount, now)) { IsUpsert = true };
-
-        var update = Builders<BsonDocument>.Update.Inc("Count", amount).SetOnInsert("WindowStart", now);
-        return new UpdateOneModel<BsonDocument>(filter, update) { IsUpsert = true };
-    }
-
-    private long QueueDecrementModel(
-        ICollection<WriteModel<BsonDocument>> models,
-        IReadOnlyDictionary<string, BsonDocument> existing,
-        string key,
-        long amount)
-    {
-        if (amount <= 0 || !existing.TryGetValue(key, out var document))
-            return existing.TryGetValue(key, out var current) ? GetCounterCount(current) : 0;
+            return await GetCounterAsync(key, cancellationToken);
 
         var filter = Builders<BsonDocument>.Filter.Eq("_id", key);
-        var update = Builders<BsonDocument>.Update.Inc("Count", -amount);
-        models.Add(new UpdateOneModel<BsonDocument>(filter, update));
-        return Math.Max(0, GetCounterCount(document) - amount);
+        var update = CreateIncrementPipelineUpdate(amount, window, DateTime.UtcNow);
+        var options = new FindOneAndUpdateOptions<BsonDocument>
+        {
+            IsUpsert = true,
+            ReturnDocument = ReturnDocument.After
+        };
+
+        var result = await CounterCollection.FindOneAndUpdateAsync(filter, update, options, cancellationToken);
+        return result is null ? 0 : GetCounterCount(result);
+    }
+
+    private async Task<long> DecrementCounterByAsync(
+        string key,
+        long amount,
+        CancellationToken cancellationToken)
+    {
+        if (amount <= 0)
+            return await GetCounterAsync(key, cancellationToken);
+
+        var filter = Builders<BsonDocument>.Filter.Eq("_id", key);
+        var options = new FindOneAndUpdateOptions<BsonDocument>
+        {
+            ReturnDocument = ReturnDocument.After
+        };
+
+        var update = CreateDecrementPipelineUpdate(amount);
+        var result = await CounterCollection.FindOneAndUpdateAsync(filter, update, options, cancellationToken);
+        return result is null ? 0 : GetCounterCount(result);
+    }
+
+    private static async Task<IReadOnlyDictionary<string, long>> CompleteCounterTasksAsync(
+        IReadOnlyDictionary<string, Task<long>> tasks)
+    {
+        var result = new Dictionary<string, long>(tasks.Count, StringComparer.Ordinal);
+        foreach (var (key, task) in tasks)
+            result[key] = await task;
+
+        return result;
+    }
+
+    private static UpdateDefinition<BsonDocument> CreateIncrementPipelineUpdate(long amount, TimeSpan window, DateTime now)
+    {
+        var stage = new BsonDocument("$set", new BsonDocument
+        {
+            { "Count", CreateIncrementCountExpression(amount, window, now) },
+            { "WindowStart", CreateIncrementWindowStartExpression(window, now) }
+        });
+
+        var pipeline = PipelineDefinition<BsonDocument, BsonDocument>.Create(new[] { stage });
+        return Builders<BsonDocument>.Update.Pipeline(pipeline);
+    }
+
+    private static BsonDocument CreateIncrementCountExpression(long amount, TimeSpan window, DateTime now)
+    {
+        var currentCount = new BsonDocument("$ifNull", new BsonArray { "$Count", 0L });
+        var incrementedCount = new BsonDocument("$add", new BsonArray { currentCount, amount });
+
+        return new BsonDocument("$cond", new BsonArray
+        {
+            CreateCounterExpiredExpression(window, now),
+            amount,
+            incrementedCount
+        });
+    }
+
+    private static BsonDocument CreateIncrementWindowStartExpression(TimeSpan window, DateTime now)
+    {
+        return new BsonDocument("$cond", new BsonArray
+        {
+            CreateCounterExpiredExpression(window, now),
+            new BsonDateTime(now),
+            "$WindowStart"
+        });
+    }
+
+    private static BsonDocument CreateCounterExpiredExpression(TimeSpan window, DateTime now)
+    {
+        var elapsedMilliseconds = new BsonDocument("$subtract", new BsonArray { new BsonDateTime(now), "$WindowStart" });
+        return new BsonDocument("$or", new BsonArray
+        {
+            new BsonDocument("$eq", new BsonArray { "$WindowStart", BsonNull.Value }),
+            new BsonDocument("$gte", new BsonArray { elapsedMilliseconds, (long)window.TotalMilliseconds })
+        });
+    }
+
+    private static UpdateDefinition<BsonDocument> CreateDecrementPipelineUpdate(long amount)
+    {
+        var currentCount = new BsonDocument("$ifNull", new BsonArray { "$Count", 0L });
+        var decrementedCount = new BsonDocument("$subtract", new BsonArray { currentCount, amount });
+        var stage = new BsonDocument("$set", new BsonDocument
+        {
+            { "Count", new BsonDocument("$max", new BsonArray { 0L, decrementedCount }) }
+        });
+
+        var pipeline = PipelineDefinition<BsonDocument, BsonDocument>.Create(new[] { stage });
+        return Builders<BsonDocument>.Update.Pipeline(pipeline);
     }
 
     private async Task BulkWriteCountersAsync(
@@ -421,13 +411,6 @@ public class MongoDBDocumentStore : IDocumentStore
     {
         if (models.Count > 0)
             await CounterCollection.BulkWriteAsync(models, cancellationToken: cancellationToken);
-    }
-
-    private async Task FloorCountersAtZeroAsync(IEnumerable<string> keys, CancellationToken cancellationToken)
-    {
-        var filter = Builders<BsonDocument>.Filter.In("_id", keys)
-            & Builders<BsonDocument>.Filter.Lt("Count", 0L);
-        await CounterCollection.UpdateManyAsync(filter, Builders<BsonDocument>.Update.Set("Count", 0L), cancellationToken: cancellationToken);
     }
 
     private static BsonDocument CreateCounterDocument(string key, long count, DateTime windowStart)

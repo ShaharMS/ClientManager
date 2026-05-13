@@ -24,19 +24,21 @@ namespace ClientManager.DataAccess.Stores.Interfaces;
 ///     <item>
 ///         <description>
 ///             <strong>Atomic counters</strong> (<see cref="IncrementCounterAsync"/>,
-///             <see cref="IncrementManyCountersAsync"/>, <see cref="GetCounterAsync"/>,
+///             <see cref="IncrementManyCountersAsync"/>, <see cref="DecrementCounterAsync"/>,
+///             <see cref="DecrementManyCountersAsync"/>, <see cref="GetCounterAsync"/>,
 ///             <see cref="GetManyCountersAsync"/>, <see cref="SetCounterAsync"/>,
 ///             <see cref="SetManyCountersAsync"/>, <see cref="ResetCounterAsync"/>): simple numeric values with built-in TTL.
-///             Used exclusively by <see cref="Databases.Interfaces.IRateLimitStateDatabase"/>
-///             to track sliding/fixed window counts and token-bucket levels.
+///             Used by <see cref="Databases.Interfaces.IRateLimitStateDatabase"/>
+///             to track sliding/fixed window counts and token-bucket levels, and by
+///             <see cref="Databases.Implementations.ResourceAllocationDatabase"/> to track active allocation totals.
 ///         </description>
 ///     </item>
 /// </list>
 ///
 /// <para><strong>Why counters live here</strong></para>
 /// <para>
-///     Rate-limit counters need atomicity guarantees that vary by backend (e.g. Redis
-///     INCR vs. file-level locking). Pushing them into the same abstraction lets each
+///     Rate-limit and allocation counters need atomicity guarantees that vary by backend
+///     (e.g. Redis INCR/Lua vs. file-level locking). Pushing them into the same abstraction lets each
 ///     backend implement the atomic-increment semantics that are natural for its storage
 ///     engine, rather than forcing a read-modify-write cycle through the document API.
 /// </para>
