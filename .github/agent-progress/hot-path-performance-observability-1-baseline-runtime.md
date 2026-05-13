@@ -8,8 +8,9 @@
 - Baseline commit: 029ea6bb4b870522758cf83903dfdfb8eadeec8d
 - Latest implementation commit: b0958b9 feat(storage): enable baseline runtime capture
 - Latest closeout commit: 28022b8 blocked closeout bookkeeping
+- Latest DEC-001 follow-up commit: d6099de docs(iterations): apply baseline artifact decision
 - Branch: feature/hot-path-performance-observability-1-baseline-runtime
-- Status: Reopened after user baseline decision; awaiting @Implement follow-up.
+- Status: DEC-001 follow-up is committed; ready for re-review/intake after the RVW-001 bookkeeping commit.
 
 ## Latest Transition
 
@@ -18,18 +19,20 @@
 - @Index recorded the blocked-stop transition before review because the rebuilt baseline artifact does not satisfy the clean runtime gate.
 - @Inscribe prepared closeout bookkeeping for the blocked stop and recorded it as 28022b8.
 - User clarified that many 503s in the rebuilt before run are part of the issue later plan steps are meant to resolve, so Step 1 should not stop solely on that degraded before state.
+- @Implement applied DEC-001 and @Inscribe committed it as d6099de, replacing the before comparison artifact with provisional baseline data while preserving the degraded rebuilt-source evidence as context.
+- @Intake recorded RVW-001 because committed bookkeeping still described the DEC-001 follow-up as pending; @Index is remediating the progress note portion before re-review.
 
 ## Outstanding Items
 
 - Blockers: None after the user baseline decision.
-- Preserved evidence: .github/plans/hot-path-performance-baseline-before.json exists, but runtime summary has 685 service-unavailable responses, acquire successes were 0, and release count was 0. Direct StorageApi access-check took about 8084.8 ms and returned 200; public API access-check returned 503 after about 5043.2 ms.
-- Baseline-anchor decision: If the rebuilt before artifact is too degraded for speedup comparison, use the provisional artifact as the before anchor, including copying provisional data into the before artifact.
-- Review findings: None recorded; review has not started.
+- Baseline anchor: DEC-001 follow-up is committed as d6099de; .github/plans/hot-path-performance-baseline-before.json now uses the provisional baseline data as the comparison anchor.
+- Preserved context: The degraded rebuilt-source evidence is retained only as DEC-001 context. That run had 685 service-unavailable responses, acquire successes were 0, release count was 0, direct StorageApi access-check took about 8084.8 ms and returned 200, and public API access-check returned 503 after about 5043.2 ms.
+- Review findings: RVW-001 is in bookkeeping remediation; the progress note no longer names a pending @Implement baseline-anchor action.
 - Verification: Build, touched-file diagnostics, benchmark script syntax, source startup probes, seed data, traffic generation, benchmark artifact creation, and git diff hygiene passed. The degraded 503-heavy rebuilt run is accepted as current-state evidence, not a Step 1 blocker by itself.
 
 ## Next Intended Action
 
-- @Implement should apply the baseline-anchor decision, using the provisional artifact as the before comparison anchor if the rebuilt artifact is too degraded, then hand back for commit/review/finalization.
+- Commit this RVW-001 bookkeeping remediation, then hand back to @Inspect for re-review and @Intake normalization.
 
 ## Resume Guidance
 

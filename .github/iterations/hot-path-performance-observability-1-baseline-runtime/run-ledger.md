@@ -3,7 +3,7 @@
 ## Iteration
 
 - Slug: hot-path-performance-observability-1-baseline-runtime
-- Status: Reopened after user baseline decision; awaiting follow-up implementation
+- Status: DEC-001 follow-up committed; review finding RVW-001 being remediated
 - Owning orchestrator: @Iterate
 
 ## Selected Scope
@@ -20,10 +20,10 @@
 
 ## Current Loop State
 
-- Next agent: @Implement
-- Review round: 0
-- Latest verification: Build, touched-file diagnostics, benchmark script syntax, source startup probes, seed data, traffic generation, benchmark artifact creation, and git diff hygiene passed. The 503-heavy rebuilt source run is accepted as evidence of the current performance problem, not a Step 1 stopper.
-- Latest decision: User clarified that many 503s are part of the performance issue the later steps are meant to resolve. If the rebuilt before artifact is too degraded for comparison, use the provisional artifact as the before comparison anchor, including copying provisional data into the before artifact.
+- Next agent: @Inspect
+- Review round: 1
+- Latest verification: DEC-001 follow-up verification passed: the before artifact parses as strict UTF-8 JSON, has no BOM, is JSON-data equivalent to the provisional artifact, and git diff hygiene passed.
+- Latest decision: DEC-001 follow-up was applied and committed as d6099de. The before comparison anchor now uses the provisional baseline data, while the degraded rebuilt source run remains preserved as current-state evidence.
 
 ## Packet Links
 
@@ -38,10 +38,10 @@
 ## Open Items
 
 - Blockers: None after user clarification. Preserve the degraded rebuilt-source evidence, but do not stop Step 1 solely because the current hot paths produce 503s.
-- Outstanding findings: None recorded.
-- Next action: Run a delegated follow-up to apply the baseline-anchor decision, then commit, inspect, normalize review, and finalize Step 1 if approved.
+- Outstanding findings: RVW-001 is being remediated by updating canonical bookkeeping to match commit d6099de.
+- Next action: Commit the RVW-001 bookkeeping fix, then rerun @Inspect and @Intake.
 
 ## Resume Notes
 
-- Current context: Specific user-selected plan step is active. The implementation pass restored source launchability and benchmark artifact writing. User clarified that the degraded 503-heavy rebuilt run is acceptable evidence because later steps are meant to resolve it; use the provisional baseline as the before anchor if needed for speedup comparison.
-- Recovery instructions: Continue with @Implement follow-up to apply the baseline-anchor decision, then @Inscribe, @Inspect, and @Intake before finalizing Step 1.
+- Current context: Specific user-selected plan step is active. The implementation pass restored source launchability and benchmark artifact writing. User clarified that the degraded 503-heavy rebuilt run is acceptable evidence because later steps are meant to resolve it. Commit d6099de applied DEC-001 by replacing the before comparison artifact with provisional baseline data.
+- Recovery instructions: Continue with RVW-001 bookkeeping commit, then rerun @Inspect. If approved, normalize review and finalize Step 1.
