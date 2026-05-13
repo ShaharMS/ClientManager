@@ -33,6 +33,12 @@ public class UsageSnapshotDatabase : IUsageSnapshotDatabase
         _store.GetAsync<UsageSnapshot>(Collection, id, cancellationToken);
 
     /// <inheritdoc />
+    public Task<IReadOnlyList<UsageSnapshot>> GetByIdsAsync(
+        IEnumerable<string> ids,
+        CancellationToken cancellationToken = default) =>
+        _store.GetManyAsync<UsageSnapshot>(Collection, ids, cancellationToken);
+
+    /// <inheritdoc />
     public async Task<IReadOnlyList<UsageSnapshot>> GetByTargetAsync(
         string targetId,
         TargetType targetType,
@@ -96,24 +102,71 @@ public class UsageSnapshotDatabase : IUsageSnapshotDatabase
         DateTime from, DateTime to, CancellationToken cancellationToken = default)
     {
         var clients = await _clientConfigDatabase.GetAllAsync(cancellationToken);
+        var clientIds = clients.Select(client => client.Id);
+
+        return await GetByTargetAndRangeAsync(
+            targetId,
+            targetType,
+            granularity,
+            from,
+            to,
+            clientIds,
+            cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<UsageSnapshot>> GetByTargetAndRangeAsync(
+        string targetId, TargetType targetType, BucketGranularity granularity,
+        DateTime from, DateTime to, IEnumerable<string> clientIds,
+        CancellationToken cancellationToken = default)
+    {
+            return await GetByTargetsAndRangeAsync(
+                new[] { targetId },
+                targetType,
+                granularity,
+                from,
+                to,
+                clientIds,
+                cancellationToken);
+        }
+
+        /// <inheritdoc />
+        public async Task<IReadOnlyList<UsageSnapshot>> GetByTargetsAndRangeAsync(
+            IEnumerable<string> targetIds,
+            TargetType targetType,
+            BucketGranularity granularity,
+            DateTime from,
+            DateTime to,
+            IEnumerable<string> clientIds,
+            CancellationToken cancellationToken = default)
+        {
+            var selectedTargetIds = targetIds.Distinct(StringComparer.Ordinal).ToList();
+        var selectedClientIds = clientIds.Distinct(StringComparer.Ordinal).ToList();
         var segmentStarts = UsageSegmentHelper.EnumerateSegmentStarts(from, to, granularity).ToList();
 
-        var results = new List<UsageSnapshot>();
-
-        foreach (var client in clients)
+            if (selectedTargetIds.Count == 0 || selectedClientIds.Count == 0 || segmentStarts.Count == 0)
         {
-            foreach (var segmentStart in segmentStarts)
-            {
-                var id = UsageSegmentHelper.BuildSegmentId(
-                    client.Id, targetType, targetId, granularity, segmentStart);
+            return [];
+        }
 
-                var snapshot = await _store.GetAsync<UsageSnapshot>(Collection, id, cancellationToken);
-                if (snapshot is not null)
-                    results.Add(snapshot);
+            var ids = new List<string>(selectedTargetIds.Count * selectedClientIds.Count * segmentStarts.Count);
+            foreach (var selectedTargetId in selectedTargetIds)
+        {
+                foreach (var selectedClientId in selectedClientIds)
+            {
+                    foreach (var segmentStart in segmentStarts)
+                    {
+                        ids.Add(UsageSegmentHelper.BuildSegmentId(
+                            selectedClientId,
+                            targetType,
+                            selectedTargetId,
+                            granularity,
+                            segmentStart));
+                    }
             }
         }
 
-        return results;
+        return await GetByIdsAsync(ids, cancellationToken);
     }
 
     /// <inheritdoc />

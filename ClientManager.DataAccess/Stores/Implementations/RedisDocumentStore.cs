@@ -56,19 +56,30 @@ public class RedisDocumentStore : IDocumentStore
             if (json is null || json.IsNull)
                 return null;
 
-            var jsonStr = json.ToString();
-            // JSON.GET with root path returns a JSON array wrapper — unwrap it
-            if (jsonStr.StartsWith('['))
-            {
-                var array = JsonSerializer.Deserialize<JsonElement[]>(jsonStr, JsonOptions);
-                return array is { Length: > 0 } ? JsonSerializer.Deserialize<T>(array[0].GetRawText(), JsonOptions) : null;
-            }
-
-            return JsonSerializer.Deserialize<T>(jsonStr, JsonOptions);
+            return DeserializeRedisJson<T>(json.ToString());
         }
 
         var value = await Database.HashGetAsync(HashKey(collection), id);
         return value.IsNullOrEmpty ? null : JsonSerializer.Deserialize<T>(value!, JsonOptions);
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<T>> GetManyAsync<T>(
+        string collection,
+        IEnumerable<string> ids,
+        CancellationToken cancellationToken = default) where T : class
+    {
+        var requestedIds = ids.Distinct(StringComparer.Ordinal).ToArray();
+        if (requestedIds.Length == 0)
+        {
+            return [];
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+
+        return _hasRediSearch
+            ? await GetManyFromJsonAsync<T>(collection, requestedIds, cancellationToken)
+            : await GetManyFromHashAsync<T>(collection, requestedIds, cancellationToken);
     }
 
     /// <inheritdoc />
@@ -345,5 +356,84 @@ public class RedisDocumentStore : IDocumentStore
             .Replace("~", "\\~")
             .Replace("!", "\\!")
             .Replace("'", "\\'");
+    }
+
+    private async Task<IReadOnlyList<T>> GetManyFromHashAsync<T>(
+        string collection,
+        IReadOnlyList<string> requestedIds,
+        CancellationToken cancellationToken) where T : class
+    {
+        var fields = requestedIds.Select(requestedId => (RedisValue)requestedId).ToArray();
+        var values = await Database.HashGetAsync(HashKey(collection), fields);
+        var results = new List<T>(values.Length);
+
+        foreach (var value in values)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (value.IsNullOrEmpty)
+            {
+                continue;
+            }
+
+            var item = JsonSerializer.Deserialize<T>(value!, JsonOptions);
+            if (item is not null)
+            {
+                results.Add(item);
+            }
+        }
+
+        return results;
+    }
+
+    private async Task<IReadOnlyList<T>> GetManyFromJsonAsync<T>(
+        string collection,
+        IReadOnlyList<string> requestedIds,
+        CancellationToken cancellationToken) where T : class
+    {
+        var batch = Database.CreateBatch();
+        var tasks = requestedIds
+            .Select(requestedId => batch.ExecuteAsync("JSON.GET", DocKey(collection, requestedId), JsonRootPath))
+            .ToArray();
+
+        batch.Execute();
+        var values = await Task.WhenAll(tasks);
+        var results = new List<T>(values.Length);
+
+        foreach (var value in values)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (value.IsNull)
+            {
+                continue;
+            }
+
+            var item = DeserializeRedisJson<T>(value.ToString());
+            if (item is not null)
+            {
+                results.Add(item);
+            }
+        }
+
+        return results;
+    }
+
+    private static T? DeserializeRedisJson<T>(string json) where T : class
+    {
+        if (string.IsNullOrEmpty(json))
+        {
+            return null;
+        }
+
+        if (!json.StartsWith('['))
+        {
+            return JsonSerializer.Deserialize<T>(json, JsonOptions);
+        }
+
+        var array = JsonSerializer.Deserialize<JsonElement[]>(json, JsonOptions);
+        return array is { Length: > 0 }
+            ? JsonSerializer.Deserialize<T>(array[0].GetRawText(), JsonOptions)
+            : null;
     }
 }

@@ -49,6 +49,35 @@ public class JsonFileDocumentStore : IDocumentStore
     }
 
     /// <inheritdoc />
+    public Task<IReadOnlyList<T>> GetManyAsync<T>(
+        string collection,
+        IEnumerable<string> ids,
+        CancellationToken cancellationToken = default) where T : class
+    {
+        var dict = GetOrLoadCollection(collection);
+        var requestedIds = ids.Distinct(StringComparer.Ordinal).ToList();
+        var results = new List<T>(requestedIds.Count);
+
+        foreach (var requestedId in requestedIds)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (!dict.TryGetValue(requestedId, out var element))
+            {
+                continue;
+            }
+
+            var item = element.Deserialize<T>(JsonOptions);
+            if (item is not null)
+            {
+                results.Add(item);
+            }
+        }
+
+        return Task.FromResult<IReadOnlyList<T>>(results);
+    }
+
+    /// <inheritdoc />
     public Task<IReadOnlyList<T>> GetAllAsync<T>(string collection, CancellationToken cancellationToken = default) where T : class
     {
         var dict = GetOrLoadCollection(collection);

@@ -45,6 +45,23 @@ public class MongoDBDocumentStore : IDocumentStore
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyList<T>> GetManyAsync<T>(
+        string collection,
+        IEnumerable<string> ids,
+        CancellationToken cancellationToken = default) where T : class
+    {
+        var requestedIds = ids.Distinct(StringComparer.Ordinal).ToList();
+        if (requestedIds.Count == 0)
+        {
+            return [];
+        }
+
+        var filter = Builders<BsonDocument>.Filter.In("_id", requestedIds);
+        var docs = await GetCollection(collection).Find(filter).ToListAsync(cancellationToken);
+        return docs.Select(DeserializeDocument<T>).ToList();
+    }
+
+    /// <inheritdoc />
     public async Task<IReadOnlyList<T>> GetAllAsync<T>(string collection, CancellationToken cancellationToken = default) where T : class
     {
         var docs = await GetCollection(collection).Find(Builders<BsonDocument>.Filter.Empty).ToListAsync(cancellationToken);

@@ -53,6 +53,23 @@ public interface IDocumentStore
     Task<T?> GetAsync<T>(string collection, string id, CancellationToken cancellationToken = default) where T : class;
 
     /// <summary>
+    /// Gets documents by their IDs from the specified collection.
+    /// </summary>
+    /// <typeparam name="T">The document type to deserialize.</typeparam>
+    /// <param name="collection">The name of the collection to read from.</param>
+    /// <param name="ids">The unique identifiers of the documents to fetch.</param>
+    /// <param name="cancellationToken">Cancels the batch read, returning control to the caller if the backing store is slow or unresponsive.</param>
+    /// <returns>Only the documents that were found; missing IDs are omitted.</returns>
+    /// <remarks>
+    /// Implementations should avoid full-collection scans when the backend supports direct
+    /// key lookup or indexed ID queries.
+    /// </remarks>
+    Task<IReadOnlyList<T>> GetManyAsync<T>(
+        string collection,
+        IEnumerable<string> ids,
+        CancellationToken cancellationToken = default) where T : class;
+
+    /// <summary>
     /// Gets all documents in the specified collection.
     /// </summary>
     /// <typeparam name="T">The document type to deserialize.</typeparam>

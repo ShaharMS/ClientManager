@@ -64,6 +64,16 @@ public interface IUsageSnapshotDatabase
     Task<UsageSnapshot?> GetByIdAsync(string id, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Gets usage snapshots by their compound keys.
+    /// </summary>
+    /// <param name="ids">The compound keys identifying the snapshots.</param>
+    /// <param name="cancellationToken">Cancels the batch lookup if the store is unresponsive.</param>
+    /// <returns>Only the snapshots that were found; missing IDs are omitted.</returns>
+    Task<IReadOnlyList<UsageSnapshot>> GetByIdsAsync(
+        IEnumerable<string> ids,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Gets all snapshots for a specific target at a specific granularity.
     /// </summary>
     /// <param name="targetId">The target identifier (service or resource pool).</param>
@@ -133,6 +143,42 @@ public interface IUsageSnapshotDatabase
     Task<IReadOnlyList<UsageSnapshot>> GetByTargetAndRangeAsync(
         string targetId, TargetType targetType, BucketGranularity granularity,
         DateTime from, DateTime to, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets snapshots for a target within a time range, constrained to a known set of client IDs.
+    /// </summary>
+    /// <param name="targetId">The target identifier (service or resource pool).</param>
+    /// <param name="targetType">Whether the target is a Service or ResourcePool.</param>
+    /// <param name="granularity">The bucket granularity to filter by.</param>
+    /// <param name="from">Inclusive lower bound of the time range.</param>
+    /// <param name="to">Exclusive upper bound of the time range.</param>
+    /// <param name="clientIds">The client identifiers to include in the range query.</param>
+    /// <param name="cancellationToken">Cancels the query early if the caller is shutting down.</param>
+    /// <returns>All matching snapshots for the requested clients and segment range.</returns>
+    Task<IReadOnlyList<UsageSnapshot>> GetByTargetAndRangeAsync(
+        string targetId, TargetType targetType, BucketGranularity granularity,
+        DateTime from, DateTime to, IEnumerable<string> clientIds,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets snapshots for multiple targets within a time range, constrained to a known set of client IDs.
+    /// </summary>
+    /// <param name="targetIds">The target identifiers (services or resource pools) to include.</param>
+    /// <param name="targetType">Whether the targets are Services or ResourcePools.</param>
+    /// <param name="granularity">The bucket granularity to filter by.</param>
+    /// <param name="from">Inclusive lower bound of the time range.</param>
+    /// <param name="to">Exclusive upper bound of the time range.</param>
+    /// <param name="clientIds">The client identifiers to include in the range query.</param>
+    /// <param name="cancellationToken">Cancels the query early if the caller is shutting down.</param>
+    /// <returns>All matching snapshots for the requested targets, clients, and segment range.</returns>
+    Task<IReadOnlyList<UsageSnapshot>> GetByTargetsAndRangeAsync(
+        IEnumerable<string> targetIds,
+        TargetType targetType,
+        BucketGranularity granularity,
+        DateTime from,
+        DateTime to,
+        IEnumerable<string> clientIds,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets a single snapshot for a specific client-target-granularity-segment combination

@@ -30,6 +30,7 @@ public class LuceneDocumentStore : IDocumentStore, IDisposable
     private const string CountersCollection = "_counters";
     private const string CounterCountField = "Count";
     private const string CounterWindowStartField = "WindowStart";
+    private const int MaxIdsPerBatch = 512;
 
     private readonly Lucene.Net.Store.Directory _directory;
     private readonly IndexWriter _writer;
@@ -84,6 +85,48 @@ public class LuceneDocumentStore : IDocumentStore, IDisposable
         {
             _searcherManager.Release(searcher);
         }
+    }
+
+    /// <inheritdoc />
+    public Task<IReadOnlyList<T>> GetManyAsync<T>(
+        string collection,
+        IEnumerable<string> ids,
+        CancellationToken cancellationToken = default) where T : class
+    {
+        var requestedIds = ids.Distinct(StringComparer.Ordinal).ToArray();
+        if (requestedIds.Length == 0)
+        {
+            return Task.FromResult<IReadOnlyList<T>>(Array.Empty<T>());
+        }
+
+        var results = new List<T>(requestedIds.Length);
+
+        foreach (var idChunk in requestedIds.Chunk(MaxIdsPerBatch))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var query = BuildCollectionIdsQuery(collection, idChunk);
+            _searcherManager.MaybeRefreshBlocking();
+            var searcher = _searcherManager.Acquire();
+            try
+            {
+                var topDocs = searcher.Search(query, idChunk.Length);
+                foreach (var scoreDoc in topDocs.ScoreDocs)
+                {
+                    var item = DeserializeSearchHit<T>(searcher, scoreDoc.Doc);
+                    if (item is not null)
+                    {
+                        results.Add(item);
+                    }
+                }
+            }
+            finally
+            {
+                _searcherManager.Release(searcher);
+            }
+        }
+
+        return Task.FromResult<IReadOnlyList<T>>(results);
     }
 
     /// <inheritdoc />
@@ -379,6 +422,28 @@ public class LuceneDocumentStore : IDocumentStore, IDisposable
             return null;
 
         return searcher.Doc(topDocs.ScoreDocs[0].Doc);
+    }
+
+    private static Query BuildCollectionIdsQuery(string collection, IReadOnlyCollection<string> ids)
+    {
+        var idQuery = new BooleanQuery();
+        foreach (var requestedId in ids)
+        {
+            idQuery.Add(new TermQuery(new Term(IdField, requestedId)), Occur.SHOULD);
+        }
+
+        return new BooleanQuery
+        {
+            { new TermQuery(new Term(CollectionField, collection)), Occur.MUST },
+            { idQuery, Occur.MUST }
+        };
+    }
+
+    private static T? DeserializeSearchHit<T>(IndexSearcher searcher, int documentId) where T : class
+    {
+        var doc = searcher.Doc(documentId);
+        var json = doc.Get(JsonField);
+        return JsonSerializer.Deserialize<T>(json, JsonOptions);
     }
 
     private void WriteCounter(string key, long count, DateTime windowStart)
