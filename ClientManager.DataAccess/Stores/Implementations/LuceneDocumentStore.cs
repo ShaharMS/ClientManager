@@ -46,8 +46,7 @@ public class LuceneDocumentStore : IDocumentStore, IDisposable
     /// <summary>
     /// Initializes a new instance of <see cref="LuceneDocumentStore"/>.
     /// </summary>
-    /// <param name="indexDirectory">The directory path for Lucene index files (unused — index is kept in memory).</param>
-    public LuceneDocumentStore(string indexDirectory)
+    public LuceneDocumentStore()
     {
         _directory = new RAMDirectory();
 

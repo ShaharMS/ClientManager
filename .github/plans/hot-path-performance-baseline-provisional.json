@@ -1,0 +1,280 @@
+﻿{
+  "profile": {
+    "base_url": "http://localhost:5062",
+    "seed": 42,
+    "duration_seconds": 60,
+    "target_requests_per_day": 1000000,
+    "target_requests_per_second": 11.574,
+    "virtual_clients": 100,
+    "distinct_services": 19,
+    "distinct_resource_pools": 10,
+    "graph_reads_enabled": true,
+    "graph_ranges": [
+      "7d"
+    ]
+  },
+  "operations": {
+    "access": {
+      "count": 361,
+      "successes": 349,
+      "service_unavailable_count": 0,
+      "status_counts": {
+        "200": 349,
+        "429": 4,
+        "500": 8
+      },
+      "throughput_per_second": 5.875,
+      "average_latency_ms": 65.156,
+      "p95_latency_ms": 151.374,
+      "max_latency_ms": 429.72
+    },
+    "acquire": {
+      "count": 123,
+      "successes": 79,
+      "service_unavailable_count": 0,
+      "status_counts": {
+        "200": 79,
+        "429": 35,
+        "500": 9
+      },
+      "throughput_per_second": 2.002,
+      "average_latency_ms": 55.404,
+      "p95_latency_ms": 99.543,
+      "max_latency_ms": 199.393
+    },
+    "release": {
+      "count": 59,
+      "successes": 52,
+      "service_unavailable_count": 0,
+      "status_counts": {
+        "200": 52,
+        "500": 7
+      },
+      "throughput_per_second": 0.96,
+      "average_latency_ms": 57.726,
+      "p95_latency_ms": 101.346,
+      "max_latency_ms": 162.213
+    },
+    "dashboard": {
+      "count": 57,
+      "successes": 57,
+      "service_unavailable_count": 0,
+      "status_counts": {
+        "200": 57
+      },
+      "throughput_per_second": 0.928,
+      "average_latency_ms": 74.81,
+      "p95_latency_ms": 136.553,
+      "max_latency_ms": 177.905
+    },
+    "monitor": {
+      "count": 44,
+      "successes": 44,
+      "service_unavailable_count": 0,
+      "status_counts": {
+        "200": 44
+      },
+      "throughput_per_second": 0.716,
+      "average_latency_ms": 44.263,
+      "p95_latency_ms": 74.724,
+      "max_latency_ms": 96.931
+    }
+  },
+  "runtime_summary": {
+    "count": 644,
+    "successes": 581,
+    "service_unavailable_count": 0,
+    "status_counts": {
+      "200": 581,
+      "429": 39,
+      "500": 24
+    },
+    "throughput_per_second": 10.48,
+    "average_latency_ms": 62.04,
+    "p95_latency_ms": 128.149,
+    "max_latency_ms": 429.72
+  },
+  "hot_path_summary": {
+    "access_checks": {
+      "count": 361,
+      "successes": 349,
+      "service_unavailable_count": 0,
+      "status_counts": {
+        "200": 349,
+        "429": 4,
+        "500": 8
+      },
+      "throughput_per_second": 5.875,
+      "average_latency_ms": 65.156,
+      "p95_latency_ms": 151.374,
+      "max_latency_ms": 429.72,
+      "expected_client_error_count": 4,
+      "unexpected_error_count": 8
+    },
+    "resource_acquires": {
+      "count": 123,
+      "successes": 79,
+      "service_unavailable_count": 0,
+      "status_counts": {
+        "200": 79,
+        "429": 35,
+        "500": 9
+      },
+      "throughput_per_second": 2.002,
+      "average_latency_ms": 55.404,
+      "p95_latency_ms": 99.543,
+      "max_latency_ms": 199.393,
+      "expected_client_error_count": 35,
+      "unexpected_error_count": 9
+    },
+    "resource_releases": {
+      "count": 59,
+      "successes": 52,
+      "service_unavailable_count": 0,
+      "status_counts": {
+        "200": 52,
+        "500": 7
+      },
+      "throughput_per_second": 0.96,
+      "average_latency_ms": 57.726,
+      "p95_latency_ms": 101.346,
+      "max_latency_ms": 162.213,
+      "expected_client_error_count": 0,
+      "unexpected_error_count": 7
+    }
+  },
+  "runtime_unexpected_failures": [
+    {
+      "operation": "access",
+      "count": 8,
+      "status_counts": {
+        "500": 8
+      },
+      "max_latency_ms": 91.292
+    },
+    {
+      "operation": "acquire",
+      "count": 9,
+      "status_counts": {
+        "500": 9
+      },
+      "max_latency_ms": 113.25
+    },
+    {
+      "operation": "release",
+      "count": 7,
+      "status_counts": {
+        "500": 7
+      },
+      "max_latency_ms": 67.531
+    }
+  ],
+  "graph_operations": {
+    "historical_usage_all_services_7d": {
+      "count": 13,
+      "successes": 13,
+      "service_unavailable_count": 0,
+      "status_counts": {
+        "200": 13
+      },
+      "throughput_per_second": 0.212,
+      "average_latency_ms": 562.016,
+      "p95_latency_ms": 1101.092,
+      "max_latency_ms": 1166.877
+    },
+    "historical_usage_all_pools_7d": {
+      "count": 13,
+      "successes": 13,
+      "service_unavailable_count": 0,
+      "status_counts": {
+        "200": 13
+      },
+      "throughput_per_second": 0.212,
+      "average_latency_ms": 221.959,
+      "p95_latency_ms": 433.819,
+      "max_latency_ms": 441.265
+    },
+    "historical_usage_service_by_client_7d": {
+      "count": 12,
+      "successes": 12,
+      "service_unavailable_count": 0,
+      "status_counts": {
+        "200": 12
+      },
+      "throughput_per_second": 0.195,
+      "average_latency_ms": 196.126,
+      "p95_latency_ms": 374.846,
+      "max_latency_ms": 432.304
+    },
+    "historical_usage_pools_by_client_7d": {
+      "count": 12,
+      "successes": 12,
+      "service_unavailable_count": 0,
+      "status_counts": {
+        "200": 12
+      },
+      "throughput_per_second": 0.195,
+      "average_latency_ms": 286.288,
+      "p95_latency_ms": 423.962,
+      "max_latency_ms": 507.983
+    }
+  },
+  "graph_summary": {
+    "count": 50,
+    "successes": 50,
+    "service_unavailable_count": 0,
+    "graph_p95_latency_ms": 1047.253,
+    "graph_max_latency_ms": 1166.877,
+    "status_counts": {
+      "200": 50
+    }
+  },
+  "graph_scenarios": [
+    {
+      "name": "historical_usage_all_services_7d",
+      "path": "api/v1/statistics/historical-usage?filterType=Service&targetIds=analytics-service%2Caudit-service%2Cauth-service%2Cbilling-service%2Ccache-service%2Cconfig-service%2Cemail-service%2Cgeo-service%2Clogging-service%2Cmedia-service%2Cml-service%2Cnotification-service%2Cpdf-service%2Cqueue-service%2Cscheduler-service%2Csms-service%2Cstorage-service%2Ctranslate-service%2Cwebhook-service&from=2026-05-06T08%3A28%3A52Z&to=2026-05-13T08%3A28%3A52Z&granularity=Hour",
+      "filter_type": "Service",
+      "range_key": "7d",
+      "granularity": "Hour",
+      "target_count": 19,
+      "client_count": 0
+    },
+    {
+      "name": "historical_usage_all_pools_7d",
+      "path": "api/v1/statistics/historical-usage?filterType=ResourcePool&targetIds=api-gateway-slots%2Cdb-connections%2Cfile-upload-slots%2Cgpu-compute%2Cml-inference-slots%2Cpdf-render-slots%2Creport-workers%2Csandbox-envs%2Cvideo-transcode%2Cworker-threads&from=2026-05-06T08%3A28%3A52Z&to=2026-05-13T08%3A28%3A52Z&granularity=Hour",
+      "filter_type": "ResourcePool",
+      "range_key": "7d",
+      "granularity": "Hour",
+      "target_count": 10,
+      "client_count": 0
+    },
+    {
+      "name": "historical_usage_service_by_client_7d",
+      "path": "api/v1/statistics/historical-usage/by-client?filterType=Service&targetIds=auth-service&from=2026-05-06T08%3A28%3A52Z&to=2026-05-13T08%3A28%3A52Z&granularity=Hour&clientIds=admin-tool%2Cchatbot-ai%2Ccicd-pipeline%2Ccompliance-bot%2Ccontent-cdn%2Ccrm-integration%2Cdata-warehouse%2Cdeveloper-sandbox%2Chr-system%2Cinventory-mgr%2Ciot-gateway%2Clogistics-api%2Cmarketing-platform%2Cml-training%2Cmobile-app%2Cpartner-acme%2Cpartner-stark%2Cpartner-umbrella%2Cpartner-wayne%2Cpayment-gateway%2Cplatform-core%2Creporting-svc%2Csupport-portal%2Cweb-dashboard",
+      "filter_type": "Service",
+      "range_key": "7d",
+      "granularity": "Hour",
+      "target_count": 1,
+      "client_count": 24
+    },
+    {
+      "name": "historical_usage_pools_by_client_7d",
+      "path": "api/v1/statistics/historical-usage/by-client?filterType=ResourcePool&targetIds=api-gateway-slots%2Cdb-connections%2Cfile-upload-slots%2Cgpu-compute%2Cml-inference-slots%2Cpdf-render-slots%2Creport-workers%2Csandbox-envs%2Cvideo-transcode%2Cworker-threads&from=2026-05-06T08%3A28%3A52Z&to=2026-05-13T08%3A28%3A52Z&granularity=Hour&clientIds=admin-tool%2Cchatbot-ai%2Ccicd-pipeline%2Ccompliance-bot%2Ccontent-cdn%2Ccrm-integration%2Cdata-warehouse%2Cdeveloper-sandbox%2Chr-system%2Cinventory-mgr%2Ciot-gateway%2Clogistics-api%2Cmarketing-platform%2Cml-training%2Cmobile-app%2Cpartner-acme%2Cpartner-stark%2Cpartner-umbrella%2Cpartner-wayne%2Cpayment-gateway%2Cplatform-core%2Creporting-svc%2Csupport-portal%2Cweb-dashboard",
+      "filter_type": "ResourcePool",
+      "range_key": "7d",
+      "granularity": "Hour",
+      "target_count": 10,
+      "client_count": 24
+    }
+  ],
+  "storage_bytes": {
+    "before": {
+      "UsageSnapshots": 114425913,
+      "_counters": 7415
+    },
+    "after": {
+      "UsageSnapshots": 114430788,
+      "_counters": 7415
+    }
+  }
+}
