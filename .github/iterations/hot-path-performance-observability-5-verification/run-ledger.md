@@ -3,7 +3,7 @@
 ## Iteration
 
 - Slug: hot-path-performance-observability-5-verification
-- Status: Verification complete with blockers
+- Status: Blocked; evidence committed; final closeout in progress
 - Owning orchestrator: @Iterate
 
 ## Selected Scope
@@ -15,6 +15,7 @@
 ## Repo Baseline
 
 - Baseline commit: 2f6d37152dbbcb8912a923515f8232e0cb9a322b
+- Latest evidence commit: 2d83685ae30d7cf5431dcca9ffae23a55643ced6
 - Working branch: feature/hot-path-performance-observability-1-baseline-runtime
 - Comparison range: 2f6d37152dbbcb8912a923515f8232e0cb9a322b..HEAD
 
@@ -39,9 +40,9 @@
 
 - Blockers: After artifact has 563 runtime unexpected 503s versus 24 before; access p95 regressed from 151.374 ms to 176.262 ms; release p95 regressed to 5033.664 ms; UI browser screenshots show overlapping labels/navigation and incomplete chart surfaces.
 - Outstanding findings: None recorded.
-- Next action: Index the blocked verification state, commit the after artifact/comparison/packets, then stop and surface the blocker.
+- Next action: Index final blocked closeout, commit closeout bookkeeping, verify clean workspace, then stop and surface the blocker.
 
 ## Resume Notes
 
 - Current context: Steps 1 through 4 are approved and finalized. Step 5 verification ran from commit 2f6d37152dbbcb8912a923515f8232e0cb9a322b and produced after/comparison artifacts, but final success criteria failed.
-- Recovery instructions: Resume from the blocked Step 5 state. Preserve the after artifact and comparison evidence, then remediate JsonFile `UsageSnapshots`/counter lock waits and AdminUI visual rendering before rerunning final verification.
+- Recovery instructions: Resume from the blocked Step 5 state after evidence commit 2d83685. Remediate JsonFile `UsageSnapshots`/counter lock waits and AdminUI visual rendering before rerunning final verification.

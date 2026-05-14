@@ -6,12 +6,13 @@
 - Active plan: .github/plans/hot-path-performance-observability-5-verification.md
 - Parent overview: .github/plans/hot-path-performance-observability-overview.md
 - Baseline commit: 2f6d37152dbbcb8912a923515f8232e0cb9a322b
-- Latest commit: Pending evidence/packet commit
+- Latest commit: 2d83685ae30d7cf5431dcca9ffae23a55643ced6
 - Branch: feature/hot-path-performance-observability-1-baseline-runtime
-- Status: Blocked after delegated final verification pass; evidence captured and awaiting @Inscribe commit.
+- Status: Final blocked stop recorded; evidence committed and awaiting @Inscribe closeout bookkeeping commit.
 
 ## Latest Transition
 
+- @Index recorded the final Step 5 blocked-stop closeout after @Inscribe committed the evidence set as 2d83685ae30d7cf5431dcca9ffae23a55643ced6.
 - @Implement completed the final Step 5 verification pass without changing application code or plan status.
 - The after artifact .github/plans/hot-path-performance-baseline-after.json is valid and has nonzero access/acquire/release counts of 415/110/9.
 - Verification is blocked because runtime unexpected failures increased from 24 before to 563 after. All after unexpected failures are 503s.
@@ -25,11 +26,11 @@
 
 ## Open Items
 
-- Blockers: Step 5 success criteria failed on runtime 503s, access/release p95 regressions, missing trace backend waterfall verification, and AdminUI browser visual rendering.
+- Blockers: Step 5 success criteria failed on 563 runtime 503s, access/release p95 regressions, missing trace backend waterfall verification, and AdminUI browser visual rendering.
 - Outstanding findings: None recorded.
 - Verification: Build, launch, seed, warm-up, low-interval traffic, 60 second after benchmark, artifact comparison, Prometheus/log checks, UI smoke/browser checks, and shutdown all ran. The pass completed with blockers.
 
 ## Resume Guidance
 
 - Read run-ledger.md first, then implementation-handoff.md, review-packet.md, commit-packet.md, decision-log.md, timeline.md, and execution-report.md.
-- Next recommended consumer: @Inscribe, to commit the after artifact, comparison artifact, and Step 5 packet updates as evidence for the blocked verification transition.
+- Next recommended consumer: @Inscribe, to commit the final closeout timeline/progress/report bookkeeping, then return to @Iterate for the final user-facing response.
