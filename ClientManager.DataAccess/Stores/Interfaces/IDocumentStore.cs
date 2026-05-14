@@ -92,6 +92,18 @@ public interface IDocumentStore
     Task SetAsync<T>(string collection, string id, T document, CancellationToken cancellationToken = default) where T : class;
 
     /// <summary>
+    /// Creates or overwrites multiple documents in the specified collection as one backend-neutral batch.
+    /// </summary>
+    /// <typeparam name="T">The document type to serialize.</typeparam>
+    /// <param name="collection">The name of the collection to write to.</param>
+    /// <param name="documents">Documents keyed by their unique identifiers.</param>
+    /// <param name="cancellationToken">Cancels the batch write. Backends may keep documents that were already persisted.</param>
+    Task SetManyAsync<T>(
+        string collection,
+        IReadOnlyDictionary<string, T> documents,
+        CancellationToken cancellationToken = default) where T : class;
+
+    /// <summary>
     /// Deletes a document by its ID from the specified collection.
     /// </summary>
     /// <param name="collection">The name of the collection to delete from.</param>

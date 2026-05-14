@@ -81,7 +81,8 @@ public class RateLimitService : IRateLimitService
                     cancellationToken);
                 var result = Combine(serviceResult, globalResult);
                 return CompleteClientDecision(result, configuration.Id, serviceId);
-            });
+            },
+            cancellationToken);
     }
 
     /// <inheritdoc />
@@ -152,14 +153,16 @@ public class RateLimitService : IRateLimitService
                     cancellationToken);
 
                 return Combine(serviceResult, globalResult);
-            });
+            },
+            cancellationToken);
     }
 
     private async Task<RateLimitResult> TraceRateLimitAsync(
         string activityName,
         string operation,
         Action<Activity?> configureActivity,
-        Func<Task<RateLimitResult>> action)
+        Func<Task<RateLimitResult>> action,
+        CancellationToken cancellationToken)
     {
         using var activity = _metrics.ActivitySource.StartActivity(activityName, ActivityKind.Internal);
         configureActivity(activity);
@@ -171,6 +174,19 @@ public class RateLimitService : IRateLimitService
             stopwatch.Stop();
             CompleteRateLimit(activity, operation, result, stopwatch.Elapsed.TotalMilliseconds);
             return result;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            stopwatch.Stop();
+            activity?.SetTag("ratelimit.result", "canceled");
+            activity?.SetTag("duration_ms", stopwatch.Elapsed.TotalMilliseconds);
+            _logger.Debug("Rate limit operation canceled", new
+            {
+                Operation = operation,
+                DurationMs = stopwatch.Elapsed.TotalMilliseconds,
+                Result = "canceled"
+            });
+            throw;
         }
         catch (Exception exception)
         {
@@ -233,7 +249,8 @@ public class RateLimitService : IRateLimitService
 
                 var peekResult = await strategy.PeekAsync(globalKey, rateLimit, cancellationToken);
                 return CompleteGlobalDecision(peekResult, configuration.Id, targetId, targetType);
-            });
+            },
+            cancellationToken);
     }
 
     private RateLimitResult CompleteClientDecision(

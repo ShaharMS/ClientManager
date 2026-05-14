@@ -111,41 +111,88 @@ public partial class UsagePersistenceService : BackgroundService
         }
 
         var bucketTimestamp = RoundDownToSecond(DateTime.UtcNow);
-        var groups = counts.GroupBy(entry => (entry.Key.ClientId, entry.Key.TargetType, entry.Key.TargetId));
+        var groups = counts
+            .GroupBy(entry => (entry.Key.ClientId, entry.Key.TargetType, entry.Key.TargetId))
+            .ToList();
+        var snapshotIds = BuildSnapshotIds(groups, bucketTimestamp);
+        var existing = await LoadSnapshotsAsync(database, snapshotIds, cancellationToken);
+        var snapshots = new List<UsageSnapshot>(groups.Count);
 
         foreach (var group in groups)
         {
-            await FlushGroupAsync(group.ToList(), bucketTimestamp, database, allocationDatabase, cancellationToken);
+            snapshots.Add(await BuildUpdatedSnapshotAsync(
+                group.ToList(),
+                bucketTimestamp,
+                existing,
+                allocationDatabase,
+                cancellationToken));
         }
+
+        await database.UpsertManyAsync(snapshots, cancellationToken);
 
         _cache.InvalidateStatistics();
         _logger.Debug("Flushed usage counter groups to storage", new { Count = counts.Count });
     }
 
-    private async Task FlushGroupAsync(
+    private static List<string> BuildSnapshotIds(
+        IEnumerable<IGrouping<(string ClientId, TargetType TargetType, string TargetId), KeyValuePair<Models.Entities.UsageBufferKey, long>>> groups,
+        DateTime bucketTimestamp)
+    {
+        return groups.Select(group => BuildSnapshotId(group.Key, bucketTimestamp)).ToList();
+    }
+
+    private static async Task<Dictionary<string, UsageSnapshot>> LoadSnapshotsAsync(
+        IUsageSnapshotDatabase database,
+        IReadOnlyCollection<string> snapshotIds,
+        CancellationToken cancellationToken)
+    {
+        var snapshots = await database.GetByIdsAsync(snapshotIds, cancellationToken);
+        return snapshots.ToDictionary(snapshot => snapshot.Id, StringComparer.Ordinal);
+    }
+
+    private async Task<UsageSnapshot> BuildUpdatedSnapshotAsync(
         IReadOnlyList<KeyValuePair<Models.Entities.UsageBufferKey, long>> entries,
         DateTime bucketTimestamp,
-        IUsageSnapshotDatabase database,
+        IReadOnlyDictionary<string, UsageSnapshot> existing,
         IResourceAllocationDatabase allocationDatabase,
         CancellationToken cancellationToken)
     {
         var first = entries[0].Key;
+        var snapshotId = BuildSnapshotId(first, bucketTimestamp);
         var segmentStart = UsageSegmentHelper.GetSegmentStart(bucketTimestamp, BucketGranularity.Second);
-        var snapshotId = UsageSegmentHelper.BuildSegmentId(
-            first.ClientId,
-            first.TargetType,
-            first.TargetId,
-            BucketGranularity.Second,
-            segmentStart);
-
-        var snapshot = await database.GetByIdAsync(snapshotId, cancellationToken)
-            ?? CreateSnapshot(snapshotId, first.ClientId, first.TargetId, first.TargetType, BucketGranularity.Second, segmentStart);
+        var snapshot = existing.TryGetValue(snapshotId, out var current)
+            ? current
+            : CreateSnapshot(snapshotId, first.ClientId, first.TargetId, first.TargetType, BucketGranularity.Second, segmentStart);
 
         var totals = SumEntries(entries);
         var activeCount = await GetActiveCountAsync(first, allocationDatabase, cancellationToken);
         var buckets = MergeBucket(snapshot.Buckets, bucketTimestamp, totals, activeCount);
 
-        await database.UpsertAsync(snapshot with { Buckets = buckets.ToList() }, cancellationToken);
+        return snapshot with { Buckets = buckets.ToList() };
+    }
+
+    private static string BuildSnapshotId(
+        Models.Entities.UsageBufferKey key,
+        DateTime bucketTimestamp)
+    {
+        return UsageSegmentHelper.BuildSegmentId(
+            key.ClientId,
+            key.TargetType,
+            key.TargetId,
+            BucketGranularity.Second,
+            UsageSegmentHelper.GetSegmentStart(bucketTimestamp, BucketGranularity.Second));
+    }
+
+    private static string BuildSnapshotId(
+        (string ClientId, TargetType TargetType, string TargetId) key,
+        DateTime bucketTimestamp)
+    {
+        return UsageSegmentHelper.BuildSegmentId(
+            key.ClientId,
+            key.TargetType,
+            key.TargetId,
+            BucketGranularity.Second,
+            UsageSegmentHelper.GetSegmentStart(bucketTimestamp, BucketGranularity.Second));
     }
 
     private static UsageSnapshot CreateSnapshot(

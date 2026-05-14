@@ -25,6 +25,10 @@ public class ErrorHandlingMiddleware
         {
             await _next(context);
         }
+        catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (NotFoundException exception)
         {
             _logger.Warn("Resource not found", new { Path = context.Request.Path.Value, Detail = exception.Message });

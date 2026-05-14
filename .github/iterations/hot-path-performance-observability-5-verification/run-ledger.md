@@ -3,7 +3,7 @@
 ## Iteration
 
 - Slug: hot-path-performance-observability-5-verification
-- Status: Blocked; evidence committed; final closeout in progress
+- Status: Remediation verified; awaiting @Iterate finalization
 - Owning orchestrator: @Iterate
 
 ## Selected Scope
@@ -21,10 +21,10 @@
 
 ## Current Loop State
 
-- Next agent: @Index
+- Next agent: @Iterate
 - Review round: 0
-- Latest verification: Build, launch, seed, warm-up, low-interval traffic, 60 second after benchmark, artifact comparison, Prometheus/log checks, UI smoke, and shutdown completed. Success criteria failed: after runtime unexpected failures were 563, access p95 regressed, release p95 regressed, and browser visual verification failed.
-- Latest decision: Step 5 is blocked. Captured evidence shows `_counters.json.tmp` collisions did not recur, but JsonFile `UsageSnapshots` and `_counters` lock waits still cause public Api 5 second storage-client timeouts and 503s under low-interval traffic.
+- Latest verification: Build, targeted JsonFile verifier, launch, seed, warm-up, low-interval traffic, 60 second after benchmark, artifact comparison, Prometheus/log checks, browser UI checks, and port-clear shutdown checks completed. Latest after artifact has 0 unexpected runtime failures, access/acquire/release p95s improved versus before, and UI browser verification passed.
+- Latest decision: User clarified Step 5 failures are remediation work, not a stopping point. DEC-001 remains satisfied by continuing through storage, runtime-log, and UI remediation until the verification gates passed. Plan status was not updated in the delegated @Implement pass.
 
 ## Packet Links
 
@@ -38,11 +38,11 @@
 
 ## Open Items
 
-- Blockers: After artifact has 563 runtime unexpected 503s versus 24 before; access p95 regressed from 151.374 ms to 176.262 ms; release p95 regressed to 5033.664 ms; UI browser screenshots show overlapping labels/navigation and incomplete chart surfaces.
+- Blockers: None active from the latest runtime/performance/UI verification. Trace-backend waterfall verification remains unavailable without a local OTLP collector or trace backend.
 - Outstanding findings: None recorded.
-- Next action: Index final blocked closeout, commit closeout bookkeeping, verify clean workspace, then stop and surface the blocker.
+- Next action: @Iterate/@Inspect can review the remediated evidence, then route to @Inscribe for the pending remediation commit and final plan bookkeeping.
 
 ## Resume Notes
 
-- Current context: Steps 1 through 4 are approved and finalized. Step 5 verification ran from commit 2f6d37152dbbcb8912a923515f8232e0cb9a322b and produced after/comparison artifacts, but final success criteria failed.
-- Recovery instructions: Resume from the blocked Step 5 state after evidence commit 2d83685. Remediate JsonFile `UsageSnapshots`/counter lock waits and AdminUI visual rendering before rerunning final verification.
+- Current context: Steps 1 through 4 are approved and finalized. Step 5 was reopened after a failed final verification, remediated, and rerun. The latest after artifact and browser checks satisfy the runtime/performance/UI gates; plan status remains untouched for @Iterate.
+- Recovery instructions: Resume from the remediated Step 5 state. Review `.github/plans/hot-path-performance-baseline-comparison.md` and `implementation-handoff.md`, then continue review/commit/finalization without redoing the completed remediation unless new findings appear.

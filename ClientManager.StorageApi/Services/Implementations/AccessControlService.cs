@@ -101,6 +101,13 @@ public class AccessControlService : IAccessControlService
             reason = exception.ErrorCode;
             throw;
         }
+        catch (OperationCanceledException exception) when (cancellationToken.IsCancellationRequested)
+        {
+            result = "canceled";
+            reason = exception.GetType().Name;
+            unexpectedException = exception;
+            throw;
+        }
         catch (Exception exception)
         {
             result = "exception";
@@ -407,6 +414,12 @@ public class AccessControlService : IAccessControlService
             Result = result,
             Reason = reason
         };
+
+        if (result == "canceled")
+        {
+            _logger.Debug("Access check canceled", extraData);
+            return;
+        }
 
         if (unexpectedException is not null)
         {

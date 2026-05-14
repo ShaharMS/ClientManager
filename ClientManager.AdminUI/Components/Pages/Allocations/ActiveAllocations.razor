@@ -79,10 +79,14 @@
             </RadzenChart>
         }
     }
-    else
+    else if (_loading)
     {
         <SkeletonBlock CssClass="cm-skeleton--heading" />
         <SkeletonBlock CssClass="cm-skeleton--chart" />
+    }
+    else
+    {
+        <div class="cm-chart-empty">No allocation data available</div>
     }
 </div>
 

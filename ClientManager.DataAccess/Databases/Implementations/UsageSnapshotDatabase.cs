@@ -71,6 +71,18 @@ public class UsageSnapshotDatabase : IUsageSnapshotDatabase
         _store.SetAsync(Collection, snapshot.Id, snapshot, cancellationToken);
 
     /// <inheritdoc />
+    public Task UpsertManyAsync(
+        IReadOnlyCollection<UsageSnapshot> snapshots,
+        CancellationToken cancellationToken = default)
+    {
+        if (snapshots.Count == 0)
+            return Task.CompletedTask;
+
+        var documents = snapshots.ToDictionary(snapshot => snapshot.Id, StringComparer.Ordinal);
+        return _store.SetManyAsync(Collection, documents, cancellationToken);
+    }
+
+    /// <inheritdoc />
     public Task DeleteAsync(string id, CancellationToken cancellationToken = default) =>
         _store.DeleteAsync(Collection, id, cancellationToken);
 

@@ -147,6 +147,27 @@ return next
     }
 
     /// <inheritdoc />
+    public async Task SetManyAsync<T>(
+        string collection,
+        IReadOnlyDictionary<string, T> documents,
+        CancellationToken cancellationToken = default) where T : class
+    {
+        if (documents.Count == 0)
+            return;
+
+        cancellationToken.ThrowIfCancellationRequested();
+        if (_hasRediSearch)
+        {
+            await SetManyJsonDocumentsAsync(collection, documents);
+            return;
+        }
+
+        var entries = documents.Select(entry =>
+            new HashEntry(entry.Key, JsonSerializer.Serialize(entry.Value, JsonOptions))).ToArray();
+        await Database.HashSetAsync(HashKey(collection), entries);
+    }
+
+    /// <inheritdoc />
     public async Task DeleteAsync(string collection, string id, CancellationToken cancellationToken = default)
     {
         if (_hasRediSearch)
@@ -353,6 +374,18 @@ return next
         catch
         {
             return false;
+        }
+    }
+
+    private async Task SetManyJsonDocumentsAsync<T>(
+        string collection,
+        IReadOnlyDictionary<string, T> documents) where T : class
+    {
+        EnsureIndex(collection);
+        foreach (var (id, document) in documents)
+        {
+            var json = JsonSerializer.Serialize(document, JsonOptions);
+            await Database.JSON().SetAsync(DocKey(collection, id), JsonRootPath, json);
         }
     }
 

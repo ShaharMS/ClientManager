@@ -17,6 +17,8 @@
     box-shadow: var(--shadow-sm);
     border: 1px solid var(--color-border);
     padding: var(--space-lg);
+    min-width: 0;
+    overflow: hidden;
 }
 
 /* Status badges */

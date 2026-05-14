@@ -2,8 +2,9 @@ using ClientManager.DataAccess.Stores.Implementations;
 
 await JsonFileCounterVerification.SetManyCountersRoundTripsAsync();
 await JsonFileCounterVerification.ConcurrentCounterUpdatesRemainStableAsync();
+await JsonFileCounterVerification.SetManyDocumentsRoundTripsAsync();
 
-Console.WriteLine("JsonFile counter verification passed.");
+Console.WriteLine("JsonFile storage verification passed.");
 
 internal static class JsonFileCounterVerification
 {
@@ -48,6 +49,28 @@ internal static class JsonFileCounterVerification
             var counts = await firstStore.GetManyCountersAsync(["shared", "floor"]);
             Require(counts["shared"] == 100, "shared counter lost concurrent increments.");
             Require(counts["floor"] == 0, "decremented counter should floor at zero.");
+            RequireNoTempFiles(tempDirectory);
+        }
+        finally
+        {
+            DeleteDirectory(tempDirectory);
+        }
+    }
+
+    public static async Task SetManyDocumentsRoundTripsAsync()
+    {
+        var tempDirectory = CreateTempDirectory();
+        try
+        {
+            var store = new JsonFileDocumentStore(tempDirectory);
+            await store.SetManyAsync("widgets", new Dictionary<string, Widget>
+            {
+                ["one"] = new("one", 1),
+                ["two"] = new("two", 2)
+            });
+
+            var widgets = await store.GetManyAsync<Widget>("widgets", ["one", "two"]);
+            Require(widgets.Count == 2, "document batch did not round-trip.");
             RequireNoTempFiles(tempDirectory);
         }
         finally
@@ -112,3 +135,5 @@ internal static class JsonFileCounterVerification
             Directory.Delete(tempDirectory, recursive: true);
     }
 }
+
+internal sealed record Widget(string Id, int Value);

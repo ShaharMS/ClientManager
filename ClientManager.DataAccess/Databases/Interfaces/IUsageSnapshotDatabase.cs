@@ -111,6 +111,15 @@ public interface IUsageSnapshotDatabase
     Task UpsertAsync(UsageSnapshot snapshot, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Creates or updates multiple usage snapshot documents in one storage batch.
+    /// </summary>
+    /// <param name="snapshots">The snapshots to persist.</param>
+    /// <param name="cancellationToken">Cancels the batch write. Backends may keep snapshots already written before cancellation.</param>
+    Task UpsertManyAsync(
+        IReadOnlyCollection<UsageSnapshot> snapshots,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Deletes a usage snapshot document by its compound key. Used by prune and rollup to
     /// drop whole segment documents instead of rewriting them with an empty bucket list.
     /// </summary>

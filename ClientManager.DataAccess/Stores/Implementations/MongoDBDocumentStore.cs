@@ -71,12 +71,30 @@ public class MongoDBDocumentStore : IDocumentStore
     /// <inheritdoc />
     public async Task SetAsync<T>(string collection, string id, T document, CancellationToken cancellationToken = default) where T : class
     {
-        var json = JsonSerializer.Serialize(document, JsonOptions);
-        var bsonDoc = BsonDocument.Parse(json);
-        bsonDoc["_id"] = id;
-
         var filter = Builders<BsonDocument>.Filter.Eq("_id", id);
+        var bsonDoc = CreateDocument(id, document);
         await GetCollection(collection).ReplaceOneAsync(filter, bsonDoc, new ReplaceOptions { IsUpsert = true }, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task SetManyAsync<T>(
+        string collection,
+        IReadOnlyDictionary<string, T> documents,
+        CancellationToken cancellationToken = default) where T : class
+    {
+        if (documents.Count == 0)
+            return;
+
+        var models = documents.Select(entry =>
+        {
+            var filter = Builders<BsonDocument>.Filter.Eq("_id", entry.Key);
+            return new ReplaceOneModel<BsonDocument>(filter, CreateDocument(entry.Key, entry.Value))
+            {
+                IsUpsert = true
+            };
+        }).ToList<WriteModel<BsonDocument>>();
+
+        await GetCollection(collection).BulkWriteAsync(models, cancellationToken: cancellationToken);
     }
 
     /// <inheritdoc />
@@ -282,6 +300,14 @@ public class MongoDBDocumentStore : IDocumentStore
         doc.Remove("_id");
         var json = doc.ToJson();
         return JsonSerializer.Deserialize<T>(json, JsonOptions)!;
+    }
+
+    private static BsonDocument CreateDocument<T>(string id, T document)
+    {
+        var json = JsonSerializer.Serialize(document, JsonOptions);
+        var bsonDoc = BsonDocument.Parse(json);
+        bsonDoc["_id"] = id;
+        return bsonDoc;
     }
 
     private async Task<Dictionary<string, BsonDocument>> LoadCounterDocumentsAsync(

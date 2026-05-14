@@ -105,6 +105,13 @@ public class ResourceAllocationService : IResourceAllocationService
             reason = exception.ErrorCode;
             throw;
         }
+        catch (OperationCanceledException exception) when (cancellationToken.IsCancellationRequested)
+        {
+            result = "canceled";
+            reason = exception.GetType().Name;
+            unexpectedException = exception;
+            throw;
+        }
         catch (Exception exception)
         {
             result = "exception";
@@ -167,6 +174,13 @@ public class ResourceAllocationService : IResourceAllocationService
         {
             result = "denied";
             reason = exception.ErrorCode;
+            throw;
+        }
+        catch (OperationCanceledException exception) when (cancellationToken.IsCancellationRequested)
+        {
+            result = "canceled";
+            reason = exception.GetType().Name;
+            unexpectedException = exception;
             throw;
         }
         catch (Exception exception)
@@ -523,6 +537,12 @@ public class ResourceAllocationService : IResourceAllocationService
             Result = result,
             Reason = reason
         };
+
+        if (result == "canceled")
+        {
+            _logger.Debug("Resource operation canceled", extraData);
+            return;
+        }
 
         if (unexpectedException is not null)
         {

@@ -82,6 +82,12 @@ internal sealed class RuntimeStateClient : IRuntimeStateClient
             result = "granted";
             return accessResponse;
         }
+        catch (OperationCanceledException caught) when (cancellationToken.IsCancellationRequested)
+        {
+            result = "canceled";
+            exception = caught;
+            throw;
+        }
         catch (Exception caught)
         {
             exception = caught;
@@ -159,6 +165,12 @@ internal sealed class RuntimeStateClient : IRuntimeStateClient
             activity?.SetTag("allocation.id", acquireResponse.AllocationId);
             return acquireResponse;
         }
+        catch (OperationCanceledException caught) when (cancellationToken.IsCancellationRequested)
+        {
+            result = "canceled";
+            exception = caught;
+            throw;
+        }
         catch (Exception caught)
         {
             exception = caught;
@@ -215,6 +227,12 @@ internal sealed class RuntimeStateClient : IRuntimeStateClient
 
             result = releaseResponse.Released ? "released" : "already_released";
             return releaseResponse;
+        }
+        catch (OperationCanceledException caught) when (cancellationToken.IsCancellationRequested)
+        {
+            result = "canceled";
+            exception = caught;
+            throw;
         }
         catch (Exception caught)
         {
@@ -323,6 +341,12 @@ internal sealed class RuntimeStateClient : IRuntimeStateClient
             AllocationId = allocationId
         };
 
+        if (result == "canceled")
+        {
+            _logger.Debug("Storage API runtime call canceled", extraData);
+            return;
+        }
+
         if (exception is not null && result is not "denied")
         {
             _logger.Error("Storage API runtime call failed", exception, extraData);
@@ -383,7 +407,7 @@ internal sealed class RuntimeStateClient : IRuntimeStateClient
         }
 
         activity?.SetTag("error.type", exception.GetType().Name);
-        if (result is not "denied")
+        if (result is not "denied" and not "canceled")
         {
             activity?.SetStatus(ActivityStatusCode.Error);
         }
@@ -391,7 +415,7 @@ internal sealed class RuntimeStateClient : IRuntimeStateClient
 
     private static string GetFinalResult(string result, Exception? exception)
     {
-        if (exception is null || result is "denied" or "failed")
+        if (exception is null || result is "denied" or "failed" or "canceled")
         {
             return result;
         }

@@ -15,13 +15,15 @@ namespace ClientManager.DataAccess.Stores.Implementations;
 /// </summary>
 public class JsonFileDocumentStore : IDocumentStore
 {
+    private const int MaxAtomicWriteAttempts = 6;
+    private const int AtomicWriteRetryBaseDelayMilliseconds = 25;
+
     private readonly string _dataDirectory;
     private readonly SharedStoreState _state;
     private static readonly ConcurrentDictionary<string, SharedStoreState> States = new(GetPathComparer());
     private static readonly ConcurrentDictionary<string, SemaphoreSlim> TargetLocks = new(GetPathComparer());
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
-        WriteIndented = true,
         PropertyNameCaseInsensitive = true
     };
 
@@ -39,10 +41,10 @@ public class JsonFileDocumentStore : IDocumentStore
     private string CollectionPath(string collection) => Path.Combine(_dataDirectory, $"{collection}.json");
     private string CounterPath => Path.Combine(_dataDirectory, "_counters.json");
 
-    private async Task WaitForWriteLockAsync(CancellationToken cancellationToken)
+    private async Task WaitForWriteLockAsync(SemaphoreSlim writeLock, CancellationToken cancellationToken)
     {
         var stopwatch = Stopwatch.StartNew();
-        await _state.WriteLock.WaitAsync(cancellationToken);
+        await writeLock.WaitAsync(cancellationToken);
         stopwatch.Stop();
         Activity.Current?.SetTag("storage.lock_wait_ms", stopwatch.Elapsed.TotalMilliseconds);
     }
@@ -105,8 +107,9 @@ public class JsonFileDocumentStore : IDocumentStore
     public async Task SetAsync<T>(string collection, string id, T document, CancellationToken cancellationToken = default) where T : class
     {
         var element = JsonSerializer.SerializeToElement(document, JsonOptions);
+        var writeLock = GetCollectionWriteLock(collection);
 
-        await WaitForWriteLockAsync(cancellationToken);
+        await WaitForWriteLockAsync(writeLock, cancellationToken);
         try
         {
             var dict = GetOrLoadCollection(collection);
@@ -115,14 +118,43 @@ public class JsonFileDocumentStore : IDocumentStore
         }
         finally
         {
-            _state.WriteLock.Release();
+            writeLock.Release();
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task SetManyAsync<T>(
+        string collection,
+        IReadOnlyDictionary<string, T> documents,
+        CancellationToken cancellationToken = default) where T : class
+    {
+        if (documents.Count == 0)
+            return;
+
+        var elements = SerializeDocuments(documents);
+        var writeLock = GetCollectionWriteLock(collection);
+
+        await WaitForWriteLockAsync(writeLock, cancellationToken);
+        try
+        {
+            var dict = GetOrLoadCollection(collection);
+            foreach (var (id, element) in elements)
+                dict[id] = element;
+
+            await PersistCollectionAsync(collection, dict, cancellationToken);
+        }
+        finally
+        {
+            writeLock.Release();
         }
     }
 
     /// <inheritdoc />
     public async Task DeleteAsync(string collection, string id, CancellationToken cancellationToken = default)
     {
-        await WaitForWriteLockAsync(cancellationToken);
+        var writeLock = GetCollectionWriteLock(collection);
+
+        await WaitForWriteLockAsync(writeLock, cancellationToken);
         try
         {
             var dict = GetOrLoadCollection(collection);
@@ -131,21 +163,21 @@ public class JsonFileDocumentStore : IDocumentStore
         }
         finally
         {
-            _state.WriteLock.Release();
+            writeLock.Release();
         }
     }
 
     /// <inheritdoc />
     public async Task<long> IncrementCounterAsync(string key, TimeSpan window, CancellationToken cancellationToken = default)
     {
-        await WaitForWriteLockAsync(cancellationToken);
+        await WaitForWriteLockAsync(_state.CounterWriteLock, cancellationToken);
         try
         {
             return await IncrementCounterUnderLockAsync(key, 1, window, cancellationToken);
         }
         finally
         {
-            _state.WriteLock.Release();
+            _state.CounterWriteLock.Release();
         }
     }
 
@@ -157,14 +189,14 @@ public class JsonFileDocumentStore : IDocumentStore
         if (entries.Count == 0)
             return new Dictionary<string, long>();
 
-        await WaitForWriteLockAsync(cancellationToken);
+        await WaitForWriteLockAsync(_state.CounterWriteLock, cancellationToken);
         try
         {
             return await IncrementCountersUnderLockAsync(entries, cancellationToken);
         }
         finally
         {
-            _state.WriteLock.Release();
+            _state.CounterWriteLock.Release();
         }
     }
 
@@ -197,14 +229,14 @@ public class JsonFileDocumentStore : IDocumentStore
     /// <inheritdoc />
     public async Task<long> DecrementCounterAsync(string key, CancellationToken cancellationToken = default)
     {
-        await WaitForWriteLockAsync(cancellationToken);
+        await WaitForWriteLockAsync(_state.CounterWriteLock, cancellationToken);
         try
         {
             return await DecrementCounterUnderLockAsync(key, 1, cancellationToken);
         }
         finally
         {
-            _state.WriteLock.Release();
+            _state.CounterWriteLock.Release();
         }
     }
 
@@ -216,21 +248,21 @@ public class JsonFileDocumentStore : IDocumentStore
         if (entries.Count == 0)
             return new Dictionary<string, long>();
 
-        await WaitForWriteLockAsync(cancellationToken);
+        await WaitForWriteLockAsync(_state.CounterWriteLock, cancellationToken);
         try
         {
             return await DecrementCountersUnderLockAsync(entries, cancellationToken);
         }
         finally
         {
-            _state.WriteLock.Release();
+            _state.CounterWriteLock.Release();
         }
     }
 
     /// <inheritdoc />
     public async Task ResetCounterAsync(string key, CancellationToken cancellationToken = default)
     {
-        await WaitForWriteLockAsync(cancellationToken);
+        await WaitForWriteLockAsync(_state.CounterWriteLock, cancellationToken);
         try
         {
             var counters = GetOrLoadCounters();
@@ -239,14 +271,14 @@ public class JsonFileDocumentStore : IDocumentStore
         }
         finally
         {
-            _state.WriteLock.Release();
+            _state.CounterWriteLock.Release();
         }
     }
 
     /// <inheritdoc />
     public async Task SetCounterAsync(string key, long value, TimeSpan window, CancellationToken cancellationToken = default)
     {
-        await WaitForWriteLockAsync(cancellationToken);
+        await WaitForWriteLockAsync(_state.CounterWriteLock, cancellationToken);
         try
         {
             await SetCountersUnderLockAsync(
@@ -255,7 +287,7 @@ public class JsonFileDocumentStore : IDocumentStore
         }
         finally
         {
-            _state.WriteLock.Release();
+            _state.CounterWriteLock.Release();
         }
     }
 
@@ -267,14 +299,14 @@ public class JsonFileDocumentStore : IDocumentStore
         if (entries.Count == 0)
             return;
 
-        await WaitForWriteLockAsync(cancellationToken);
+        await WaitForWriteLockAsync(_state.CounterWriteLock, cancellationToken);
         try
         {
             await SetCountersUnderLockAsync(entries, cancellationToken);
         }
         finally
         {
-            _state.WriteLock.Release();
+            _state.CounterWriteLock.Release();
         }
     }
 
@@ -351,6 +383,19 @@ public class JsonFileDocumentStore : IDocumentStore
         {
             return new ConcurrentDictionary<string, CounterEntry>();
         }
+    }
+
+    private SemaphoreSlim GetCollectionWriteLock(string collection) =>
+        _state.CollectionWriteLocks.GetOrAdd(collection, _ => new SemaphoreSlim(1, 1));
+
+    private static Dictionary<string, JsonElement> SerializeDocuments<T>(
+        IReadOnlyDictionary<string, T> documents) where T : class
+    {
+        var elements = new Dictionary<string, JsonElement>(documents.Count, StringComparer.Ordinal);
+        foreach (var (id, document) in documents)
+            elements[id] = JsonSerializer.SerializeToElement(document, JsonOptions);
+
+        return elements;
     }
 
     private async Task<long> IncrementCounterUnderLockAsync(
@@ -492,7 +537,7 @@ public class JsonFileDocumentStore : IDocumentStore
         try
         {
             await File.WriteAllTextAsync(tmpPath, content, cancellationToken);
-            File.Move(tmpPath, targetPath, overwrite: true);
+            await MoveWithRetryAsync(tmpPath, targetPath, cancellationToken);
         }
         finally
         {
@@ -500,6 +545,27 @@ public class JsonFileDocumentStore : IDocumentStore
             targetLock.Release();
         }
     }
+
+    private static async Task MoveWithRetryAsync(string tmpPath, string targetPath, CancellationToken cancellationToken)
+    {
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                File.Move(tmpPath, targetPath, overwrite: true);
+                return;
+            }
+            catch (Exception exception) when (CanRetryAtomicMove(exception, attempt))
+            {
+                var delay = TimeSpan.FromMilliseconds(AtomicWriteRetryBaseDelayMilliseconds * attempt);
+                await Task.Delay(delay, cancellationToken);
+            }
+        }
+    }
+
+    private static bool CanRetryAtomicMove(Exception exception, int attempt) =>
+        attempt < MaxAtomicWriteAttempts &&
+        (exception is IOException || exception is UnauthorizedAccessException);
 
     private static void TryDeleteTempFile(string tmpPath)
     {
@@ -525,9 +591,10 @@ public class JsonFileDocumentStore : IDocumentStore
 
     private sealed class SharedStoreState
     {
-        public SemaphoreSlim WriteLock { get; } = new(1, 1);
+        public SemaphoreSlim CounterWriteLock { get; } = new(1, 1);
         public object CounterCacheLock { get; } = new();
         public ConcurrentDictionary<string, ConcurrentDictionary<string, JsonElement>> CollectionCache { get; } = new();
+        public ConcurrentDictionary<string, SemaphoreSlim> CollectionWriteLocks { get; } = new(StringComparer.Ordinal);
         public ConcurrentDictionary<string, CounterEntry>? CounterCache { get; set; }
     }
 

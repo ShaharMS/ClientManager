@@ -13,6 +13,8 @@
     border: 1px solid var(--color-border);
     padding: var(--space-lg);
     margin-bottom: var(--space-lg);
+    min-width: 0;
+    overflow: hidden;
 }
 
 .cm-monitor__separator {

@@ -35,83 +35,94 @@ public sealed class InstrumentedDocumentStore : IDocumentStore
     }
 
     public Task<T?> GetAsync<T>(string collection, string id, CancellationToken cancellationToken = default) where T : class =>
-        TraceAsync(collection, "get", () => _inner.GetAsync<T>(collection, id, cancellationToken));
+        TraceAsync(collection, "get", () => _inner.GetAsync<T>(collection, id, cancellationToken), cancellationToken);
 
     public Task<IReadOnlyList<T>> GetManyAsync<T>(
         string collection,
         IEnumerable<string> ids,
         CancellationToken cancellationToken = default) where T : class =>
-        TraceAsync(collection, "get_many", () => _inner.GetManyAsync<T>(collection, ids, cancellationToken));
+        TraceAsync(collection, "get_many", () => _inner.GetManyAsync<T>(collection, ids, cancellationToken), cancellationToken);
 
     public Task<IReadOnlyList<T>> GetAllAsync<T>(string collection, CancellationToken cancellationToken = default) where T : class =>
-        TraceAsync(collection, "get_all", () => _inner.GetAllAsync<T>(collection, cancellationToken));
+        TraceAsync(collection, "get_all", () => _inner.GetAllAsync<T>(collection, cancellationToken), cancellationToken);
 
     public Task SetAsync<T>(string collection, string id, T document, CancellationToken cancellationToken = default) where T : class =>
-        TraceAsync(collection, "set", () => _inner.SetAsync(collection, id, document, cancellationToken));
+        TraceAsync(collection, "set", () => _inner.SetAsync(collection, id, document, cancellationToken), cancellationToken);
+
+    public Task SetManyAsync<T>(
+        string collection,
+        IReadOnlyDictionary<string, T> documents,
+        CancellationToken cancellationToken = default) where T : class =>
+        TraceAsync(collection, "set_many", () => _inner.SetManyAsync(collection, documents, cancellationToken), cancellationToken);
 
     public Task DeleteAsync(string collection, string id, CancellationToken cancellationToken = default) =>
-        TraceAsync(collection, "delete", () => _inner.DeleteAsync(collection, id, cancellationToken));
+        TraceAsync(collection, "delete", () => _inner.DeleteAsync(collection, id, cancellationToken), cancellationToken);
 
     public Task<long> IncrementCounterAsync(string key, TimeSpan window, CancellationToken cancellationToken = default) =>
-        TraceAsync(CounterCollection, "counter_increment", () => _inner.IncrementCounterAsync(key, window, cancellationToken));
+        TraceAsync(CounterCollection, "counter_increment", () => _inner.IncrementCounterAsync(key, window, cancellationToken), cancellationToken);
 
     public Task<IReadOnlyDictionary<string, long>> IncrementManyCountersAsync(
         IReadOnlyDictionary<string, (long amount, TimeSpan window)> entries,
         CancellationToken cancellationToken = default) =>
-        TraceAsync(CounterCollection, "counter_increment_many", () => _inner.IncrementManyCountersAsync(entries, cancellationToken));
+        TraceAsync(CounterCollection, "counter_increment_many", () => _inner.IncrementManyCountersAsync(entries, cancellationToken), cancellationToken);
 
     public Task<long> DecrementCounterAsync(string key, CancellationToken cancellationToken = default) =>
-        TraceAsync(CounterCollection, "counter_decrement", () => _inner.DecrementCounterAsync(key, cancellationToken));
+        TraceAsync(CounterCollection, "counter_decrement", () => _inner.DecrementCounterAsync(key, cancellationToken), cancellationToken);
 
     public Task<IReadOnlyDictionary<string, long>> DecrementManyCountersAsync(
         IReadOnlyDictionary<string, long> entries,
         CancellationToken cancellationToken = default) =>
-        TraceAsync(CounterCollection, "counter_decrement_many", () => _inner.DecrementManyCountersAsync(entries, cancellationToken));
+        TraceAsync(CounterCollection, "counter_decrement_many", () => _inner.DecrementManyCountersAsync(entries, cancellationToken), cancellationToken);
 
     public Task<long> GetCounterAsync(string key, CancellationToken cancellationToken = default) =>
-        TraceAsync(CounterCollection, "counter_get", () => _inner.GetCounterAsync(key, cancellationToken));
+        TraceAsync(CounterCollection, "counter_get", () => _inner.GetCounterAsync(key, cancellationToken), cancellationToken);
 
     public Task<IReadOnlyDictionary<string, long>> GetManyCountersAsync(
         IEnumerable<string> keys,
         CancellationToken cancellationToken = default) =>
-        TraceAsync(CounterCollection, "counter_get_many", () => _inner.GetManyCountersAsync(keys, cancellationToken));
+        TraceAsync(CounterCollection, "counter_get_many", () => _inner.GetManyCountersAsync(keys, cancellationToken), cancellationToken);
 
     public Task SetCounterAsync(string key, long value, TimeSpan window, CancellationToken cancellationToken = default) =>
-        TraceAsync(CounterCollection, "counter_set", () => _inner.SetCounterAsync(key, value, window, cancellationToken));
+        TraceAsync(CounterCollection, "counter_set", () => _inner.SetCounterAsync(key, value, window, cancellationToken), cancellationToken);
 
     public Task SetManyCountersAsync(
         IReadOnlyDictionary<string, (long value, TimeSpan window)> entries,
         CancellationToken cancellationToken = default) =>
-        TraceAsync(CounterCollection, "counter_set_many", () => _inner.SetManyCountersAsync(entries, cancellationToken));
+        TraceAsync(CounterCollection, "counter_set_many", () => _inner.SetManyCountersAsync(entries, cancellationToken), cancellationToken);
 
     public Task ResetCounterAsync(string key, CancellationToken cancellationToken = default) =>
-        TraceAsync(CounterCollection, "counter_reset", () => _inner.ResetCounterAsync(key, cancellationToken));
+        TraceAsync(CounterCollection, "counter_reset", () => _inner.ResetCounterAsync(key, cancellationToken), cancellationToken);
 
     public Task<SearchResult<T>> SearchAsync<T>(
         string collection,
         DocumentQuery query,
         CancellationToken cancellationToken = default) where T : class =>
-        TraceAsync(collection, "search", () => _inner.SearchAsync<T>(collection, query, cancellationToken));
+        TraceAsync(collection, "search", () => _inner.SearchAsync<T>(collection, query, cancellationToken), cancellationToken);
 
     public Task<long> CountAsync<T>(
         string collection,
         DocumentQuery query,
         CancellationToken cancellationToken = default) where T : class =>
-        TraceAsync(collection, "count", () => _inner.CountAsync<T>(collection, query, cancellationToken));
+        TraceAsync(collection, "count", () => _inner.CountAsync<T>(collection, query, cancellationToken), cancellationToken);
 
-    private async Task TraceAsync(string collection, string operation, Func<Task> action)
+    private async Task TraceAsync(
+        string collection,
+        string operation,
+        Func<Task> action,
+        CancellationToken cancellationToken)
     {
         await TraceAsync(collection, operation, async () =>
         {
             await action();
             return true;
-        });
+        }, cancellationToken);
     }
 
     private async Task<TResult> TraceAsync<TResult>(
         string collection,
         string operation,
-        Func<Task<TResult>> action)
+        Func<Task<TResult>> action,
+        CancellationToken cancellationToken)
     {
         using var activity = StartActivity(collection, operation);
         var stopwatch = Stopwatch.StartNew();
@@ -122,6 +133,12 @@ public sealed class InstrumentedDocumentStore : IDocumentStore
             stopwatch.Stop();
             Complete(activity, collection, operation, stopwatch.Elapsed.TotalMilliseconds, "success");
             return result;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            stopwatch.Stop();
+            Complete(activity, collection, operation, stopwatch.Elapsed.TotalMilliseconds, "canceled");
+            throw;
         }
         catch (Exception exception)
         {
@@ -196,6 +213,12 @@ public sealed class InstrumentedDocumentStore : IDocumentStore
             Result = result,
             LockWaitMs = activity?.GetTagItem("storage.lock_wait_ms")
         };
+
+        if (result == "canceled")
+        {
+            _logger.Debug("Document-store operation canceled", extraData);
+            return;
+        }
 
         if (exception is not null)
         {

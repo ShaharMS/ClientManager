@@ -176,9 +176,30 @@ public class LuceneDocumentStore : IDocumentStore, IDisposable
         await WaitForWriteLockAsync(cancellationToken);
         try
         {
-            DeleteByCollectionAndId(collection, id);
-            var luceneDoc = BuildDocument(collection, id, document);
-            _writer.AddDocument(luceneDoc);
+            WriteDocument(collection, id, document);
+            _writer.Commit();
+        }
+        finally
+        {
+            _writeLock.Release();
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task SetManyAsync<T>(
+        string collection,
+        IReadOnlyDictionary<string, T> documents,
+        CancellationToken cancellationToken = default) where T : class
+    {
+        if (documents.Count == 0)
+            return;
+
+        await WaitForWriteLockAsync(cancellationToken);
+        try
+        {
+            foreach (var (id, document) in documents)
+                WriteDocument(collection, id, document);
+
             _writer.Commit();
         }
         finally
@@ -411,6 +432,12 @@ public class LuceneDocumentStore : IDocumentStore, IDisposable
             { new TermQuery(new Term(IdField, id)), Occur.MUST }
         };
         _writer.DeleteDocuments(deleteQuery);
+    }
+
+    private void WriteDocument<T>(string collection, string id, T document)
+    {
+        DeleteByCollectionAndId(collection, id);
+        _writer.AddDocument(BuildDocument(collection, id, document));
     }
 
     private async Task WaitForWriteLockAsync(CancellationToken cancellationToken)
