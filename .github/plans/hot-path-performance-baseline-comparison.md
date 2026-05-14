@@ -3,7 +3,7 @@
 ## Run
 
 - Before artifact: `.github/plans/hot-path-performance-baseline-before.json`
-- Prior failed after artifact: `.github/plans/hot-path-performance-baseline-provisional.json`
+- Provisional/before anchor artifact: `.github/plans/hot-path-performance-baseline-provisional.json`
 - Latest after artifact: `.github/plans/hot-path-performance-baseline-after.json`
 - Captured: 2026-05-14, Step 5 remediation verification pass
 - Profile: seed 42, 60 seconds, 1,000,000 requests/day, 100 virtual clients, graph reads enabled for 7d range

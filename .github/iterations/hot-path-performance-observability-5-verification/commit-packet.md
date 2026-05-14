@@ -2,73 +2,70 @@
 
 ## Commit Intent
 
-- Pass type: Remediated final verification evidence for Step 5
-- Plan step: .github/plans/hot-path-performance-observability-5-verification.md
-- Scope: Runtime hot-path remediation, AdminUI visual/static-asset remediation, latest benchmark artifacts, comparison evidence, and verification packet updates
-- Reason this is one commit: The storage batching/lock fixes, UI rendering fixes, cancellation-log cleanup, latest after artifact, comparison markdown, and Step 5 packets are one remediation evidence set for the reopened Step 5 verification. Unrelated runtime files, data files, logs, bin/obj outputs, and screenshots do not belong in this pass.
+- Pass type: Final approved plan archive and closeout
+- Plan step: .github/realized/hot-path-performance-observability-5-verification.md
+- Scope: Completed plan archive movement, final Step 5 approval bookkeeping, comparison label cleanup, and closeout progress updates.
+- Reason this is one commit: The plan move to `.github/realized`, final status edits, review normalization, comparison label cleanup, and closeout packet/progress updates are one bookkeeping pass after @Inspect approved Step 5 at commit 5864db4.
 
 ## Candidate Files
 
 | Path | Include | Reason |
 |------|---------|--------|
-| ClientManager.DataAccess/Stores/Interfaces/IDocumentStore.cs | Yes | Adds document-store batch write contract. |
-| ClientManager.DataAccess/Stores/Implementations/JsonFileDocumentStore.cs | Yes | Adds batch writes, lock isolation, compact output, and transient atomic-move retry. |
-| ClientManager.DataAccess/Stores/Implementations/LuceneDocumentStore.cs | Yes | Implements `SetManyAsync` for Lucene. |
-| ClientManager.DataAccess/Stores/Implementations/MongoDBDocumentStore.cs | Yes | Implements `SetManyAsync` for MongoDB. |
-| ClientManager.DataAccess/Stores/Implementations/RedisDocumentStore.cs | Yes | Implements `SetManyAsync` for Redis. |
-| ClientManager.DataAccess/Databases/Interfaces/IUsageSnapshotDatabase.cs | Yes | Adds batch usage snapshot upsert contract. |
-| ClientManager.DataAccess/Databases/Implementations/UsageSnapshotDatabase.cs | Yes | Persists batch usage snapshots through `SetManyAsync`. |
-| ClientManager.StorageApi/Services/Implementations/UsageTracking/UsagePersistenceService.cs | Yes | Batches usage snapshot flushes to remove hot-path write contention. |
-| ClientManager.DataAccess.Tests/Program.cs | Yes | Adds focused JsonFile batch-write verifier. |
-| ClientManager.AdminUI/Program.cs | Yes | Enables production-style static web assets and mapped static assets. |
-| ClientManager.AdminUI/Components/Layout/NavMenu.razor and AdminUI CSS/page files | Yes | Fixes visual overlap, chart/table containment, and loaded empty states. |
-| ClientManager.Api/Middlewares/ErrorHandlingMiddleware.cs | Yes | Preserves request-aborted cancellations. |
-| ClientManager.Api/Services/InternalClients/Implementations/RuntimeStateClient.cs | Yes | Logs canceled storage-client calls as canceled. |
-| ClientManager.StorageApi instrumentation/access/rate/resource services | Yes | Logs request-aborted StorageApi work as canceled instead of server failure. |
-| .github/plans/hot-path-performance-baseline-after.json | Yes | Latest after artifact with 0 unexpected runtime failures. |
-| .github/plans/hot-path-performance-baseline-comparison.md | Yes | Updated before/after comparison and remediation evidence summary. |
-| .github/iterations/hot-path-performance-observability-5-verification/*.md | Yes | Updated ledger, handoff, commit packet, timeline, and execution report for remediated state. |
-| .github/agent-progress/hot-path-performance-observability-5-verification.md | Yes | Durable progress note for the remediated Step 5 state. |
-| Data files, logs, bin/obj outputs, screenshots, and unrelated plans | No | Outside the requested Step 5 remediation and evidence scope. |
+| .github/realized/hot-path-performance-observability-overview.md | Yes | Archives the completed parent overview with all steps marked complete. |
+| .github/realized/hot-path-performance-observability-1-baseline-runtime.md | Yes | Archives completed Step 1. |
+| .github/realized/hot-path-performance-observability-2-tracing-logs.md | Yes | Archives completed Step 2. |
+| .github/realized/hot-path-performance-observability-3-storage-counters.md | Yes | Archives completed Step 3. |
+| .github/realized/hot-path-performance-observability-4-hot-path-logic.md | Yes | Archives completed Step 4. |
+| .github/realized/hot-path-performance-observability-5-verification.md | Yes | Archives completed and approved Step 5. |
+| .github/plans/hot-path-performance-observability-*.md deletions | Yes | Removes completed hot-path plan markdown files from active plans after archive. |
+| .github/plans/hot-path-performance-baseline-comparison.md | Yes | Cleans up the provisional artifact label called out by review. |
+| .github/iterations/hot-path-performance-observability-5-verification/run-ledger.md | Yes | Records approved/archive state and final next action. |
+| .github/iterations/hot-path-performance-observability-5-verification/review-packet.md | Yes | Records @Inspect approval and residual risks. |
+| .github/iterations/hot-path-performance-observability-5-verification/execution-report.md | Yes | Records final archive state and closeout summary. |
+| .github/iterations/hot-path-performance-observability-5-verification/timeline.md | Yes | Records approval/archive and this final closeout transition. |
+| .github/iterations/hot-path-performance-observability-5-verification/commit-packet.md | Yes | Records this @Inscribe finalization pass. |
+| .github/agent-progress/hot-path-performance-observability-5-verification.md | Yes | Preserves final resume/closeout state. |
+| Source files, benchmark JSON artifacts, data files, logs, bin/obj outputs, screenshots, and unrelated plans | No | Outside the requested finalization/bookkeeping scope. |
 
 ## Gitflow Decision
 
 - Starting branch: feature/hot-path-performance-observability-1-baseline-runtime
 - Target branch: feature/hot-path-performance-observability-1-baseline-runtime
-- Branch action: No branch change; the current feature branch is gitflow-compliant for this delegated remediation pass.
+- Branch action: No branch change; the current feature branch is gitflow-compliant for this finalization pass.
 
 ## Commit Message
 
 ```text
-fix(performance): complete Step 5 hot-path verification
+docs(plans): archive hot-path observability plan
 
-Batch usage snapshot persistence, isolate JsonFile hot-path locks,
-fix AdminUI verification rendering, and capture the passing after
-benchmark evidence.
+Move the completed hot-path observability overview and step plans to
+realized, record the Step 5 approval/closeout state, and clean up the
+comparison artifact label.
 
-Plan: .github/plans/hot-path-performance-observability-5-verification.md
-Pass: remediated final verification evidence for Step 5
+Plan: .github/realized/hot-path-performance-observability-5-verification.md
+Pass: final approved plan archive and closeout
 ```
 
 ## Result
 
-- Commit hash: Pending until the commit object is created; @Inscribe will return the exact hash in closeout.
-- Push result: Skipped; `git remote get-url origin` returned `No such remote 'origin'`.
-- Workspace status after commit: Expected clean for the requested Step 5 evidence scope; final status will be checked after commit and push.
-- Remaining uncommitted files: Expected none in the requested Step 5 evidence scope.
-- Follow-up needed: Configure a trace backend before true waterfall verification. @Iterate should handle final plan bookkeeping if this remediation evidence is accepted.
+- Commit hash: Created by this @Inscribe pass; exact hash returned in final response.
+- Push result: Checked after commit; push is attempted when `origin` exists and recorded as skipped when no remote exists.
+- Workspace status after commit: Checked after commit and push disposition.
+- Remaining uncommitted files: Expected none in the requested finalization/bookkeeping scope.
+- Follow-up needed: Configure a trace backend before true waterfall verification. JsonFile still rewrites large `UsageSnapshots` payloads, though the verified load passed.
 
-## Remediation Evidence
+## Finalization Evidence
 
-- Runtime 503 storm fixed: latest after artifact has 644 runtime operations, 609 successes, 35 expected 429s, 0 500s, 0 503s, and `runtime_unexpected_failures: []`.
-- Hot-path p95 improved versus before: access 151.374 ms to 70.043 ms, acquire 99.543 ms to 80.647 ms, and release 101.346 ms to 50.572 ms.
-- UI visual verification passed for `/`, `/monitor`, and `/allocations` after AdminUI static asset and layout fixes.
-- Build, targeted DataAccess verifier, Prometheus/log checks, no `_counters.json.tmp`, diagnostics, and diff hygiene passed.
-- Trace backend waterfall verification remains unavailable without a configured collector or trace backend.
+- @Inspect approved Step 5 after commit 5864db4 with no findings or approval blockers.
+- The latest after artifact has 644 runtime operations, 609 successes, 35 expected 429s, 0 500s, 0 503s, and 0 unexpected failures.
+- Hot-path p95s improved versus before: access 151.374 ms to 70.043 ms, acquire 99.543 ms to 80.647 ms, and release 101.346 ms to 50.572 ms.
+- UI browser verification passed for `/`, `/monitor`, and `/allocations` after AdminUI static asset and layout fixes.
+- Residual risks are trace-backend unavailability and known JsonFile whole-file `UsageSnapshots` rewrites.
 
 ## Commit History
 
 | Pass | Commit | Branch | Notes |
 |------|--------|--------|-------|
 | Blocked final verification evidence for Step 5 | 2d83685 | feature/hot-path-performance-observability-1-baseline-runtime | Captured the initial failed after artifact and blocker evidence. |
-| Remediated final verification evidence for Step 5 | Pending | feature/hot-path-performance-observability-1-baseline-runtime | Captures source fixes, latest passing after artifact, log/metrics/UI evidence, packet/progress updates, and no-origin push disposition. |
+| Remediated final verification evidence for Step 5 | 5864db4 | feature/hot-path-performance-observability-1-baseline-runtime | Captured source fixes, latest passing after artifact, log/metrics/UI evidence, packet/progress updates, and no-origin push disposition. |
+| Final approved plan archive and closeout | Pending | feature/hot-path-performance-observability-1-baseline-runtime | Archives completed plans to `.github/realized`, records approval closeout, and attempts/skips push according to remote availability. |

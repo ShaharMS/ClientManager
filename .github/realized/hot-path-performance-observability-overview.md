@@ -1,6 +1,6 @@
 # Plan: Hot Path Performance Observability
 
-## Status: 🚧 In progress
+## Status: ✅ All steps completed
 
 ## Overview
 
@@ -10,13 +10,13 @@ The current checkout cannot be cleanly launched from source because [DocumentSto
 
 ## Sub-Plans (execute in order)
 
-| Order | Plan File | Summary |
-|-------|-----------|---------|
-| 1 | [hot-path-performance-observability-1-baseline-runtime.md](.github/plans/hot-path-performance-observability-1-baseline-runtime.md) | Make the local stack buildable from source and make the benchmark harness reliable. |
-| 2 | [hot-path-performance-observability-2-tracing-logs.md](.github/plans/hot-path-performance-observability-2-tracing-logs.md) | Add distributed tracing, operation histograms, and structured timing logs across Api, StorageApi, and storage calls. |
-| 3 | [hot-path-performance-observability-3-storage-counters.md](.github/plans/hot-path-performance-observability-3-storage-counters.md) | Fix JSON-file counter contention and add batch counter APIs used by rate limits and allocations. |
-| 4 | [hot-path-performance-observability-4-hot-path-logic.md](.github/plans/hot-path-performance-observability-4-hot-path-logic.md) | Reduce avoidable work in access checks, rate-limit evaluation, acquire, and release. |
-| 5 | [hot-path-performance-observability-5-verification.md](.github/plans/hot-path-performance-observability-5-verification.md) | Rerun the low-interval load, compare artifacts, inspect traces/logs, and verify UI behavior. |
+| Order | Status | Plan File | Summary |
+|-------|--------|-----------|---------|
+| 1 | ✅ Completed | [hot-path-performance-observability-1-baseline-runtime.md](.github/realized/hot-path-performance-observability-1-baseline-runtime.md) | Make the local stack buildable from source and make the benchmark harness reliable. |
+| 2 | ✅ Completed | [hot-path-performance-observability-2-tracing-logs.md](.github/realized/hot-path-performance-observability-2-tracing-logs.md) | Add distributed tracing, operation histograms, and structured timing logs across Api, StorageApi, and storage calls. |
+| 3 | ✅ Completed | [hot-path-performance-observability-3-storage-counters.md](.github/realized/hot-path-performance-observability-3-storage-counters.md) | Fix JSON-file counter contention and add batch counter APIs used by rate limits and allocations. |
+| 4 | ✅ Completed | [hot-path-performance-observability-4-hot-path-logic.md](.github/realized/hot-path-performance-observability-4-hot-path-logic.md) | Reduce avoidable work in access checks, rate-limit evaluation, acquire, and release. |
+| 5 | ✅ Completed | [hot-path-performance-observability-5-verification.md](.github/realized/hot-path-performance-observability-5-verification.md) | Rerun the low-interval load, compare artifacts, inspect traces/logs, and verify UI behavior. |
 
 ## Key Decisions
 

@@ -3,15 +3,17 @@
 ## Run Summary
 
 - Iteration slug: hot-path-performance-observability-5-verification
-- Final state: Remediation verified; awaiting @Iterate bookkeeping/finalization
-- Stop reason: Delegated @Implement pass completed; plan status and realized movement intentionally not touched.
-- Report author: @Implement
-- Scope: .github/plans/hot-path-performance-observability-5-verification.md
+- Final state: Approved and archived; final closeout commit in progress
+- Stop reason: Step 5 completed and approved; no plan steps remain.
+- Report author: @Iterate
+- Latest archive update: @Index
+- Scope: .github/realized/hot-path-performance-observability-5-verification.md
 - Branch: feature/hot-path-performance-observability-1-baseline-runtime
 - Baseline commit: 2f6d37152dbbcb8912a923515f8232e0cb9a322b
 - Prior evidence commit: 2d83685ae30d7cf5431dcca9ffae23a55643ced6
 - Reopen commit: 8d5bb261f02ddb0f2b6a1732c6f41ae166649064
-- Final closeout commit: Pending @Inscribe/@Iterate
+- Latest approved remediation commit: 5864db4 fix(performance): complete Step 5 hot-path verification
+- Final closeout commit: Created by the @Inscribe finalization pass; exact hash returned in final response.
 
 ## What Actually Happened
 
@@ -23,6 +25,10 @@
 6. @Implement reran full-stack verification with seed/warm, traffic generator interval 0.2, a 60 second performance baseline, Prometheus/log checks, and browser UI checks. The latest after artifact has zero unexpected runtime failures and faster hot-path p95s than before.
 7. A post-benchmark request-aborted cancellation log entry was classified as shutdown/client-abort noise and remediated so canceled work is logged as `canceled`, not server failure.
 8. Build, the targeted JsonFile verifier, and port-clear checks passed after the final code changes.
+9. @Inspect approved the remediated Step 5 delta after commit `5864db4`; @Intake normalized the approval.
+10. @Iterate marked Step 5 complete, marked the parent overview all steps completed, and moved the five step plans plus overview from `.github/plans/` to `.github/realized/`.
+11. @Index recorded the final approved/archive transition for durable handoff.
+12. @Inscribe scoped the final archive/closeout bookkeeping commit.
 
 ## Files Changed
 
@@ -43,10 +49,11 @@
 | ClientManager.Api/Services/InternalClients/Implementations/RuntimeStateClient.cs | Modified | Records canceled storage-client calls as canceled. |
 | ClientManager.StorageApi instrumentation/access/rate/resource services | Modified | Logs request-aborted StorageApi operations as canceled instead of server errors. |
 | .github/plans/hot-path-performance-baseline-after.json | Updated | Latest after artifact: 644 runtime operations, 609 successes, 35 expected 429s, 0 unexpected failures. |
-| .github/plans/hot-path-performance-baseline-comparison.md | Updated | Replaces stale blocked comparison with latest passing runtime/performance/UI evidence. |
+| .github/plans/hot-path-performance-baseline-comparison.md | Updated | Replaces stale blocked comparison with latest passing runtime/performance/UI evidence and final label cleanup. |
 | .github/iterations/hot-path-performance-observability-5-verification/implementation-handoff.md | Updated | Captures remediation details, verification, finding dispositions, and risks. |
-| .github/iterations/hot-path-performance-observability-5-verification/timeline.md | Updated | Appends the delegated remediation verification event. |
-| .github/iterations/hot-path-performance-observability-5-verification/execution-report.md | Updated | Records the remediated verification state. |
+| .github/iterations/hot-path-performance-observability-5-verification/timeline.md | Updated | Appends the delegated remediation verification event and final approved/archive transition. |
+| .github/iterations/hot-path-performance-observability-5-verification/execution-report.md | Updated | Records the remediated verification state and final archive state. |
+| .github/realized/hot-path-performance-observability-*.md | Moved | Plan overview and all five sub-plans were archived to realized after approval. |
 
 ## Verification Run
 
@@ -70,13 +77,15 @@
 |-------|---------|--------------------|-------|
 | Delegated blocked verification | Blocked | Runtime 503s, p95 regressions, UI visual failures | This became remediation input under DEC-001. |
 | Delegated remediation | Passing evidence captured | Runtime 503s, p95 regressions, UI visual failures, post-benchmark cancellation log noise | Plan status left unchanged for @Iterate. |
+| Final review | APPROVED | None | @Inspect approved commit 5864db4; residual risks are trace-backend availability and known JsonFile whole-file write cost. UI browser verification is recorded in the packets. |
 
 ## Commits And Pushes
 
 | Commit | Branch | Push result | Notes |
 |--------|--------|-------------|-------|
 | 2d83685 | feature/hot-path-performance-observability-1-baseline-runtime | Skipped; no `origin` remote configured | Original blocked Step 5 verification evidence. |
-| Pending | feature/hot-path-performance-observability-1-baseline-runtime | Skipped; no `origin` remote configured | Remediation code, latest after artifact, comparison, packet/progress updates, and no-origin push disposition. |
+| 5864db4 | feature/hot-path-performance-observability-1-baseline-runtime | Skipped; no `origin` remote configured | Remediation code, latest after artifact, comparison, packet/progress updates, and no-origin push disposition. |
+| This pass | feature/hot-path-performance-observability-1-baseline-runtime | Checked after commit | Final archive/progress closeout bookkeeping. |
 
 ## Waivers, Exceptions, And Blockers
 
@@ -87,10 +96,10 @@
 
 ## Final Workspace State
 
-- Git status summary: remediation edits and artifact/packet updates pending commit.
+- Git status summary: Plan files are archived; final archive/closeout commit and final status check are handled by @Inscribe.
 - Diagnostics summary: latest solution build and targeted JsonFile verifier passed; ports 5062, 5063, and 5100 are clear.
-- Plan state: Step 5 plan status, overview status, and realized movement were not changed in this delegated pass.
+- Plan state: Step 5 and parent overview are complete; all five sub-plans and the overview are in `.github/realized/`.
 
 ## User-Facing Closeout
 
-- Summary: Step 5 remediation evidence is ready for @Iterate. The latest after run has zero unexpected runtime failures, hot-path p95s improved versus before, UI browser verification passes, and residual risks are limited to trace-backend availability plus known JsonFile whole-file write cost.
+- Summary: Step 5 is approved and the overall plan is archived. The latest after run has zero unexpected runtime failures, hot-path p95s improved versus before, UI browser verification passes, and residual risks are limited to trace-backend availability plus known JsonFile whole-file write cost.
