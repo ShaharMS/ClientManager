@@ -31,33 +31,68 @@ import urllib.request
 import webbrowser
 from pathlib import Path
 
-SCRIPT_DIR = Path(__file__).resolve().parent
-GENERATED_DIR = SCRIPT_DIR / ".observability-stack"
-COMPOSE_FILE = GENERATED_DIR / "docker-compose.generated.yml"
-PROMETHEUS_FILE = GENERATED_DIR / "prometheus" / "prometheus.yml"
-GRAFANA_PROVISIONING_DIR = GENERATED_DIR / "grafana" / "provisioning"
-GRAFANA_DATASOURCES_FILE = GRAFANA_PROVISIONING_DIR / "datasources" / "datasources.yml"
-GRAFANA_DASHBOARD_PROVIDER_FILE = GRAFANA_PROVISIONING_DIR / "dashboards" / "dashboard-provider.yml"
-GRAFANA_DASHBOARD_FILE = GRAFANA_PROVISIONING_DIR / "dashboards" / "clientmanager" / "clientmanager-observability.json"
+from __configuration import CONFIGURATION
 
-STACK_NETWORK = "clientmanager-observability"
-GRAFANA_CONTAINER = "clientmanager-grafana"
-PROMETHEUS_CONTAINER = "clientmanager-prometheus"
-JAEGER_CONTAINER = "clientmanager-jaeger"
+GLOBAL_SETTINGS = CONFIGURATION["global"]
+OBSERVABILITY_SETTINGS = CONFIGURATION["scripts"]["launch_observability_ui"]
+OBSERVABILITY_PATHS = OBSERVABILITY_SETTINGS["paths"]
+OBSERVABILITY_CONTAINERS = OBSERVABILITY_SETTINGS["containers"]
+OBSERVABILITY_DEFAULTS = OBSERVABILITY_SETTINGS["defaults"]
+OBSERVABILITY_DOCKER = OBSERVABILITY_SETTINGS["docker"]
+OBSERVABILITY_GRAFANA = OBSERVABILITY_SETTINGS["grafana"]
+OBSERVABILITY_TIMEOUTS = OBSERVABILITY_SETTINGS["timeouts"]
+
+
+def resolve_image(image_key: str) -> str:
+    override = OBSERVABILITY_DOCKER.get("image_overrides", {}).get(image_key)
+    if override:
+        return override
+
+    base_image = OBSERVABILITY_DOCKER["images"][image_key]
+    registry_prefix = OBSERVABILITY_DOCKER.get("registry_prefix")
+    if registry_prefix:
+        return f"{registry_prefix.rstrip('/')}/{base_image}"
+
+    return base_image
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+GENERATED_DIR = SCRIPT_DIR / OBSERVABILITY_PATHS["generated_directory"]
+COMPOSE_FILE = GENERATED_DIR / OBSERVABILITY_PATHS["compose_file"]
+PROMETHEUS_FILE = GENERATED_DIR / OBSERVABILITY_PATHS["prometheus_directory"] / OBSERVABILITY_PATHS["prometheus_file"]
+GRAFANA_PROVISIONING_DIR = GENERATED_DIR / OBSERVABILITY_PATHS["grafana_directory"] / OBSERVABILITY_PATHS["provisioning_directory"]
+GRAFANA_DATASOURCES_FILE = GRAFANA_PROVISIONING_DIR / OBSERVABILITY_PATHS["datasources_directory"] / OBSERVABILITY_PATHS["datasources_file"]
+GRAFANA_DASHBOARD_PROVIDER_FILE = GRAFANA_PROVISIONING_DIR / OBSERVABILITY_PATHS["dashboards_directory"] / OBSERVABILITY_PATHS["dashboard_provider_file"]
+GRAFANA_DASHBOARD_FILE = (
+    GRAFANA_PROVISIONING_DIR
+    / OBSERVABILITY_PATHS["dashboards_directory"]
+    / OBSERVABILITY_PATHS["dashboard_folder"]
+    / OBSERVABILITY_PATHS["dashboard_file"]
+)
+
+STACK_NETWORK = OBSERVABILITY_CONTAINERS["network"]
+GRAFANA_CONTAINER = OBSERVABILITY_CONTAINERS["grafana_container"]
+PROMETHEUS_CONTAINER = OBSERVABILITY_CONTAINERS["prometheus_container"]
+JAEGER_CONTAINER = OBSERVABILITY_CONTAINERS["jaeger_container"]
 CONTAINER_NAMES = (GRAFANA_CONTAINER, PROMETHEUS_CONTAINER, JAEGER_CONTAINER)
 
-DEFAULT_API_HOST = "host.docker.internal"
-DEFAULT_STORAGE_HOST = "host.docker.internal"
-DEFAULT_API_PORT = 5062
-DEFAULT_STORAGE_PORT = 5063
-DEFAULT_GRAFANA_PORT = 3000
-DEFAULT_PROMETHEUS_PORT = 9090
-DEFAULT_JAEGER_PORT = 16686
-DEFAULT_OTLP_GRPC_PORT = 4317
-DEFAULT_OTLP_HTTP_PORT = 4318
-DEFAULT_OTLP_ENDPOINT = f"http://localhost:{DEFAULT_OTLP_GRPC_PORT}"
-DEFAULT_SCRAPE_INTERVAL = "5s"
-DOCKER_API_FALLBACKS = ("1.50", "1.49", "1.48", "1.47", "1.46")
+DEFAULT_API_HOST = GLOBAL_SETTINGS["local_runtime"]["docker_host"]
+DEFAULT_STORAGE_HOST = GLOBAL_SETTINGS["local_runtime"]["docker_host"]
+DEFAULT_API_PORT = GLOBAL_SETTINGS["local_runtime"]["api_port"]
+DEFAULT_STORAGE_PORT = GLOBAL_SETTINGS["local_runtime"]["storage_port"]
+DEFAULT_GRAFANA_PORT = OBSERVABILITY_DEFAULTS["grafana_port"]
+DEFAULT_PROMETHEUS_PORT = OBSERVABILITY_DEFAULTS["prometheus_port"]
+DEFAULT_JAEGER_PORT = OBSERVABILITY_DEFAULTS["jaeger_port"]
+DEFAULT_OTLP_GRPC_PORT = OBSERVABILITY_DEFAULTS["otlp_grpc_port"]
+DEFAULT_OTLP_HTTP_PORT = OBSERVABILITY_DEFAULTS["otlp_http_port"]
+DEFAULT_OTLP_ENDPOINT = OBSERVABILITY_DEFAULTS["otlp_endpoint"]
+DEFAULT_SCRAPE_INTERVAL = OBSERVABILITY_DEFAULTS["scrape_interval"]
+DOCKER_API_FALLBACKS = tuple(OBSERVABILITY_DOCKER["api_fallbacks"])
+JAEGER_IMAGE = resolve_image("jaeger")
+PROMETHEUS_IMAGE = resolve_image("prometheus")
+GRAFANA_IMAGE = resolve_image("grafana")
+GRAFANA_ENVIRONMENT = OBSERVABILITY_GRAFANA["environment"]
+DASHBOARD_SETTINGS = OBSERVABILITY_GRAFANA["dashboard"]
+REQUEST_TIMEOUT_SECONDS = OBSERVABILITY_TIMEOUTS["http_request_seconds"]
 
 DOCKER_ENV_OVERRIDES: dict[str, str] = {}
 
@@ -83,7 +118,7 @@ def parse_args() -> argparse.Namespace:
     up_parser.add_argument(
         "--launcher",
         choices=("auto", "compose", "docker-run"),
-        default="auto",
+        default=OBSERVABILITY_DEFAULTS["launcher"],
         help="Container launch strategy. Defaults to compose when available.",
     )
     up_parser.add_argument("--api-host", default=DEFAULT_API_HOST, help="Host Prometheus should use to scrape the public API.")
@@ -146,13 +181,13 @@ def parse_args() -> argparse.Namespace:
         action="store_false",
         help="Do not open Grafana automatically.",
     )
-    up_parser.set_defaults(open_browser=True)
+    up_parser.set_defaults(open_browser=OBSERVABILITY_DEFAULTS["open_browser"])
 
     down_parser = subparsers.add_parser("down", help="Stop and remove the local observability stack.")
     down_parser.add_argument(
         "--launcher",
         choices=("auto", "compose", "docker-run"),
-        default="auto",
+        default=OBSERVABILITY_DEFAULTS["launcher"],
         help="Optional hint for cleanup. Generic cleanup still runs either way.",
     )
 
@@ -307,7 +342,7 @@ def command_available(command: list[str], env_overrides: dict[str, str] | None =
             command,
             capture_output=True,
             text=True,
-            timeout=20,
+            timeout=OBSERVABILITY_TIMEOUTS["command_available_seconds"],
             env=build_subprocess_env(env_overrides),
         )
     except (FileNotFoundError, subprocess.TimeoutExpired):
@@ -341,7 +376,7 @@ def stop_stack(ignore_errors: bool) -> None:
                 ["docker", "rm", "-f", name],
                 capture_output=True,
                 text=True,
-                timeout=30,
+                timeout=OBSERVABILITY_TIMEOUTS["container_stop_seconds"],
                 env=build_subprocess_env(),
             )
         except subprocess.TimeoutExpired:
@@ -357,7 +392,7 @@ def stop_stack(ignore_errors: bool) -> None:
             ["docker", "network", "rm", STACK_NETWORK],
             capture_output=True,
             text=True,
-            timeout=15,
+            timeout=OBSERVABILITY_TIMEOUTS["network_remove_seconds"],
             env=build_subprocess_env(),
         )
     except subprocess.TimeoutExpired:
@@ -391,8 +426,8 @@ def start_with_docker_run(args: argparse.Namespace) -> None:
             "-p",
             f"{args.otlp_http_port}:4318",
             "-e",
-            "COLLECTOR_OTLP_ENABLED=true",
-            "jaegertracing/all-in-one:latest",
+            f"COLLECTOR_OTLP_ENABLED={OBSERVABILITY_DOCKER['collector_otlp_enabled']}",
+            JAEGER_IMAGE,
         ],
         "Unable to start Jaeger.",
     )
@@ -411,7 +446,7 @@ def start_with_docker_run(args: argparse.Namespace) -> None:
             *host_args,
             "-v",
             f"{PROMETHEUS_FILE.resolve()}:/etc/prometheus/prometheus.yml:ro",
-            "prom/prometheus:latest",
+            PROMETHEUS_IMAGE,
             "--config.file=/etc/prometheus/prometheus.yml",
         ],
         "Unable to start Prometheus.",
@@ -429,16 +464,16 @@ def start_with_docker_run(args: argparse.Namespace) -> None:
             "-p",
             f"{args.grafana_port}:3000",
             "-e",
-            "GF_AUTH_ANONYMOUS_ENABLED=true",
+            f"GF_AUTH_ANONYMOUS_ENABLED={GRAFANA_ENVIRONMENT['GF_AUTH_ANONYMOUS_ENABLED']}",
             "-e",
-            "GF_AUTH_ANONYMOUS_ORG_ROLE=Admin",
+            f"GF_AUTH_ANONYMOUS_ORG_ROLE={GRAFANA_ENVIRONMENT['GF_AUTH_ANONYMOUS_ORG_ROLE']}",
             "-e",
-            "GF_AUTH_DISABLE_LOGIN_FORM=true",
+            f"GF_AUTH_DISABLE_LOGIN_FORM={GRAFANA_ENVIRONMENT['GF_AUTH_DISABLE_LOGIN_FORM']}",
             "-e",
-            "GF_USERS_DEFAULT_THEME=light",
+            f"GF_USERS_DEFAULT_THEME={GRAFANA_ENVIRONMENT['GF_USERS_DEFAULT_THEME']}",
             "-v",
             f"{GRAFANA_PROVISIONING_DIR.resolve()}:/etc/grafana/provisioning:ro",
-            "grafana/grafana-oss:latest",
+            GRAFANA_IMAGE,
         ],
         "Unable to start Grafana.",
     )
@@ -728,16 +763,16 @@ def build_grafana_dashboard(grafana_port: int, jaeger_port: int, prometheus_port
         "links": [],
         "liveNow": False,
         "panels": panels,
-        "refresh": "10s",
-        "schemaVersion": 39,
-        "style": "dark",
-        "tags": ["clientmanager", "observability"],
+        "refresh": DASHBOARD_SETTINGS["refresh"],
+        "schemaVersion": DASHBOARD_SETTINGS["schema_version"],
+        "style": DASHBOARD_SETTINGS["style"],
+        "tags": DASHBOARD_SETTINGS["tags"],
         "templating": {"list": []},
-        "time": {"from": "now-15m", "to": "now"},
+        "time": DASHBOARD_SETTINGS["time_range"],
         "timepicker": {},
         "timezone": "browser",
-        "title": "ClientManager Observability",
-        "uid": "clientmanager-observability",
+        "title": DASHBOARD_SETTINGS["title"],
+        "uid": DASHBOARD_SETTINGS["uid"],
         "version": 1,
         "weekStart": "",
     }
@@ -758,7 +793,7 @@ def build_grafana_trace_search_url(grafana_port: int, service_name: str) -> str:
                     },
                 }
             ],
-            "range": {"from": "now-1h", "to": "now"},
+            "range": DASHBOARD_SETTINGS["trace_search_time_range"],
             "compact": False,
         }
     }
@@ -875,10 +910,10 @@ def build_compose_file(args: argparse.Namespace) -> str:
         f"""
         services:
           jaeger:
-            image: jaegertracing/all-in-one:latest
+                        image: {JAEGER_IMAGE}
             container_name: {JAEGER_CONTAINER}
             environment:
-              COLLECTOR_OTLP_ENABLED: "true"
+                            COLLECTOR_OTLP_ENABLED: "{OBSERVABILITY_DOCKER['collector_otlp_enabled']}"
             ports:
               - "{args.jaeger_port}:16686"
               - "{args.otlp_grpc_port}:4317"
@@ -887,7 +922,7 @@ def build_compose_file(args: argparse.Namespace) -> str:
               - {STACK_NETWORK}
 
           prometheus:
-            image: prom/prometheus:latest
+                        image: {PROMETHEUS_IMAGE}
             container_name: {PROMETHEUS_CONTAINER}
             command:
               - --config.file=/etc/prometheus/prometheus.yml
@@ -899,16 +934,16 @@ def build_compose_file(args: argparse.Namespace) -> str:
               - {STACK_NETWORK}
 
           grafana:
-            image: grafana/grafana-oss:latest
+                        image: {GRAFANA_IMAGE}
             container_name: {GRAFANA_CONTAINER}
             depends_on:
               - prometheus
               - jaeger
             environment:
-              GF_AUTH_ANONYMOUS_ENABLED: "true"
-              GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
-              GF_AUTH_DISABLE_LOGIN_FORM: "true"
-              GF_USERS_DEFAULT_THEME: light
+                            GF_AUTH_ANONYMOUS_ENABLED: "{GRAFANA_ENVIRONMENT['GF_AUTH_ANONYMOUS_ENABLED']}"
+                            GF_AUTH_ANONYMOUS_ORG_ROLE: {GRAFANA_ENVIRONMENT['GF_AUTH_ANONYMOUS_ORG_ROLE']}
+                            GF_AUTH_DISABLE_LOGIN_FORM: "{GRAFANA_ENVIRONMENT['GF_AUTH_DISABLE_LOGIN_FORM']}"
+                            GF_USERS_DEFAULT_THEME: {GRAFANA_ENVIRONMENT['GF_USERS_DEFAULT_THEME']}
             ports:
               - "{args.grafana_port}:3000"
             volumes:
@@ -923,12 +958,12 @@ def build_compose_file(args: argparse.Namespace) -> str:
     ).strip() + "\n"
 
 
-def wait_for_http(url: str, name: str, timeout_seconds: int = 90) -> None:
+def wait_for_http(url: str, name: str, timeout_seconds: int = OBSERVABILITY_TIMEOUTS["wait_for_http_seconds"]) -> None:
     deadline = time.time() + timeout_seconds
     last_error = ""
     while time.time() < deadline:
         try:
-            with urllib.request.urlopen(url, timeout=5) as response:
+            with urllib.request.urlopen(url, timeout=REQUEST_TIMEOUT_SECONDS) as response:
                 if response.status < 500:
                     return
         except urllib.error.URLError as error:
@@ -942,7 +977,7 @@ def wait_for_http(url: str, name: str, timeout_seconds: int = 90) -> None:
         except TimeoutError as error:  # pragma: no cover - depends on local environment
             last_error = str(error)
 
-        time.sleep(1)
+        time.sleep(OBSERVABILITY_TIMEOUTS["poll_interval_seconds"])
 
     detail = f" Last error: {last_error}" if last_error else ""
     raise CommandError(f"Timed out waiting for {name} at {url}.{detail}")
@@ -950,7 +985,7 @@ def wait_for_http(url: str, name: str, timeout_seconds: int = 90) -> None:
 
 def report_scrape_target(label: str, url: str) -> None:
     try:
-        with urllib.request.urlopen(url, timeout=5) as response:
+        with urllib.request.urlopen(url, timeout=REQUEST_TIMEOUT_SECONDS) as response:
             status = response.status
         print(f"{label}: reachable ({status})")
     except Exception as error:  # pragma: no cover - depends on local app state

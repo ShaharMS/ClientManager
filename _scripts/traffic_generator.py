@@ -24,121 +24,43 @@ import urllib.request
 import urllib.error
 from datetime import datetime
 
-BASE_URL = "http://localhost:5062"
-INTERVAL = 2.0  # average seconds between bursts
-API_PREFIX = "/api/v1"
-READ_SEARCH_QUERY = {"take": 100}
+from __configuration import CONFIGURATION
+
+GLOBAL_SETTINGS = CONFIGURATION["global"]
+TRAFFIC_SETTINGS = CONFIGURATION["scripts"]["traffic_generator"]
+
+BASE_URL = GLOBAL_SETTINGS["api"]["base_url"]
+INTERVAL = TRAFFIC_SETTINGS["defaults"]["interval_seconds"]
+API_PREFIX = GLOBAL_SETTINGS["api"]["prefix_with_leading_slash"]
+READ_SEARCH_QUERY = GLOBAL_SETTINGS["queries"]["search_body"]
+CLIENT_SUMMARIES_PAGE_SIZE = GLOBAL_SETTINGS["queries"]["client_summaries_page_size"]
+VALID_ACCESS_COMBINATION_PROBABILITY = TRAFFIC_SETTINGS["probabilities"]["valid_access_combination"]
+DETAILED_READ_PROBABILITY = TRAFFIC_SETTINGS["probabilities"]["detailed_read"]
+BURST_SIZES = TRAFFIC_SETTINGS["burst"]["sizes"]
+BURST_WEIGHTS = TRAFFIC_SETTINGS["burst"]["weights"]
+ACTION_TYPES = TRAFFIC_SETTINGS["actions"]["types"]
+ACTION_WEIGHTS = TRAFFIC_SETTINGS["actions"]["weights"]
+STATS_EVERY_ITERATIONS = TRAFFIC_SETTINGS["timing"]["stats_every_iterations"]
+MINIMUM_SLEEP_SECONDS = TRAFFIC_SETTINGS["timing"]["minimum_sleep_seconds"]
+SLEEP_JITTER_MULTIPLIER = TRAFFIC_SETTINGS["timing"]["sleep_jitter_multiplier"]
 
 # ── Known IDs (must match seed_data.py) ───────────────────────────────────
 
-ENABLED_CLIENTS = [
-    "platform-core", "mobile-app", "web-dashboard", "partner-acme",
-    "iot-gateway", "cicd-pipeline", "admin-tool",
-    "data-warehouse", "crm-integration", "marketing-platform",
-    "payment-gateway", "support-portal", "inventory-mgr", "logistics-api",
-    "ml-training", "content-cdn", "partner-wayne", "partner-stark",
-    "partner-umbrella", "hr-system", "compliance-bot", "chatbot-ai",
-    "reporting-svc", "developer-sandbox",
-]
-DISABLED_CLIENTS = ["partner-globex"]
-ALL_CLIENTS = ENABLED_CLIENTS + DISABLED_CLIENTS
+ENABLED_CLIENTS = GLOBAL_SETTINGS["catalogs"]["enabled_client_ids"]
+DISABLED_CLIENTS = GLOBAL_SETTINGS["catalogs"]["disabled_client_ids"]
+ALL_CLIENTS = GLOBAL_SETTINGS["catalogs"]["all_client_ids"]
 
-SERVICES = [
-    "auth-service", "billing-service", "notification-service", "analytics-service",
-    "storage-service", "search-service", "email-service", "sms-service",
-    "cache-service", "logging-service", "config-service", "scheduler-service",
-    "geo-service", "media-service", "pdf-service", "audit-service",
-    "webhook-service", "translate-service", "ml-service", "queue-service",
-]
-RESOURCE_POOLS = [
-    "db-connections", "worker-threads", "file-upload-slots", "gpu-compute",
-    "report-workers", "video-transcode", "api-gateway-slots", "sandbox-envs",
-    "pdf-render-slots", "ml-inference-slots",
-]
+SERVICES = GLOBAL_SETTINGS["catalogs"]["service_ids"]
+RESOURCE_POOLS = GLOBAL_SETTINGS["catalogs"]["resource_pool_ids"]
 
 # Client -> services they have access to (for realistic traffic)
-CLIENT_SERVICES = {
-    "platform-core": ["auth-service", "billing-service", "notification-service", "analytics-service", "storage-service", "email-service", "cache-service", "logging-service", "config-service", "audit-service", "queue-service"],
-    "mobile-app": ["auth-service", "billing-service", "notification-service", "analytics-service", "storage-service", "geo-service", "media-service"],
-    "web-dashboard": ["auth-service", "analytics-service", "storage-service", "cache-service", "config-service"],
-    "partner-acme": ["auth-service", "billing-service"],
-    "iot-gateway": ["auth-service", "analytics-service", "logging-service"],
-    "cicd-pipeline": ["auth-service", "storage-service", "analytics-service", "scheduler-service"],
-    "admin-tool": ["auth-service", "billing-service", "notification-service", "analytics-service", "storage-service", "audit-service", "config-service"],
-    "data-warehouse": ["auth-service", "analytics-service", "storage-service", "queue-service", "logging-service"],
-    "crm-integration": ["auth-service", "billing-service", "notification-service", "email-service", "webhook-service"],
-    "marketing-platform": ["auth-service", "email-service", "sms-service", "analytics-service", "translate-service"],
-    "payment-gateway": ["auth-service", "billing-service", "notification-service", "audit-service", "webhook-service"],
-    "support-portal": ["auth-service", "notification-service", "storage-service", "translate-service"],
-    "inventory-mgr": ["auth-service", "cache-service", "analytics-service", "queue-service"],
-    "logistics-api": ["auth-service", "geo-service", "notification-service", "webhook-service"],
-    "ml-training": ["auth-service", "storage-service", "ml-service", "analytics-service", "logging-service"],
-    "content-cdn": ["auth-service", "storage-service", "media-service", "cache-service"],
-    "partner-wayne": ["auth-service", "billing-service", "analytics-service"],
-    "partner-stark": ["auth-service", "billing-service", "storage-service", "ml-service"],
-    "partner-umbrella": ["auth-service", "billing-service", "analytics-service", "audit-service"],
-    "hr-system": ["auth-service", "notification-service", "email-service", "pdf-service"],
-    "compliance-bot": ["auth-service", "audit-service", "logging-service", "config-service"],
-    "chatbot-ai": ["auth-service", "ml-service", "translate-service", "cache-service", "logging-service"],
-    "reporting-svc": ["auth-service", "analytics-service", "pdf-service", "email-service", "storage-service"],
-    "developer-sandbox": ["auth-service", "storage-service", "cache-service"],
-}
+CLIENT_SERVICES = GLOBAL_SETTINGS["catalogs"]["client_services"]
 
 # Client -> pools they can use
-CLIENT_POOLS = {
-    "platform-core": ["db-connections", "worker-threads", "file-upload-slots", "api-gateway-slots"],
-    "mobile-app": ["db-connections", "file-upload-slots", "api-gateway-slots"],
-    "web-dashboard": ["db-connections"],
-    "partner-acme": ["db-connections"],
-    "iot-gateway": ["worker-threads"],
-    "cicd-pipeline": ["db-connections", "worker-threads", "file-upload-slots", "sandbox-envs"],
-    "admin-tool": ["db-connections"],
-    "data-warehouse": ["db-connections", "worker-threads", "gpu-compute"],
-    "crm-integration": ["db-connections", "api-gateway-slots"],
-    "marketing-platform": ["report-workers", "pdf-render-slots"],
-    "payment-gateway": ["db-connections", "api-gateway-slots"],
-    "support-portal": ["db-connections", "file-upload-slots"],
-    "inventory-mgr": ["db-connections", "worker-threads"],
-    "logistics-api": ["api-gateway-slots"],
-    "ml-training": ["gpu-compute", "worker-threads", "ml-inference-slots"],
-    "content-cdn": ["api-gateway-slots", "video-transcode"],
-    "partner-wayne": ["db-connections"],
-    "partner-stark": ["db-connections", "gpu-compute"],
-    "partner-umbrella": ["db-connections"],
-    "hr-system": ["db-connections", "pdf-render-slots"],
-    "compliance-bot": ["db-connections"],
-    "chatbot-ai": ["ml-inference-slots", "api-gateway-slots"],
-    "reporting-svc": ["report-workers", "pdf-render-slots", "db-connections"],
-    "developer-sandbox": ["sandbox-envs", "db-connections"],
-}
+CLIENT_POOLS = GLOBAL_SETTINGS["catalogs"]["client_pools"]
 
 # Relative traffic weight per client (higher = more requests)
-CLIENT_WEIGHT = {
-    "platform-core": 5,
-    "mobile-app": 4,
-    "web-dashboard": 3,
-    "content-cdn": 4,
-    "payment-gateway": 3,
-    "data-warehouse": 3,
-    "chatbot-ai": 3,
-    "marketing-platform": 2,
-    "crm-integration": 2,
-    "inventory-mgr": 2,
-    "ml-training": 2,
-    "logistics-api": 2,
-    "support-portal": 2,
-    "cicd-pipeline": 2,
-    "iot-gateway": 2,
-    "admin-tool": 1,
-    "reporting-svc": 1,
-    "hr-system": 1,
-    "partner-acme": 1,
-    "partner-wayne": 1,
-    "partner-stark": 1,
-    "partner-umbrella": 1,
-    "compliance-bot": 1,
-    "developer-sandbox": 1,
-}
+CLIENT_WEIGHT = TRAFFIC_SETTINGS["client_weights"]
 
 # Track active allocations so we can release them
 active_allocations: list[dict] = []
@@ -182,7 +104,7 @@ def api(method: str, path: str, body=None):
 def do_access_check():
     """Simulate a client checking access to a service."""
     # 85% chance: pick a valid client+service combo; 15% chance: pick something that might fail
-    if random.random() < 0.85:
+    if random.random() < VALID_ACCESS_COMBINATION_PROBABILITY:
         client = random.choices(ENABLED_CLIENTS, weights=[CLIENT_WEIGHT[c] for c in ENABLED_CLIENTS])[0]
         service = random.choice(CLIENT_SERVICES[client])
     else:
@@ -227,7 +149,7 @@ def do_read():
     choices = [
         ("GET", f"{API_PREFIX}/statistics/overview", None),
         ("GET", f"{API_PREFIX}/statistics/global-usage", None),
-        ("GET", f"{API_PREFIX}/statistics/client-summaries?pageSize=100", None),
+        ("GET", f"{API_PREFIX}/statistics/client-summaries?pageSize={CLIENT_SUMMARIES_PAGE_SIZE}", None),
         ("POST", f"{API_PREFIX}/statistics/clients/search", READ_SEARCH_QUERY),
         ("POST", f"{API_PREFIX}/statistics/services/search", READ_SEARCH_QUERY),
         ("POST", f"{API_PREFIX}/statistics/resource-pools/search", READ_SEARCH_QUERY),
@@ -238,7 +160,7 @@ def do_read():
     ]
 
     # Also occasionally look up a specific client or their accessibility
-    if random.random() < 0.4:
+    if random.random() < DETAILED_READ_PROBABILITY:
         client = random.choice(ENABLED_CLIENTS)
         choices.extend([
             ("GET", f"{API_PREFIX}/clients/{client}", None),
@@ -274,15 +196,12 @@ def run():
         iteration += 1
 
         # Each burst does 1–5 actions
-        burst_size = random.choices([1, 2, 3, 4, 5], weights=[20, 35, 25, 15, 5])[0]
+        burst_size = random.choices(BURST_SIZES, weights=BURST_WEIGHTS)[0]
         timestamp = datetime.now().strftime("%H:%M:%S")
 
         for _ in range(burst_size):
             # Weight the action types
-            action = random.choices(
-                ["access_check", "acquire", "release", "read"],
-                weights=[50, 15, 10, 25]
-            )[0]
+            action = random.choices(ACTION_TYPES, weights=ACTION_WEIGHTS)[0]
 
             result = None
             if action == "access_check":
@@ -299,11 +218,11 @@ def run():
                 print(f"  [{timestamp}] {result}")
 
         # Print periodic stats
-        if iteration % 15 == 0:
+        if iteration % STATS_EVERY_ITERATIONS == 0:
             print_stats()
 
         # Jittered sleep
-        sleep = max(0.2, random.gauss(INTERVAL, INTERVAL * 0.4))
+        sleep = max(MINIMUM_SLEEP_SECONDS, random.gauss(INTERVAL, INTERVAL * SLEEP_JITTER_MULTIPLIER))
         time.sleep(sleep)
 
 

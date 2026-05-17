@@ -19,23 +19,40 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
-from traffic_generator import CLIENT_POOLS, CLIENT_SERVICES, ENABLED_CLIENTS
+from __configuration import CONFIGURATION
 
-DEFAULT_BASE_URL = "http://localhost:5062"
-API_PREFIX = "api/v1"
-DEFAULT_REQUESTS_PER_DAY = 1_000_000
-DEFAULT_DURATION_SECONDS = 60
-DEFAULT_VIRTUAL_CLIENTS = 100
-DEFAULT_DATA_DIRECTORY = Path(__file__).resolve().parents[1] / "data"
-SEARCH_QUERY = {"take": 100}
+GLOBAL_SETTINGS = CONFIGURATION["global"]
+BASELINE_SETTINGS = CONFIGURATION["scripts"]["performance_baseline"]
+
+DEFAULT_BASE_URL = GLOBAL_SETTINGS["api"]["base_url"]
+API_PREFIX = GLOBAL_SETTINGS["api"]["prefix"]
+DEFAULT_REQUESTS_PER_DAY = BASELINE_SETTINGS["defaults"]["requests_per_day"]
+DEFAULT_DURATION_SECONDS = BASELINE_SETTINGS["defaults"]["duration_seconds"]
+DEFAULT_VIRTUAL_CLIENTS = BASELINE_SETTINGS["defaults"]["virtual_clients"]
+DEFAULT_SEED = BASELINE_SETTINGS["defaults"]["seed"]
+DEFAULT_DATA_DIRECTORY = GLOBAL_SETTINGS["data"]["repo_data_directory"]
+SEARCH_QUERY = GLOBAL_SETTINGS["queries"]["search_body"]
+CLIENT_SUMMARIES_PAGE_SIZE = GLOBAL_SETTINGS["queries"]["client_summaries_page_size"]
+ENABLED_CLIENTS = GLOBAL_SETTINGS["catalogs"]["enabled_client_ids"]
+CLIENT_SERVICES = GLOBAL_SETTINGS["catalogs"]["client_services"]
+CLIENT_POOLS = GLOBAL_SETTINGS["catalogs"]["client_pools"]
 REAL_SERVICE_IDS = sorted({service_id for services in CLIENT_SERVICES.values() for service_id in services})
 REAL_POOL_IDS = sorted({pool_id for pools in CLIENT_POOLS.values() for pool_id in pools})
-DEFAULT_GRAPH_RANGES = "7d,30d,90d"
-GRAPH_RANGE_PRESETS = {
-    "7d": {"days": 7, "granularity": "Hour"},
-    "30d": {"days": 30, "granularity": "Day"},
-    "90d": {"days": 90, "granularity": "Day"},
-}
+DEFAULT_GRAPH_RANGES = BASELINE_SETTINGS["defaults"]["graph_ranges"]
+GRAPH_RANGE_PRESETS = BASELINE_SETTINGS["graph"]["range_presets"]
+HEAVY_WEIGHT_PROBABILITY = BASELINE_SETTINGS["virtual_clients"]["heavy_weight_probability"]
+HEAVY_WEIGHT_VALUE = BASELINE_SETTINGS["virtual_clients"]["heavy_weight_value"]
+DEFAULT_WEIGHT_VALUE = BASELINE_SETTINGS["virtual_clients"]["default_weight_value"]
+MONITOR_WINDOW_SECONDS = BASELINE_SETTINGS["graph"]["monitor_window_seconds"]
+SECONDS_PER_DAY = BASELINE_SETTINGS["timing"]["seconds_per_day"]
+MINIMUM_ELAPSED_SECONDS = BASELINE_SETTINGS["timing"]["minimum_elapsed_seconds"]
+LATENCY_PERCENTILE = BASELINE_SETTINGS["metrics"]["latency_percentile"]
+PREFER_PRIMARY_SERVICE_EVERY = BASELINE_SETTINGS["routing"]["prefer_primary_service_every"]
+PREFER_PRIMARY_POOL_EVERY = BASELINE_SETTINGS["routing"]["prefer_primary_pool_every"]
+ACTION_WEIGHTS_WITH_GRAPH = BASELINE_SETTINGS["action_weights"]["with_graph"]
+ACTION_WEIGHTS_WITHOUT_GRAPH = BASELINE_SETTINGS["action_weights"]["without_graph"]
+USAGE_SNAPSHOTS_FILE = GLOBAL_SETTINGS["data"]["usage_snapshots_file"]
+COUNTERS_FILE = GLOBAL_SETTINGS["data"]["counters_file"]
 
 
 def api_call(base_url: str, method: str, path: str, body: dict | None = None) -> tuple[int, object | None, float]:
@@ -87,7 +104,7 @@ def build_virtual_clients(count: int, seed: int) -> list[dict]:
                 "pools": pools,
                 "preferred_service": services[index % len(services)],
                 "preferred_pool": pools[index % len(pools)] if pools else None,
-                "weight": 2 if randomizer.random() < 0.35 else 1,
+                "weight": HEAVY_WEIGHT_VALUE if randomizer.random() < HEAVY_WEIGHT_PROBABILITY else DEFAULT_WEIGHT_VALUE,
             }
         )
     return clients
@@ -103,11 +120,11 @@ def percentile(values: list[float], value: float) -> float:
 
 def snapshot_sizes(data_directory: Path) -> dict[str, int]:
     return {
-        "UsageSnapshots": data_directory.joinpath("UsageSnapshots.json").stat().st_size
-        if data_directory.joinpath("UsageSnapshots.json").exists()
+        "UsageSnapshots": data_directory.joinpath(USAGE_SNAPSHOTS_FILE).stat().st_size
+        if data_directory.joinpath(USAGE_SNAPSHOTS_FILE).exists()
         else 0,
-        "_counters": data_directory.joinpath("_counters.json").stat().st_size
-        if data_directory.joinpath("_counters.json").exists()
+        "_counters": data_directory.joinpath(COUNTERS_FILE).stat().st_size
+        if data_directory.joinpath(COUNTERS_FILE).exists()
         else 0,
     }
 
@@ -164,7 +181,7 @@ def create_graph_scenario(
     params = {
         "filterType": filter_type,
         "targetIds": ",".join(target_ids),
-        "from": format_utc(now - (range_spec["days"] * 86400)),
+        "from": format_utc(now - (range_spec["days"] * SECONDS_PER_DAY)),
         "to": format_utc(now),
         "granularity": range_spec["granularity"],
     }
@@ -204,7 +221,7 @@ def run_dashboard_read(base_url: str) -> tuple[int, float]:
         ("GET", f"{API_PREFIX}/statistics/overview", None),
         ("GET", f"{API_PREFIX}/statistics/global-usage", None),
         ("POST", f"{API_PREFIX}/statistics/resource-pools/search", SEARCH_QUERY),
-        ("GET", f"{API_PREFIX}/statistics/client-summaries?pageSize=100", None),
+        ("GET", f"{API_PREFIX}/statistics/client-summaries?pageSize={CLIENT_SUMMARIES_PAGE_SIZE}", None),
     ]
     total_ms = 0.0
     final_status = 200
@@ -218,16 +235,16 @@ def run_dashboard_read(base_url: str) -> tuple[int, float]:
 
 def run_monitor_read(base_url: str, service_id: str) -> tuple[int, float]:
     now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-    thirty_minutes_ago = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() - 1800))
+    thirty_minutes_ago = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() - MONITOR_WINDOW_SECONDS))
     endpoints = [
         (
             "GET",
-            f"api/v1/statistics/usage-timeseries?filterType=Service&targetIds={service_id}&from={thirty_minutes_ago}&to={now}&granularity=FiveMinute",
+            f"{API_PREFIX}/statistics/usage-timeseries?filterType=Service&targetIds={service_id}&from={thirty_minutes_ago}&to={now}&granularity=FiveMinute",
             None,
         ),
         (
             "GET",
-            f"api/v1/statistics/client-usage-breakdown?filterType=Service&targetIds={service_id}&from={thirty_minutes_ago}&to={now}&granularity=FiveMinute",
+            f"{API_PREFIX}/statistics/client-usage-breakdown?filterType=Service&targetIds={service_id}&from={thirty_minutes_ago}&to={now}&granularity=FiveMinute",
             None,
         ),
     ]
@@ -268,7 +285,7 @@ def summarize_operation(samples: list[dict], elapsed_seconds: float) -> dict[str
         "status_counts": build_status_counts(samples),
         "throughput_per_second": round(len(samples) / elapsed_seconds, 3) if elapsed_seconds > 0 else 0.0,
         "average_latency_ms": round(statistics.fmean(latencies), 3) if latencies else 0.0,
-        "p95_latency_ms": round(percentile(latencies, 0.95), 3) if latencies else 0.0,
+        "p95_latency_ms": round(percentile(latencies, LATENCY_PERCENTILE), 3) if latencies else 0.0,
         "max_latency_ms": round(max(latencies), 3) if latencies else 0.0,
     }
 
@@ -318,7 +335,7 @@ def main() -> None:
     parser.add_argument("--requests-per-day", type=int, default=DEFAULT_REQUESTS_PER_DAY)
     parser.add_argument("--duration-seconds", type=int, default=DEFAULT_DURATION_SECONDS)
     parser.add_argument("--virtual-clients", type=int, default=DEFAULT_VIRTUAL_CLIENTS)
-    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--seed", type=int, default=DEFAULT_SEED)
     parser.add_argument("--include-graph-reads", action="store_true", help="Include long-range graph scenarios in the paced profile")
     parser.add_argument(
         "--graph-ranges",
@@ -333,7 +350,7 @@ def main() -> None:
     virtual_clients = build_virtual_clients(args.virtual_clients, args.seed)
     graph_range_keys = parse_graph_ranges(args.graph_ranges)
     graph_scenarios = build_graph_scenarios(graph_range_keys) if args.include_graph_reads else []
-    requests_per_second = args.requests_per_day / 86400
+    requests_per_second = args.requests_per_day / SECONDS_PER_DAY
     interval_seconds = 1 / requests_per_second if requests_per_second > 0 else 0
     storage_before = snapshot_sizes(args.data_directory)
     runtime_samples = {"access": [], "acquire": [], "release": [], "dashboard": [], "monitor": []}
@@ -347,12 +364,24 @@ def main() -> None:
 
     for index in range(total_operations):
         actor = randomizer.choice(virtual_clients)
-        service_id = actor["preferred_service"] if index % 3 == 0 else randomizer.choice(actor["services"])
-        action = randomizer.choices(
-            ["access", "acquire", "release", "dashboard", "monitor", "graph"] if graph_scenarios else ["access", "acquire", "release", "dashboard", "monitor"],
-            weights=[58, 15, 10 if active_allocations else 1, 9, 8, 6] if graph_scenarios else [58, 15, 10 if active_allocations else 1, 9, 8],
-            k=1,
-        )[0]
+        service_id = (
+            actor["preferred_service"]
+            if index % PREFER_PRIMARY_SERVICE_EVERY == 0
+            else randomizer.choice(actor["services"])
+        )
+        action_weights = ACTION_WEIGHTS_WITH_GRAPH if graph_scenarios else ACTION_WEIGHTS_WITHOUT_GRAPH
+        action_types = ["access", "acquire", "release", "dashboard", "monitor"]
+        weights = [
+            action_weights["access"],
+            action_weights["acquire"],
+            action_weights["release"] if active_allocations else action_weights["idle_release"],
+            action_weights["dashboard"],
+            action_weights["monitor"],
+        ]
+        if graph_scenarios:
+            action_types.append("graph")
+            weights.append(action_weights["graph"])
+        action = randomizer.choices(action_types, weights=weights, k=1)[0]
 
         if action == "acquire" and not actor["preferred_pool"]:
             action = "access"
@@ -363,16 +392,20 @@ def main() -> None:
             status, _, latency_ms = api_call(
                 args.base_url,
                 "POST",
-                "api/v1/access/check",
+                f"{API_PREFIX}/access/check",
                 {"clientId": actor["client_id"], "serviceId": service_id},
             )
             runtime_samples["access"].append({"status": status, "latency_ms": latency_ms})
         elif action == "acquire" and actor["preferred_pool"]:
-            pool_id = actor["preferred_pool"] if index % 2 == 0 else randomizer.choice(actor["pools"])
+            pool_id = (
+                actor["preferred_pool"]
+                if index % PREFER_PRIMARY_POOL_EVERY == 0
+                else randomizer.choice(actor["pools"])
+            )
             status, payload, latency_ms = api_call(
                 args.base_url,
                 "POST",
-                "api/v1/resources/acquire",
+                f"{API_PREFIX}/resources/acquire",
                 {"clientId": actor["client_id"], "resourcePoolId": pool_id},
             )
             runtime_samples["acquire"].append({"status": status, "latency_ms": latency_ms})
@@ -383,7 +416,7 @@ def main() -> None:
             status, _, latency_ms = api_call(
                 args.base_url,
                 "POST",
-                "api/v1/resources/release",
+                f"{API_PREFIX}/resources/release",
                 {"allocationId": allocation["allocationId"]},
             )
             runtime_samples["release"].append({"status": status, "latency_ms": latency_ms})
@@ -407,9 +440,9 @@ def main() -> None:
             time.sleep(sleep_seconds)
 
     for allocation in active_allocations:
-        api_call(args.base_url, "POST", "api/v1/resources/release", {"allocationId": allocation["allocationId"]})
+        api_call(args.base_url, "POST", f"{API_PREFIX}/resources/release", {"allocationId": allocation["allocationId"]})
 
-    elapsed_seconds = max(time.perf_counter() - start_time, 0.001)
+    elapsed_seconds = max(time.perf_counter() - start_time, MINIMUM_ELAPSED_SECONDS)
     storage_after = snapshot_sizes(args.data_directory)
     summary = {
         "profile": {
