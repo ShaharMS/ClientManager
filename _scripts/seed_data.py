@@ -25,7 +25,7 @@ from pathlib import Path
 import urllib.error
 import urllib.request
 
-from __configuration import CONFIGURATION, default_history_data_dir as resolve_default_history_data_dir
+from configuration import CONFIGURATION, default_history_data_dir as resolve_default_history_data_dir
 
 GLOBAL_SETTINGS = CONFIGURATION["global"]
 SEED_SETTINGS = CONFIGURATION["scripts"]["seed_data"]

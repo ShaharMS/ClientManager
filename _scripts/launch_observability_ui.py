@@ -31,7 +31,7 @@ import urllib.request
 import webbrowser
 from pathlib import Path
 
-from __configuration import CONFIGURATION
+from configuration import CONFIGURATION
 
 GLOBAL_SETTINGS = CONFIGURATION["global"]
 OBSERVABILITY_SETTINGS = CONFIGURATION["scripts"]["launch_observability_ui"]

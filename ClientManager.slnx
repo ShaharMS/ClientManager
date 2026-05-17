@@ -6,6 +6,8 @@
     <File Path="_scripts/performance_baseline.py" />
     <File Path="_scripts/seed_data.py" />
     <File Path="_scripts/traffic_generator.py" />
+    <File Path="_scripts/launch_observability_ui.py" />
+    <File Name="Script Configurations" Path="_scripts/__configurations.py" />
   </Folder>
   <Project Path="ClientManager.AdminUI/ClientManager.AdminUI.csproj" />
   <Project Path="ClientManager.Api/ClientManager.Api.csproj" />

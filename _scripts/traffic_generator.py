@@ -24,7 +24,7 @@ import urllib.request
 import urllib.error
 from datetime import datetime
 
-from __configuration import CONFIGURATION
+from configuration import CONFIGURATION
 
 GLOBAL_SETTINGS = CONFIGURATION["global"]
 TRAFFIC_SETTINGS = CONFIGURATION["scripts"]["traffic_generator"]

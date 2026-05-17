@@ -19,7 +19,7 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
-from __configuration import CONFIGURATION
+from configuration import CONFIGURATION
 
 GLOBAL_SETTINGS = CONFIGURATION["global"]
 BASELINE_SETTINGS = CONFIGURATION["scripts"]["performance_baseline"]
