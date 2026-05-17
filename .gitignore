@@ -45,7 +45,10 @@ data/
 logs/
 lucene-index/
 ## Dev scripts
-_scripts/
+_scripts/*
+!_scripts/*.py
+_scripts/.observability-stack/
+_scripts/__pycache__/
 
 TempBlazor/
 .artifacts/

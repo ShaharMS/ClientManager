@@ -21,6 +21,8 @@ try
 {
     var builder = WebApplication.CreateBuilder(args);
 
+    ApplyDevelopmentDefaults(builder);
+
     builder.Logging.ClearProviders();
     builder.Host.UseNLog();
 
@@ -128,4 +130,53 @@ catch (Exception exception)
 finally
 {
     LogManager.Shutdown();
+}
+
+static void ApplyDevelopmentDefaults(WebApplicationBuilder builder)
+{
+    if (!builder.Environment.IsDevelopment())
+    {
+        return;
+    }
+
+    var defaults = new Dictionary<string, string?>();
+
+    if (ShouldUseRepositoryDataDirectory(builder.Configuration["Persistence:DefaultJsonFile:DataDirectory"]))
+    {
+        defaults["Persistence:DefaultJsonFile:DataDirectory"] = ResolveRepositoryDataDirectory();
+    }
+
+    if (defaults.Count > 0)
+    {
+        builder.Configuration.AddInMemoryCollection(defaults);
+    }
+}
+
+static bool ShouldUseRepositoryDataDirectory(string? configuredDataDirectory)
+{
+    if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("Persistence__DefaultJsonFile__DataDirectory")))
+    {
+        return false;
+    }
+
+    return string.IsNullOrWhiteSpace(configuredDataDirectory)
+        || configuredDataDirectory is "./data" or ".\\data" or "data";
+}
+
+static string ResolveRepositoryDataDirectory()
+{
+    var current = new DirectoryInfo(AppContext.BaseDirectory);
+    while (current is not null)
+    {
+        var solutionFile = Path.Combine(current.FullName, "ClientManager.slnx");
+        var dataDirectory = Path.Combine(current.FullName, "data");
+        if (File.Exists(solutionFile) && Directory.Exists(dataDirectory))
+        {
+            return dataDirectory;
+        }
+
+        current = current.Parent;
+    }
+
+    return Path.GetFullPath("./data");
 }
