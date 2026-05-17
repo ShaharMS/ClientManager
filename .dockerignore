@@ -1,0 +1,12 @@
+.git
+.github
+.vs
+.vscode
+.artifacts
+**/bin
+**/obj
+**/node_modules
+**/.DS_Store
+**/*.user
+**/*.suo
+**/TestResults
