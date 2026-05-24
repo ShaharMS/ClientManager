@@ -13,6 +13,9 @@ The upgrade is primarily controlled by the six project files. Changing each `Tar
 - `dotnet restore ClientManager.slnx` after project edits.
 - `dotnet build ClientManager.slnx --no-restore` after restore succeeds.
 - Run the available data access test executable/project if build succeeds.
+- Run each host in local order: StorageApi, Api, AdminUI.
+- Run seed and traffic scripts against the public API.
+- Check the Admin UI in a browser after all hosts are running.
 
 ## Scope
 
@@ -29,3 +32,4 @@ The upgrade is primarily controlled by the six project files. Changing each `Tar
 - Prefer concrete package versions over wildcard ranges for repeatable restore behavior.
 - Keep API and UI project boundaries unchanged.
 - Validate with solution restore/build first, then narrower runtime/test checks as needed.
+- Treat `dotnet run` failures and browser/runtime startup failures as blockers, even when `dotnet build` succeeds.
