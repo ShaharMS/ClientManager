@@ -141,7 +141,7 @@
 ## Storage Statistics Performance Checks
 - Run `python _scripts/performance_baseline.py --base-url http://localhost:5062 --duration-seconds 60 --include-graph-reads` while `traffic_generator.py` is running so long-range graph reads share the same workload as normal access and resource operations.
 - Tail the newest Api log instead of loading the whole file:
-	`Get-ChildItem .\ClientManager.Api\bin\Debug\net9.0\logs\clientmanager-*.log | Sort-Object LastWriteTime -Descending | Select-Object -First 1 | ForEach-Object { Get-Content $_.FullName -Tail 200 | Select-String 'historical-usage|client-usage-breakdown|Storage API unavailable|503' }`
+	`Get-ChildItem .\ClientManager.Api\bin\Debug\net10.0\logs\clientmanager-*.log | Sort-Object LastWriteTime -Descending | Select-Object -First 1 | ForEach-Object { Get-Content $_.FullName -Tail 200 | Select-String 'historical-usage|client-usage-breakdown|Storage API unavailable|503' }`
 - Tail the newest StorageApi log with the same bounded pattern:
-	`Get-ChildItem .\ClientManager.StorageApi\bin\Debug\net9.0\logs\clientmanager-storageapi-*.log | Sort-Object LastWriteTime -Descending | Select-Object -First 1 | ForEach-Object { Get-Content $_.FullName -Tail 200 | Select-String 'historical-usage|client-usage-breakdown|Storage API unavailable|503' }`
+	`Get-ChildItem .\ClientManager.StorageApi\bin\Debug\net10.0\logs\clientmanager-storageapi-*.log | Sort-Object LastWriteTime -Descending | Select-Object -First 1 | ForEach-Object { Get-Content $_.FullName -Tail 200 | Select-String 'historical-usage|client-usage-breakdown|Storage API unavailable|503' }`
 - A healthy run should show long-range `historical-usage` and `client-usage-breakdown` requests completing without a nearby burst of `Storage API unavailable` or runtime `503` entries.

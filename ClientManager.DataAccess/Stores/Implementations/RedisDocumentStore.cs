@@ -81,7 +81,7 @@ return next
         }
 
         var value = await Database.HashGetAsync(HashKey(collection), id);
-        return value.IsNullOrEmpty ? null : JsonSerializer.Deserialize<T>(value!, JsonOptions);
+        return value.IsNullOrEmpty ? null : JsonSerializer.Deserialize<T>(value.ToString(), JsonOptions);
     }
 
     /// <inheritdoc />
@@ -127,7 +127,7 @@ return next
         }
 
         var entries = await Database.HashGetAllAsync(HashKey(collection));
-        return [.. entries.Select(e => JsonSerializer.Deserialize<T>(e.Value!, JsonOptions)!)];
+        return [.. entries.Select(e => JsonSerializer.Deserialize<T>(e.Value.ToString(), JsonOptions)!)];
     }
 
     /// <inheritdoc />
@@ -496,7 +496,7 @@ return next
                 continue;
             }
 
-            var item = JsonSerializer.Deserialize<T>(value!, JsonOptions);
+            var item = JsonSerializer.Deserialize<T>(value.ToString(), JsonOptions);
             if (item is not null)
             {
                 results.Add(item);

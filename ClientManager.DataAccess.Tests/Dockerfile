@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 COPY ["ClientManager.DataAccess.Tests/ClientManager.DataAccess.Tests.csproj", "ClientManager.DataAccess.Tests/"]
@@ -8,7 +8,7 @@ RUN dotnet restore "ClientManager.DataAccess.Tests/ClientManager.DataAccess.Test
 COPY . .
 RUN dotnet publish "ClientManager.DataAccess.Tests/ClientManager.DataAccess.Tests.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
-FROM mcr.microsoft.com/dotnet/runtime:9.0 AS final
+FROM mcr.microsoft.com/dotnet/runtime:10.0 AS final
 WORKDIR /app
 
 COPY --from=build /app/publish .
