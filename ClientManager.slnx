@@ -1,19 +1,32 @@
 <Solution>
-  <Folder Name="/Solution Items/">
+  <Folder Name="/Executables/">
+    <Project Path="ClientManager.AdminUI/ClientManager.AdminUI.csproj" />
+    <Project Path="ClientManager.Api/ClientManager.Api.csproj" />
+    <Project Path="ClientManager.StorageApi/ClientManager.StorageApi.csproj" />
+  </Folder>
+  <Folder Name="/Libraries/">
+    <Project Path="ClientManager.DataAccess/ClientManager.DataAccess.csproj" />
+    <Project Path="ClientManager.Shared/ClientManager.Shared.csproj" />
+  </Folder>
+  <Folder Name="/Tests/">
+    <Project Path="ClientManager.DataAccess.Tests/ClientManager.DataAccess.Tests.csproj" />
+  </Folder>
+  <Folder Name="/_Solution Items_/">
     <File Path=".gitignore" />
   </Folder>
-  <Folder Name="/Solution Items/Scripts/">
+  <Folder Name="/_Solution Items_/Bookkeeping/">
+    <File Path="Code Review - 1.0.0-alpha.md" />
+    <Project Path="ClientManager.DependencyInventory.csproj" />
+  </Folder>
+  <Folder Name="/_Solution Items_/Quick Access/" />
+  <Folder Name="/_Solution Items_/Quick Access/AdminUI/" />
+  <Folder Name="/_Solution Items_/Quick Access/Api/" />
+  <Folder Name="/_Solution Items_/Quick Access/StorageApi/" />
+  <Folder Name="/_Solution Items_/Scripts/">
+    <File Path="_scripts/launch_observability_ui.py" />
     <File Path="_scripts/performance_baseline.py" />
     <File Path="_scripts/seed_data.py" />
     <File Path="_scripts/traffic_generator.py" />
-    <File Path="_scripts/launch_observability_ui.py" />
-    <File Name="Script Configurations" Path="_scripts/__configurations.py" />
+    <File Path="_scripts/__configurations.py" />
   </Folder>
-  <Project Path="ClientManager.AdminUI/ClientManager.AdminUI.csproj" />
-  <Project Path="ClientManager.Api/ClientManager.Api.csproj" />
-  <Project Path="ClientManager.DataAccess/ClientManager.DataAccess.csproj" />
-  <Project Path="ClientManager.DataAccess.Tests/ClientManager.DataAccess.Tests.csproj" />
-  <Project Path="ClientManager.DependencyInventory.csproj" />
-  <Project Path="ClientManager.Shared/ClientManager.Shared.csproj" />
-  <Project Path="ClientManager.StorageApi/ClientManager.StorageApi.csproj" />
 </Solution>

@@ -9,6 +9,17 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="data\**" />
+    <Compile Remove="lucene-index\**" />
+    <Content Remove="data\**" />
+    <Content Remove="lucene-index\**" />
+    <EmbeddedResource Remove="data\**" />
+    <EmbeddedResource Remove="lucene-index\**" />
+    <None Remove="data\**" />
+    <None Remove="lucene-index\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Elasticsearch.Net" Version="7.17.5" />
     <PackageReference Include="NEST" Version="7.17.5" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />

@@ -2,6 +2,8 @@ using System.Security.Cryptography.X509Certificates;
 using ClientManager.DataAccess.Stores.Implementations;
 using ClientManager.DataAccess.Stores.Interfaces;
 using ClientManager.Shared.Configuration.Storage;
+using ClientManager.Shared.Models.Enums;
+
 using MongoDB.Driver;
 using StackExchange.Redis;
 
@@ -21,10 +23,10 @@ internal static class DocumentStoreFactory
     {
         return binding.Provider switch
         {
-            ClientManager.Shared.Models.Enums.PersistenceProvider.JsonFile => CreateJsonFileStore(binding.JsonFile, jsonFileStores),
-            ClientManager.Shared.Models.Enums.PersistenceProvider.MongoDb => CreateMongoStore(binding.MongoDb, mongoClients),
-            ClientManager.Shared.Models.Enums.PersistenceProvider.Redis => CreateRedisStore(binding.Redis, redisMultiplexers),
-            ClientManager.Shared.Models.Enums.PersistenceProvider.Lucene => CreateLuceneStore(binding.Lucene, luceneStores),
+            PersistenceProvider.JsonFile => CreateJsonFileStore(binding.JsonFile, jsonFileStores),
+            PersistenceProvider.MongoDb => CreateMongoStore(binding.MongoDb, mongoClients),
+            PersistenceProvider.Redis => CreateRedisStore(binding.Redis, redisMultiplexers),
+            PersistenceProvider.Lucene => CreateLuceneStore(binding.Lucene, luceneStores),
             _ => throw new InvalidOperationException($"Unsupported persistence provider: {binding.Provider}")
         };
     }

@@ -804,6 +804,26 @@ SCRIPT_SETTINGS = {
             },
         },
     },
+    "download_images": {
+        "paths": {
+            "download_directory": ".downloaded_images",
+            "manifest_file": "manifest.json",
+        },
+        "defaults": {
+            "build_version": "local",
+            "package_sources": [],
+        },
+        "docker": {
+            "dependency_images": {
+                "jaeger": None,
+                "prometheus": None,
+                "grafana": None,
+                "sdk": "mcr.microsoft.com/dotnet/sdk:10.0",
+                "aspnet": "mcr.microsoft.com/dotnet/aspnet:10.0",
+                "runtime": "mcr.microsoft.com/dotnet/runtime:10.0",
+            },
+        },
+    },
     "launch_observability_ui": {
         "paths": {
             "generated_directory": ".observability-stack",

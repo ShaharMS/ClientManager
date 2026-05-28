@@ -48,6 +48,7 @@ lucene-index/
 _scripts/*
 !_scripts/*.py
 _scripts/.observability-stack/
+_scripts/.downloaded_images/
 _scripts/__pycache__/
 
 TempBlazor/

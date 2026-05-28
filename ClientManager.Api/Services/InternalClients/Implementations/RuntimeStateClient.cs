@@ -343,7 +343,7 @@ internal sealed class RuntimeStateClient : IRuntimeStateClient
 
         if (result == "canceled")
         {
-            _logger.Debug("Storage API runtime call canceled", extraData);
+            _logger.Info("Storage API runtime call canceled", extraData);
             return;
         }
 

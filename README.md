@@ -25,6 +25,23 @@ dotnet restore ClientManager.slnx
 dotnet build ClientManager.slnx
 ```
 
+Download the container images the repository uses for local development and for
+production packaging and self-contained project distribution:
+
+```powershell
+python _scripts/download_images.py --download-dependencies
+python _scripts/download_images.py --build-projects --build-version 1.0.1-alpha
+```
+
+Use `--list` to preview the exact pulls and builds without running Docker. The
+`--download-dependencies` action downloads the external images used by the
+project and exports them into `_scripts/.downloaded_images/`. The
+`--build-projects` action builds flattened, version-tagged ClientManager images
+so they can be published as standalone project images. Use `--build-version`
+to control the project image tag and tar naming, `--dependency-image-override`
+to point external dependency images at alternate registries, and
+`--package-source` to use alternate NuGet feeds during the Dockerized restore.
+
 For local manual testing, start the applications in this order:
 
 1. `ClientManager.StorageApi`
