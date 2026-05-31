@@ -1,10 +1,11 @@
 using Asp.Versioning;
-using ClientManager.Api.Services.InternalClients.Interfaces;
-using ClientManager.Api.Utils.Extensions;
+using ClientManager.Api.Services.Interfaces;
+using ClientManager.Shared.Contracts.Statistics;
 using ClientManager.Shared.Models.Search;
 using ClientManager.Shared.Models.Requests;
 using ClientManager.Shared.Models.Responses;
 using ClientManager.Shared.Models.Enums;
+using ClientManager.Shared.Models.Problems;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -20,136 +21,161 @@ namespace ClientManager.Api.Controllers;
 [Tags("Statistics")]
 public class StatisticsController : ControllerBase
 {
-    private readonly IStatisticsReadClient _statisticsReadClient;
+    private readonly IStatisticsService _statisticsService;
 
     /// <summary>
     /// Initializes a new instance of <see cref="StatisticsController"/>.
     /// </summary>
-    /// <param name="statisticsReadClient">Typed client for storage-side read-model endpoints.</param>
-    public StatisticsController(IStatisticsReadClient statisticsReadClient)
+    /// <param name="statisticsService">The statistics read service.</param>
+    public StatisticsController(IStatisticsService statisticsService)
     {
-        _statisticsReadClient = statisticsReadClient;
+        _statisticsService = statisticsService;
     }
 
     /// <summary>
     /// Returns a high-level system overview with counts of clients, services, pools, and active allocations.
     /// </summary>
+    /// <param name="cancellationToken">Token used to cancel the overview aggregation before it completes.</param>
     /// <returns>The system overview statistics.</returns>
     /// <response code="200">Returns the system overview.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpGet("overview")]
     [ProducesResponseType(typeof(SystemOverviewResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> GetOverview(CancellationToken cancellationToken)
     {
-        return Ok(await _statisticsReadClient.GetOverviewAsync(cancellationToken));
+        var overview = await _statisticsService.GetOverviewAsync(cancellationToken);
+        return Ok(overview);
     }
 
     /// <summary>
     /// Searches client configurations and returns paginated summary statistics.
     /// </summary>
     /// <param name="query">Query with filters, sort, and pagination. Pass an empty body or null for all results.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to cancel the client statistics search before it completes.</param>
     /// <returns>Matching per-client summary statistics and total count.</returns>
     /// <response code="200">Returns matching per-client summaries.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpPost("clients/search")]
     [ProducesResponseType(typeof(SearchResult<ClientSummaryResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> SearchClients(
         [FromBody] DocumentQuery? query,
         CancellationToken cancellationToken)
     {
-        return Ok(await _statisticsReadClient.SearchClientSummariesAsync(query ?? DocumentQuery.All, cancellationToken));
+        var clientSummaries = await _statisticsService.SearchClientsAsync(query ?? DocumentQuery.All, cancellationToken);
+        return Ok(clientSummaries);
     }
 
     /// <summary>
     /// Returns detailed statistics for a specific client, including per-pool active allocation counts.
     /// </summary>
     /// <param name="clientId">The unique identifier of the client.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to cancel the client statistics lookup before it completes.</param>
     /// <returns>Detailed client statistics.</returns>
     /// <response code="200">Returns the client's detailed statistics.</response>
     /// <response code="404">No client was found with the given identifier.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpGet("clients/{clientId}")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> GetClientDetails(string clientId, CancellationToken cancellationToken)
     {
-        return Ok(await _statisticsReadClient.GetClientDetailsAsync(clientId, cancellationToken));
+        var clientDetails = await _statisticsService.GetClientDetailsAsync(clientId, cancellationToken);
+        return Ok(clientDetails);
     }
 
     /// <summary>
     /// Searches services and returns paginated per-service usage statistics including client counts and global rate limit presence.
     /// </summary>
     /// <param name="query">Query with filters, sort, and pagination. Pass an empty body or null for all results.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to cancel the service statistics search before it completes.</param>
     /// <returns>Matching per-service statistics and total count.</returns>
     /// <response code="200">Returns matching per-service statistics.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpPost("services/search")]
     [ProducesResponseType(typeof(SearchResult<ServiceStatisticsResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> SearchServices(
         [FromBody] DocumentQuery? query,
         CancellationToken cancellationToken)
     {
-        return Ok(await _statisticsReadClient.SearchServiceStatisticsAsync(query ?? DocumentQuery.All, cancellationToken));
+        var serviceStatistics = await _statisticsService.SearchServicesAsync(query ?? DocumentQuery.All, cancellationToken);
+        return Ok(serviceStatistics);
     }
 
     /// <summary>
     /// Returns detailed statistics for a specific service, including which clients have access.
     /// </summary>
     /// <param name="serviceId">The unique identifier of the service.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to cancel the service statistics lookup before it completes.</param>
     /// <returns>Detailed service statistics.</returns>
     /// <response code="200">Returns the service's detailed statistics.</response>
     /// <response code="404">No service was found with the given identifier.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpGet("services/{serviceId}")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> GetServiceDetails(string serviceId, CancellationToken cancellationToken)
     {
-        return Ok(await _statisticsReadClient.GetServiceDetailsAsync(serviceId, cancellationToken));
+        var serviceDetails = await _statisticsService.GetServiceDetailsAsync(serviceId, cancellationToken);
+        return Ok(serviceDetails);
     }
 
     /// <summary>
     /// Searches resource pools and returns paginated per-pool utilization statistics including active allocations and available slots.
     /// </summary>
     /// <param name="query">Query with filters, sort, and pagination. Pass an empty body or null for all results.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to cancel the resource pool statistics search before it completes.</param>
     /// <returns>Matching per-pool statistics and total count.</returns>
     /// <response code="200">Returns matching per-pool statistics.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpPost("resource-pools/search")]
     [ProducesResponseType(typeof(SearchResult<ResourcePoolStatisticsResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> SearchResourcePools(
         [FromBody] DocumentQuery? query,
         CancellationToken cancellationToken)
     {
-        return Ok(await _statisticsReadClient.SearchResourcePoolStatisticsAsync(query ?? DocumentQuery.All, cancellationToken));
+        var resourcePoolStatistics = await _statisticsService.SearchResourcePoolsAsync(query ?? DocumentQuery.All, cancellationToken);
+        return Ok(resourcePoolStatistics);
     }
 
     /// <summary>
     /// Returns detailed statistics for a specific resource pool, including per-client allocation counts.
     /// </summary>
     /// <param name="resourcePoolId">The unique identifier of the resource pool.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to cancel the resource pool statistics lookup before it completes.</param>
     /// <returns>Detailed resource pool statistics.</returns>
     /// <response code="200">Returns the pool's detailed statistics.</response>
     /// <response code="404">No resource pool was found with the given identifier.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpGet("resource-pools/{resourcePoolId}")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> GetResourcePoolDetails(string resourcePoolId, CancellationToken cancellationToken)
     {
-        return Ok(await _statisticsReadClient.GetResourcePoolDetailsAsync(resourcePoolId, cancellationToken));
+        var resourcePoolDetails = await _statisticsService.GetResourcePoolDetailsAsync(resourcePoolId, cancellationToken);
+        return Ok(resourcePoolDetails);
     }
 
     /// <summary>
     /// Retrieves global usage statistics including request rate and pool acquisition.
     /// </summary>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to cancel the global usage statistics aggregation before it completes.</param>
     /// <returns>Global usage statistics.</returns>
     /// <response code="200">Returns global usage statistics.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpGet("global-usage")]
     [ProducesResponseType(typeof(GlobalUsageStatsResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> GetGlobalUsageStats(CancellationToken cancellationToken)
     {
-        return Ok(await _statisticsReadClient.GetGlobalUsageStatsAsync(cancellationToken));
+        var globalUsage = await _statisticsService.GetGlobalUsageStatsAsync(cancellationToken);
+        return Ok(globalUsage);
     }
 
     /// <summary>
@@ -161,25 +187,31 @@ public class StatisticsController : ControllerBase
     /// <param name="from">Optional start of the time range (UTC, ISO 8601).</param>
     /// <param name="to">Optional end of the time range (UTC, ISO 8601).</param>
     /// <param name="granularity">Optional bucket granularity: Second, FiveMinute, Hour, or Day.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to cancel the usage time-series aggregation before it completes.</param>
     /// <returns>Per-target time-series data for usage and capacity.</returns>
     /// <response code="200">Returns per-target usage time-series data.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpGet("usage-timeseries")]
     [ProducesResponseType(typeof(List<TargetUsageTimeSeriesResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> GetUsageTimeSeries(
         [FromQuery] TargetType filterType,
-        [FromQuery] string targetIds,
-        [FromQuery] string? clientIds,
+        [FromQuery] IdentifierList targetIds,
+        [FromQuery] IdentifierList? clientIds,
         [FromQuery] DateTime? from,
         [FromQuery] DateTime? to,
         [FromQuery] BucketGranularity? granularity,
         CancellationToken cancellationToken)
     {
-        var targetIdList = ParseIds(targetIds);
-        var clientIdList = ParseClientIds(clientIds);
-        var result = await _statisticsReadClient.GetUsageTimeSeriesAsync(
-            filterType, targetIdList, clientIdList, from, to, granularity, cancellationToken);
-        return Ok(result);
+        var usageTimeSeries = await _statisticsService.GetUsageTimeSeriesAsync(
+            filterType,
+            targetIds,
+            clientIds,
+            from,
+            to,
+            granularity,
+            cancellationToken);
+        return Ok(usageTimeSeries);
     }
 
     /// <summary>
@@ -191,40 +223,48 @@ public class StatisticsController : ControllerBase
     /// <param name="from">Optional start of the time range (UTC, ISO 8601).</param>
     /// <param name="to">Optional end of the time range (UTC, ISO 8601).</param>
     /// <param name="granularity">Optional bucket granularity: Second, FiveMinute, Hour, or Day.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to cancel the client usage breakdown aggregation before it completes.</param>
     /// <returns>Per-target client usage breakdowns.</returns>
     /// <response code="200">Returns per-target client usage breakdowns.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpGet("client-usage-breakdown")]
     [ProducesResponseType(typeof(List<TargetClientUsageBreakdownResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> GetClientUsageBreakdown(
         [FromQuery] TargetType filterType,
-        [FromQuery] string targetIds,
-        [FromQuery] string? clientIds,
+        [FromQuery] IdentifierList targetIds,
+        [FromQuery] IdentifierList? clientIds,
         [FromQuery] DateTime? from,
         [FromQuery] DateTime? to,
         [FromQuery] BucketGranularity? granularity,
         CancellationToken cancellationToken)
     {
-        var targetIdList = ParseIds(targetIds);
-        var clientIdList = ParseClientIds(clientIds);
-        var result = await _statisticsReadClient.GetClientUsageBreakdownAsync(
-            filterType, targetIdList, clientIdList, from, to, granularity, cancellationToken);
-        return Ok(result);
+        var clientUsageBreakdown = await _statisticsService.GetClientUsageBreakdownAsync(
+            filterType,
+            targetIds,
+            clientIds,
+            from,
+            to,
+            granularity,
+            cancellationToken);
+        return Ok(clientUsageBreakdown);
     }
 
     /// <summary>
     /// Retrieves a paginated summary of all clients with their service and pool access statistics.
     /// </summary>
     /// <param name="paging">Pagination parameters.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to cancel the client summaries retrieval before it completes.</param>
     /// <returns>Paginated client summary data for the dashboard table.</returns>
     /// <response code="200">Returns paginated client summaries.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpGet("client-summaries")]
     [ProducesResponseType(typeof(PagedResponse<ClientSummaryRow>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> GetClientSummaries([FromQuery] PagedRequest paging, CancellationToken cancellationToken)
     {
-        var result = await _statisticsReadClient.GetClientSummariesAsync(cancellationToken);
-        return Ok(result.Rows.ToPagedResponse(paging));
+        var clientSummaries = await _statisticsService.GetClientSummariesAsync(paging, cancellationToken);
+        return Ok(clientSummaries);
     }
 
     /// <summary>
@@ -236,25 +276,26 @@ public class StatisticsController : ControllerBase
     /// <param name="from">Start of the time range (UTC, ISO 8601).</param>
     /// <param name="to">End of the time range (UTC, ISO 8601).</param>
     /// <param name="granularity">Bucket granularity: Second, FiveMinute, Hour, or Day.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to cancel the historical usage query before it completes.</param>
     /// <returns>Historical usage data points per target within the requested range.</returns>
     /// <response code="200">Returns the historical usage data.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpGet("historical-usage")]
     [ProducesResponseType(typeof(List<HistoricalUsageResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> GetHistoricalUsage(
         [FromQuery] TargetType filterType,
-        [FromQuery] string targetIds,
+        [FromQuery] IdentifierList targetIds,
         [FromQuery] string? clientId,
         [FromQuery] DateTime from,
         [FromQuery] DateTime to,
         [FromQuery] BucketGranularity granularity,
         CancellationToken cancellationToken)
     {
-        var targetIdList = ParseIds(targetIds);
-        var result = await _statisticsReadClient.GetHistoricalUsageAsync(
-            filterType, targetIdList, clientId, from, to, granularity, cancellationToken);
+        var historicalUsage = await _statisticsService.GetHistoricalUsageAsync(
+            filterType, targetIds, clientId, from, to, granularity, cancellationToken);
 
-        return Ok(result);
+        return Ok(historicalUsage);
     }
 
     /// <summary>
@@ -266,43 +307,31 @@ public class StatisticsController : ControllerBase
     /// <param name="from">Start of the time range (UTC, ISO 8601).</param>
     /// <param name="to">End of the time range (UTC, ISO 8601).</param>
     /// <param name="granularity">Bucket granularity: Second, FiveMinute, Hour, or Day.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to cancel the per-client historical usage query before it completes.</param>
     /// <returns>Historical usage data points for each requested target-client pair.</returns>
     /// <response code="200">Returns the historical usage data for each requested target-client pair.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpGet("historical-usage/by-client")]
     [ProducesResponseType(typeof(List<ClientHistoricalUsageResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> GetHistoricalUsageByClient(
         [FromQuery] TargetType filterType,
-        [FromQuery] string targetIds,
-        [FromQuery] string clientIds,
+        [FromQuery] IdentifierList targetIds,
+        [FromQuery] IdentifierList clientIds,
         [FromQuery] DateTime from,
         [FromQuery] DateTime to,
         [FromQuery] BucketGranularity granularity,
         CancellationToken cancellationToken)
     {
-        var result = await _statisticsReadClient.GetHistoricalUsageByClientAsync(
+        var clientHistoricalUsage = await _statisticsService.GetHistoricalUsageByClientAsync(
             filterType,
-            ParseIds(targetIds),
-            ParseIds(clientIds),
+            targetIds,
+            clientIds,
             from,
             to,
             granularity,
             cancellationToken);
 
-        return Ok(result);
-    }
-
-    // CR: helpers should not be placed in a controller file. in that specific case, i think that can be avoided entirely and be removed, using some type convertor like we do in enums.
-    private static IEnumerable<string> ParseIds(string ids)
-    {
-        return ids.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-    }
-
-    private static IEnumerable<string>? ParseClientIds(string? clientIds)
-    {
-        if (string.IsNullOrWhiteSpace(clientIds))
-            return null;
-
-        return clientIds.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return Ok(clientHistoricalUsage);
     }
 }

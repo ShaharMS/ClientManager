@@ -4,11 +4,14 @@ using System.Text.Json.Serialization;
 using Asp.Versioning;
 
 using ClientManager.Api.Middlewares;
+using ClientManager.Api.Models.Configuration;
 using ClientManager.Api.Utils.Extensions;
 using ClientManager.Api.Utils.Instrumentation;
 using ClientManager.Api.Utils.Swagger;
 using ClientManager.Shared.Logging;
+using ClientManager.Shared.Models.Problems;
 
+using Microsoft.Extensions.Options;
 using Microsoft.OpenApi;
 
 using NLog;
@@ -35,8 +38,15 @@ try
             options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
         });
 
-    var versionConfig = builder.Configuration.GetSection("ApiVersioning");
-    var defaultVersion = ApiVersionParser.Default.Parse(versionConfig["DefaultVersion"] ?? "1.0");
+    builder.Services.AddSingleton<IValidateOptions<ApiVersioningSettings>, ApiVersioningSettingsValidator>();
+    builder.Services.AddOptions<ApiVersioningSettings>()
+        .Bind(builder.Configuration.GetSection(ApiVersioningSettings.SectionName))
+        .ValidateOnStart();
+
+    var apiVersioningSettings = builder.Configuration
+        .GetSection(ApiVersioningSettings.SectionName)
+        .Get<ApiVersioningSettings>() ?? new ApiVersioningSettings();
+    var defaultVersion = ApiVersionParser.Default.Parse(apiVersioningSettings.DefaultVersion);
 
     builder.Services.AddApiVersioning(options =>
     {
@@ -62,17 +72,35 @@ try
         var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
         var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
         options.IncludeXmlComments(xmlPath);
+
+        // Load XML docs from the shared assembly so request/response/entity schemas render
+        // their authored descriptions in Swagger alongside the API's own operation docs.
+        var sharedXmlFile = $"{typeof(ProblemResponse).Assembly.GetName().Name}.xml";
+        var sharedXmlPath = Path.Combine(AppContext.BaseDirectory, sharedXmlFile);
+        if (File.Exists(sharedXmlPath))
+        {
+            options.IncludeXmlComments(sharedXmlPath);
+        }
+
         options.DocumentFilter<TagDescriptionsDocumentFilter>();
     });
 
     builder.Services.AddStorageApiClients(builder.Configuration, builder.Environment);
 
     // Public API adapters that remain local after the storage split.
-    builder.Services.AddClientManager();
+    builder.Services.AddPublicApiServices();
 
     // OpenTelemetry metrics, traces, and Prometheus
     builder.Services.AddSingleton<ClientManagerMetrics>();
-    var otlpEndpoint = builder.Configuration["Observability:OtlpEndpoint"];
+    builder.Services.AddSingleton<IValidateOptions<ObservabilityOptions>, ObservabilityOptionsValidator>();
+    builder.Services.AddOptions<ObservabilityOptions>()
+        .Bind(builder.Configuration.GetSection(ObservabilityOptions.SectionName))
+        .ValidateOnStart();
+
+    var observabilityOptions = builder.Configuration
+        .GetSection(ObservabilityOptions.SectionName)
+        .Get<ObservabilityOptions>() ?? new ObservabilityOptions();
+    var otlpEndpoint = observabilityOptions.OtlpEndpoint;
     builder.Services.AddOpenTelemetry()
         .ConfigureResource(resource => resource.AddService("ClientManager.Api"))
         .WithMetrics(metrics =>

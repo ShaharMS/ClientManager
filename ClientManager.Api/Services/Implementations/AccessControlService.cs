@@ -1,4 +1,4 @@
-using ClientManager.Api.Services.InternalClients.Interfaces;
+using ClientManager.Api.Services.Internal.Interfaces;
 using ClientManager.Api.Services.Interfaces;
 using ClientManager.Shared.Models.Requests;
 using ClientManager.Shared.Models.Responses;

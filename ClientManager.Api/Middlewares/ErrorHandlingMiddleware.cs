@@ -5,8 +5,11 @@ using ClientManager.Shared.Logging;
 namespace ClientManager.Api.Middlewares;
 
 /// <summary>
-/// Catches typed exceptions thrown by services and maps them to HTTP responses
-/// using the RFC 7807 Problem Details format.
+/// Catches exceptions thrown while handling a request and maps them to HTTP responses using
+/// the RFC 7807 Problem Details format. Expected failures derive from
+/// <see cref="HttpProblemException"/> and carry their own status code, title, and retry hint, so
+/// they are translated and logged at warning level through a single path. Any other exception is
+/// treated as an unexpected defect and surfaced as a 500 with an error-level log.
 /// </summary>
 public class ErrorHandlingMiddleware
 {
@@ -29,68 +32,42 @@ public class ErrorHandlingMiddleware
         {
             throw;
         }
-        catch (NotFoundException exception)
+        catch (HttpProblemException exception)
         {
-            _logger.Warn("Resource not found", new { Path = context.Request.Path.Value, Detail = exception.Message });
-            await WriteProblemDetailsAsync(context, StatusCodes.Status404NotFound, "Not Found", exception.Message);
-        }
-        catch (ConflictException exception)
-        {
-            _logger.Warn("Conflict", new { Path = context.Request.Path.Value, Detail = exception.Message });
-            await WriteProblemDetailsAsync(context, StatusCodes.Status409Conflict, "Conflict", exception.Message);
-        }
-        catch (ValidationException exception)
-        {
-            _logger.Warn("Validation failed", new { Path = context.Request.Path.Value, Detail = exception.Message });
-            await WriteProblemDetailsAsync(context, StatusCodes.Status400BadRequest, "Bad Request", exception.Message);
-        }
-        catch (AccessNotConfiguredException exception)
-        {
-            _logger.Warn("Access not configured", new { Path = context.Request.Path.Value, exception.ClientId, exception.ServiceId });
-            await WriteProblemDetailsAsync(context, StatusCodes.Status401Unauthorized, "Unauthorized", exception.Message);
-        }
-        catch (AccessDeniedException exception)
-        {
-            _logger.Warn("Access denied", new { Path = context.Request.Path.Value, exception.ClientId, exception.ServiceId });
-            await WriteProblemDetailsAsync(context, StatusCodes.Status403Forbidden, "Forbidden", exception.Message);
-        }
-        catch (ClientDisabledException exception)
-        {
-            _logger.Warn("Client disabled", new { Path = context.Request.Path.Value, exception.ClientId });
-            await WriteProblemDetailsAsync(context, StatusCodes.Status403Forbidden, "Forbidden", exception.Message);
-        }
-        catch (ServiceDisabledException exception)
-        {
-            _logger.Warn("Service disabled", new { Path = context.Request.Path.Value, exception.ServiceId });
-            await WriteProblemDetailsAsync(context, StatusCodes.Status403Forbidden, "Forbidden", exception.Message);
-        }
-        catch (RateLimitedException exception)
-        {
-            _logger.Warn("Rate limited", new { Path = context.Request.Path.Value, Detail = exception.Message, exception.RetryAfterSeconds });
-
-            if (exception.RetryAfterSeconds.HasValue)
-            {
-                context.Response.Headers.RetryAfter = exception.RetryAfterSeconds.Value.ToString();
-            }
-
-            await WriteProblemDetailsAsync(context, StatusCodes.Status429TooManyRequests, "Too Many Requests", exception.Message);
-        }
-        catch (StorageApiUnavailableException exception)
-        {
-            _logger.Warn("Storage API unavailable", new { Path = context.Request.Path.Value, Detail = exception.Message, exception.RetryAfterSeconds });
-
-            if (exception.RetryAfterSeconds.HasValue)
-            {
-                context.Response.Headers.RetryAfter = exception.RetryAfterSeconds.Value.ToString();
-            }
-
-            await WriteProblemDetailsAsync(context, StatusCodes.Status503ServiceUnavailable, "Service Unavailable", exception.Message);
+            await HandleProblemAsync(context, exception);
         }
         catch (Exception exception)
         {
-            _logger.Error("Unhandled exception", exception, new { Path = context.Request.Path.Value, context.Request.Method });
+            _logger.Error("Internal error occured while processing request", exception, new { Path = context.Request.Path.Value, context.Request.Method });
             await WriteProblemDetailsAsync(context, StatusCodes.Status500InternalServerError, "Internal Server Error", "An unexpected error occurred.");
         }
+    }
+
+    /// <summary>
+    /// Writes the RFC 7807 response for an expected failure. Expected failures are logged at
+    /// warning level — never error level — because they are part of the public contract rather
+    /// than defects, and the <c>Retry-After</c> header is preserved for throttled or unavailable
+    /// responses that carry a retry hint.
+    /// </summary>
+    private async Task HandleProblemAsync(HttpContext context, HttpProblemException exception)
+    {
+        _logger.Info(
+            "User fault encountered while processing request",
+            new
+            {
+                Path = context.Request.Path.Value,
+                exception.StatusCode,
+                exception.Title,
+                Detail = exception.Message,
+                exception.RetryAfterSeconds
+            });
+
+        if (exception.RetryAfterSeconds.HasValue)
+        {
+            context.Response.Headers.RetryAfter = exception.RetryAfterSeconds.Value.ToString();
+        }
+
+        await WriteProblemDetailsAsync(context, exception.StatusCode, exception.Title, exception.Message);
     }
 
     private static async Task WriteProblemDetailsAsync(

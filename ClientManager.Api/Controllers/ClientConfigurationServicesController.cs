@@ -1,9 +1,9 @@
 using Asp.Versioning;
-using ClientManager.Api.Models.Exceptions;
-using ClientManager.Api.Services.InternalClients.Interfaces.Configuration;
+using ClientManager.Api.Services.Interfaces;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Requests;
 using ClientManager.Shared.Models.Responses;
+using ClientManager.Shared.Models.Problems;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -18,15 +18,15 @@ namespace ClientManager.Api.Controllers;
 [Tags("Client Configurations")]
 public class ClientConfigurationServicesController : ControllerBase
 {
-    private readonly IClientConfigurationStoreClient _clientConfigurationStoreClient;
+    private readonly IClientServiceSettingsService _clientServiceSettingsService;
 
     /// <summary>
     /// Initializes a new instance of <see cref="ClientConfigurationServicesController"/>.
     /// </summary>
-    /// <param name="clientConfigurationStoreClient">The internal configuration store client.</param>
-    public ClientConfigurationServicesController(IClientConfigurationStoreClient clientConfigurationStoreClient)
+    /// <param name="clientServiceSettingsService">The client service-settings service.</param>
+    public ClientConfigurationServicesController(IClientServiceSettingsService clientServiceSettingsService)
     {
-        _clientConfigurationStoreClient = clientConfigurationStoreClient;
+        _clientServiceSettingsService = clientServiceSettingsService;
     }
 
     /// <summary>
@@ -34,17 +34,19 @@ public class ClientConfigurationServicesController : ControllerBase
     /// </summary>
     /// <param name="id">The unique identifier of the client.</param>
     /// <param name="paging">Pagination parameters.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to cancel the service settings listing before it completes.</param>
     /// <returns>A paginated list of service access setting entries.</returns>
     /// <response code="200">Returns the paginated service access settings.</response>
     /// <response code="404">No client was found with the given identifier.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpGet("{id}/services")]
     [ProducesResponseType(typeof(PagedResponse<KeyedEntry<ServiceAccessSettings>>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> GetServices(string id, [FromQuery] PagedRequest paging, CancellationToken cancellationToken)
     {
-        var result = await _clientConfigurationStoreClient.GetServicesAsync(id, paging, cancellationToken);
-        return Ok(result);
+        var settings = await _clientServiceSettingsService.GetServicesAsync(id, paging, cancellationToken);
+        return Ok(settings);
     }
 
     /// <summary>
@@ -52,17 +54,18 @@ public class ClientConfigurationServicesController : ControllerBase
     /// </summary>
     /// <param name="id">The unique identifier of the client.</param>
     /// <param name="serviceId">The unique identifier of the service.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to cancel the service settings lookup before it completes.</param>
     /// <returns>The service access settings.</returns>
     /// <response code="200">Returns the service access settings.</response>
     /// <response code="404">Client or service settings not found.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpGet("{id}/services/{serviceId}")]
     [ProducesResponseType(typeof(ServiceAccessSettings), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> GetServiceSettings(string id, string serviceId, CancellationToken cancellationToken)
     {
-        var settings = await _clientConfigurationStoreClient.GetServiceSettingsAsync(id, serviceId, cancellationToken)
-            ?? throw new ServiceSettingsNotFoundException(serviceId, id);
+        var settings = await _clientServiceSettingsService.GetServiceSettingsAsync(id, serviceId, cancellationToken);
         return Ok(settings);
     }
 
@@ -72,14 +75,18 @@ public class ClientConfigurationServicesController : ControllerBase
     /// <param name="id">The unique identifier of the client.</param>
     /// <param name="serviceId">The unique identifier of the service.</param>
     /// <param name="settings">The service access settings to apply.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to abort the service settings update before it is persisted.</param>
     /// <response code="200">The service access settings were updated.</response>
+    /// <response code="404">No client was found with the given identifier.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpPut("{id}/services/{serviceId}")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ServiceAccessSettings), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> SetServiceSettings(string id, string serviceId, [FromBody] ServiceAccessSettings settings, CancellationToken cancellationToken)
     {
-        await _clientConfigurationStoreClient.SetServiceSettingsAsync(id, serviceId, settings, cancellationToken);
-        return Ok(settings);
+        var applied = await _clientServiceSettingsService.SetServiceSettingsAsync(id, serviceId, settings, cancellationToken);
+        return Ok(applied);
     }
 
     /// <summary>
@@ -87,13 +94,17 @@ public class ClientConfigurationServicesController : ControllerBase
     /// </summary>
     /// <param name="id">The unique identifier of the client.</param>
     /// <param name="serviceId">The unique identifier of the service.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to abort the service settings removal before it completes.</param>
     /// <response code="204">The service access settings were removed.</response>
+    /// <response code="404">No client was found with the given identifier.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpDelete("{id}/services/{serviceId}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> RemoveServiceSettings(string id, string serviceId, CancellationToken cancellationToken)
     {
-        await _clientConfigurationStoreClient.RemoveServiceSettingsAsync(id, serviceId, cancellationToken);
+        await _clientServiceSettingsService.RemoveServiceSettingsAsync(id, serviceId, cancellationToken);
         return NoContent();
     }
 }
