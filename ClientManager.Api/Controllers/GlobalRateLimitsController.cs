@@ -1,5 +1,5 @@
 using Asp.Versioning;
-using ClientManager.Api.Services.Internal.Interfaces;
+using ClientManager.Api.Services.Interfaces;
 using ClientManager.Shared.Models.Search;
 using ClientManager.Shared.Models.Entities;
 using Microsoft.AspNetCore.Http;
@@ -16,15 +16,15 @@ namespace ClientManager.Api.Controllers;
 [Tags("Global Rate Limits")]
 public class GlobalRateLimitsController : ControllerBase
 {
-    private readonly IGlobalRateLimitCatalogClient _globalRateLimitCatalogClient;
+    private readonly IGlobalRateLimitCatalogService _globalRateLimitCatalogService;
 
     /// <summary>
     /// Initializes a new instance of <see cref="GlobalRateLimitsController"/>.
     /// </summary>
-    /// <param name="globalRateLimitCatalogClient">The internal global rate limit catalog client.</param>
-    public GlobalRateLimitsController(IGlobalRateLimitCatalogClient globalRateLimitCatalogClient)
+    /// <param name="globalRateLimitCatalogService">The global rate limit catalog service.</param>
+    public GlobalRateLimitsController(IGlobalRateLimitCatalogService globalRateLimitCatalogService)
     {
-        _globalRateLimitCatalogClient = globalRateLimitCatalogClient;
+        _globalRateLimitCatalogService = globalRateLimitCatalogService;
     }
 
     /// <summary>
@@ -40,8 +40,8 @@ public class GlobalRateLimitsController : ControllerBase
         [FromBody] DocumentQuery? query,
         CancellationToken cancellationToken)
     {
-        var result = await _globalRateLimitCatalogClient.SearchAsync(query ?? DocumentQuery.All, cancellationToken);
-        return Ok(result);
+        var limits = await _globalRateLimitCatalogService.SearchAsync(query ?? DocumentQuery.All, cancellationToken);
+        return Ok(limits);
     }
 
     /// <summary>
@@ -57,7 +57,7 @@ public class GlobalRateLimitsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetById(string id, CancellationToken cancellationToken)
     {
-        var limit = await _globalRateLimitCatalogClient.GetByIdAsync(id, cancellationToken);
+        var limit = await _globalRateLimitCatalogService.GetByIdAsync(id, cancellationToken);
         return Ok(limit);
     }
 
@@ -74,8 +74,8 @@ public class GlobalRateLimitsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Create([FromBody] GlobalRateLimit limit, CancellationToken cancellationToken)
     {
-        await _globalRateLimitCatalogClient.CreateAsync(limit, cancellationToken);
-        return CreatedAtAction(nameof(GetById), new { id = limit.Id }, limit);
+        var created = await _globalRateLimitCatalogService.CreateAsync(limit, cancellationToken);
+        return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
     }
 
     /// <summary>
@@ -92,8 +92,7 @@ public class GlobalRateLimitsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Update(string id, [FromBody] GlobalRateLimit limit, CancellationToken cancellationToken)
     {
-        var updated = limit with { Id = id };
-        await _globalRateLimitCatalogClient.UpdateAsync(id, limit, cancellationToken);
+        var updated = await _globalRateLimitCatalogService.UpdateAsync(id, limit, cancellationToken);
         return Ok(updated);
     }
 
@@ -109,7 +108,7 @@ public class GlobalRateLimitsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(string id, CancellationToken cancellationToken)
     {
-        await _globalRateLimitCatalogClient.DeleteAsync(id, cancellationToken);
+        await _globalRateLimitCatalogService.DeleteAsync(id, cancellationToken);
         return NoContent();
     }
 }

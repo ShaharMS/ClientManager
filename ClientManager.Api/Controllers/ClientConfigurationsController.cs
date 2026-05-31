@@ -1,5 +1,5 @@
 using Asp.Versioning;
-using ClientManager.Api.Services.Internal.Interfaces;
+using ClientManager.Api.Services.Interfaces;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Search;
 using Microsoft.AspNetCore.Http;
@@ -16,15 +16,15 @@ namespace ClientManager.Api.Controllers;
 [Tags("Client Configurations")]
 public class ClientConfigurationsController : ControllerBase
 {
-    private readonly IClientConfigurationStoreClient _clientConfigurationStoreClient;
+    private readonly IClientConfigurationService _clientConfigurationService;
 
     /// <summary>
     /// Initializes a new instance of <see cref="ClientConfigurationsController"/>.
     /// </summary>
-    /// <param name="clientConfigurationStoreClient">The internal configuration store client.</param>
-    public ClientConfigurationsController(IClientConfigurationStoreClient clientConfigurationStoreClient)
+    /// <param name="clientConfigurationService">The client configuration service.</param>
+    public ClientConfigurationsController(IClientConfigurationService clientConfigurationService)
     {
-        _clientConfigurationStoreClient = clientConfigurationStoreClient;
+        _clientConfigurationService = clientConfigurationService;
     }
 
     /// <summary>
@@ -38,8 +38,8 @@ public class ClientConfigurationsController : ControllerBase
     [ProducesResponseType(typeof(SearchResult<ClientConfiguration>), StatusCodes.Status200OK)]
     public async Task<IActionResult> Search([FromBody] DocumentQuery? query, CancellationToken cancellationToken)
     {
-        var result = await _clientConfigurationStoreClient.SearchAsync(query ?? DocumentQuery.All, cancellationToken);
-        return Ok(result);
+        var configurations = await _clientConfigurationService.SearchAsync(query ?? DocumentQuery.All, cancellationToken);
+        return Ok(configurations);
     }
 
     /// <summary>
@@ -55,7 +55,7 @@ public class ClientConfigurationsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetById(string id, CancellationToken cancellationToken)
     {
-        var configuration = await _clientConfigurationStoreClient.GetByIdAsync(id, cancellationToken);
+        var configuration = await _clientConfigurationService.GetByIdAsync(id, cancellationToken);
         return Ok(configuration);
     }
 
@@ -66,12 +66,14 @@ public class ClientConfigurationsController : ControllerBase
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The created client configuration.</returns>
     /// <response code="201">The client configuration was created successfully.</response>
+    /// <response code="409">A client configuration with the same identifier already exists.</response>
     [HttpPost]
     [ProducesResponseType(typeof(ClientConfiguration), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Create([FromBody] ClientConfiguration configuration, CancellationToken cancellationToken)
     {
-        await _clientConfigurationStoreClient.CreateAsync(configuration, cancellationToken);
-        return CreatedAtAction(nameof(GetById), new { id = configuration.Id }, configuration);
+        var created = await _clientConfigurationService.CreateAsync(configuration, cancellationToken);
+        return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
     }
 
     /// <summary>
@@ -82,12 +84,13 @@ public class ClientConfigurationsController : ControllerBase
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The updated client configuration.</returns>
     /// <response code="200">The client configuration was updated successfully.</response>
+    /// <response code="404">No client was found with the given identifier.</response>
     [HttpPut("{id}")]
     [ProducesResponseType(typeof(ClientConfiguration), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Update(string id, [FromBody] ClientConfiguration configuration, CancellationToken cancellationToken)
     {
-        var updated = configuration with { Id = id };
-        await _clientConfigurationStoreClient.UpdateAsync(id, configuration, cancellationToken);
+        var updated = await _clientConfigurationService.UpdateAsync(id, configuration, cancellationToken);
         return Ok(updated);
     }
 
@@ -97,11 +100,13 @@ public class ClientConfigurationsController : ControllerBase
     /// <param name="id">The unique identifier of the client to delete.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <response code="204">The client configuration was deleted successfully.</response>
+    /// <response code="404">No client was found with the given identifier.</response>
     [HttpDelete("{id}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(string id, CancellationToken cancellationToken)
     {
-        await _clientConfigurationStoreClient.DeleteAsync(id, cancellationToken);
+        await _clientConfigurationService.DeleteAsync(id, cancellationToken);
         return NoContent();
     }
 }

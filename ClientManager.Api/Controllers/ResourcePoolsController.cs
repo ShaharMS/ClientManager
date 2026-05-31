@@ -1,5 +1,5 @@
 using Asp.Versioning;
-using ClientManager.Api.Services.Internal.Interfaces;
+using ClientManager.Api.Services.Interfaces;
 using ClientManager.Shared.Models.Search;
 using ClientManager.Shared.Models.Entities;
 using Microsoft.AspNetCore.Http;
@@ -16,15 +16,15 @@ namespace ClientManager.Api.Controllers;
 [Tags("Resource Pools")]
 public class ResourcePoolsController : ControllerBase
 {
-    private readonly IResourcePoolCatalogClient _resourcePoolCatalogClient;
+    private readonly IResourcePoolCatalogService _resourcePoolCatalogService;
 
     /// <summary>
     /// Initializes a new instance of <see cref="ResourcePoolsController"/>.
     /// </summary>
-    /// <param name="resourcePoolCatalogClient">The internal resource-pool catalog client.</param>
-    public ResourcePoolsController(IResourcePoolCatalogClient resourcePoolCatalogClient)
+    /// <param name="resourcePoolCatalogService">The resource-pool catalog service.</param>
+    public ResourcePoolsController(IResourcePoolCatalogService resourcePoolCatalogService)
     {
-        _resourcePoolCatalogClient = resourcePoolCatalogClient;
+        _resourcePoolCatalogService = resourcePoolCatalogService;
     }
 
     /// <summary>
@@ -40,8 +40,8 @@ public class ResourcePoolsController : ControllerBase
         [FromBody] DocumentQuery? query,
         CancellationToken cancellationToken)
     {
-        var result = await _resourcePoolCatalogClient.SearchAsync(query ?? DocumentQuery.All, cancellationToken);
-        return Ok(result);
+        var pools = await _resourcePoolCatalogService.SearchAsync(query ?? DocumentQuery.All, cancellationToken);
+        return Ok(pools);
     }
 
     /// <summary>
@@ -57,7 +57,7 @@ public class ResourcePoolsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetById(string id, CancellationToken cancellationToken)
     {
-        var pool = await _resourcePoolCatalogClient.GetByIdAsync(id, cancellationToken);
+        var pool = await _resourcePoolCatalogService.GetByIdAsync(id, cancellationToken);
         return Ok(pool);
     }
 
@@ -74,8 +74,8 @@ public class ResourcePoolsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Create([FromBody] ResourcePool pool, CancellationToken cancellationToken)
     {
-        await _resourcePoolCatalogClient.CreateAsync(pool, cancellationToken);
-        return CreatedAtAction(nameof(GetById), new { id = pool.Id }, pool);
+        var created = await _resourcePoolCatalogService.CreateAsync(pool, cancellationToken);
+        return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
     }
 
     /// <summary>
@@ -92,8 +92,7 @@ public class ResourcePoolsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Update(string id, [FromBody] ResourcePool pool, CancellationToken cancellationToken)
     {
-        var updated = pool with { Id = id };
-        await _resourcePoolCatalogClient.UpdateAsync(id, pool, cancellationToken);
+        var updated = await _resourcePoolCatalogService.UpdateAsync(id, pool, cancellationToken);
         return Ok(updated);
     }
 
@@ -109,7 +108,7 @@ public class ResourcePoolsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(string id, CancellationToken cancellationToken)
     {
-        await _resourcePoolCatalogClient.DeleteAsync(id, cancellationToken);
+        await _resourcePoolCatalogService.DeleteAsync(id, cancellationToken);
         return NoContent();
     }
 }

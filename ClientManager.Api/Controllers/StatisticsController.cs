@@ -1,6 +1,5 @@
 using Asp.Versioning;
-using ClientManager.Api.Services.Internal.Interfaces;
-using ClientManager.Api.Utils.Extensions;
+using ClientManager.Api.Services.Interfaces;
 using ClientManager.Shared.Contracts.Statistics;
 using ClientManager.Shared.Models.Search;
 using ClientManager.Shared.Models.Requests;
@@ -21,15 +20,15 @@ namespace ClientManager.Api.Controllers;
 [Tags("Statistics")]
 public class StatisticsController : ControllerBase
 {
-    private readonly IStatisticsReadClient _statisticsReadClient;
+    private readonly IStatisticsService _statisticsService;
 
     /// <summary>
     /// Initializes a new instance of <see cref="StatisticsController"/>.
     /// </summary>
-    /// <param name="statisticsReadClient">Typed client for storage-side read-model endpoints.</param>
-    public StatisticsController(IStatisticsReadClient statisticsReadClient)
+    /// <param name="statisticsService">The statistics read service.</param>
+    public StatisticsController(IStatisticsService statisticsService)
     {
-        _statisticsReadClient = statisticsReadClient;
+        _statisticsService = statisticsService;
     }
 
     /// <summary>
@@ -41,7 +40,8 @@ public class StatisticsController : ControllerBase
     [ProducesResponseType(typeof(SystemOverviewResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetOverview(CancellationToken cancellationToken)
     {
-        return Ok(await _statisticsReadClient.GetOverviewAsync(cancellationToken));
+        var overview = await _statisticsService.GetOverviewAsync(cancellationToken);
+        return Ok(overview);
     }
 
     /// <summary>
@@ -57,7 +57,8 @@ public class StatisticsController : ControllerBase
         [FromBody] DocumentQuery? query,
         CancellationToken cancellationToken)
     {
-        return Ok(await _statisticsReadClient.SearchClientSummariesAsync(query ?? DocumentQuery.All, cancellationToken));
+        var clientSummaries = await _statisticsService.SearchClientsAsync(query ?? DocumentQuery.All, cancellationToken);
+        return Ok(clientSummaries);
     }
 
     /// <summary>
@@ -73,7 +74,8 @@ public class StatisticsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetClientDetails(string clientId, CancellationToken cancellationToken)
     {
-        return Ok(await _statisticsReadClient.GetClientDetailsAsync(clientId, cancellationToken));
+        var clientDetails = await _statisticsService.GetClientDetailsAsync(clientId, cancellationToken);
+        return Ok(clientDetails);
     }
 
     /// <summary>
@@ -89,7 +91,8 @@ public class StatisticsController : ControllerBase
         [FromBody] DocumentQuery? query,
         CancellationToken cancellationToken)
     {
-        return Ok(await _statisticsReadClient.SearchServiceStatisticsAsync(query ?? DocumentQuery.All, cancellationToken));
+        var serviceStatistics = await _statisticsService.SearchServicesAsync(query ?? DocumentQuery.All, cancellationToken);
+        return Ok(serviceStatistics);
     }
 
     /// <summary>
@@ -105,7 +108,8 @@ public class StatisticsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetServiceDetails(string serviceId, CancellationToken cancellationToken)
     {
-        return Ok(await _statisticsReadClient.GetServiceDetailsAsync(serviceId, cancellationToken));
+        var serviceDetails = await _statisticsService.GetServiceDetailsAsync(serviceId, cancellationToken);
+        return Ok(serviceDetails);
     }
 
     /// <summary>
@@ -121,7 +125,8 @@ public class StatisticsController : ControllerBase
         [FromBody] DocumentQuery? query,
         CancellationToken cancellationToken)
     {
-        return Ok(await _statisticsReadClient.SearchResourcePoolStatisticsAsync(query ?? DocumentQuery.All, cancellationToken));
+        var resourcePoolStatistics = await _statisticsService.SearchResourcePoolsAsync(query ?? DocumentQuery.All, cancellationToken);
+        return Ok(resourcePoolStatistics);
     }
 
     /// <summary>
@@ -137,7 +142,8 @@ public class StatisticsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetResourcePoolDetails(string resourcePoolId, CancellationToken cancellationToken)
     {
-        return Ok(await _statisticsReadClient.GetResourcePoolDetailsAsync(resourcePoolId, cancellationToken));
+        var resourcePoolDetails = await _statisticsService.GetResourcePoolDetailsAsync(resourcePoolId, cancellationToken);
+        return Ok(resourcePoolDetails);
     }
 
     /// <summary>
@@ -150,7 +156,8 @@ public class StatisticsController : ControllerBase
     [ProducesResponseType(typeof(GlobalUsageStatsResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetGlobalUsageStats(CancellationToken cancellationToken)
     {
-        return Ok(await _statisticsReadClient.GetGlobalUsageStatsAsync(cancellationToken));
+        var globalUsage = await _statisticsService.GetGlobalUsageStatsAsync(cancellationToken);
+        return Ok(globalUsage);
     }
 
     /// <summary>
@@ -176,15 +183,15 @@ public class StatisticsController : ControllerBase
         [FromQuery] BucketGranularity? granularity,
         CancellationToken cancellationToken)
     {
-        var result = await _statisticsReadClient.GetUsageTimeSeriesAsync(
+        var usageTimeSeries = await _statisticsService.GetUsageTimeSeriesAsync(
             filterType,
-            targetIds.Values,
-            clientIds is { HasValues: true } ? clientIds.Values : null,
+            targetIds,
+            clientIds,
             from,
             to,
             granularity,
             cancellationToken);
-        return Ok(result);
+        return Ok(usageTimeSeries);
     }
 
     /// <summary>
@@ -210,15 +217,15 @@ public class StatisticsController : ControllerBase
         [FromQuery] BucketGranularity? granularity,
         CancellationToken cancellationToken)
     {
-        var result = await _statisticsReadClient.GetClientUsageBreakdownAsync(
+        var clientUsageBreakdown = await _statisticsService.GetClientUsageBreakdownAsync(
             filterType,
-            targetIds.Values,
-            clientIds is { HasValues: true } ? clientIds.Values : null,
+            targetIds,
+            clientIds,
             from,
             to,
             granularity,
             cancellationToken);
-        return Ok(result);
+        return Ok(clientUsageBreakdown);
     }
 
     /// <summary>
@@ -232,8 +239,8 @@ public class StatisticsController : ControllerBase
     [ProducesResponseType(typeof(PagedResponse<ClientSummaryRow>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetClientSummaries([FromQuery] PagedRequest paging, CancellationToken cancellationToken)
     {
-        var result = await _statisticsReadClient.GetClientSummariesAsync(cancellationToken);
-        return Ok(result.Rows.ToPagedResponse(paging));
+        var clientSummaries = await _statisticsService.GetClientSummariesAsync(paging, cancellationToken);
+        return Ok(clientSummaries);
     }
 
     /// <summary>
@@ -259,10 +266,10 @@ public class StatisticsController : ControllerBase
         [FromQuery] BucketGranularity granularity,
         CancellationToken cancellationToken)
     {
-        var result = await _statisticsReadClient.GetHistoricalUsageAsync(
-            filterType, targetIds.Values, clientId, from, to, granularity, cancellationToken);
+        var historicalUsage = await _statisticsService.GetHistoricalUsageAsync(
+            filterType, targetIds, clientId, from, to, granularity, cancellationToken);
 
-        return Ok(result);
+        return Ok(historicalUsage);
     }
 
     /// <summary>
@@ -288,15 +295,15 @@ public class StatisticsController : ControllerBase
         [FromQuery] BucketGranularity granularity,
         CancellationToken cancellationToken)
     {
-        var result = await _statisticsReadClient.GetHistoricalUsageByClientAsync(
+        var clientHistoricalUsage = await _statisticsService.GetHistoricalUsageByClientAsync(
             filterType,
-            targetIds.Values,
-            clientIds.Values,
+            targetIds,
+            clientIds,
             from,
             to,
             granularity,
             cancellationToken);
 
-        return Ok(result);
+        return Ok(clientHistoricalUsage);
     }
 }

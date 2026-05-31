@@ -1,6 +1,6 @@
 using Asp.Versioning;
 using ClientManager.Shared.Models.Responses;
-using ClientManager.Api.Services.Internal.Interfaces;
+using ClientManager.Api.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ClientManager.Api.Controllers;
@@ -14,15 +14,15 @@ namespace ClientManager.Api.Controllers;
 [Tags("Metrics")]
 public class MetricsController : ControllerBase
 {
-    private readonly IStatisticsReadClient _statisticsReadClient;
+    private readonly IMetricsService _metricsService;
 
     /// <summary>
     /// Initializes a new instance of <see cref="MetricsController"/>.
     /// </summary>
-    /// <param name="statisticsReadClient">Typed client for storage-side metrics endpoints.</param>
-    public MetricsController(IStatisticsReadClient statisticsReadClient)
+    /// <param name="metricsService">The metrics read service.</param>
+    public MetricsController(IMetricsService metricsService)
     {
-        _statisticsReadClient = statisticsReadClient;
+        _metricsService = metricsService;
     }
 
     /// <summary>
@@ -35,7 +35,7 @@ public class MetricsController : ControllerBase
     [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetPrometheusMetrics(CancellationToken cancellationToken)
     {
-        var metrics = await _statisticsReadClient.GetPrometheusMetricsAsync(cancellationToken);
+        var metrics = await _metricsService.GetPrometheusMetricsAsync(cancellationToken);
         return Content(metrics, "text/plain; version=0.0.4; charset=utf-8");
     }
 
@@ -49,7 +49,7 @@ public class MetricsController : ControllerBase
     [ProducesResponseType(typeof(GrafanaMetricsResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetGrafanaMetrics(CancellationToken cancellationToken)
     {
-        var metrics = await _statisticsReadClient.GetGrafanaMetricsAsync(cancellationToken);
+        var metrics = await _metricsService.GetGrafanaMetricsAsync(cancellationToken);
         return Ok(metrics);
     }
 }

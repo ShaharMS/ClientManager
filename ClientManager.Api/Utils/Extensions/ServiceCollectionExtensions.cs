@@ -31,6 +31,18 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IResourceAllocationService, ResourceAllocationService>();
         services.AddScoped<IAccessControlService, AccessControlService>();
 
+        services.AddScoped<IClientConfigurationService, ClientConfigurationService>();
+        services.AddScoped<IClientServiceSettingsService, ClientServiceSettingsService>();
+        services.AddScoped<IClientResourcePoolSettingsService, ClientResourcePoolSettingsService>();
+        services.AddScoped<IClientGlobalRateLimitService, ClientGlobalRateLimitService>();
+
+        services.AddScoped<IServiceCatalogService, ServiceCatalogService>();
+        services.AddScoped<IResourcePoolCatalogService, ResourcePoolCatalogService>();
+        services.AddScoped<IGlobalRateLimitCatalogService, GlobalRateLimitCatalogService>();
+
+        services.AddScoped<IStatisticsService, StatisticsService>();
+        services.AddScoped<IMetricsService, MetricsService>();
+
         return services;
     }
 

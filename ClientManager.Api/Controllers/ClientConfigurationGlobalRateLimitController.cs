@@ -1,6 +1,5 @@
 using Asp.Versioning;
-using ClientManager.Api.Models.Exceptions;
-using ClientManager.Api.Services.Internal.Interfaces;
+using ClientManager.Api.Services.Interfaces;
 using ClientManager.Shared.Models.Entities;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -16,15 +15,15 @@ namespace ClientManager.Api.Controllers;
 [Tags("Client Configurations")]
 public class ClientConfigurationGlobalRateLimitController : ControllerBase
 {
-    private readonly IClientConfigurationStoreClient _clientConfigurationStoreClient;
+    private readonly IClientGlobalRateLimitService _clientGlobalRateLimitService;
 
     /// <summary>
     /// Initializes a new instance of <see cref="ClientConfigurationGlobalRateLimitController"/>.
     /// </summary>
-    /// <param name="clientConfigurationStoreClient">The internal configuration store client.</param>
-    public ClientConfigurationGlobalRateLimitController(IClientConfigurationStoreClient clientConfigurationStoreClient)
+    /// <param name="clientGlobalRateLimitService">The client global rate limit service.</param>
+    public ClientConfigurationGlobalRateLimitController(IClientGlobalRateLimitService clientGlobalRateLimitService)
     {
-        _clientConfigurationStoreClient = clientConfigurationStoreClient;
+        _clientGlobalRateLimitService = clientGlobalRateLimitService;
     }
 
     /// <summary>
@@ -40,8 +39,7 @@ public class ClientConfigurationGlobalRateLimitController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetGlobalRateLimit(string id, CancellationToken cancellationToken)
     {
-        var rateLimit = await _clientConfigurationStoreClient.GetGlobalRateLimitAsync(id, cancellationToken)
-            ?? throw new ClientGlobalRateLimitNotFoundException(id);
+        var rateLimit = await _clientGlobalRateLimitService.GetGlobalRateLimitAsync(id, cancellationToken);
         return Ok(rateLimit);
     }
 
@@ -58,8 +56,8 @@ public class ClientConfigurationGlobalRateLimitController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> SetGlobalRateLimit(string id, [FromBody] ClientRateLimit rateLimit, CancellationToken cancellationToken)
     {
-        await _clientConfigurationStoreClient.SetGlobalRateLimitAsync(id, rateLimit, cancellationToken);
-        return Ok(rateLimit);
+        var applied = await _clientGlobalRateLimitService.SetGlobalRateLimitAsync(id, rateLimit, cancellationToken);
+        return Ok(applied);
     }
 
     /// <summary>
@@ -74,7 +72,7 @@ public class ClientConfigurationGlobalRateLimitController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> RemoveGlobalRateLimit(string id, CancellationToken cancellationToken)
     {
-        await _clientConfigurationStoreClient.RemoveGlobalRateLimitAsync(id, cancellationToken);
+        await _clientGlobalRateLimitService.RemoveGlobalRateLimitAsync(id, cancellationToken);
         return NoContent();
     }
 }

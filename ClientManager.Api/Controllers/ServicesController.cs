@@ -1,5 +1,5 @@
 using Asp.Versioning;
-using ClientManager.Api.Services.Internal.Interfaces;
+using ClientManager.Api.Services.Interfaces;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Search;
 using Microsoft.AspNetCore.Http;
@@ -16,15 +16,15 @@ namespace ClientManager.Api.Controllers;
 [Tags("Services")]
 public class ServicesController : ControllerBase
 {
-    private readonly IServiceCatalogClient _serviceCatalogClient;
+    private readonly IServiceCatalogService _serviceCatalogService;
 
     /// <summary>
     /// Initializes a new instance of <see cref="ServicesController"/>.
     /// </summary>
-    /// <param name="serviceCatalogClient">The internal service catalog client.</param>
-    public ServicesController(IServiceCatalogClient serviceCatalogClient)
+    /// <param name="serviceCatalogService">The service catalog service.</param>
+    public ServicesController(IServiceCatalogService serviceCatalogService)
     {
-        _serviceCatalogClient = serviceCatalogClient;
+        _serviceCatalogService = serviceCatalogService;
     }
 
     /// <summary>
@@ -40,8 +40,8 @@ public class ServicesController : ControllerBase
         [FromBody] DocumentQuery? query,
         CancellationToken cancellationToken)
     {
-        var result = await _serviceCatalogClient.SearchAsync(query ?? DocumentQuery.All, cancellationToken);
-        return Ok(result);
+        var services = await _serviceCatalogService.SearchAsync(query ?? DocumentQuery.All, cancellationToken);
+        return Ok(services);
     }
 
     /// <summary>
@@ -57,7 +57,7 @@ public class ServicesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetById(string id, CancellationToken cancellationToken)
     {
-        var service = await _serviceCatalogClient.GetByIdAsync(id, cancellationToken);
+        var service = await _serviceCatalogService.GetByIdAsync(id, cancellationToken);
         return Ok(service);
     }
 
@@ -74,8 +74,8 @@ public class ServicesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Create([FromBody] Service service, CancellationToken cancellationToken)
     {
-        await _serviceCatalogClient.CreateAsync(service, cancellationToken);
-        return CreatedAtAction(nameof(GetById), new { id = service.Id }, service);
+        var created = await _serviceCatalogService.CreateAsync(service, cancellationToken);
+        return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
     }
 
     /// <summary>
@@ -92,8 +92,7 @@ public class ServicesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Update(string id, [FromBody] Service service, CancellationToken cancellationToken)
     {
-        var updated = service with { Id = id };
-        await _serviceCatalogClient.UpdateAsync(id, service, cancellationToken);
+        var updated = await _serviceCatalogService.UpdateAsync(id, service, cancellationToken);
         return Ok(updated);
     }
 
@@ -109,7 +108,7 @@ public class ServicesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(string id, CancellationToken cancellationToken)
     {
-        await _serviceCatalogClient.DeleteAsync(id, cancellationToken);
+        await _serviceCatalogService.DeleteAsync(id, cancellationToken);
         return NoContent();
     }
 }
