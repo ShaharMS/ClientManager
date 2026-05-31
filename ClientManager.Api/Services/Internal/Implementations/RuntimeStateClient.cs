@@ -59,7 +59,6 @@ internal sealed class RuntimeStateClient : IRuntimeStateClient
         CheckAccessRequest request,
         CancellationToken cancellationToken)
     {
-        // CR: Use fluent API: `StartStorageCall(...)\n.SetTag(...)\n.SetTag(...)`
         using var activity = StartStorageCall(AccessCheckOperation);
         activity?.SetTag("client.id", request.ClientId);
         activity?.SetTag("service.id", request.ServiceId);
@@ -144,7 +143,6 @@ internal sealed class RuntimeStateClient : IRuntimeStateClient
         AcquireResourceRequest request,
         CancellationToken cancellationToken)
     {
-        // CR: Use fluent API: `StartStorageCall(...)\n.SetTag(...)\n.SetTag(...)`
         using var activity = StartStorageCall(AcquireOperation);
         activity?.SetTag("client.id", request.ClientId);
         activity?.SetTag("resource_pool.id", request.ResourcePoolId);
@@ -205,7 +203,6 @@ internal sealed class RuntimeStateClient : IRuntimeStateClient
         ReleaseResourceRequest request,
         CancellationToken cancellationToken)
     {
-        // CR: Use fluent API: `StartStorageCall(...)\n.SetTag(...)\n.SetTag(...)`
         using var activity = StartStorageCall(ReleaseOperation);
         activity?.SetTag("allocation.id", request.AllocationId);
 
@@ -266,7 +263,6 @@ internal sealed class RuntimeStateClient : IRuntimeStateClient
 
     private Activity? StartStorageCall(StorageClientOperation operation)
     {
-        // CR: Use fluent API: `StartStorageCall(...)\n.SetTag(...)\n.SetTag(...)`
         var activity = _metrics.ActivitySource.StartActivity(
             $"storage.client.{operation.Name}",
             ActivityKind.Client);
