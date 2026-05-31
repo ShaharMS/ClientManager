@@ -4,18 +4,24 @@ using ClientManager.Api.Models.Configuration;
 using ClientManager.Api.Models.Exceptions;
 using Microsoft.Extensions.Options;
 
-namespace ClientManager.Api.Services.InternalClients.Implementations;
+namespace ClientManager.Api.Utils.StorageApi;
 
-// CR: Extend this doc - why is this needed? whats the purpose? not too much doc - just enough to explain the intent of this class and how it should be used.
-// CR: In general - class needs documentation.
 /// <summary>
-/// Adds narrow retry and fast-fail behavior around internal storage API calls.
+/// Wraps outbound calls to the internal storage-facing API with narrow retry and fast-fail behavior.
+/// Retries are bounded to requests that explicitly declare themselves retryable, transient gateway
+/// failures are backed off with exponential delay, and repeated failures trip a short-lived circuit
+/// so the public API fails fast instead of hammering an unhealthy storage host.
 /// </summary>
 public sealed class StorageApiResilienceHandler : DelegatingHandler
 {
     private readonly StorageApiResilienceState _state;
     private readonly StorageApiOptions _options;
 
+    /// <summary>
+    /// Initializes a new instance of <see cref="StorageApiResilienceHandler"/>.
+    /// </summary>
+    /// <param name="state">Shared circuit state tracking consecutive storage failures.</param>
+    /// <param name="options">Outbound connection and resilience settings for the storage API.</param>
     public StorageApiResilienceHandler(
         StorageApiResilienceState state,
         IOptions<StorageApiOptions> options)
@@ -24,6 +30,7 @@ public sealed class StorageApiResilienceHandler : DelegatingHandler
         _options = options.Value;
     }
 
+    /// <inheritdoc />
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         if (_state.TryGetRetryAfter(out var retryAfter))
@@ -31,7 +38,7 @@ public sealed class StorageApiResilienceHandler : DelegatingHandler
             throw CreateUnavailableException(retryAfter);
         }
 
-        var maxAttempts = IsRetryableRead(request) ? _options.ReadRetryCount + 1 : 1;
+        var maxAttempts = IsRetryable(request) ? _options.ReadRetryCount + 1 : 1;
         var delay = _options.InitialRetryDelay;
 
         for (var attempt = 1; attempt <= maxAttempts; attempt++)
@@ -97,17 +104,14 @@ public sealed class StorageApiResilienceHandler : DelegatingHandler
             innerException);
     }
 
-    private static bool IsRetryableRead(HttpRequestMessage request)
+    private static bool IsRetryable(HttpRequestMessage request)
     {
         if (request.Method == HttpMethod.Get || request.Method == HttpMethod.Head)
         {
             return true;
         }
 
-        var path = request.RequestUri?.ToString() ?? string.Empty;
-        // CR: This looks a little sensitive - what if it doesnt end with /search, but /lookup? also , why specifically search? seems arbitrary while undocumented.
-        return request.Method == HttpMethod.Post
-            && path.EndsWith("/search", StringComparison.OrdinalIgnoreCase);
+        return request.Options.TryGetValue(StorageApiRequestOptions.Retryable, out var retryable) && retryable;
     }
 
     private static bool IsTransientStatus(HttpStatusCode statusCode) =>
@@ -137,6 +141,11 @@ public sealed class StorageApiResilienceHandler : DelegatingHandler
             Version = request.Version,
             VersionPolicy = request.VersionPolicy
         };
+
+        foreach (var option in request.Options)
+        {
+            clone.Options.Set(new HttpRequestOptionsKey<object?>(option.Key), option.Value);
+        }
 
         foreach (var header in request.Headers)
         {

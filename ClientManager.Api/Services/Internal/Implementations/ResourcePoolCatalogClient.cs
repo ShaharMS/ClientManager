@@ -1,25 +1,30 @@
 using System.Net;
 using System.Net.Http.Json;
 using ClientManager.Api.Models.Exceptions;
-using ClientManager.Api.Services.InternalClients;
-using ClientManager.Api.Services.InternalClients.Interfaces.Configuration;
+using ClientManager.Api.Services.Internal.Interfaces;
+using ClientManager.Api.Utils.StorageApi;
 using ClientManager.Shared.Contracts.Storage;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Search;
 
-namespace ClientManager.Api.Services.InternalClients.Implementations.Configuration;
+namespace ClientManager.Api.Services.Internal.Implementations;
 
-// CR: Class should have some documentation for itself, and should inherit documentation for methods, or provide some alternative one if necessary for a specific method.
+/// <summary>
+/// Typed HTTP client over the storage API's resource-pool catalog routes.
+/// Maps storage conflict and not-found responses onto domain exceptions for the public controllers.
+/// </summary>
 internal sealed class ResourcePoolCatalogClient(HttpClient httpClient) : IResourcePoolCatalogClient
 {
+    /// <inheritdoc />
     public async Task<SearchResult<ResourcePool>> SearchAsync(DocumentQuery query, CancellationToken cancellationToken)
     {
-        var response = await httpClient.PostAsJsonAsync(StorageApiRoutes.ResourcePools.Search, query, cancellationToken);
+        var response = await httpClient.PostRetryableAsJsonAsync(StorageApiRoutes.ResourcePools.Search, query, cancellationToken);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<SearchResult<ResourcePool>>(cancellationToken)
             ?? new SearchResult<ResourcePool>([], 0);
     }
 
+    /// <inheritdoc />
     public async Task<ResourcePool> GetByIdAsync(string poolId, CancellationToken cancellationToken)
     {
         var response = await httpClient.GetAsync(StorageApiRoutes.ResourcePools.ById(poolId), cancellationToken);
@@ -33,14 +38,17 @@ internal sealed class ResourcePoolCatalogClient(HttpClient httpClient) : IResour
             ?? throw new ResourcePoolNotFoundException(poolId);
     }
 
+    /// <inheritdoc />
     public Task CreateAsync(ResourcePool pool, CancellationToken cancellationToken) =>
         CreateAsync(StorageApiRoutes.ResourcePools.Search.Replace("/search", string.Empty), pool, cancellationToken);
 
+    /// <inheritdoc />
     public Task UpdateAsync(string poolId, ResourcePool pool, CancellationToken cancellationToken) =>
-        SendWithNotFoundAsync(HttpMethod.Put, StorageApiRoutes.ResourcePools.ById(poolId), pool, () => new ResourcePoolNotFoundException(poolId), cancellationToken);
+        SendWithNotFoundAsync(HttpMethod.Put, StorageApiRoutes.ResourcePools.ById(poolId), pool, new ResourcePoolNotFoundException(poolId), cancellationToken);
 
+    /// <inheritdoc />
     public Task DeleteAsync(string poolId, CancellationToken cancellationToken) =>
-        SendWithNotFoundAsync(HttpMethod.Delete, StorageApiRoutes.ResourcePools.ById(poolId), body: null, () => new ResourcePoolNotFoundException(poolId), cancellationToken);
+        SendWithNotFoundAsync(HttpMethod.Delete, StorageApiRoutes.ResourcePools.ById(poolId), body: null, new ResourcePoolNotFoundException(poolId), cancellationToken);
 
     private async Task CreateAsync(string path, ResourcePool pool, CancellationToken cancellationToken)
     {
@@ -63,7 +71,7 @@ internal sealed class ResourcePoolCatalogClient(HttpClient httpClient) : IResour
         HttpMethod method,
         string path,
         object? body,
-        Func<Exception> createNotFoundException,
+        Exception notFoundException,
         CancellationToken cancellationToken)
     {
         using var request = CreateRequest(method, path, body);
@@ -75,8 +83,7 @@ internal sealed class ResourcePoolCatalogClient(HttpClient httpClient) : IResour
 
         if (response.StatusCode == HttpStatusCode.NotFound)
         {
-            // CR: does this really need to be a function? why not just a parameter of type `Exception`?
-            throw createNotFoundException();
+            throw notFoundException;
         }
 
         throw await StorageApiResponseReader.CreateUnexpectedExceptionAsync(response, cancellationToken);

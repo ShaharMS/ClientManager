@@ -2,17 +2,22 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Json;
 using ClientManager.Api.Models.Exceptions;
-using ClientManager.Api.Services.InternalClients;
-using ClientManager.Api.Services.InternalClients.Interfaces;
+using ClientManager.Api.Services.Internal.Interfaces;
 using ClientManager.Api.Utils.Instrumentation;
+using ClientManager.Api.Utils.StorageApi;
 using ClientManager.Shared.Contracts.Storage;
 using ClientManager.Shared.Logging;
 using ClientManager.Shared.Models.Problems;
 using ClientManager.Shared.Models.Requests;
 using ClientManager.Shared.Models.Responses;
 
-namespace ClientManager.Api.Services.InternalClients.Implementations;
+namespace ClientManager.Api.Services.Internal.Implementations;
 
+/// <summary>
+/// Typed HTTP client over the storage API's runtime routes for access checks and resource allocation.
+/// Owns the client-side instrumentation (tracing, metrics, structured logging) for these hot-path calls
+/// and maps storage problem responses onto domain exceptions for the public runtime controllers.
+/// </summary>
 internal sealed class RuntimeStateClient : IRuntimeStateClient
 {
     private const double SlowStorageCallThresholdMs = 250;
@@ -49,6 +54,7 @@ internal sealed class RuntimeStateClient : IRuntimeStateClient
         _logger = logger;
     }
 
+    /// <inheritdoc />
     public async Task<AccessCheckResponse> CheckAccessAsync(
         CheckAccessRequest request,
         CancellationToken cancellationToken)
@@ -108,6 +114,7 @@ internal sealed class RuntimeStateClient : IRuntimeStateClient
         }
     }
 
+    /// <inheritdoc />
     public async Task<ClientAccessibilityResponse> GetAccessibilityAsync(
         string clientId,
         CancellationToken cancellationToken)
@@ -132,6 +139,7 @@ internal sealed class RuntimeStateClient : IRuntimeStateClient
         throw await StorageApiResponseReader.CreateUnexpectedExceptionAsync(response, cancellationToken);
     }
 
+    /// <inheritdoc />
     public async Task<ResourceAcquireResponse> AcquireAsync(
         AcquireResourceRequest request,
         CancellationToken cancellationToken)
@@ -192,6 +200,7 @@ internal sealed class RuntimeStateClient : IRuntimeStateClient
         }
     }
 
+    /// <inheritdoc />
     public async Task<ResourceReleaseResponse> ReleaseAsync(
         ReleaseResourceRequest request,
         CancellationToken cancellationToken)

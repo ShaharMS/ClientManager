@@ -1,5 +1,5 @@
 using Asp.Versioning;
-using ClientManager.Api.Services.InternalClients.Interfaces;
+using ClientManager.Api.Services.Internal.Interfaces;
 using ClientManager.Api.Utils.Extensions;
 using ClientManager.Shared.Contracts.Statistics;
 using ClientManager.Shared.Models.Search;

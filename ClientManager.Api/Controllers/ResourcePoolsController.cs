@@ -1,5 +1,5 @@
 using Asp.Versioning;
-using ClientManager.Api.Services.InternalClients.Interfaces.Configuration;
+using ClientManager.Api.Services.Internal.Interfaces;
 using ClientManager.Shared.Models.Search;
 using ClientManager.Shared.Models.Entities;
 using Microsoft.AspNetCore.Http;

@@ -2,17 +2,23 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using ClientManager.Api.Models.Exceptions;
-using ClientManager.Api.Services.InternalClients;
-using ClientManager.Api.Services.InternalClients.Interfaces;
+using ClientManager.Api.Services.Internal.Interfaces;
+using ClientManager.Api.Utils.StorageApi;
 using ClientManager.Shared.Contracts.Storage;
 using ClientManager.Shared.Models.Enums;
 using ClientManager.Shared.Models.Responses;
 using ClientManager.Shared.Models.Search;
 
-namespace ClientManager.Api.Services.InternalClients.Implementations;
+namespace ClientManager.Api.Services.Internal.Implementations;
 
+/// <summary>
+/// Typed read-only HTTP client over the storage API's statistics and metrics routes.
+/// Centralizes empty-payload handling and not-found mapping so statistics controllers receive
+/// strongly typed results or domain exceptions instead of raw transport failures.
+/// </summary>
 internal sealed class StatisticsReadClient(HttpClient httpClient) : IStatisticsReadClient
 {
+    /// <inheritdoc />
     public async Task<SystemOverviewResponse> GetOverviewAsync(CancellationToken cancellationToken)
     {
         return await GetAsync<SystemOverviewResponse>(
@@ -21,6 +27,7 @@ internal sealed class StatisticsReadClient(HttpClient httpClient) : IStatisticsR
             cancellationToken);
     }
 
+    /// <inheritdoc />
     public Task<SearchResult<ClientSummaryResponse>> SearchClientSummariesAsync(
         DocumentQuery query,
         CancellationToken cancellationToken)
@@ -28,15 +35,17 @@ internal sealed class StatisticsReadClient(HttpClient httpClient) : IStatisticsR
         return SearchAsync<ClientSummaryResponse>(StorageApiRoutes.Statistics.SearchClientSummaries, query, cancellationToken);
     }
 
+    /// <inheritdoc />
     public Task<JsonElement> GetClientDetailsAsync(string clientId, CancellationToken cancellationToken)
     {
         return GetJsonAsync(
             StorageApiRoutes.Statistics.ClientDetails(clientId),
             $"The storage API returned an empty response for '{StorageApiRoutes.Statistics.ClientDetails(clientId)}'.",
-            () => new ClientNotFoundException(clientId),
+            new ClientNotFoundException(clientId),
             cancellationToken);
     }
 
+    /// <inheritdoc />
     public Task<SearchResult<ServiceStatisticsResponse>> SearchServiceStatisticsAsync(
         DocumentQuery query,
         CancellationToken cancellationToken)
@@ -44,15 +53,17 @@ internal sealed class StatisticsReadClient(HttpClient httpClient) : IStatisticsR
         return SearchAsync<ServiceStatisticsResponse>(StorageApiRoutes.Statistics.SearchServiceStatistics, query, cancellationToken);
     }
 
+    /// <inheritdoc />
     public Task<JsonElement> GetServiceDetailsAsync(string serviceId, CancellationToken cancellationToken)
     {
         return GetJsonAsync(
             StorageApiRoutes.Statistics.ServiceDetails(serviceId),
             $"The storage API returned an empty response for '{StorageApiRoutes.Statistics.ServiceDetails(serviceId)}'.",
-            () => new ServiceNotFoundException(serviceId),
+            new ServiceNotFoundException(serviceId),
             cancellationToken);
     }
 
+    /// <inheritdoc />
     public Task<SearchResult<ResourcePoolStatisticsResponse>> SearchResourcePoolStatisticsAsync(
         DocumentQuery query,
         CancellationToken cancellationToken)
@@ -63,20 +74,23 @@ internal sealed class StatisticsReadClient(HttpClient httpClient) : IStatisticsR
             cancellationToken);
     }
 
+    /// <inheritdoc />
     public Task<JsonElement> GetResourcePoolDetailsAsync(string resourcePoolId, CancellationToken cancellationToken)
     {
         return GetJsonAsync(
             StorageApiRoutes.Statistics.ResourcePoolDetails(resourcePoolId),
             $"The storage API returned an empty response for '{StorageApiRoutes.Statistics.ResourcePoolDetails(resourcePoolId)}'.",
-            () => new ResourcePoolNotFoundException(resourcePoolId),
+            new ResourcePoolNotFoundException(resourcePoolId),
             cancellationToken);
     }
 
+    /// <inheritdoc />
     public Task<GlobalUsageStatsResponse> GetGlobalUsageStatsAsync(CancellationToken cancellationToken)
     {
         return GetAsync<GlobalUsageStatsResponse>(StorageApiRoutes.Statistics.GlobalUsage, cancellationToken);
     }
 
+    /// <inheritdoc />
     public Task<IReadOnlyList<TargetUsageTimeSeriesResponse>> GetUsageTimeSeriesAsync(
         TargetType filterType,
         IEnumerable<string> targetIds,
@@ -91,6 +105,7 @@ internal sealed class StatisticsReadClient(HttpClient httpClient) : IStatisticsR
             cancellationToken);
     }
 
+    /// <inheritdoc />
     public Task<IReadOnlyList<TargetClientUsageBreakdownResponse>> GetClientUsageBreakdownAsync(
         TargetType filterType,
         IEnumerable<string> targetIds,
@@ -105,11 +120,13 @@ internal sealed class StatisticsReadClient(HttpClient httpClient) : IStatisticsR
             cancellationToken);
     }
 
+    /// <inheritdoc />
     public Task<ClientSummariesResponse> GetClientSummariesAsync(CancellationToken cancellationToken)
     {
         return GetAsync<ClientSummariesResponse>(StorageApiRoutes.Statistics.ClientSummaries, cancellationToken);
     }
 
+    /// <inheritdoc />
     public Task<IReadOnlyList<HistoricalUsageResponse>> GetHistoricalUsageAsync(
         TargetType filterType,
         IEnumerable<string> targetIds,
@@ -124,6 +141,7 @@ internal sealed class StatisticsReadClient(HttpClient httpClient) : IStatisticsR
             cancellationToken);
     }
 
+    /// <inheritdoc />
     public Task<IReadOnlyList<ClientHistoricalUsageResponse>> GetHistoricalUsageByClientAsync(
         TargetType filterType,
         IEnumerable<string> targetIds,
@@ -138,6 +156,7 @@ internal sealed class StatisticsReadClient(HttpClient httpClient) : IStatisticsR
             cancellationToken);
     }
 
+    /// <inheritdoc />
     public async Task<string> GetPrometheusMetricsAsync(CancellationToken cancellationToken)
     {
         var response = await httpClient.GetAsync(StorageApiRoutes.Metrics.Prometheus, cancellationToken);
@@ -149,6 +168,7 @@ internal sealed class StatisticsReadClient(HttpClient httpClient) : IStatisticsR
         return await response.Content.ReadAsStringAsync(cancellationToken);
     }
 
+    /// <inheritdoc />
     public Task<GrafanaMetricsResponse> GetGrafanaMetricsAsync(CancellationToken cancellationToken)
     {
         return GetAsync<GrafanaMetricsResponse>(StorageApiRoutes.Metrics.Grafana, cancellationToken);
@@ -164,19 +184,19 @@ internal sealed class StatisticsReadClient(HttpClient httpClient) : IStatisticsR
 
     private async Task<T> GetAsync<T>(
         string path,
-        string emptyMessage,
+        string missingPayloadErrorMessage,
         CancellationToken cancellationToken,
-        Func<Exception>? createNotFoundException = null)
+        Exception? notFoundException = null)
     {
         var response = await httpClient.GetAsync(path, cancellationToken);
         if (response.IsSuccessStatusCode)
         {
-            return await StorageApiResponseReader.ReadRequiredAsync<T>(response, cancellationToken, emptyMessage);
+            return await StorageApiResponseReader.ReadRequiredAsync<T>(response, cancellationToken, missingPayloadErrorMessage);
         }
 
-        if (response.StatusCode == HttpStatusCode.NotFound && createNotFoundException is not null)
+        if (response.StatusCode == HttpStatusCode.NotFound && notFoundException is not null)
         {
-            throw createNotFoundException();
+            throw notFoundException;
         }
 
         throw await StorageApiResponseReader.CreateUnexpectedExceptionAsync(response, cancellationToken);
@@ -184,20 +204,19 @@ internal sealed class StatisticsReadClient(HttpClient httpClient) : IStatisticsR
 
     private async Task<JsonElement> GetJsonAsync(
         string path,
-        string emptyMessage,
-        Func<Exception>? createNotFoundException,
+        string missingPayloadErrorMessage,
+        Exception? notFoundException,
         CancellationToken cancellationToken)
     {
         var response = await httpClient.GetAsync(path, cancellationToken);
         if (response.IsSuccessStatusCode)
         {
-            return await StorageApiResponseReader.ReadRequiredAsync<JsonElement>(response, cancellationToken, emptyMessage);
+            return await StorageApiResponseReader.ReadRequiredAsync<JsonElement>(response, cancellationToken, missingPayloadErrorMessage);
         }
 
-        if (response.StatusCode == HttpStatusCode.NotFound && createNotFoundException is not null)
+        if (response.StatusCode == HttpStatusCode.NotFound && notFoundException is not null)
         {
-            // CR: does this really need to be a function? why not just a parameter of type `Exception`?
-            throw createNotFoundException();
+            throw notFoundException;
         }
 
         throw await StorageApiResponseReader.CreateUnexpectedExceptionAsync(response, cancellationToken);
@@ -208,7 +227,7 @@ internal sealed class StatisticsReadClient(HttpClient httpClient) : IStatisticsR
         DocumentQuery query,
         CancellationToken cancellationToken)
     {
-        var response = await httpClient.PostAsJsonAsync(path, query, cancellationToken);
+        var response = await httpClient.PostRetryableAsJsonAsync(path, query, cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
             throw await StorageApiResponseReader.CreateUnexpectedExceptionAsync(response, cancellationToken);

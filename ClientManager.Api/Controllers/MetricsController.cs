@@ -1,6 +1,6 @@
 using Asp.Versioning;
 using ClientManager.Shared.Models.Responses;
-using ClientManager.Api.Services.InternalClients.Interfaces;
+using ClientManager.Api.Services.Internal.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ClientManager.Api.Controllers;

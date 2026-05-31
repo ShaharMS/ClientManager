@@ -1,28 +1,34 @@
 using System.Net;
 using System.Net.Http.Json;
 using ClientManager.Api.Models.Exceptions;
-using ClientManager.Api.Services.InternalClients;
+using ClientManager.Api.Services.Internal.Interfaces;
+using ClientManager.Api.Utils.StorageApi;
 using ClientManager.Shared.Contracts.Storage;
-using ClientManager.Shared.Models.Problems;
-using ClientManager.Api.Services.InternalClients.Interfaces.Configuration;
 using ClientManager.Shared.Models.Entities;
+using ClientManager.Shared.Models.Problems;
 using ClientManager.Shared.Models.Requests;
 using ClientManager.Shared.Models.Responses;
 using ClientManager.Shared.Models.Search;
 
-namespace ClientManager.Api.Services.InternalClients.Implementations.Configuration;
+namespace ClientManager.Api.Services.Internal.Implementations;
 
-// CR: Class should have some documentation for itself, and should inherit documentation for methods, or provide some alternative one if necessary for a specific method.
+/// <summary>
+/// Typed HTTP client over the storage API's client-configuration routes.
+/// Translates storage problem responses into domain exceptions so the public controllers
+/// see strongly typed failures instead of raw transport errors.
+/// </summary>
 internal sealed class ClientConfigurationStoreClient(HttpClient httpClient) : IClientConfigurationStoreClient
 {
+    /// <inheritdoc />
     public async Task<SearchResult<ClientConfiguration>> SearchAsync(DocumentQuery query, CancellationToken cancellationToken)
     {
-        var response = await httpClient.PostAsJsonAsync(StorageApiRoutes.ClientConfigurations.Search, query, cancellationToken);
+        var response = await httpClient.PostRetryableAsJsonAsync(StorageApiRoutes.ClientConfigurations.Search, query, cancellationToken);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<SearchResult<ClientConfiguration>>(cancellationToken)
             ?? new SearchResult<ClientConfiguration>([], 0);
     }
 
+    /// <inheritdoc />
     public async Task<ClientConfiguration> GetByIdAsync(string clientId, CancellationToken cancellationToken)
     {
         var response = await httpClient.GetAsync(StorageApiRoutes.ClientConfigurations.ById(clientId), cancellationToken);
@@ -40,15 +46,19 @@ internal sealed class ClientConfigurationStoreClient(HttpClient httpClient) : IC
             ?? throw new ClientNotFoundException(clientId);
     }
 
+    /// <inheritdoc />
     public Task CreateAsync(ClientConfiguration configuration, CancellationToken cancellationToken) =>
         SendAsync(HttpMethod.Post, StorageApiRoutes.ClientConfigurations.Search.Replace("/search", string.Empty), configuration, cancellationToken);
 
+    /// <inheritdoc />
     public Task UpdateAsync(string clientId, ClientConfiguration configuration, CancellationToken cancellationToken) =>
         SendAsync(HttpMethod.Put, StorageApiRoutes.ClientConfigurations.ById(clientId), configuration, cancellationToken);
 
+    /// <inheritdoc />
     public Task DeleteAsync(string clientId, CancellationToken cancellationToken) =>
         SendAsync(HttpMethod.Delete, StorageApiRoutes.ClientConfigurations.ById(clientId), body: null, cancellationToken);
 
+    /// <inheritdoc />
     public async Task<PagedResponse<KeyedEntry<ServiceAccessSettings>>> GetServicesAsync(
         string clientId,
         PagedRequest paging,
@@ -69,6 +79,7 @@ internal sealed class ClientConfigurationStoreClient(HttpClient httpClient) : IC
             ?? new PagedResponse<KeyedEntry<ServiceAccessSettings>>([], clamped.Page, clamped.PageSize, 0, 0);
     }
 
+    /// <inheritdoc />
     public Task<ServiceAccessSettings?> GetServiceSettingsAsync(string clientId, string serviceId, CancellationToken cancellationToken) =>
         GetOptionalForClientAsync<ServiceAccessSettings>(
             StorageApiRoutes.ClientConfigurations.ServiceSettings(clientId, serviceId),
@@ -76,12 +87,15 @@ internal sealed class ClientConfigurationStoreClient(HttpClient httpClient) : IC
             StorageErrorCodes.ServiceSettingsNotFound,
             cancellationToken);
 
+    /// <inheritdoc />
     public Task SetServiceSettingsAsync(string clientId, string serviceId, ServiceAccessSettings settings, CancellationToken cancellationToken) =>
         SendAsync(HttpMethod.Put, StorageApiRoutes.ClientConfigurations.ServiceSettings(clientId, serviceId), settings, cancellationToken);
 
+    /// <inheritdoc />
     public Task RemoveServiceSettingsAsync(string clientId, string serviceId, CancellationToken cancellationToken) =>
         SendAsync(HttpMethod.Delete, StorageApiRoutes.ClientConfigurations.ServiceSettings(clientId, serviceId), body: null, cancellationToken);
 
+    /// <inheritdoc />
     public async Task<PagedResponse<KeyedEntry<ResourcePoolSettings>>> GetResourcePoolsAsync(
         string clientId,
         PagedRequest paging,
@@ -102,6 +116,7 @@ internal sealed class ClientConfigurationStoreClient(HttpClient httpClient) : IC
             ?? new PagedResponse<KeyedEntry<ResourcePoolSettings>>([], clamped.Page, clamped.PageSize, 0, 0);
     }
 
+    /// <inheritdoc />
     public Task<ResourcePoolSettings?> GetResourcePoolSettingsAsync(string clientId, string poolId, CancellationToken cancellationToken) =>
         GetOptionalForClientAsync<ResourcePoolSettings>(
             StorageApiRoutes.ClientConfigurations.ResourcePoolSettings(clientId, poolId),
@@ -109,12 +124,15 @@ internal sealed class ClientConfigurationStoreClient(HttpClient httpClient) : IC
             StorageErrorCodes.ResourcePoolSettingsNotFound,
             cancellationToken);
 
+    /// <inheritdoc />
     public Task SetResourcePoolSettingsAsync(string clientId, string poolId, ResourcePoolSettings settings, CancellationToken cancellationToken) =>
         SendAsync(HttpMethod.Put, StorageApiRoutes.ClientConfigurations.ResourcePoolSettings(clientId, poolId), settings, cancellationToken);
 
+    /// <inheritdoc />
     public Task RemoveResourcePoolSettingsAsync(string clientId, string poolId, CancellationToken cancellationToken) =>
         SendAsync(HttpMethod.Delete, StorageApiRoutes.ClientConfigurations.ResourcePoolSettings(clientId, poolId), body: null, cancellationToken);
 
+    /// <inheritdoc />
     public Task<ClientRateLimit?> GetGlobalRateLimitAsync(string clientId, CancellationToken cancellationToken) =>
         GetOptionalForClientAsync<ClientRateLimit>(
             StorageApiRoutes.ClientConfigurations.GlobalRateLimit(clientId),
@@ -122,9 +140,11 @@ internal sealed class ClientConfigurationStoreClient(HttpClient httpClient) : IC
             StorageErrorCodes.ClientGlobalRateLimitNotFound,
             cancellationToken);
 
+    /// <inheritdoc />
     public Task SetGlobalRateLimitAsync(string clientId, ClientRateLimit rateLimit, CancellationToken cancellationToken) =>
         SendForClientAsync(HttpMethod.Put, StorageApiRoutes.ClientConfigurations.GlobalRateLimit(clientId), rateLimit, clientId, cancellationToken);
 
+    /// <inheritdoc />
     public Task RemoveGlobalRateLimitAsync(string clientId, CancellationToken cancellationToken) =>
         SendForClientAsync(HttpMethod.Delete, StorageApiRoutes.ClientConfigurations.GlobalRateLimit(clientId), body: null, clientId, cancellationToken);
 

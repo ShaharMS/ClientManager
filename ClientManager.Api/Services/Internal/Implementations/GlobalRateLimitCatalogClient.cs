@@ -1,25 +1,30 @@
 using System.Net;
 using System.Net.Http.Json;
 using ClientManager.Api.Models.Exceptions;
-using ClientManager.Api.Services.InternalClients;
-using ClientManager.Api.Services.InternalClients.Interfaces.Configuration;
+using ClientManager.Api.Services.Internal.Interfaces;
+using ClientManager.Api.Utils.StorageApi;
 using ClientManager.Shared.Contracts.Storage;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Search;
 
-namespace ClientManager.Api.Services.InternalClients.Implementations.Configuration;
+namespace ClientManager.Api.Services.Internal.Implementations;
 
+/// <summary>
+/// Typed HTTP client over the storage API's global rate-limit catalog routes.
+/// Maps storage conflict and not-found responses onto domain exceptions for the public controllers.
+/// </summary>
 internal sealed class GlobalRateLimitCatalogClient(HttpClient httpClient) : IGlobalRateLimitCatalogClient
 {
-    // CR: Class should have some documentation for itself, and should inherit documentation for methods, or provide some alternative one if necessary for a specific method.
+    /// <inheritdoc />
     public async Task<SearchResult<GlobalRateLimit>> SearchAsync(DocumentQuery query, CancellationToken cancellationToken)
     {
-        var response = await httpClient.PostAsJsonAsync(StorageApiRoutes.GlobalRateLimits.Search, query, cancellationToken);
+        var response = await httpClient.PostRetryableAsJsonAsync(StorageApiRoutes.GlobalRateLimits.Search, query, cancellationToken);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<SearchResult<GlobalRateLimit>>(cancellationToken)
             ?? new SearchResult<GlobalRateLimit>([], 0);
     }
 
+    /// <inheritdoc />
     public async Task<GlobalRateLimit> GetByIdAsync(string id, CancellationToken cancellationToken)
     {
         var response = await httpClient.GetAsync(StorageApiRoutes.GlobalRateLimits.ById(id), cancellationToken);
@@ -37,6 +42,7 @@ internal sealed class GlobalRateLimitCatalogClient(HttpClient httpClient) : IGlo
             ?? throw new GlobalRateLimitNotFoundException(id);
     }
 
+    /// <inheritdoc />
     public async Task CreateAsync(GlobalRateLimit limit, CancellationToken cancellationToken)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, StorageApiRoutes.GlobalRateLimits.Search.Replace("/search", string.Empty))
@@ -56,17 +62,19 @@ internal sealed class GlobalRateLimitCatalogClient(HttpClient httpClient) : IGlo
         }
     }
 
+    /// <inheritdoc />
     public Task UpdateAsync(string id, GlobalRateLimit limit, CancellationToken cancellationToken) =>
-        SendAsync(HttpMethod.Put, StorageApiRoutes.GlobalRateLimits.ById(id), limit, () => new GlobalRateLimitNotFoundException(id), cancellationToken);
+        SendAsync(HttpMethod.Put, StorageApiRoutes.GlobalRateLimits.ById(id), limit, new GlobalRateLimitNotFoundException(id), cancellationToken);
 
+    /// <inheritdoc />
     public Task DeleteAsync(string id, CancellationToken cancellationToken) =>
-        SendAsync(HttpMethod.Delete, StorageApiRoutes.GlobalRateLimits.ById(id), body: null, () => new GlobalRateLimitNotFoundException(id), cancellationToken);
+        SendAsync(HttpMethod.Delete, StorageApiRoutes.GlobalRateLimits.ById(id), body: null, new GlobalRateLimitNotFoundException(id), cancellationToken);
 
     private async Task SendAsync(
         HttpMethod method,
         string path,
         object? body,
-        Func<Exception> createNotFoundException,
+        Exception notFoundException,
         CancellationToken cancellationToken)
     {
         using var request = new HttpRequestMessage(method, path);
@@ -83,8 +91,7 @@ internal sealed class GlobalRateLimitCatalogClient(HttpClient httpClient) : IGlo
 
         if (response.StatusCode == HttpStatusCode.NotFound)
         {
-            // CR: does this really need to be a function? why not just a parameter of type `Exception`?
-            throw createNotFoundException();
+            throw notFoundException;
         }
 
         throw await StorageApiResponseReader.CreateUnexpectedExceptionAsync(response, cancellationToken);
