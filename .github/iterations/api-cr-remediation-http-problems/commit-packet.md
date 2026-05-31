@@ -57,3 +57,4 @@ Pass: initial implementation
 | Pass | Commit | Branch | Notes |
 |------|--------|--------|-------|
 | 1 (initial impl) | 26fd64c | feature/api-cr-remediation-http-problems | Step 2 HTTP exception pipeline initial implementation |
+| 2 (closeout) | _pending_ | feature/api-cr-remediation-http-problems | Step 2 finalization/closeout: plans marked complete, iteration ledger/decision-log/review-packet/timeline and progress note finalized (bookkeeping only) |

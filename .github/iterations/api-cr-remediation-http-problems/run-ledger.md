@@ -3,7 +3,7 @@
 ## Iteration
 
 - Slug: api-cr-remediation-http-problems
-- Status: Bootstrapped — awaiting first implementation pass
+- Status: ✅ Step 2 APPROVED — finalized
 - Owning orchestrator: @Iterate
 
 ## Selected Scope
@@ -20,10 +20,10 @@
 
 ## Current Loop State
 
-- Next agent: @Inscribe (create branch + commit + push), then @Inspect
-- Review round: 0
-- Latest verification: dotnet build Api succeeded (0 errors); pre-existing CS8604 warning untouched
-- Latest decision: none yet
+- Next agent: advancing to Step 3 (api-cr-remediation-3-internal-transport-structure.md)
+- Review round: 1 (APPROVED)
+- Latest verification: dotnet build Api succeeded (0 errors)
+- Latest decision: DEC-201/202/203 accepted; RVW-201 deferred runtime checks (non-blocking)
 
 ## Packet Links
 
@@ -38,8 +38,8 @@
 ## Open Items
 
 - Blockers: none
-- Outstanding findings: none
-- Next action: @Inscribe creates feature/api-cr-remediation-http-problems from the Step 1 tip, commits the pass, then @Inspect reviews.
+- Outstanding findings: RVW-201 (non-blocking, deferred runtime RFC 7807 + UI outage checks)
+- Next action: Closeout commit, then advance to Step 3 of the overview.
 
 ## Resume Notes
 

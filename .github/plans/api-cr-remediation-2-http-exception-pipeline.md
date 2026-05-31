@@ -1,6 +1,6 @@
 # Plan: Address ClientManager.Api Review Notes — Step 2: HTTP Exception Pipeline
 
-> **Status**: 🔲 Not started
+> **Status**: ✅ Completed
 > **Prerequisite**: [api-cr-remediation-1-foundation-contracts.md](api-cr-remediation-1-foundation-contracts.md)
 > **Next**: [api-cr-remediation-3-internal-transport-structure.md](api-cr-remediation-3-internal-transport-structure.md)
 > **Parent**: [api-cr-remediation-overview.md](api-cr-remediation-overview.md)
