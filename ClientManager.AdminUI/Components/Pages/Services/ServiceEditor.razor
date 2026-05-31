@@ -29,7 +29,8 @@ else
             <div class="cm-editor__card">
                 <div class="cm-editor__field">
                     <label>Service ID</label>
-                    <RadzenTextBox @bind-Value="_model.Id" Disabled="@(!_isNew)" Style="width: 100%;" />
+                    <EntityIdInput @bind-Value="_model.Id" Suggestions="_existingIds"
+                        Mode="EntityIdInputMode.Unique" EntityName="service" Disabled="@(!_isNew)" />
                 </div>
                 <div class="cm-editor__field">
                     <label>Name</label>
@@ -55,11 +56,15 @@ else
     private bool _loading = true;
     private string? _error;
     private ServiceFormModel _model = new();
+    private List<string> _existingIds = [];
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
+            var all = await ServiceApi.GetAllAsync();
+            _existingIds = all.Select(s => s.Id).ToList();
+
             if (!_isNew)
             {
                 var svc = await ServiceApi.GetByIdAsync(Id!);

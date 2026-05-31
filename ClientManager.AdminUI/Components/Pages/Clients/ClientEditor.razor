@@ -1,6 +1,8 @@
 @page "/clients/new"
 @page "/clients/{Id}"
 @inject ClientApiService ClientApi
+@inject ServiceApiService ServiceApi
+@inject ResourcePoolApiService PoolApi
 @inject NavigationManager Nav
 
 <div style="margin-bottom: var(--space-md);">
@@ -31,7 +33,8 @@ else
                 <div class="cm-editor__section-title">Basic Configuration</div>
                 <div class="cm-editor__field">
                     <label>Client ID</label>
-                    <RadzenTextBox @bind-Value="_model.Id" Disabled="@(!_isNew)" Style="width: 100%;" />
+                    <EntityIdInput @bind-Value="_model.Id" Suggestions="_existingClientIds"
+                        Mode="EntityIdInputMode.Unique" EntityName="client" Disabled="@(!_isNew)" />
                 </div>
                 <div class="cm-editor__field">
                     <label>Name</label>
@@ -113,7 +116,8 @@ else
                         </div>
                         <div class="cm-editor__field">
                             <label>Service ID</label>
-                            <RadzenTextBox @bind-Value="entry.ServiceId" Style="width: 100%;" />
+                            <EntityIdInput @bind-Value="entry.ServiceId" Suggestions="_serviceIds"
+                                Mode="EntityIdInputMode.Reference" EntityName="service" />
                         </div>
                         <div class="cm-editor__field">
                             <label>Allowed</label>
@@ -172,7 +176,8 @@ else
                         </div>
                         <div class="cm-editor__field">
                             <label>Pool ID</label>
-                            <RadzenTextBox @bind-Value="entry.PoolId" Style="width: 100%;" />
+                            <EntityIdInput @bind-Value="entry.PoolId" Suggestions="_poolIds"
+                                Mode="EntityIdInputMode.Reference" EntityName="resource pool" />
                         </div>
                         <div class="cm-editor__field">
                             <label>Max Slots</label>
@@ -202,11 +207,18 @@ else
     private double _globalRateLimitWindowSeconds = 60;
     private List<ServiceEntryModel> _serviceEntries = [];
     private List<PoolEntryModel> _poolEntries = [];
+    private List<string> _existingClientIds = [];
+    private List<string> _serviceIds = [];
+    private List<string> _poolIds = [];
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
+            _existingClientIds = (await ClientApi.GetAllAsync()).Select(c => c.Id).ToList();
+            _serviceIds = (await ServiceApi.GetAllAsync()).Select(s => s.Id).ToList();
+            _poolIds = (await PoolApi.GetAllAsync()).Select(p => p.Id).ToList();
+
             if (!_isNew)
             {
                 var config = await ClientApi.GetByIdAsync(Id!);

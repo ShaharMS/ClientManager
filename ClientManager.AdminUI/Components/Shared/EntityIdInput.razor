@@ -1,0 +1,108 @@
+@namespace ClientManager.AdminUI.Components.Shared
+
+@* As-you-type ID input: autocompletes from existing IDs and lints the typed value
+   (duplicate detection in Unique mode, unknown-reference warning in Reference mode). *@
+<div class="cm-id-input">
+    <RadzenAutoComplete TValue="string"
+                        Value="@Value"
+                        Data="@Suggestions"
+                        Disabled="@Disabled"
+                        Style="@Style"
+                        Placeholder="@Placeholder"
+                        FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                        MinLength="0"
+                        FilterDelay="150"
+                        Change="@OnChanged"
+                        aria-label="@AriaLabel"
+                        aria-invalid="@(_severity == Severity.Error ? "true" : "false")" />
+
+    @if (_message is not null)
+    {
+        <div class="cm-id-input__message cm-id-input__message--@(_severity == Severity.Error ? "error" : "warning")"
+             role="@(_severity == Severity.Error ? "alert" : "status")">
+            @_message
+        </div>
+    }
+</div>
+
+@code {
+    private enum Severity { Warning, Error }
+
+    /// <summary>The current ID value (two-way bound).</summary>
+    [Parameter] public string? Value { get; set; }
+
+    /// <summary>Raised as the user types so the bound value stays in sync.</summary>
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+
+    /// <summary>Existing IDs used both as autocomplete suggestions and as the linting set.</summary>
+    [Parameter] public IEnumerable<string> Suggestions { get; set; } = [];
+
+    /// <summary>Whether the typed value must be unique or must reference an existing entity.</summary>
+    [Parameter] public EntityIdInputMode Mode { get; set; } = EntityIdInputMode.Reference;
+
+    /// <summary>Human-readable entity noun used in lint messages (for example "service" or "client").</summary>
+    [Parameter] public string EntityName { get; set; } = "item";
+
+    /// <summary>Disables the input (for example when editing an existing entity's immutable ID).</summary>
+    [Parameter] public bool Disabled { get; set; }
+
+    /// <summary>Inline style applied to the underlying input.</summary>
+    [Parameter] public string Style { get; set; } = "width: 100%;";
+
+    /// <summary>Placeholder hint shown when empty.</summary>
+    [Parameter] public string? Placeholder { get; set; }
+
+    /// <summary>Accessible label for the input.</summary>
+    [Parameter] public string? AriaLabel { get; set; }
+
+    private string? _message;
+    private Severity _severity = Severity.Warning;
+
+    protected override void OnParametersSet() => Validate(Value);
+
+    private async Task OnChanged(object? value)
+    {
+        var text = value as string;
+        Value = text;
+        await ValueChanged.InvokeAsync(text);
+        Validate(text);
+    }
+
+    private void Validate(string? value)
+    {
+        var trimmed = value?.Trim();
+
+        if (Disabled || string.IsNullOrEmpty(trimmed))
+        {
+            _message = null;
+            return;
+        }
+
+        var exists = Suggestions.Any(s => string.Equals(s, trimmed, StringComparison.OrdinalIgnoreCase));
+
+        if (Mode == EntityIdInputMode.Unique)
+        {
+            if (exists)
+            {
+                _message = $"A {EntityName} with ID \u201c{trimmed}\u201d already exists. Choose a different ID.";
+                _severity = Severity.Error;
+            }
+            else
+            {
+                _message = null;
+            }
+        }
+        else
+        {
+            if (!exists)
+            {
+                _message = $"No {EntityName} with ID \u201c{trimmed}\u201d exists yet \u2014 check the spelling.";
+                _severity = Severity.Warning;
+            }
+            else
+            {
+                _message = null;
+            }
+        }
+    }
+}

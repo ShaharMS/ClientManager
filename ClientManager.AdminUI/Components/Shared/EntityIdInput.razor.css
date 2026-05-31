@@ -1,0 +1,18 @@
+.cm-id-input {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.cm-id-input__message {
+    font-size: var(--font-size-sm, 0.8125rem);
+    line-height: 1.3;
+}
+
+.cm-id-input__message--error {
+    color: var(--color-danger, #dc2626);
+}
+
+.cm-id-input__message--warning {
+    color: var(--color-warning, #b45309);
+}

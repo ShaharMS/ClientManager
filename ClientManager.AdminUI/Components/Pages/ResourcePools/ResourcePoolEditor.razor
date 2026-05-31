@@ -29,7 +29,8 @@ else
             <div class="cm-editor__card">
                 <div class="cm-editor__field">
                     <label>Pool ID</label>
-                    <RadzenTextBox @bind-Value="_model.Id" Disabled="@(!_isNew)" Style="width: 100%;" />
+                    <EntityIdInput @bind-Value="_model.Id" Suggestions="_existingIds"
+                        Mode="EntityIdInputMode.Unique" EntityName="resource pool" Disabled="@(!_isNew)" />
                 </div>
                 <div class="cm-editor__field">
                     <label>Name</label>
@@ -59,11 +60,15 @@ else
     private bool _loading = true;
     private string? _error;
     private PoolFormModel _model = new();
+    private List<string> _existingIds = [];
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
+            var all = await PoolApi.GetAllAsync();
+            _existingIds = all.Select(p => p.Id).ToList();
+
             if (!_isNew)
             {
                 var pool = await PoolApi.GetByIdAsync(Id!);

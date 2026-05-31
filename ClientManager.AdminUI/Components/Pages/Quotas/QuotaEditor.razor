@@ -1,6 +1,7 @@
 @page "/quotas/new"
 @page "/quotas/{Id}"
 @inject GlobalRateLimitApiService RateLimitApi
+@inject ResourcePoolApiService PoolApi
 @inject NavigationManager Nav
 
 <div style="margin-bottom: var(--space-md);">
@@ -29,11 +30,13 @@ else
             <div class="cm-editor__card">
                 <div class="cm-editor__field">
                     <label>Quota ID</label>
-                    <RadzenTextBox @bind-Value="_model.Id" Disabled="@(!_isNew)" Style="width: 100%;" />
+                    <EntityIdInput @bind-Value="_model.Id" Suggestions="_existingIds"
+                        Mode="EntityIdInputMode.Unique" EntityName="quota" Disabled="@(!_isNew)" />
                 </div>
                 <div class="cm-editor__field">
                     <label>Resource Pool</label>
-                    <RadzenTextBox @bind-Value="_model.TargetId" Style="width: 100%;" />
+                    <EntityIdInput @bind-Value="_model.TargetId" Suggestions="_poolIds"
+                        Mode="EntityIdInputMode.Reference" EntityName="resource pool" />
                 </div>
                 <div class="cm-editor__field">
                     <label>Strategy</label>
@@ -72,11 +75,16 @@ else
     private bool _loading = true;
     private string? _error;
     private RateLimitFormModel _model = new() { TargetType = TargetType.ResourcePool };
+    private List<string> _existingIds = [];
+    private List<string> _poolIds = [];
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
+            _existingIds = (await RateLimitApi.GetAllAsync()).Select(l => l.Id).ToList();
+            _poolIds = (await PoolApi.GetAllAsync()).Select(p => p.Id).ToList();
+
             if (!_isNew)
             {
                 var limit = await RateLimitApi.GetByIdAsync(Id!);
