@@ -21,7 +21,7 @@ public class AppLogger<T> : IAppLogger<T>
 
     public AppLogger()
     {
-        _nlogLogger = LogManager.GetLogger(typeof(T).FullName);
+        _nlogLogger = LogManager.GetLogger(typeof(T).FullName ?? typeof(T).Name);
     }
 
     public void Trace(string message) => Log(LogLevel.Trace, message, null, null);

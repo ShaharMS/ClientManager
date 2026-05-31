@@ -9,6 +9,7 @@ using ClientManager.Api.Utils.Extensions;
 using ClientManager.Api.Utils.Instrumentation;
 using ClientManager.Api.Utils.Swagger;
 using ClientManager.Shared.Logging;
+using ClientManager.Shared.Models.Problems;
 
 using Microsoft.Extensions.Options;
 using Microsoft.OpenApi;
@@ -71,6 +72,16 @@ try
         var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
         var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
         options.IncludeXmlComments(xmlPath);
+
+        // Load XML docs from the shared assembly so request/response/entity schemas render
+        // their authored descriptions in Swagger alongside the API's own operation docs.
+        var sharedXmlFile = $"{typeof(ProblemResponse).Assembly.GetName().Name}.xml";
+        var sharedXmlPath = Path.Combine(AppContext.BaseDirectory, sharedXmlFile);
+        if (File.Exists(sharedXmlPath))
+        {
+            options.IncludeXmlComments(sharedXmlPath);
+        }
+
         options.DocumentFilter<TagDescriptionsDocumentFilter>();
     });
 

@@ -3,6 +3,7 @@ using ClientManager.Api.Services.Interfaces;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Requests;
 using ClientManager.Shared.Models.Responses;
+using ClientManager.Shared.Models.Problems;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -37,9 +38,11 @@ public class ClientConfigurationServicesController : ControllerBase
     /// <returns>A paginated list of service access setting entries.</returns>
     /// <response code="200">Returns the paginated service access settings.</response>
     /// <response code="404">No client was found with the given identifier.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpGet("{id}/services")]
     [ProducesResponseType(typeof(PagedResponse<KeyedEntry<ServiceAccessSettings>>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> GetServices(string id, [FromQuery] PagedRequest paging, CancellationToken cancellationToken)
     {
         var settings = await _clientServiceSettingsService.GetServicesAsync(id, paging, cancellationToken);
@@ -55,9 +58,11 @@ public class ClientConfigurationServicesController : ControllerBase
     /// <returns>The service access settings.</returns>
     /// <response code="200">Returns the service access settings.</response>
     /// <response code="404">Client or service settings not found.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpGet("{id}/services/{serviceId}")]
     [ProducesResponseType(typeof(ServiceAccessSettings), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> GetServiceSettings(string id, string serviceId, CancellationToken cancellationToken)
     {
         var settings = await _clientServiceSettingsService.GetServiceSettingsAsync(id, serviceId, cancellationToken);
@@ -73,9 +78,11 @@ public class ClientConfigurationServicesController : ControllerBase
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <response code="200">The service access settings were updated.</response>
     /// <response code="404">No client was found with the given identifier.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpPut("{id}/services/{serviceId}")]
     [ProducesResponseType(typeof(ServiceAccessSettings), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> SetServiceSettings(string id, string serviceId, [FromBody] ServiceAccessSettings settings, CancellationToken cancellationToken)
     {
         var applied = await _clientServiceSettingsService.SetServiceSettingsAsync(id, serviceId, settings, cancellationToken);
@@ -90,9 +97,11 @@ public class ClientConfigurationServicesController : ControllerBase
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <response code="204">The service access settings were removed.</response>
     /// <response code="404">No client was found with the given identifier.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpDelete("{id}/services/{serviceId}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> RemoveServiceSettings(string id, string serviceId, CancellationToken cancellationToken)
     {
         await _clientServiceSettingsService.RemoveServiceSettingsAsync(id, serviceId, cancellationToken);

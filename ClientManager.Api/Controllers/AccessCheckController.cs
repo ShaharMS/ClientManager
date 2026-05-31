@@ -1,6 +1,7 @@
 using Asp.Versioning;
 using ClientManager.Shared.Models.Requests;
 using ClientManager.Shared.Models.Responses;
+using ClientManager.Shared.Models.Problems;
 using ClientManager.Api.Services.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -38,12 +39,14 @@ public class AccessCheckController : ControllerBase
     /// <response code="403">Access is denied because the client is disabled, the service is disabled, or the client-service relationship exists but is disabled.</response>
     /// <response code="404">Client or service not found.</response>
     /// <response code="429">Rate limit exceeded.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpPost("check")]
     [ProducesResponseType(typeof(AccessCheckResponse), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status429TooManyRequests)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> CheckAccess([FromBody] CheckAccessRequest request, CancellationToken cancellationToken)
     {
         var response = await _accessControlService.CheckAccessAsync(request.ClientId, request.ServiceId, cancellationToken);
@@ -58,9 +61,11 @@ public class AccessCheckController : ControllerBase
     /// <returns>The client accessibility report.</returns>
     /// <response code="200">Returns the accessibility report.</response>
     /// <response code="404">No client was found with the given identifier.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpGet("{clientId}")]
     [ProducesResponseType(typeof(ClientAccessibilityResponse), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> GetAccessibility(string clientId, CancellationToken cancellationToken)
     {
         var response = await _accessControlService.GetClientAccessibilityAsync(clientId, cancellationToken);

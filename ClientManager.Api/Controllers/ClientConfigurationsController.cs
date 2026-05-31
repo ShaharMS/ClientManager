@@ -2,6 +2,7 @@ using Asp.Versioning;
 using ClientManager.Api.Services.Interfaces;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Search;
+using ClientManager.Shared.Models.Problems;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -34,8 +35,10 @@ public class ClientConfigurationsController : ControllerBase
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Matching client configurations and total count.</returns>
     /// <response code="200">Returns the matching client configurations.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpPost("search")]
     [ProducesResponseType(typeof(SearchResult<ClientConfiguration>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> Search([FromBody] DocumentQuery? query, CancellationToken cancellationToken)
     {
         var configurations = await _clientConfigurationService.SearchAsync(query ?? DocumentQuery.All, cancellationToken);
@@ -50,9 +53,11 @@ public class ClientConfigurationsController : ControllerBase
     /// <returns>The client configuration.</returns>
     /// <response code="200">Returns the requested client configuration.</response>
     /// <response code="404">No client was found with the given identifier.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpGet("{id}")]
     [ProducesResponseType(typeof(ClientConfiguration), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> GetById(string id, CancellationToken cancellationToken)
     {
         var configuration = await _clientConfigurationService.GetByIdAsync(id, cancellationToken);
@@ -67,9 +72,11 @@ public class ClientConfigurationsController : ControllerBase
     /// <returns>The created client configuration.</returns>
     /// <response code="201">The client configuration was created successfully.</response>
     /// <response code="409">A client configuration with the same identifier already exists.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpPost]
     [ProducesResponseType(typeof(ClientConfiguration), StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> Create([FromBody] ClientConfiguration configuration, CancellationToken cancellationToken)
     {
         var created = await _clientConfigurationService.CreateAsync(configuration, cancellationToken);
@@ -85,9 +92,11 @@ public class ClientConfigurationsController : ControllerBase
     /// <returns>The updated client configuration.</returns>
     /// <response code="200">The client configuration was updated successfully.</response>
     /// <response code="404">No client was found with the given identifier.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpPut("{id}")]
     [ProducesResponseType(typeof(ClientConfiguration), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> Update(string id, [FromBody] ClientConfiguration configuration, CancellationToken cancellationToken)
     {
         var updated = await _clientConfigurationService.UpdateAsync(id, configuration, cancellationToken);
@@ -101,9 +110,11 @@ public class ClientConfigurationsController : ControllerBase
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <response code="204">The client configuration was deleted successfully.</response>
     /// <response code="404">No client was found with the given identifier.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpDelete("{id}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> Delete(string id, CancellationToken cancellationToken)
     {
         await _clientConfigurationService.DeleteAsync(id, cancellationToken);

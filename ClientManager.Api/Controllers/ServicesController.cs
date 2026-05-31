@@ -2,6 +2,7 @@ using Asp.Versioning;
 using ClientManager.Api.Services.Interfaces;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Search;
+using ClientManager.Shared.Models.Problems;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -34,8 +35,10 @@ public class ServicesController : ControllerBase
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Matching services and total count.</returns>
     /// <response code="200">Returns the matching services.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpPost("search")]
     [ProducesResponseType(typeof(SearchResult<Service>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> Search(
         [FromBody] DocumentQuery? query,
         CancellationToken cancellationToken)
@@ -52,9 +55,11 @@ public class ServicesController : ControllerBase
     /// <returns>The service.</returns>
     /// <response code="200">Returns the requested service.</response>
     /// <response code="404">No service was found with the given identifier.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpGet("{id}")]
     [ProducesResponseType(typeof(Service), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> GetById(string id, CancellationToken cancellationToken)
     {
         var service = await _serviceCatalogService.GetByIdAsync(id, cancellationToken);
@@ -69,9 +74,11 @@ public class ServicesController : ControllerBase
     /// <returns>The created service.</returns>
     /// <response code="201">The service was created successfully.</response>
     /// <response code="409">A service with the same identifier already exists.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpPost]
     [ProducesResponseType(typeof(Service), StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> Create([FromBody] Service service, CancellationToken cancellationToken)
     {
         var created = await _serviceCatalogService.CreateAsync(service, cancellationToken);
@@ -87,9 +94,11 @@ public class ServicesController : ControllerBase
     /// <returns>The updated service.</returns>
     /// <response code="200">The service was updated successfully.</response>
     /// <response code="404">No service was found with the given identifier.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpPut("{id}")]
     [ProducesResponseType(typeof(Service), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> Update(string id, [FromBody] Service service, CancellationToken cancellationToken)
     {
         var updated = await _serviceCatalogService.UpdateAsync(id, service, cancellationToken);
@@ -103,9 +112,11 @@ public class ServicesController : ControllerBase
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <response code="204">The service was deleted successfully.</response>
     /// <response code="404">No service was found with the given identifier.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpDelete("{id}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> Delete(string id, CancellationToken cancellationToken)
     {
         await _serviceCatalogService.DeleteAsync(id, cancellationToken);

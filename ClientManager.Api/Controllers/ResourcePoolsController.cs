@@ -2,6 +2,7 @@ using Asp.Versioning;
 using ClientManager.Api.Services.Interfaces;
 using ClientManager.Shared.Models.Search;
 using ClientManager.Shared.Models.Entities;
+using ClientManager.Shared.Models.Problems;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -34,8 +35,10 @@ public class ResourcePoolsController : ControllerBase
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Matching resource pools and total count.</returns>
     /// <response code="200">Returns the matching resource pools.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpPost("search")]
     [ProducesResponseType(typeof(SearchResult<ResourcePool>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> Search(
         [FromBody] DocumentQuery? query,
         CancellationToken cancellationToken)
@@ -52,9 +55,11 @@ public class ResourcePoolsController : ControllerBase
     /// <returns>The resource pool.</returns>
     /// <response code="200">Returns the requested resource pool.</response>
     /// <response code="404">No resource pool was found with the given identifier.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpGet("{id}")]
     [ProducesResponseType(typeof(ResourcePool), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> GetById(string id, CancellationToken cancellationToken)
     {
         var pool = await _resourcePoolCatalogService.GetByIdAsync(id, cancellationToken);
@@ -69,9 +74,11 @@ public class ResourcePoolsController : ControllerBase
     /// <returns>The created resource pool.</returns>
     /// <response code="201">The resource pool was created successfully.</response>
     /// <response code="409">A resource pool with the same identifier already exists.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpPost]
     [ProducesResponseType(typeof(ResourcePool), StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> Create([FromBody] ResourcePool pool, CancellationToken cancellationToken)
     {
         var created = await _resourcePoolCatalogService.CreateAsync(pool, cancellationToken);
@@ -87,9 +94,11 @@ public class ResourcePoolsController : ControllerBase
     /// <returns>The updated resource pool.</returns>
     /// <response code="200">The resource pool was updated successfully.</response>
     /// <response code="404">No resource pool was found with the given identifier.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpPut("{id}")]
     [ProducesResponseType(typeof(ResourcePool), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> Update(string id, [FromBody] ResourcePool pool, CancellationToken cancellationToken)
     {
         var updated = await _resourcePoolCatalogService.UpdateAsync(id, pool, cancellationToken);
@@ -103,9 +112,11 @@ public class ResourcePoolsController : ControllerBase
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <response code="204">The resource pool was deleted successfully.</response>
     /// <response code="404">No resource pool was found with the given identifier.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpDelete("{id}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> Delete(string id, CancellationToken cancellationToken)
     {
         await _resourcePoolCatalogService.DeleteAsync(id, cancellationToken);

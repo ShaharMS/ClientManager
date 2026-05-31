@@ -1,6 +1,7 @@
 using Asp.Versioning;
 using ClientManager.Shared.Models.Requests;
 using ClientManager.Shared.Models.Responses;
+using ClientManager.Shared.Models.Problems;
 using ClientManager.Api.Services.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -37,11 +38,13 @@ public class ResourceAllocationController : ControllerBase
     /// <response code="403">Client is disabled.</response>
     /// <response code="404">Client or resource pool not found.</response>
     /// <response code="429">Slot limit or rate limit exceeded.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpPost("acquire")]
     [ProducesResponseType(typeof(ResourceAcquireResponse), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status429TooManyRequests)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> Acquire([FromBody] AcquireResourceRequest request, CancellationToken cancellationToken)
     {
         var response = await _allocationService.AcquireAsync(request.ClientId, request.ResourcePoolId, cancellationToken);
@@ -56,9 +59,11 @@ public class ResourceAllocationController : ControllerBase
     /// <returns>The release result.</returns>
     /// <response code="200">The allocation was released or was already released.</response>
     /// <response code="404">No allocation was found with the given identifier.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpPost("release")]
     [ProducesResponseType(typeof(ResourceReleaseResponse), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> Release([FromBody] ReleaseResourceRequest request, CancellationToken cancellationToken)
     {
         var response = await _allocationService.ReleaseAsync(request.AllocationId, cancellationToken);

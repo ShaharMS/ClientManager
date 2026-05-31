@@ -5,6 +5,7 @@ using ClientManager.Shared.Models.Search;
 using ClientManager.Shared.Models.Requests;
 using ClientManager.Shared.Models.Responses;
 using ClientManager.Shared.Models.Enums;
+using ClientManager.Shared.Models.Problems;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -34,10 +35,13 @@ public class StatisticsController : ControllerBase
     /// <summary>
     /// Returns a high-level system overview with counts of clients, services, pools, and active allocations.
     /// </summary>
+    /// <param name="cancellationToken">Token used to cancel the overview aggregation before it completes.</param>
     /// <returns>The system overview statistics.</returns>
     /// <response code="200">Returns the system overview.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpGet("overview")]
     [ProducesResponseType(typeof(SystemOverviewResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> GetOverview(CancellationToken cancellationToken)
     {
         var overview = await _statisticsService.GetOverviewAsync(cancellationToken);
@@ -51,8 +55,10 @@ public class StatisticsController : ControllerBase
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Matching per-client summary statistics and total count.</returns>
     /// <response code="200">Returns matching per-client summaries.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpPost("clients/search")]
     [ProducesResponseType(typeof(SearchResult<ClientSummaryResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> SearchClients(
         [FromBody] DocumentQuery? query,
         CancellationToken cancellationToken)
@@ -69,9 +75,11 @@ public class StatisticsController : ControllerBase
     /// <returns>Detailed client statistics.</returns>
     /// <response code="200">Returns the client's detailed statistics.</response>
     /// <response code="404">No client was found with the given identifier.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpGet("clients/{clientId}")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> GetClientDetails(string clientId, CancellationToken cancellationToken)
     {
         var clientDetails = await _statisticsService.GetClientDetailsAsync(clientId, cancellationToken);
@@ -85,8 +93,10 @@ public class StatisticsController : ControllerBase
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Matching per-service statistics and total count.</returns>
     /// <response code="200">Returns matching per-service statistics.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpPost("services/search")]
     [ProducesResponseType(typeof(SearchResult<ServiceStatisticsResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> SearchServices(
         [FromBody] DocumentQuery? query,
         CancellationToken cancellationToken)
@@ -103,9 +113,11 @@ public class StatisticsController : ControllerBase
     /// <returns>Detailed service statistics.</returns>
     /// <response code="200">Returns the service's detailed statistics.</response>
     /// <response code="404">No service was found with the given identifier.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpGet("services/{serviceId}")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> GetServiceDetails(string serviceId, CancellationToken cancellationToken)
     {
         var serviceDetails = await _statisticsService.GetServiceDetailsAsync(serviceId, cancellationToken);
@@ -119,8 +131,10 @@ public class StatisticsController : ControllerBase
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Matching per-pool statistics and total count.</returns>
     /// <response code="200">Returns matching per-pool statistics.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpPost("resource-pools/search")]
     [ProducesResponseType(typeof(SearchResult<ResourcePoolStatisticsResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> SearchResourcePools(
         [FromBody] DocumentQuery? query,
         CancellationToken cancellationToken)
@@ -137,9 +151,11 @@ public class StatisticsController : ControllerBase
     /// <returns>Detailed resource pool statistics.</returns>
     /// <response code="200">Returns the pool's detailed statistics.</response>
     /// <response code="404">No resource pool was found with the given identifier.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpGet("resource-pools/{resourcePoolId}")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> GetResourcePoolDetails(string resourcePoolId, CancellationToken cancellationToken)
     {
         var resourcePoolDetails = await _statisticsService.GetResourcePoolDetailsAsync(resourcePoolId, cancellationToken);
@@ -152,8 +168,10 @@ public class StatisticsController : ControllerBase
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Global usage statistics.</returns>
     /// <response code="200">Returns global usage statistics.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpGet("global-usage")]
     [ProducesResponseType(typeof(GlobalUsageStatsResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> GetGlobalUsageStats(CancellationToken cancellationToken)
     {
         var globalUsage = await _statisticsService.GetGlobalUsageStatsAsync(cancellationToken);
@@ -172,8 +190,10 @@ public class StatisticsController : ControllerBase
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Per-target time-series data for usage and capacity.</returns>
     /// <response code="200">Returns per-target usage time-series data.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpGet("usage-timeseries")]
     [ProducesResponseType(typeof(List<TargetUsageTimeSeriesResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> GetUsageTimeSeries(
         [FromQuery] TargetType filterType,
         [FromQuery] IdentifierList targetIds,
@@ -206,8 +226,10 @@ public class StatisticsController : ControllerBase
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Per-target client usage breakdowns.</returns>
     /// <response code="200">Returns per-target client usage breakdowns.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpGet("client-usage-breakdown")]
     [ProducesResponseType(typeof(List<TargetClientUsageBreakdownResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> GetClientUsageBreakdown(
         [FromQuery] TargetType filterType,
         [FromQuery] IdentifierList targetIds,
@@ -235,8 +257,10 @@ public class StatisticsController : ControllerBase
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Paginated client summary data for the dashboard table.</returns>
     /// <response code="200">Returns paginated client summaries.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpGet("client-summaries")]
     [ProducesResponseType(typeof(PagedResponse<ClientSummaryRow>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> GetClientSummaries([FromQuery] PagedRequest paging, CancellationToken cancellationToken)
     {
         var clientSummaries = await _statisticsService.GetClientSummariesAsync(paging, cancellationToken);
@@ -255,8 +279,10 @@ public class StatisticsController : ControllerBase
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Historical usage data points per target within the requested range.</returns>
     /// <response code="200">Returns the historical usage data.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpGet("historical-usage")]
     [ProducesResponseType(typeof(List<HistoricalUsageResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> GetHistoricalUsage(
         [FromQuery] TargetType filterType,
         [FromQuery] IdentifierList targetIds,
@@ -284,8 +310,10 @@ public class StatisticsController : ControllerBase
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Historical usage data points for each requested target-client pair.</returns>
     /// <response code="200">Returns the historical usage data for each requested target-client pair.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpGet("historical-usage/by-client")]
     [ProducesResponseType(typeof(List<ClientHistoricalUsageResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> GetHistoricalUsageByClient(
         [FromQuery] TargetType filterType,
         [FromQuery] IdentifierList targetIds,

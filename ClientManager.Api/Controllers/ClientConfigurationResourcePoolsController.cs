@@ -3,6 +3,7 @@ using ClientManager.Api.Services.Interfaces;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Requests;
 using ClientManager.Shared.Models.Responses;
+using ClientManager.Shared.Models.Problems;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -37,9 +38,11 @@ public class ClientConfigurationResourcePoolsController : ControllerBase
     /// <returns>A paginated list of resource pool setting entries.</returns>
     /// <response code="200">Returns the paginated resource pool settings.</response>
     /// <response code="404">No client was found with the given identifier.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpGet("{id}/resource-pools")]
     [ProducesResponseType(typeof(PagedResponse<KeyedEntry<ResourcePoolSettings>>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> GetResourcePools(string id, [FromQuery] PagedRequest paging, CancellationToken cancellationToken)
     {
         var settings = await _clientResourcePoolSettingsService.GetResourcePoolsAsync(id, paging, cancellationToken);
@@ -55,9 +58,11 @@ public class ClientConfigurationResourcePoolsController : ControllerBase
     /// <returns>The resource pool settings.</returns>
     /// <response code="200">Returns the resource pool settings.</response>
     /// <response code="404">Client or pool settings not found.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpGet("{id}/resource-pools/{poolId}")]
     [ProducesResponseType(typeof(ResourcePoolSettings), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> GetResourcePoolSettings(string id, string poolId, CancellationToken cancellationToken)
     {
         var settings = await _clientResourcePoolSettingsService.GetResourcePoolSettingsAsync(id, poolId, cancellationToken);
@@ -73,9 +78,11 @@ public class ClientConfigurationResourcePoolsController : ControllerBase
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <response code="200">The resource pool settings were updated.</response>
     /// <response code="404">No client was found with the given identifier.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpPut("{id}/resource-pools/{poolId}")]
     [ProducesResponseType(typeof(ResourcePoolSettings), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> SetResourcePoolSettings(string id, string poolId, [FromBody] ResourcePoolSettings settings, CancellationToken cancellationToken)
     {
         var applied = await _clientResourcePoolSettingsService.SetResourcePoolSettingsAsync(id, poolId, settings, cancellationToken);
@@ -90,9 +97,11 @@ public class ClientConfigurationResourcePoolsController : ControllerBase
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <response code="204">The resource pool settings were removed.</response>
     /// <response code="404">No client was found with the given identifier.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpDelete("{id}/resource-pools/{poolId}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> RemoveResourcePoolSettings(string id, string poolId, CancellationToken cancellationToken)
     {
         await _clientResourcePoolSettingsService.RemoveResourcePoolSettingsAsync(id, poolId, cancellationToken);
