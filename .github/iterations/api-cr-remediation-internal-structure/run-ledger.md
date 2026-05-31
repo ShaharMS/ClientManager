@@ -3,7 +3,7 @@
 ## Iteration
 
 - Slug: api-cr-remediation-internal-structure
-- Status: Bootstrapped — awaiting first implementation pass
+- Status: ✅ Step 3 APPROVED — finalized
 - Owning orchestrator: @Iterate
 
 ## Selected Scope
@@ -20,10 +20,10 @@
 
 ## Current Loop State
 
-- Next agent: @Inscribe (create branch + commit + push), then @Inspect
-- Review round: 0
+- Next agent: advancing to Step 4 (api-cr-remediation-4-services-and-controllers.md)
+- Review round: 1 (APPROVED)
 - Latest verification: dotnet build Api + slnx succeeded (0 errors)
-- Latest decision: none yet
+- Latest decision: DEC-301 accepted; RVW-N01 + RVW-301 deferred (non-blocking)
 
 ## Packet Links
 
@@ -38,8 +38,8 @@
 ## Open Items
 
 - Blockers: none
-- Outstanding findings: none
-- Next action: @Inscribe creates feature/api-cr-remediation-internal-structure from the Step 2 tip, commits the pass, then @Inspect reviews.
+- Outstanding findings: RVW-N01, RVW-301 (non-blocking deferred)
+- Next action: Closeout commit, then advance to Step 4 of the overview.
 
 ## Resume Notes
 
