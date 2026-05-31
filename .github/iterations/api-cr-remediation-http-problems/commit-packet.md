@@ -46,14 +46,14 @@ Pass: initial implementation
 
 ## Result
 
-- Commit hash: <pending>
-- Push result: <pending>
-- Workspace status after commit: <pending>
-- Remaining uncommitted files: <pending>
+- Commit hash: 26fd64c
+- Push result: Pushed to origin/feature/api-cr-remediation-http-problems with upstream tracking set (new branch).
+- Workspace status after commit: clean (`git status --short` empty)
+- Remaining uncommitted files: none
 - Follow-up needed: Runtime 404/409/503 + UI outage verification deferred to orchestrator.
 
 ## Commit History
 
 | Pass | Commit | Branch | Notes |
 |------|--------|--------|-------|
-| 1 (initial impl) | <pending> | feature/api-cr-remediation-http-problems | Step 2 HTTP exception pipeline initial implementation |
+| 1 (initial impl) | 26fd64c | feature/api-cr-remediation-http-problems | Step 2 HTTP exception pipeline initial implementation |
