@@ -20,16 +20,17 @@ internal sealed class ServiceCatalogClient(HttpClient httpClient) : IServiceCata
             ?? new SearchResult<Service>([], 0);
     }
 
-    public async Task<Service?> GetByIdAsync(string serviceId, CancellationToken cancellationToken)
+    public async Task<Service> GetByIdAsync(string serviceId, CancellationToken cancellationToken)
     {
         var response = await httpClient.GetAsync(StorageApiRoutes.Services.ById(serviceId), cancellationToken);
         if (response.StatusCode == HttpStatusCode.NotFound)
         {
-            return null;
+            throw new ServiceNotFoundException(serviceId);
         }
 
         response.EnsureSuccessStatusCode();
-        return await response.Content.ReadFromJsonAsync<Service>(cancellationToken);
+        return await response.Content.ReadFromJsonAsync<Service>(cancellationToken)
+            ?? throw new ServiceNotFoundException(serviceId);
     }
 
     public Task CreateAsync(Service service, CancellationToken cancellationToken) =>

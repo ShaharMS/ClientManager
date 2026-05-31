@@ -10,7 +10,7 @@ public interface IClientConfigurationStoreClient
 {
     Task<SearchResult<ClientConfiguration>> SearchAsync(DocumentQuery query, CancellationToken cancellationToken);
 
-    Task<ClientConfiguration?> GetByIdAsync(string clientId, CancellationToken cancellationToken);
+    Task<ClientConfiguration> GetByIdAsync(string clientId, CancellationToken cancellationToken);
 
     Task CreateAsync(ClientConfiguration configuration, CancellationToken cancellationToken);
 

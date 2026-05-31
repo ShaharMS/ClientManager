@@ -8,7 +8,7 @@ public interface IResourcePoolCatalogClient
 {
     Task<SearchResult<ResourcePool>> SearchAsync(DocumentQuery query, CancellationToken cancellationToken);
 
-    Task<ResourcePool?> GetByIdAsync(string poolId, CancellationToken cancellationToken);
+    Task<ResourcePool> GetByIdAsync(string poolId, CancellationToken cancellationToken);
 
     Task CreateAsync(ResourcePool pool, CancellationToken cancellationToken);
 

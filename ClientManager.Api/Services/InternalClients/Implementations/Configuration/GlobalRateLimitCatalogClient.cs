@@ -20,12 +20,12 @@ internal sealed class GlobalRateLimitCatalogClient(HttpClient httpClient) : IGlo
             ?? new SearchResult<GlobalRateLimit>([], 0);
     }
 
-    public async Task<GlobalRateLimit?> GetByIdAsync(string id, CancellationToken cancellationToken)
+    public async Task<GlobalRateLimit> GetByIdAsync(string id, CancellationToken cancellationToken)
     {
         var response = await httpClient.GetAsync(StorageApiRoutes.GlobalRateLimits.ById(id), cancellationToken);
         if (response.StatusCode == HttpStatusCode.NotFound)
         {
-            return null;
+            throw new GlobalRateLimitNotFoundException(id);
         }
 
         if (!response.IsSuccessStatusCode)
@@ -33,7 +33,8 @@ internal sealed class GlobalRateLimitCatalogClient(HttpClient httpClient) : IGlo
             throw await StorageApiResponseReader.CreateUnexpectedExceptionAsync(response, cancellationToken);
         }
 
-        return await response.Content.ReadFromJsonAsync<GlobalRateLimit>(cancellationToken);
+        return await response.Content.ReadFromJsonAsync<GlobalRateLimit>(cancellationToken)
+            ?? throw new GlobalRateLimitNotFoundException(id);
     }
 
     public async Task CreateAsync(GlobalRateLimit limit, CancellationToken cancellationToken)

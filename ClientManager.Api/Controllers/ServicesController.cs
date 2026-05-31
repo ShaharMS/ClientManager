@@ -1,5 +1,4 @@
 using Asp.Versioning;
-using ClientManager.Api.Models.Exceptions;
 using ClientManager.Api.Services.InternalClients.Interfaces.Configuration;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Search;
@@ -58,8 +57,7 @@ public class ServicesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetById(string id, CancellationToken cancellationToken)
     {
-        var service = await _serviceCatalogClient.GetByIdAsync(id, cancellationToken)
-            ?? throw new ServiceNotFoundException(id);
+        var service = await _serviceCatalogClient.GetByIdAsync(id, cancellationToken);
         return Ok(service);
     }
 

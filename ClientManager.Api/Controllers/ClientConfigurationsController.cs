@@ -1,5 +1,4 @@
 using Asp.Versioning;
-using ClientManager.Api.Models.Exceptions;
 using ClientManager.Api.Services.InternalClients.Interfaces.Configuration;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Search;
@@ -56,8 +55,7 @@ public class ClientConfigurationsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetById(string id, CancellationToken cancellationToken)
     {
-        var configuration = await _clientConfigurationStoreClient.GetByIdAsync(id, cancellationToken)
-            ?? throw new ClientNotFoundException(id);
+        var configuration = await _clientConfigurationStoreClient.GetByIdAsync(id, cancellationToken);
         return Ok(configuration);
     }
 

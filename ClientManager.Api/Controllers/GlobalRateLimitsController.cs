@@ -1,5 +1,4 @@
 using Asp.Versioning;
-using ClientManager.Api.Models.Exceptions;
 using ClientManager.Api.Services.InternalClients.Interfaces.Configuration;
 using ClientManager.Shared.Models.Search;
 using ClientManager.Shared.Models.Entities;
@@ -58,8 +57,7 @@ public class GlobalRateLimitsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetById(string id, CancellationToken cancellationToken)
     {
-        var limit = await _globalRateLimitCatalogClient.GetByIdAsync(id, cancellationToken)
-            ?? throw new GlobalRateLimitNotFoundException(id);
+        var limit = await _globalRateLimitCatalogClient.GetByIdAsync(id, cancellationToken);
         return Ok(limit);
     }
 

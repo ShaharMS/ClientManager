@@ -20,16 +20,17 @@ internal sealed class ResourcePoolCatalogClient(HttpClient httpClient) : IResour
             ?? new SearchResult<ResourcePool>([], 0);
     }
 
-    public async Task<ResourcePool?> GetByIdAsync(string poolId, CancellationToken cancellationToken)
+    public async Task<ResourcePool> GetByIdAsync(string poolId, CancellationToken cancellationToken)
     {
         var response = await httpClient.GetAsync(StorageApiRoutes.ResourcePools.ById(poolId), cancellationToken);
         if (response.StatusCode == HttpStatusCode.NotFound)
         {
-            return null;
+            throw new ResourcePoolNotFoundException(poolId);
         }
 
         response.EnsureSuccessStatusCode();
-        return await response.Content.ReadFromJsonAsync<ResourcePool>(cancellationToken);
+        return await response.Content.ReadFromJsonAsync<ResourcePool>(cancellationToken)
+            ?? throw new ResourcePoolNotFoundException(poolId);
     }
 
     public Task CreateAsync(ResourcePool pool, CancellationToken cancellationToken) =>

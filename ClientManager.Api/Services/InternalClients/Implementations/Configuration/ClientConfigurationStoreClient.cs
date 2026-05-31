@@ -23,8 +23,22 @@ internal sealed class ClientConfigurationStoreClient(HttpClient httpClient) : IC
             ?? new SearchResult<ClientConfiguration>([], 0);
     }
 
-    public Task<ClientConfiguration?> GetByIdAsync(string clientId, CancellationToken cancellationToken) =>
-        GetOptionalAsync<ClientConfiguration>(StorageApiRoutes.ClientConfigurations.ById(clientId), cancellationToken);
+    public async Task<ClientConfiguration> GetByIdAsync(string clientId, CancellationToken cancellationToken)
+    {
+        var response = await httpClient.GetAsync(StorageApiRoutes.ClientConfigurations.ById(clientId), cancellationToken);
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            throw new ClientNotFoundException(clientId);
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            throw await StorageApiResponseReader.CreateUnexpectedExceptionAsync(response, cancellationToken);
+        }
+
+        return await response.Content.ReadFromJsonAsync<ClientConfiguration>(cancellationToken)
+            ?? throw new ClientNotFoundException(clientId);
+    }
 
     public Task CreateAsync(ClientConfiguration configuration, CancellationToken cancellationToken) =>
         SendAsync(HttpMethod.Post, StorageApiRoutes.ClientConfigurations.Search.Replace("/search", string.Empty), configuration, cancellationToken);
@@ -113,22 +127,6 @@ internal sealed class ClientConfigurationStoreClient(HttpClient httpClient) : IC
 
     public Task RemoveGlobalRateLimitAsync(string clientId, CancellationToken cancellationToken) =>
         SendForClientAsync(HttpMethod.Delete, StorageApiRoutes.ClientConfigurations.GlobalRateLimit(clientId), body: null, clientId, cancellationToken);
-
-    private async Task<T?> GetOptionalAsync<T>(string path, CancellationToken cancellationToken)
-    {
-        var response = await httpClient.GetAsync(path, cancellationToken);
-        if (response.StatusCode == HttpStatusCode.NotFound)
-        {
-            return default;
-        }
-
-        if (!response.IsSuccessStatusCode)
-        {
-            throw await StorageApiResponseReader.CreateUnexpectedExceptionAsync(response, cancellationToken);
-        }
-
-        return await response.Content.ReadFromJsonAsync<T>(cancellationToken);
-    }
 
     private async Task<T?> GetOptionalForClientAsync<T>(
         string path,

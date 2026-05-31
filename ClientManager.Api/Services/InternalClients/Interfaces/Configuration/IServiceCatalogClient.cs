@@ -8,7 +8,7 @@ public interface IServiceCatalogClient
 {
     Task<SearchResult<Service>> SearchAsync(DocumentQuery query, CancellationToken cancellationToken);
 
-    Task<Service?> GetByIdAsync(string serviceId, CancellationToken cancellationToken);
+    Task<Service> GetByIdAsync(string serviceId, CancellationToken cancellationToken);
 
     Task CreateAsync(Service service, CancellationToken cancellationToken);
 
