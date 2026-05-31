@@ -1,6 +1,6 @@
 # Plan: Address ClientManager.Api Review Notes
 
-## Status: 🔄 In progress (Step 4 of 5 complete)
+## Status: ✅ All steps completed
 
 ## Overview
 
@@ -12,11 +12,11 @@ The target state is a clearer public host that keeps `ClientManager.Api` thin an
 
 | Order | Plan File | Summary |
 |-------|-----------|---------|
-| 1 | [api-cr-remediation-1-foundation-contracts.md](.github/plans/api-cr-remediation-1-foundation-contracts.md) | Extract shared API/storage contracts, replace ad-hoc query parsing, and clean up typed option binding so startup/configuration are explicit. |
-| 2 | [api-cr-remediation-2-http-exception-pipeline.md](.github/plans/api-cr-remediation-2-http-exception-pipeline.md) | Replace nullable-plus-controller-throw patterns with a typed HTTP exception flow and simplify the error middleware around that contract. |
-| 3 | [api-cr-remediation-3-internal-transport-structure.md](.github/plans/api-cr-remediation-3-internal-transport-structure.md) | Reorganize the internal transport layer, flatten folder nesting, rename ambiguous helpers, and document the storage-facing API infrastructure. |
-| 4 | [api-cr-remediation-4-services-and-controllers.md](.github/plans/api-cr-remediation-4-services-and-controllers.md) | Move remaining controller/business responsibilities into API services and standardize controller response style, validation, and naming. |
-| 5 | [api-cr-remediation-5-openapi-and-documentation.md](.github/plans/api-cr-remediation-5-openapi-and-documentation.md) | Finish the Swagger/XML documentation pass so operations, failure responses, and shared schemas render correctly in the public API docs. |
+| 1 | [api-cr-remediation-1-foundation-contracts.md](api-cr-remediation-1-foundation-contracts.md) | Extract shared API/storage contracts, replace ad-hoc query parsing, and clean up typed option binding so startup/configuration are explicit. |
+| 2 | [api-cr-remediation-2-http-exception-pipeline.md](api-cr-remediation-2-http-exception-pipeline.md) | Replace nullable-plus-controller-throw patterns with a typed HTTP exception flow and simplify the error middleware around that contract. |
+| 3 | [api-cr-remediation-3-internal-transport-structure.md](api-cr-remediation-3-internal-transport-structure.md) | Reorganize the internal transport layer, flatten folder nesting, rename ambiguous helpers, and document the storage-facing API infrastructure. |
+| 4 | [api-cr-remediation-4-services-and-controllers.md](api-cr-remediation-4-services-and-controllers.md) | Move remaining controller/business responsibilities into API services and standardize controller response style, validation, and naming. |
+| 5 | [api-cr-remediation-5-openapi-and-documentation.md](api-cr-remediation-5-openapi-and-documentation.md) | Finish the Swagger/XML documentation pass so operations, failure responses, and shared schemas render correctly in the public API docs. |
 
 ## Key Decisions
 

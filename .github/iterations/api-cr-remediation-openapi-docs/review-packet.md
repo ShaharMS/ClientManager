@@ -5,7 +5,8 @@
 - Source type: @Inspect committed-delta review
 - Scope: api-cr-remediation-5-openapi-and-documentation.md (Step 5, final)
 - Baseline: 2122c36 (approved Step 4 tip)
-- Reviewed range: 2122c36..ede02c6 (git diff 2122c36..HEAD) on feature/api-cr-remediation-openapi-docs
+- Round 1 reviewed range: 2122c36..ede02c6 (git diff 2122c36..HEAD) on feature/api-cr-remediation-openapi-docs
+- Round 2 reviewed range: ede02c6..c2888d3 (git diff ede02c6..HEAD) — RVW-001 CR follow-up
 - Reviewer: @Inspect
 - Note: commit-packet.md and timeline.md left uncommitted post-commit are bookkeeping; excluded from code review.
 
@@ -19,56 +20,50 @@
 - [x] Nesting and complexity checked
 - [x] Risks and regressions checked
 
-## Gate Results
+## Gate Results (Round 2 — final)
 
-- Scope evidence gate: PASS - read plan, overview, handoff, decision-log; reviewed focused diffs for all 15 code files; ran both builds.
-- Plan intent gate: FAIL - Task 2 documentation sweep incomplete; ~40 prohibited boilerplate param docs remain (see RVW-001).
-- Verification gate: PASS - both builds verified clean (0/0); shared+api XML emitted to API output; live /docs render deferred to orchestrator (acceptable residual, static wiring confirmed).
-- Type safety gate: PASS - C# typed source; both builds 0 errors/0 warnings; no unsafe escapes; AppLogger CS8604 fixed via `FullName ?? Name`.
-- Convention gate: FAIL - `.github/copilot-instructions.md` prohibits generic param docs like "Optional cancellation token."; "Cancellation token." is the same boilerplate and remains on ~40 actions (see RVW-001).
-- Complexity gate: PASS - annotation/doc-only changes; no nesting/size growth.
-- Regression gate: PASS - universal 503 verified accurate; no functional refactors slipped in.
+- Scope evidence gate: PASS - read plan, handoff, review-packet; ran `git diff ede02c6..HEAD` focused on all 11 controllers; ran grep and build.
+- Plan intent gate: PASS - Task 2 documentation sweep now complete; all prohibited boilerplate `cancellationToken` param docs replaced with method-context descriptions.
+- Verification gate: PASS - grep `Cancellation token.</param>` across ClientManager.Api/Controllers/** returns ZERO matches; `dotnet build ClientManager.Api` clean (0/0). Live /docs render remains a low-risk deferred residual (static wiring confirmed in round 1).
+- Type safety gate: PASS - C# typed source; build 0 errors/0 warnings; docs-only delta introduces no unsafe escapes.
+- Convention gate: PASS - `.github/copilot-instructions.md` generic-param-doc prohibition now satisfied; each description explains cancellation in the specific operation context, none are copy-pasted.
+- Complexity gate: PASS - doc-only changes; no nesting/size growth.
+- Regression gate: PASS - delta touches only `<param name="cancellationToken">` text; no signatures, annotations, response codes, or behavior changed. Prior-approved items (shared XML emission + Swagger loading, AppLogger CS8604 fix, ProblemResponse schema, universal 503, GetOverview param) untouched and not regressed.
 
-## Findings
+## Open Findings
 
-| Finding ID | Severity | File | Concern | Required action | Evidence |
-|------------|----------|------|---------|-----------------|----------|
-| RVW-001 | MAJOR | ClientManager.Api/Controllers/*.cs (StatisticsController, AccessCheckController, MetricsController, ClientConfiguration* controllers, etc.) | ~40 `<param name="cancellationToken">Cancellation token.</param>` boilerplate docs remain. `.github/copilot-instructions.md` explicitly prohibits generic param docs ("Optional cancellation token.") and requires context-specific descriptions; "Cancellation token." is the same prohibited boilerplate. Step 5 Task 2 is the dedicated documentation sweep meant to bring files to that standard. The implementer applied the correct standard to the new GetOverview param ("Token used to cancel the overview aggregation before it completes.") but left the rest inconsistent. | Replace the remaining `Cancellation token.` param docs with method-context descriptions, consistent with the GetOverview example. | grep_search: 20+ matches across controllers; diff shows GetOverview reworded but adjacent existing params left as boilerplate. |
+None. All findings resolved.
 
 ## Dispositions
 
 | Finding ID | Status | Owner | Evidence | Reply |
 |------------|--------|-------|----------|-------|
-| RVW-001 | Open | @Implement | grep_search hits; copilot-instructions.md doc rule; plan Task 2 | Rebuttal rejected. See "Rebuttal Response" below. |
-
-## Rebuttal Response (cancellation-token boilerplate)
-
-The implementer argued (a) these docs were approved in Steps 1-4 and (b) rewording is "late churn the orchestrator warned against." Both are rejected:
-
-- "Cancellation token." IS the prohibited boilerplate. The repo rule's own example is "Optional cancellation token."; "Cancellation token." is the identical generic pattern and explains nothing about the parameter in the method's context. It is a clear convention violation, not a borderline style nit.
-- (a) Prior-step approval does not waive a convention, and decision-log.md records no waiver. More importantly, Step 5 Task 2 explicitly exists to bring "the remaining API files up to the documented standard required by the repo instructions." Deferred doc debt is exactly what this step must close.
-- (b) The orchestrator's commit guidance warns against "late functional refactors," not documentation edits. Rewording XML param docs is documentation, not a functional change, and is squarely the purpose of this step. The "late churn" rationale misapplies the guidance.
-- The implementer demonstrably knows the standard (GetOverview was reworded correctly), which makes leaving ~40 siblings as boilerplate an inconsistent, incomplete sweep rather than a defensible scope boundary.
-
-This is the correct step to fix it; it belongs in scope and blocks approval.
+| RVW-001 | FIXED | @Implement | grep `Cancellation token.</param>` across ClientManager.Api/Controllers/** returns ZERO matches; `git diff ede02c6..HEAD` shows 11 controllers with only `<param name="cancellationToken">` text changed; `dotnet build ClientManager.Api` clean (0/0) | Verified resolved. Each reworded description is method-specific and meaningful (e.g. "Token used to abort the create-service request before it is persisted.", "Token used to cancel the Prometheus metrics aggregation before it completes."), not a single copy-pasted replacement. No other generic boilerplate param docs were reintroduced. Implementer rebuttal withdrawn; remediation accepted. |
 
 ## Accepted / Verified Claims
 
-- Shared XML wiring: ClientManager.Shared emits XML (GenerateDocumentationFile + NoWarn 1591); Program.cs loads shared XML via the EXISTING AddSwaggerGen `options.IncludeXmlComments` path (no parallel registration); `TagDescriptionsDocumentFilter` registration preserved. PASS.
-- AppLogger CS8604 fix (`typeof(T).FullName ?? typeof(T).Name`): clean, behavior-preserving. PASS.
-- ProblemResponse schema documented; attached to failure responses (401/403/404/409/429/503). PASS.
-- StatisticsController.GetOverview now has a context-specific `<param name="cancellationToken">`. PASS.
-- Universal 503 claim VERIFIED: all six storage HttpClients register StorageApiResilienceHandler (ServiceCollectionExtensions.cs), which raises StorageApiUnavailableException (503). MetricsService -> IStatisticsReadClient confirms even metrics routes touch storage. The universal 503 + ProblemResponse annotation is accurate, not over-broad.
-- Both builds clean (0 errors / 0 warnings). No unsafe type escapes. No late functional refactors.
+- Shared XML wiring: ClientManager.Shared emits XML (GenerateDocumentationFile + NoWarn 1591); Program.cs loads shared XML via the EXISTING AddSwaggerGen `options.IncludeXmlComments` path (no parallel registration); `TagDescriptionsDocumentFilter` registration preserved. PASS (round 1; untouched in round 2).
+- AppLogger CS8604 fix (`typeof(T).FullName ?? typeof(T).Name`): clean, behavior-preserving. PASS (round 1; untouched in round 2).
+- ProblemResponse schema documented; attached to failure responses (401/403/404/409/429/503). PASS (round 1; untouched in round 2).
+- StatisticsController.GetOverview context-specific `<param name="cancellationToken">`: still present, not reverted. PASS.
+- Universal 503 claim VERIFIED: all six storage HttpClients register StorageApiResilienceHandler raising StorageApiUnavailableException (503); MetricsService -> IStatisticsReadClient confirms metrics routes touch storage. Accurate. PASS (round 1; untouched in round 2).
+- Round 2 build clean (0 errors / 0 warnings). No unsafe type escapes. No late functional refactors; delta is documentation-only.
 
 ## Approval Gate
 
-- Current verdict: CHANGES REQUESTED
-- Approval blockers: RVW-001 (convention gate + plan intent gate)
-- Next reviewer: @Inspect (re-review after RVW-001 remediation)
+- Current verdict: APPROVED
+- Approval blockers: none
+- Residual risks: live `/docs` render and public-page spot-checks (`/`, `/monitor`, `/clients`, `/services`) deferred to orchestrator runtime verification; static wiring confirmed, risk low.
 
 ## Review History
 
 | Round | Verdict | Reviewer | Notes |
 |-------|---------|----------|-------|
 | 1 | CHANGES REQUESTED | @Inspect | Builds clean, Swagger wiring/503/ProblemResponse correct; blocked on RVW-001 (~40 prohibited "Cancellation token." boilerplate param docs; rebuttal rejected). |
+| 2 | APPROVED | @Inspect | RVW-001 FIXED: reviewed ede02c6..c2888d3; 11 controllers, docs-only `cancellationToken` param-doc rewording; grep returns ZERO `Cancellation token.</param>` matches; descriptions are method-specific, not copy-pasted; `dotnet build ClientManager.Api` clean (0/0); prior-passed gates not regressed. All gates pass. |
+
+### Closed Findings (history)
+
+| Finding ID | Severity | File | Concern | Resolution |
+|------------|----------|------|---------|------------|
+| RVW-001 | MAJOR | ClientManager.Api/Controllers/*.cs | ~40 `<param name="cancellationToken">Cancellation token.</param>` boilerplate docs violated `.github/copilot-instructions.md` generic-param-doc prohibition and left Step 5 Task 2 sweep incomplete. | FIXED in c2888d3: reworded across 11 controllers to method-context descriptions; grep confirms zero remaining boilerplate; build clean; docs-only. |

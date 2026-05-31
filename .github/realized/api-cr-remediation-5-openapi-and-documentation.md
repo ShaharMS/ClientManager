@@ -1,6 +1,6 @@
 # Plan: Address ClientManager.Api Review Notes — Step 5: OpenAPI and Documentation
 
-> **Status**: 🔲 Not started
+> **Status**: ✅ Completed
 > **Prerequisite**: [api-cr-remediation-4-services-and-controllers.md](api-cr-remediation-4-services-and-controllers.md)
 > **Next**: None — this is the final step.
 > **Parent**: [api-cr-remediation-overview.md](api-cr-remediation-overview.md)

@@ -3,13 +3,13 @@
 ## Iteration
 
 - Slug: api-cr-remediation-openapi-docs
-- Status: Bootstrapped — awaiting first implementation pass
+- Status: APPROVED — Step 5 finalized; plan fully complete
 - Owning orchestrator: @Iterate
 
 ## Selected Scope
 
-- Plan overview: [../../plans/api-cr-remediation-overview.md](../../plans/api-cr-remediation-overview.md)
-- Active step: [../../plans/api-cr-remediation-5-openapi-and-documentation.md](../../plans/api-cr-remediation-5-openapi-and-documentation.md)
+- Plan overview: [../../realized/api-cr-remediation-overview.md](../../realized/api-cr-remediation-overview.md)
+- Active step: [../../realized/api-cr-remediation-5-openapi-and-documentation.md](../../realized/api-cr-remediation-5-openapi-and-documentation.md)
 - Iteration goal: Enable shared-assembly XML docs into Swagger, complete the API XML documentation sweep, expand ProducesResponseType/problem-schema coverage, and verify schema descriptions render in docs.
 
 ## Repo Baseline
@@ -20,10 +20,11 @@
 
 ## Current Loop State
 
-- Next agent: @Inscribe (commit CR follow-up), then @Inspect re-review
-- Review round: 1 (CHANGES REQUESTED) -> CR follow-up applied
+- Next agent: none — step approved and finalized
+- Review round: 2 (APPROVED)
 - Latest verification: dotnet build Api succeeded (0/0); grep `Cancellation token.</param>` returns ZERO matches
-- Latest decision: RVW-001 rebuttal rejected; boilerplate param docs reworded (FIXED)
+- Latest decision: RVW-001 rebuttal rejected and remediated; reworded boilerplate param docs (FIXED)
+- Latest commit: c2888d3 (CR follow-up) + closeout commit
 
 ## Packet Links
 
@@ -38,8 +39,8 @@
 ## Open Items
 
 - Blockers: none
-- Outstanding findings: RVW-001 fixed pending re-review
-- Next action: @Inscribe commits the CR follow-up, then @Inspect re-reviews.
+- Outstanding findings: none (RVW-001 FIXED and verified APPROVED round 2)
+- Next action: none — Step 5 finalized; api-cr-remediation plan fully complete and moved to realized/.
 
 ## Resume Notes
 
