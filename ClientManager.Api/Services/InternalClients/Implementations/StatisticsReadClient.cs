@@ -4,6 +4,7 @@ using System.Text.Json;
 using ClientManager.Api.Models.Exceptions;
 using ClientManager.Api.Services.InternalClients;
 using ClientManager.Api.Services.InternalClients.Interfaces;
+using ClientManager.Shared.Contracts.Storage;
 using ClientManager.Shared.Models.Enums;
 using ClientManager.Shared.Models.Responses;
 using ClientManager.Shared.Models.Search;

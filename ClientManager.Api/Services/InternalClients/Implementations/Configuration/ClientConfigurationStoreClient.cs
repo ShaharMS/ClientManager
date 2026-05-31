@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using ClientManager.Api.Models.Exceptions;
 using ClientManager.Api.Services.InternalClients;
+using ClientManager.Shared.Contracts.Storage;
 using ClientManager.Shared.Models.Problems;
 using ClientManager.Api.Services.InternalClients.Interfaces.Configuration;
 using ClientManager.Shared.Models.Entities;

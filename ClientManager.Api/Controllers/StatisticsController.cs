@@ -1,6 +1,7 @@
 using Asp.Versioning;
 using ClientManager.Api.Services.InternalClients.Interfaces;
 using ClientManager.Api.Utils.Extensions;
+using ClientManager.Shared.Contracts.Statistics;
 using ClientManager.Shared.Models.Search;
 using ClientManager.Shared.Models.Requests;
 using ClientManager.Shared.Models.Responses;
@@ -168,17 +169,21 @@ public class StatisticsController : ControllerBase
     [ProducesResponseType(typeof(List<TargetUsageTimeSeriesResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetUsageTimeSeries(
         [FromQuery] TargetType filterType,
-        [FromQuery] string targetIds,
-        [FromQuery] string? clientIds,
+        [FromQuery] IdentifierList targetIds,
+        [FromQuery] IdentifierList? clientIds,
         [FromQuery] DateTime? from,
         [FromQuery] DateTime? to,
         [FromQuery] BucketGranularity? granularity,
         CancellationToken cancellationToken)
     {
-        var targetIdList = ParseIds(targetIds);
-        var clientIdList = ParseClientIds(clientIds);
         var result = await _statisticsReadClient.GetUsageTimeSeriesAsync(
-            filterType, targetIdList, clientIdList, from, to, granularity, cancellationToken);
+            filterType,
+            targetIds.Values,
+            clientIds is { HasValues: true } ? clientIds.Values : null,
+            from,
+            to,
+            granularity,
+            cancellationToken);
         return Ok(result);
     }
 
@@ -198,17 +203,21 @@ public class StatisticsController : ControllerBase
     [ProducesResponseType(typeof(List<TargetClientUsageBreakdownResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetClientUsageBreakdown(
         [FromQuery] TargetType filterType,
-        [FromQuery] string targetIds,
-        [FromQuery] string? clientIds,
+        [FromQuery] IdentifierList targetIds,
+        [FromQuery] IdentifierList? clientIds,
         [FromQuery] DateTime? from,
         [FromQuery] DateTime? to,
         [FromQuery] BucketGranularity? granularity,
         CancellationToken cancellationToken)
     {
-        var targetIdList = ParseIds(targetIds);
-        var clientIdList = ParseClientIds(clientIds);
         var result = await _statisticsReadClient.GetClientUsageBreakdownAsync(
-            filterType, targetIdList, clientIdList, from, to, granularity, cancellationToken);
+            filterType,
+            targetIds.Values,
+            clientIds is { HasValues: true } ? clientIds.Values : null,
+            from,
+            to,
+            granularity,
+            cancellationToken);
         return Ok(result);
     }
 
@@ -243,16 +252,15 @@ public class StatisticsController : ControllerBase
     [ProducesResponseType(typeof(List<HistoricalUsageResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetHistoricalUsage(
         [FromQuery] TargetType filterType,
-        [FromQuery] string targetIds,
+        [FromQuery] IdentifierList targetIds,
         [FromQuery] string? clientId,
         [FromQuery] DateTime from,
         [FromQuery] DateTime to,
         [FromQuery] BucketGranularity granularity,
         CancellationToken cancellationToken)
     {
-        var targetIdList = ParseIds(targetIds);
         var result = await _statisticsReadClient.GetHistoricalUsageAsync(
-            filterType, targetIdList, clientId, from, to, granularity, cancellationToken);
+            filterType, targetIds.Values, clientId, from, to, granularity, cancellationToken);
 
         return Ok(result);
     }
@@ -273,8 +281,8 @@ public class StatisticsController : ControllerBase
     [ProducesResponseType(typeof(List<ClientHistoricalUsageResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetHistoricalUsageByClient(
         [FromQuery] TargetType filterType,
-        [FromQuery] string targetIds,
-        [FromQuery] string clientIds,
+        [FromQuery] IdentifierList targetIds,
+        [FromQuery] IdentifierList clientIds,
         [FromQuery] DateTime from,
         [FromQuery] DateTime to,
         [FromQuery] BucketGranularity granularity,
@@ -282,27 +290,13 @@ public class StatisticsController : ControllerBase
     {
         var result = await _statisticsReadClient.GetHistoricalUsageByClientAsync(
             filterType,
-            ParseIds(targetIds),
-            ParseIds(clientIds),
+            targetIds.Values,
+            clientIds.Values,
             from,
             to,
             granularity,
             cancellationToken);
 
         return Ok(result);
-    }
-
-    // CR: helpers should not be placed in a controller file. in that specific case, i think that can be avoided entirely and be removed, using some type convertor like we do in enums.
-    private static IEnumerable<string> ParseIds(string ids)
-    {
-        return ids.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-    }
-
-    private static IEnumerable<string>? ParseClientIds(string? clientIds)
-    {
-        if (string.IsNullOrWhiteSpace(clientIds))
-            return null;
-
-        return clientIds.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
     }
 }

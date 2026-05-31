@@ -25,18 +25,10 @@ public static class StorageApiClientServiceCollectionExtensions
         IConfiguration configuration,
         IHostEnvironment environment)
     {
-        // CR: Don't do validation like this, in place. Refer to project-wide cr to understand the desired configuration approach.
+        services.AddSingleton<IValidateOptions<StorageApiOptions>, StorageApiOptionsValidator>();
         services.AddOptions<StorageApiOptions>()
             .Bind(configuration.GetSection(StorageApiOptions.SectionName))
             .ValidateDataAnnotations()
-            .Validate(
-                options => Uri.TryCreate(options.BaseUrl, UriKind.Absolute, out _),
-                $"{StorageApiOptions.SectionName}:BaseUrl must be an absolute URI.")
-            .Validate(options => options.Timeout > TimeSpan.Zero, $"{StorageApiOptions.SectionName}:Timeout must be positive.")
-            .Validate(options => options.ReadRetryCount >= 0, $"{StorageApiOptions.SectionName}:ReadRetryCount cannot be negative.")
-            .Validate(options => options.InitialRetryDelay >= TimeSpan.Zero, $"{StorageApiOptions.SectionName}:InitialRetryDelay cannot be negative.")
-            .Validate(options => options.FailureThreshold > 0, $"{StorageApiOptions.SectionName}:FailureThreshold must be greater than zero.")
-            .Validate(options => options.CircuitBreakDuration > TimeSpan.Zero, $"{StorageApiOptions.SectionName}:CircuitBreakDuration must be positive.")
             .ValidateOnStart();
 
         services.AddSingleton<StorageApiResilienceState>();

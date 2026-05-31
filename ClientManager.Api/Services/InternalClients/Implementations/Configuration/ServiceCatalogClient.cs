@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using ClientManager.Api.Models.Exceptions;
 using ClientManager.Api.Services.InternalClients;
 using ClientManager.Api.Services.InternalClients.Interfaces.Configuration;
+using ClientManager.Shared.Contracts.Storage;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Search;
 

@@ -4,11 +4,13 @@ using System.Text.Json.Serialization;
 using Asp.Versioning;
 
 using ClientManager.Api.Middlewares;
+using ClientManager.Api.Models.Configuration;
 using ClientManager.Api.Utils.Extensions;
 using ClientManager.Api.Utils.Instrumentation;
 using ClientManager.Api.Utils.Swagger;
 using ClientManager.Shared.Logging;
 
+using Microsoft.Extensions.Options;
 using Microsoft.OpenApi;
 
 using NLog;
@@ -35,8 +37,15 @@ try
             options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
         });
 
-    var versionConfig = builder.Configuration.GetSection("ApiVersioning");
-    var defaultVersion = ApiVersionParser.Default.Parse(versionConfig["DefaultVersion"] ?? "1.0");
+    builder.Services.AddSingleton<IValidateOptions<ApiVersioningSettings>, ApiVersioningSettingsValidator>();
+    builder.Services.AddOptions<ApiVersioningSettings>()
+        .Bind(builder.Configuration.GetSection(ApiVersioningSettings.SectionName))
+        .ValidateOnStart();
+
+    var apiVersioningSettings = builder.Configuration
+        .GetSection(ApiVersioningSettings.SectionName)
+        .Get<ApiVersioningSettings>() ?? new ApiVersioningSettings();
+    var defaultVersion = ApiVersionParser.Default.Parse(apiVersioningSettings.DefaultVersion);
 
     builder.Services.AddApiVersioning(options =>
     {
@@ -72,7 +81,15 @@ try
 
     // OpenTelemetry metrics, traces, and Prometheus
     builder.Services.AddSingleton<ClientManagerMetrics>();
-    var otlpEndpoint = builder.Configuration["Observability:OtlpEndpoint"];
+    builder.Services.AddSingleton<IValidateOptions<ObservabilityOptions>, ObservabilityOptionsValidator>();
+    builder.Services.AddOptions<ObservabilityOptions>()
+        .Bind(builder.Configuration.GetSection(ObservabilityOptions.SectionName))
+        .ValidateOnStart();
+
+    var observabilityOptions = builder.Configuration
+        .GetSection(ObservabilityOptions.SectionName)
+        .Get<ObservabilityOptions>() ?? new ObservabilityOptions();
+    var otlpEndpoint = observabilityOptions.OtlpEndpoint;
     builder.Services.AddOpenTelemetry()
         .ConfigureResource(resource => resource.AddService("ClientManager.Api"))
         .WithMetrics(metrics =>

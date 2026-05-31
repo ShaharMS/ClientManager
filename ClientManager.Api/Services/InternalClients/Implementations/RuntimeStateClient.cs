@@ -5,6 +5,7 @@ using ClientManager.Api.Models.Exceptions;
 using ClientManager.Api.Services.InternalClients;
 using ClientManager.Api.Services.InternalClients.Interfaces;
 using ClientManager.Api.Utils.Instrumentation;
+using ClientManager.Shared.Contracts.Storage;
 using ClientManager.Shared.Logging;
 using ClientManager.Shared.Models.Problems;
 using ClientManager.Shared.Models.Requests;
