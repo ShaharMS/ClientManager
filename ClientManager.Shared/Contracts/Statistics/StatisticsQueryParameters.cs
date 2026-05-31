@@ -41,7 +41,7 @@ public static class StatisticsQueryParameters
     public const string To = "to";
 
     /// <summary>
-    /// The time-bucket granularity for aggregated results.
+    /// The time-bucket granularity for aggregated results, or simply put, the amount of time each bucket of the result represents (Minutes, Hours, Etc.). 
     /// </summary>
     public const string Granularity = "granularity";
 }

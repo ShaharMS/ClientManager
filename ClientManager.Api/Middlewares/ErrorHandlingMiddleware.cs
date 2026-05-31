@@ -38,7 +38,7 @@ public class ErrorHandlingMiddleware
         }
         catch (Exception exception)
         {
-            _logger.Error("Unhandled exception", exception, new { Path = context.Request.Path.Value, context.Request.Method });
+            _logger.Error("Internal error occured while processing request", exception, new { Path = context.Request.Path.Value, context.Request.Method });
             await WriteProblemDetailsAsync(context, StatusCodes.Status500InternalServerError, "Internal Server Error", "An unexpected error occurred.");
         }
     }
@@ -51,8 +51,8 @@ public class ErrorHandlingMiddleware
     /// </summary>
     private async Task HandleProblemAsync(HttpContext context, HttpProblemException exception)
     {
-        _logger.Warn(
-            "Request failed with a handled problem",
+        _logger.Info(
+            "User fault encountered while processing request",
             new
             {
                 Path = context.Request.Path.Value,
