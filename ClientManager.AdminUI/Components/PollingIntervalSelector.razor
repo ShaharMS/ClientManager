@@ -2,7 +2,7 @@
 
 <div class="cm-polling-interval-dropdown">
     <button class="cm-polling-interval-dropdown__trigger" @onclick="ToggleDropdown" @onclick:stopPropagation="true">
-        <span class="cm-polling-interval-dropdown__icon material-icons">update</span>
+        <RadzenIcon Icon="update" class="cm-polling-interval-dropdown__icon" />
         <span class="cm-polling-interval-dropdown__label">@_selectedLabel</span>
     </button>
     @if (_isOpen)

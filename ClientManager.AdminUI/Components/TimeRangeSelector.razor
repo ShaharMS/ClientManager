@@ -2,7 +2,7 @@
 
 <div class="cm-time-range-dropdown">
     <button class="cm-time-range-dropdown__trigger" @onclick="ToggleDropdown" @onclick:stopPropagation="true">
-        <span class="cm-time-range-dropdown__icon material-icons">filter_list</span>
+        <RadzenIcon Icon="filter_list" class="cm-time-range-dropdown__icon" />
         <span class="cm-time-range-dropdown__label">@_selectedLabel</span>
     </button>
     @if (_isOpen)
