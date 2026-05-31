@@ -140,7 +140,7 @@ internal static class DocumentStoreFactory
             multiplexerCache[options.ConnectionString] = multiplexer;
         }
 
-        return new RedisDocumentStore(multiplexer);
+        return new RedisDocumentStore(multiplexer, options.DatabaseIndex);
     }
 
     private static LuceneDocumentStore CreateLuceneStore(

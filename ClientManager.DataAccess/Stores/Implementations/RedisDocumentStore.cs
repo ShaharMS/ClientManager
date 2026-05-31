@@ -21,6 +21,7 @@ namespace ClientManager.DataAccess.Stores.Implementations;
 public class RedisDocumentStore : IDocumentStore
 {
     private readonly IConnectionMultiplexer _redis;
+    private readonly int _databaseIndex;
     private readonly bool _hasRediSearch;
     private readonly ConcurrentDictionary<string, bool> _createdIndexes = new();
 
@@ -33,13 +34,15 @@ public class RedisDocumentStore : IDocumentStore
     /// Initializes a new instance of <see cref="RedisDocumentStore"/>.
     /// </summary>
     /// <param name="redis">The Redis connection multiplexer.</param>
-    public RedisDocumentStore(IConnectionMultiplexer redis)
+    /// <param name="databaseIndex">The Redis logical database index to use for all operations.</param>
+    public RedisDocumentStore(IConnectionMultiplexer redis, int databaseIndex)
     {
         _redis = redis;
+        _databaseIndex = databaseIndex;
         _hasRediSearch = DetectRediSearch();
     }
 
-    private IDatabase Database => _redis.GetDatabase();
+    private IDatabase Database => _redis.GetDatabase(_databaseIndex);
 
     private static string HashKey(string collection) => $"collection:{collection}";
     private static string DocKey(string collection, string id) => $"doc:{collection}:{id}";
