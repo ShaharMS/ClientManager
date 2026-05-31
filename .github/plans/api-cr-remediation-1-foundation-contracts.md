@@ -1,6 +1,6 @@
 # Plan: Address ClientManager.Api Review Notes — Step 1: Foundation Contracts and Options
 
-> **Status**: 🔲 Not started
+> **Status**: ✅ Completed
 > **Prerequisite**: None — this is the first step.
 > **Next**: [api-cr-remediation-2-http-exception-pipeline.md](api-cr-remediation-2-http-exception-pipeline.md)
 > **Parent**: [api-cr-remediation-overview.md](api-cr-remediation-overview.md)

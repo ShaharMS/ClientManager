@@ -1,7 +1,7 @@
 # Progress: api-cr-remediation-foundation
 
 - Step: api-cr-remediation-1-foundation-contracts.md
-- Verdict: not yet reviewed (implement pass done, build clean)
-- Open findings: none
-- Latest commit: pending @Inscribe (baseline 0a92dfa)
-- Next action: @Inscribe commit/push, then @Inspect review of Step 1.
+- Verdict: APPROVED (round 1)
+- Open findings: RVW-001 non-blocking (deferred runtime statistics binding check)
+- Latest commit: c0d07c0 on feature/api-cr-remediation-foundation
+- Next action: commit closeout bookkeeping, then advance to Step 2 (http-exception-pipeline).

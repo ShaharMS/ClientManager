@@ -46,4 +46,5 @@ feat(api): extract shared contracts and typed options for CR step 1
 
 | Pass | Commit | Branch | Notes |
 |------|--------|--------|-------|
-| 1 | (this commit) | feature/api-cr-remediation-foundation | Initial implementation of Step 1 foundation contracts + typed options |
+| 1 | c0d07c0 | feature/api-cr-remediation-foundation | Initial implementation of Step 1 foundation contracts + typed options |
+| 2 (closeout) | (this commit) | feature/api-cr-remediation-foundation | Step 1 finalization/closeout bookkeeping: plan step -> Completed, overview -> In progress (1/5), iteration-state + agent-progress notes |

@@ -3,7 +3,7 @@
 ## Iteration
 
 - Slug: api-cr-remediation-foundation
-- Status: Bootstrapped — awaiting first implementation pass
+- Status: ✅ Step 1 APPROVED — finalized
 - Owning orchestrator: @Iterate
 
 ## Selected Scope
@@ -20,10 +20,10 @@
 
 ## Current Loop State
 
-- Next agent: @Inscribe (commit + push), then @Inspect
-- Review round: 0
-- Latest verification: dotnet build Shared + Api both succeeded (0 errors); 1 pre-existing CS8604 warning untouched
-- Latest decision: none yet
+- Next agent: advancing to Step 2 (api-cr-remediation-2-http-exception-pipeline.md)
+- Review round: 1 (APPROVED)
+- Latest verification: dotnet build Shared + Api both succeeded (0 errors)
+- Latest decision: DEC-001 (route markers), RVW-001 (deferred runtime binding check, non-blocking)
 
 ## Packet Links
 
@@ -38,8 +38,8 @@
 ## Open Items
 
 - Blockers: none
-- Outstanding findings: none
-- Next action: @Inscribe commits the implement pass on feature/api-cr-remediation-foundation, then @Inspect reviews.
+- Outstanding findings: RVW-001 (non-blocking, deferred runtime statistics binding check before overall CR closes)
+- Next action: Closeout commit, then advance to Step 2 of the overview.
 
 ## Resume Notes
 
