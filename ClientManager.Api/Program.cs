@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 
 using Asp.Versioning;
 
+using ClientManager.Api.Filters;
 using ClientManager.Api.Middlewares;
 using ClientManager.Api.Models.Configuration;
 using ClientManager.Api.Utils.Extensions;
@@ -32,11 +33,19 @@ try
     builder.Logging.ClearProviders();
     builder.Host.UseNLog();
 
-    builder.Services.AddControllers()
+    builder.Services.AddControllers(options =>
+        {
+            // Converts unexpected hot-path server errors into fail-open success responses
+            // when HotPathResilience:FailOpenOnServerError is enabled (off by default).
+            options.Filters.Add<HotPathFailOpenFilter>();
+        })
         .AddJsonOptions(options =>
         {
             options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
         });
+
+    builder.Services.AddOptions<HotPathResilienceOptions>()
+        .Bind(builder.Configuration.GetSection(HotPathResilienceOptions.SectionName));
 
     builder.Services.AddSingleton<IValidateOptions<ApiVersioningSettings>, ApiVersioningSettingsValidator>();
     builder.Services.AddOptions<ApiVersioningSettings>()

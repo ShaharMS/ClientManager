@@ -1,4 +1,5 @@
 using Asp.Versioning;
+using ClientManager.Api.Filters;
 using ClientManager.Shared.Models.Requests;
 using ClientManager.Shared.Models.Responses;
 using ClientManager.Shared.Models.Problems;
@@ -40,6 +41,7 @@ public class ResourceAllocationController : ControllerBase
     /// <response code="429">Slot limit or rate limit exceeded.</response>
     /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpPost("acquire")]
+    [FailOpenOnError(HotPathFailOpenKind.GrantAcquire)]
     [ProducesResponseType(typeof(ResourceAcquireResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status404NotFound)]
@@ -61,6 +63,7 @@ public class ResourceAllocationController : ControllerBase
     /// <response code="404">No allocation was found with the given identifier.</response>
     /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpPost("release")]
+    [FailOpenOnError(HotPathFailOpenKind.ConfirmRelease)]
     [ProducesResponseType(typeof(ResourceReleaseResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
