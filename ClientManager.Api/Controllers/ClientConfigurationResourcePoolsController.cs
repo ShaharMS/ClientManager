@@ -34,7 +34,7 @@ public class ClientConfigurationResourcePoolsController : ControllerBase
     /// </summary>
     /// <param name="id">The unique identifier of the client.</param>
     /// <param name="paging">Pagination parameters.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to cancel the resource pool settings listing before it completes.</param>
     /// <returns>A paginated list of resource pool setting entries.</returns>
     /// <response code="200">Returns the paginated resource pool settings.</response>
     /// <response code="404">No client was found with the given identifier.</response>
@@ -54,7 +54,7 @@ public class ClientConfigurationResourcePoolsController : ControllerBase
     /// </summary>
     /// <param name="id">The unique identifier of the client.</param>
     /// <param name="poolId">The unique identifier of the resource pool.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to cancel the resource pool settings lookup before it completes.</param>
     /// <returns>The resource pool settings.</returns>
     /// <response code="200">Returns the resource pool settings.</response>
     /// <response code="404">Client or pool settings not found.</response>
@@ -75,7 +75,7 @@ public class ClientConfigurationResourcePoolsController : ControllerBase
     /// <param name="id">The unique identifier of the client.</param>
     /// <param name="poolId">The unique identifier of the resource pool.</param>
     /// <param name="settings">The resource pool settings to apply.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to abort the resource pool settings update before it is persisted.</param>
     /// <response code="200">The resource pool settings were updated.</response>
     /// <response code="404">No client was found with the given identifier.</response>
     /// <response code="503">The storage service is temporarily unavailable.</response>
@@ -94,7 +94,7 @@ public class ClientConfigurationResourcePoolsController : ControllerBase
     /// </summary>
     /// <param name="id">The unique identifier of the client.</param>
     /// <param name="poolId">The unique identifier of the resource pool.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to abort the resource pool settings removal before it completes.</param>
     /// <response code="204">The resource pool settings were removed.</response>
     /// <response code="404">No client was found with the given identifier.</response>
     /// <response code="503">The storage service is temporarily unavailable.</response>

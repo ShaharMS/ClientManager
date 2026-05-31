@@ -34,7 +34,7 @@ public class ClientConfigurationServicesController : ControllerBase
     /// </summary>
     /// <param name="id">The unique identifier of the client.</param>
     /// <param name="paging">Pagination parameters.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to cancel the service settings listing before it completes.</param>
     /// <returns>A paginated list of service access setting entries.</returns>
     /// <response code="200">Returns the paginated service access settings.</response>
     /// <response code="404">No client was found with the given identifier.</response>
@@ -54,7 +54,7 @@ public class ClientConfigurationServicesController : ControllerBase
     /// </summary>
     /// <param name="id">The unique identifier of the client.</param>
     /// <param name="serviceId">The unique identifier of the service.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to cancel the service settings lookup before it completes.</param>
     /// <returns>The service access settings.</returns>
     /// <response code="200">Returns the service access settings.</response>
     /// <response code="404">Client or service settings not found.</response>
@@ -75,7 +75,7 @@ public class ClientConfigurationServicesController : ControllerBase
     /// <param name="id">The unique identifier of the client.</param>
     /// <param name="serviceId">The unique identifier of the service.</param>
     /// <param name="settings">The service access settings to apply.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to abort the service settings update before it is persisted.</param>
     /// <response code="200">The service access settings were updated.</response>
     /// <response code="404">No client was found with the given identifier.</response>
     /// <response code="503">The storage service is temporarily unavailable.</response>
@@ -94,7 +94,7 @@ public class ClientConfigurationServicesController : ControllerBase
     /// </summary>
     /// <param name="id">The unique identifier of the client.</param>
     /// <param name="serviceId">The unique identifier of the service.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to abort the service settings removal before it completes.</param>
     /// <response code="204">The service access settings were removed.</response>
     /// <response code="404">No client was found with the given identifier.</response>
     /// <response code="503">The storage service is temporarily unavailable.</response>

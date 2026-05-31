@@ -32,7 +32,7 @@ public class ServicesController : ControllerBase
     /// Searches services with optional filtering, sorting, and pagination.
     /// </summary>
     /// <param name="query">Query with filters, sort, and pagination. Pass an empty body or null for all results.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to cancel the service search before it completes.</param>
     /// <returns>Matching services and total count.</returns>
     /// <response code="200">Returns the matching services.</response>
     /// <response code="503">The storage service is temporarily unavailable.</response>
@@ -51,7 +51,7 @@ public class ServicesController : ControllerBase
     /// Retrieves a service by its unique identifier.
     /// </summary>
     /// <param name="id">The unique identifier of the service.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to cancel the service lookup before it completes.</param>
     /// <returns>The service.</returns>
     /// <response code="200">Returns the requested service.</response>
     /// <response code="404">No service was found with the given identifier.</response>
@@ -70,7 +70,7 @@ public class ServicesController : ControllerBase
     /// Creates a new service.
     /// </summary>
     /// <param name="service">The service to create.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to abort the create-service request before it is persisted.</param>
     /// <returns>The created service.</returns>
     /// <response code="201">The service was created successfully.</response>
     /// <response code="409">A service with the same identifier already exists.</response>
@@ -90,7 +90,7 @@ public class ServicesController : ControllerBase
     /// </summary>
     /// <param name="id">The unique identifier of the service to update.</param>
     /// <param name="service">The updated service.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to abort the service update before it is persisted.</param>
     /// <returns>The updated service.</returns>
     /// <response code="200">The service was updated successfully.</response>
     /// <response code="404">No service was found with the given identifier.</response>
@@ -109,7 +109,7 @@ public class ServicesController : ControllerBase
     /// Deletes a service.
     /// </summary>
     /// <param name="id">The unique identifier of the service to delete.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to abort the service deletion before it completes.</param>
     /// <response code="204">The service was deleted successfully.</response>
     /// <response code="404">No service was found with the given identifier.</response>
     /// <response code="503">The storage service is temporarily unavailable.</response>

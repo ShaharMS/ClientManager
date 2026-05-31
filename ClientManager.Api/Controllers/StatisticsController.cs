@@ -52,7 +52,7 @@ public class StatisticsController : ControllerBase
     /// Searches client configurations and returns paginated summary statistics.
     /// </summary>
     /// <param name="query">Query with filters, sort, and pagination. Pass an empty body or null for all results.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to cancel the client statistics search before it completes.</param>
     /// <returns>Matching per-client summary statistics and total count.</returns>
     /// <response code="200">Returns matching per-client summaries.</response>
     /// <response code="503">The storage service is temporarily unavailable.</response>
@@ -71,7 +71,7 @@ public class StatisticsController : ControllerBase
     /// Returns detailed statistics for a specific client, including per-pool active allocation counts.
     /// </summary>
     /// <param name="clientId">The unique identifier of the client.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to cancel the client statistics lookup before it completes.</param>
     /// <returns>Detailed client statistics.</returns>
     /// <response code="200">Returns the client's detailed statistics.</response>
     /// <response code="404">No client was found with the given identifier.</response>
@@ -90,7 +90,7 @@ public class StatisticsController : ControllerBase
     /// Searches services and returns paginated per-service usage statistics including client counts and global rate limit presence.
     /// </summary>
     /// <param name="query">Query with filters, sort, and pagination. Pass an empty body or null for all results.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to cancel the service statistics search before it completes.</param>
     /// <returns>Matching per-service statistics and total count.</returns>
     /// <response code="200">Returns matching per-service statistics.</response>
     /// <response code="503">The storage service is temporarily unavailable.</response>
@@ -109,7 +109,7 @@ public class StatisticsController : ControllerBase
     /// Returns detailed statistics for a specific service, including which clients have access.
     /// </summary>
     /// <param name="serviceId">The unique identifier of the service.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to cancel the service statistics lookup before it completes.</param>
     /// <returns>Detailed service statistics.</returns>
     /// <response code="200">Returns the service's detailed statistics.</response>
     /// <response code="404">No service was found with the given identifier.</response>
@@ -128,7 +128,7 @@ public class StatisticsController : ControllerBase
     /// Searches resource pools and returns paginated per-pool utilization statistics including active allocations and available slots.
     /// </summary>
     /// <param name="query">Query with filters, sort, and pagination. Pass an empty body or null for all results.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to cancel the resource pool statistics search before it completes.</param>
     /// <returns>Matching per-pool statistics and total count.</returns>
     /// <response code="200">Returns matching per-pool statistics.</response>
     /// <response code="503">The storage service is temporarily unavailable.</response>
@@ -147,7 +147,7 @@ public class StatisticsController : ControllerBase
     /// Returns detailed statistics for a specific resource pool, including per-client allocation counts.
     /// </summary>
     /// <param name="resourcePoolId">The unique identifier of the resource pool.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to cancel the resource pool statistics lookup before it completes.</param>
     /// <returns>Detailed resource pool statistics.</returns>
     /// <response code="200">Returns the pool's detailed statistics.</response>
     /// <response code="404">No resource pool was found with the given identifier.</response>
@@ -165,7 +165,7 @@ public class StatisticsController : ControllerBase
     /// <summary>
     /// Retrieves global usage statistics including request rate and pool acquisition.
     /// </summary>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to cancel the global usage statistics aggregation before it completes.</param>
     /// <returns>Global usage statistics.</returns>
     /// <response code="200">Returns global usage statistics.</response>
     /// <response code="503">The storage service is temporarily unavailable.</response>
@@ -187,7 +187,7 @@ public class StatisticsController : ControllerBase
     /// <param name="from">Optional start of the time range (UTC, ISO 8601).</param>
     /// <param name="to">Optional end of the time range (UTC, ISO 8601).</param>
     /// <param name="granularity">Optional bucket granularity: Second, FiveMinute, Hour, or Day.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to cancel the usage time-series aggregation before it completes.</param>
     /// <returns>Per-target time-series data for usage and capacity.</returns>
     /// <response code="200">Returns per-target usage time-series data.</response>
     /// <response code="503">The storage service is temporarily unavailable.</response>
@@ -223,7 +223,7 @@ public class StatisticsController : ControllerBase
     /// <param name="from">Optional start of the time range (UTC, ISO 8601).</param>
     /// <param name="to">Optional end of the time range (UTC, ISO 8601).</param>
     /// <param name="granularity">Optional bucket granularity: Second, FiveMinute, Hour, or Day.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to cancel the client usage breakdown aggregation before it completes.</param>
     /// <returns>Per-target client usage breakdowns.</returns>
     /// <response code="200">Returns per-target client usage breakdowns.</response>
     /// <response code="503">The storage service is temporarily unavailable.</response>
@@ -254,7 +254,7 @@ public class StatisticsController : ControllerBase
     /// Retrieves a paginated summary of all clients with their service and pool access statistics.
     /// </summary>
     /// <param name="paging">Pagination parameters.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to cancel the client summaries retrieval before it completes.</param>
     /// <returns>Paginated client summary data for the dashboard table.</returns>
     /// <response code="200">Returns paginated client summaries.</response>
     /// <response code="503">The storage service is temporarily unavailable.</response>
@@ -276,7 +276,7 @@ public class StatisticsController : ControllerBase
     /// <param name="from">Start of the time range (UTC, ISO 8601).</param>
     /// <param name="to">End of the time range (UTC, ISO 8601).</param>
     /// <param name="granularity">Bucket granularity: Second, FiveMinute, Hour, or Day.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to cancel the historical usage query before it completes.</param>
     /// <returns>Historical usage data points per target within the requested range.</returns>
     /// <response code="200">Returns the historical usage data.</response>
     /// <response code="503">The storage service is temporarily unavailable.</response>
@@ -307,7 +307,7 @@ public class StatisticsController : ControllerBase
     /// <param name="from">Start of the time range (UTC, ISO 8601).</param>
     /// <param name="to">End of the time range (UTC, ISO 8601).</param>
     /// <param name="granularity">Bucket granularity: Second, FiveMinute, Hour, or Day.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to cancel the per-client historical usage query before it completes.</param>
     /// <returns>Historical usage data points for each requested target-client pair.</returns>
     /// <response code="200">Returns the historical usage data for each requested target-client pair.</response>
     /// <response code="503">The storage service is temporarily unavailable.</response>

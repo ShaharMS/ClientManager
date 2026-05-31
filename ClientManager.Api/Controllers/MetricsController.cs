@@ -29,7 +29,7 @@ public class MetricsController : ControllerBase
     /// <summary>
     /// Returns system metrics in Prometheus exposition format.
     /// </summary>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to cancel the Prometheus metrics aggregation before it completes.</param>
     /// <returns>Prometheus-formatted metrics text.</returns>
     /// <response code="200">Returns Prometheus exposition format metrics.</response>
     /// <response code="503">The storage service is temporarily unavailable.</response>
@@ -45,7 +45,7 @@ public class MetricsController : ControllerBase
     /// <summary>
     /// Returns system metrics in OpenMetrics JSON format for Grafana.
     /// </summary>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to cancel the Grafana metrics aggregation before it completes.</param>
     /// <returns>JSON object containing all metrics with labels.</returns>
     /// <response code="200">Returns OpenMetrics JSON format metrics.</response>
     /// <response code="503">The storage service is temporarily unavailable.</response>

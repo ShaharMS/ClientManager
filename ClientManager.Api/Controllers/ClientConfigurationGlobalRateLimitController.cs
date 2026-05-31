@@ -31,7 +31,7 @@ public class ClientConfigurationGlobalRateLimitController : ControllerBase
     /// Gets the client's global rate limit.
     /// </summary>
     /// <param name="id">The unique identifier of the client.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to cancel the client global rate limit lookup before it completes.</param>
     /// <returns>The client's global rate limit.</returns>
     /// <response code="200">Returns the global rate limit.</response>
     /// <response code="404">Client not found or no global rate limit is configured.</response>
@@ -51,7 +51,7 @@ public class ClientConfigurationGlobalRateLimitController : ControllerBase
     /// </summary>
     /// <param name="id">The unique identifier of the client.</param>
     /// <param name="rateLimit">The global rate limit to apply.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to abort the client global rate limit update before it is persisted.</param>
     /// <response code="200">The global rate limit was set.</response>
     /// <response code="404">No client was found with the given identifier.</response>
     /// <response code="503">The storage service is temporarily unavailable.</response>
@@ -69,7 +69,7 @@ public class ClientConfigurationGlobalRateLimitController : ControllerBase
     /// Removes the client's global rate limit.
     /// </summary>
     /// <param name="id">The unique identifier of the client.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to abort the client global rate limit removal before it completes.</param>
     /// <response code="204">The global rate limit was removed.</response>
     /// <response code="404">No client was found with the given identifier.</response>
     /// <response code="503">The storage service is temporarily unavailable.</response>

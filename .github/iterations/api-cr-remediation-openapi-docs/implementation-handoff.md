@@ -2,55 +2,59 @@
 
 ## Current Pass
 
-- Pass type: Implementation (delegated)
+- Pass type: CR follow-up (delegated)
 - Authoring agent: @Implement
 - Plan step: api-cr-remediation-5-openapi-and-documentation.md
-- Branch: feature/api-cr-remediation-services-controllers (built on 2122c36; orchestrator will branch feature/api-cr-remediation-openapi-docs)
-- Summary: Enabled XML documentation output for ClientManager.Shared and loaded the shared XML into the existing Swagger registration so shared request/response/entity/problem schemas render their authored descriptions. Fixed the pre-existing CS8604 null-argument warning in AppLogger.cs. Documented the ProblemResponse transport type. Closed the StatisticsController.GetOverview missing cancellationToken param gap. Expanded ProducesResponseType coverage across every controller action: added 503 (downstream storage unavailable) universally and attached the ProblemResponse schema to all failure responses (401/403/404/409/429/503) so problem payloads are documented, not only success payloads. TagDescriptionsDocumentFilter registration is preserved and unchanged.
+- Branch: feature/api-cr-remediation-openapi-docs (built on ede02c6; not committed — @Inscribe handles commit)
+- Finding addressed: RVW-001 (MAJOR) — prohibited generic `cancellationToken` param docs
+- Summary: Reworded every remaining boilerplate `<param name="cancellationToken">Cancellation token.</param>` to a method-context description consistent with the approved `StatisticsController.GetOverview` example. 39 param docs across 10 controllers were updated (StatisticsController had 12; the GetOverview one was already contextual from the prior pass). Each description now explains what cancelling does in that specific operation (e.g. "Token used to abort the create-service request before it is persisted.", "Token used to cancel the client accessibility report before it completes."). Documentation-only: no signatures, annotations, response codes, or behavior changed. Also re-scanned touched controllers for other generic boilerplate param docs (e.g. "The id.", "The request.") and found none.
 
 ## Files Changed
 
-| Path | Intent | Verification impact |
-|------|--------|---------------------|
-| ClientManager.Shared/ClientManager.Shared.csproj | Add GenerateDocumentationFile + NoWarn 1591 | Emits ClientManager.Shared.xml; copied to API output |
-| ClientManager.Shared/Logging/AppLogger.cs | Fix CS8604 (FullName null-coalesce to Name) | Removes pre-existing warning once docs/warnings active |
-| ClientManager.Shared/Models/Problems/ProblemResponse.cs | Add XML docs for problem schema | Renders schema description in Swagger |
-| ClientManager.Api/Program.cs | Load shared assembly XML into existing Swagger setup | Shared schema descriptions render; no parallel registration |
-| ClientManager.Api/Controllers/StatisticsController.cs | Add GetOverview cancellationToken param doc; add 503 + ProblemResponse schema to all actions | Doc/annotation only |
-| ClientManager.Api/Controllers/AccessCheckController.cs | 503 + ProblemResponse schema on failures | Doc/annotation only |
-| ClientManager.Api/Controllers/ResourceAllocationController.cs | 503 + ProblemResponse schema on failures | Doc/annotation only |
-| ClientManager.Api/Controllers/ServicesController.cs | 503 + ProblemResponse schema on failures | Doc/annotation only |
-| ClientManager.Api/Controllers/ResourcePoolsController.cs | 503 + ProblemResponse schema on failures | Doc/annotation only |
-| ClientManager.Api/Controllers/GlobalRateLimitsController.cs | 503 + ProblemResponse schema on failures | Doc/annotation only |
-| ClientManager.Api/Controllers/MetricsController.cs | 503 + ProblemResponse schema | Doc/annotation only |
-| ClientManager.Api/Controllers/ClientConfigurationsController.cs | 503 + ProblemResponse schema on failures | Doc/annotation only |
-| ClientManager.Api/Controllers/ClientConfigurationGlobalRateLimitController.cs | 503 + ProblemResponse schema on failures | Doc/annotation only |
-| ClientManager.Api/Controllers/ClientConfigurationServicesController.cs | 503 + ProblemResponse schema on failures | Doc/annotation only |
-| ClientManager.Api/Controllers/ClientConfigurationResourcePoolsController.cs | 503 + ProblemResponse schema on failures | Doc/annotation only |
+CR-follow-up pass (RVW-001) — documentation-only param-doc rewording:
+
+| Path | Reworded docs | Verification impact |
+|------|---------------|---------------------|
+| ClientManager.Api/Controllers/StatisticsController.cs | 12 | Doc-only; build clean |
+| ClientManager.Api/Controllers/ServicesController.cs | 5 | Doc-only; build clean |
+| ClientManager.Api/Controllers/ResourcePoolsController.cs | 5 | Doc-only; build clean |
+| ClientManager.Api/Controllers/GlobalRateLimitsController.cs | 5 | Doc-only; build clean |
+| ClientManager.Api/Controllers/ClientConfigurationsController.cs | 5 | Doc-only; build clean |
+| ClientManager.Api/Controllers/ClientConfigurationServicesController.cs | 4 | Doc-only; build clean |
+| ClientManager.Api/Controllers/ClientConfigurationResourcePoolsController.cs | 4 | Doc-only; build clean |
+| ClientManager.Api/Controllers/ClientConfigurationGlobalRateLimitController.cs | 3 | Doc-only; build clean |
+| ClientManager.Api/Controllers/AccessCheckController.cs | 2 | Doc-only; build clean |
+| ClientManager.Api/Controllers/ResourceAllocationController.cs | 2 | Doc-only; build clean |
+| ClientManager.Api/Controllers/MetricsController.cs | 2 | Doc-only; build clean |
+
+Total: 39 boilerplate `cancellationToken` param docs reworded to method-context descriptions.
 
 ## Verification
 
 | Check | Method | Result | Evidence |
 |-------|--------|--------|----------|
-| Shared builds | `dotnet build ClientManager.Shared/ClientManager.Shared.csproj` | PASS | 0 warnings, 0 errors; no CS1591/CS8604 |
-| API builds | `dotnet build ClientManager.Api/ClientManager.Api.csproj` | PASS | 0 warnings, 0 errors |
-| Shared XML emitted to API output | Inspect bin/Debug/net10.0 | PASS | ClientManager.Shared.xml (154,558 B) + ClientManager.Api.xml (199,142 B) present |
-| Live /docs Swagger render | Deferred to orchestrator runtime verification | PENDING | Builds + XML presence confirm wiring; see Risks |
+| API builds (CR pass) | `dotnet build ClientManager.Api/ClientManager.Api.csproj` | PASS | 0 warnings, 0 errors; Shared + Api both succeeded |
+| No boilerplate cancellationToken docs remain | grep `Cancellation token.</param>` across ClientManager.Api/Controllers/** | PASS | ZERO matches |
+| Edited-file diagnostics | get_errors on touched controllers | PASS | No errors found |
+| Docs-only (no signature/behavior change) | Manual review of diffs | PASS | Only `<param name="cancellationToken">` text changed |
+| Prior pass: Shared XML emitted to API output | bin/Debug/net10.0 (Pass 1) | PASS | ClientManager.Shared.xml + ClientManager.Api.xml present |
+| Live /docs Swagger render | Deferred to orchestrator runtime verification | PENDING | Builds + XML presence confirm wiring |
 
 ## Review Responses
 
 | Finding ID | Disposition | Evidence | Notes |
 |------------|-------------|----------|-------|
-| (none yet) | — | — | First implementation pass; no review findings logged |
+| RVW-001 | FIXED | grep `Cancellation token.</param>` returns ZERO matches across ClientManager.Api/Controllers/**; `dotnet build ClientManager.Api` clean (0/0) | Reworded all 39 remaining boilerplate `cancellationToken` param docs to method-context descriptions matching the GetOverview example. Prior rebuttal withdrawn; review reasoning accepted (the repo doc rule prohibits this generic pattern and Step 5 Task 2 is the sweep that must close it). Docs-only. |
 
 ## Risks And Follow-Ups
 
 - Live `/docs` render and the page spot-checks (`/`, `/monitor`, `/clients`, `/services`) are deferred to orchestrator runtime verification. Static wiring is confirmed (both XML files load via IncludeXmlComments; both present in API output), so risk is low.
 - 503 is now declared on every action because all routes ultimately call the storage API and the resilience handler raises StorageApiUnavailableException (503) at the HTTP message-handler level. This is broad but accurate; if any future endpoint stops touching storage, its 503 annotation should be removed.
-- Existing success `cancellationToken` param docs from Steps 1-4 read "Cancellation token." (mildly generic). Left as-is to avoid late churn on approved code; only the explicitly-called-out GetOverview gap was addressed with a contextual description. See review-response notes.
+- RVW-001 closed: all `cancellationToken` param docs now carry method-context descriptions consistent with the GetOverview example; the prior "leave as-is to avoid churn" stance was reversed per accepted review reasoning.
 
 ## Pass History
 
 | Pass | Commit | Summary |
 |------|--------|---------|
-| 1 | (uncommitted) | Shared XML docs + Swagger wiring; CS8604 fix; ProblemResponse docs; ProducesResponseType 503/problem-schema sweep; GetOverview param gap |
+| 1 | ede02c6 | Shared XML docs + Swagger wiring; CS8604 fix; ProblemResponse docs; ProducesResponseType 503/problem-schema sweep; GetOverview param gap |
+| 2 (CR) | (uncommitted) | RVW-001 remediation: reworded 39 boilerplate `cancellationToken` param docs to method-context descriptions across 10 controllers; docs-only |

@@ -20,10 +20,10 @@
 
 ## Current Loop State
 
-- Next agent: @Inscribe (create branch + commit + push), then @Inspect
-- Review round: 0
-- Latest verification: dotnet build Shared + Api both succeeded (0 warnings/0 errors); both XML doc files present in API bin
-- Latest decision: none yet
+- Next agent: @Inscribe (commit CR follow-up), then @Inspect re-review
+- Review round: 1 (CHANGES REQUESTED) -> CR follow-up applied
+- Latest verification: dotnet build Api succeeded (0/0); grep `Cancellation token.</param>` returns ZERO matches
+- Latest decision: RVW-001 rebuttal rejected; boilerplate param docs reworded (FIXED)
 
 ## Packet Links
 
@@ -38,8 +38,8 @@
 ## Open Items
 
 - Blockers: none
-- Outstanding findings: implementer rebuttal pending review — ~40 existing "Cancellation token." boilerplate param docs left unchanged
-- Next action: @Inscribe creates feature/api-cr-remediation-openapi-docs from the Step 4 tip, commits the pass, then @Inspect reviews.
+- Outstanding findings: RVW-001 fixed pending re-review
+- Next action: @Inscribe commits the CR follow-up, then @Inspect re-reviews.
 
 ## Resume Notes
 

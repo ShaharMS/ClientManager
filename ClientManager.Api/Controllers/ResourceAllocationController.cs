@@ -32,7 +32,7 @@ public class ResourceAllocationController : ControllerBase
     /// Acquires a resource slot from a resource pool.
     /// </summary>
     /// <param name="request">The acquire request containing client and resource pool IDs.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to abort the resource slot acquisition before it completes.</param>
     /// <returns>The allocation response with allocation ID and expiry time.</returns>
     /// <response code="200">The resource slot was acquired successfully.</response>
     /// <response code="403">Client is disabled.</response>
@@ -55,7 +55,7 @@ public class ResourceAllocationController : ControllerBase
     /// Releases a previously acquired resource slot.
     /// </summary>
     /// <param name="request">The release request containing the allocation ID.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to abort the resource slot release before it completes.</param>
     /// <returns>The release result.</returns>
     /// <response code="200">The allocation was released or was already released.</response>
     /// <response code="404">No allocation was found with the given identifier.</response>

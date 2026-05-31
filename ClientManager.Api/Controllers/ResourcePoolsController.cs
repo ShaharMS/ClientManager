@@ -32,7 +32,7 @@ public class ResourcePoolsController : ControllerBase
     /// Searches resource pools with optional filtering, sorting, and pagination.
     /// </summary>
     /// <param name="query">Query with filters, sort, and pagination. Pass an empty body or null for all results.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to cancel the resource pool search before it completes.</param>
     /// <returns>Matching resource pools and total count.</returns>
     /// <response code="200">Returns the matching resource pools.</response>
     /// <response code="503">The storage service is temporarily unavailable.</response>
@@ -51,7 +51,7 @@ public class ResourcePoolsController : ControllerBase
     /// Retrieves a resource pool by its unique identifier.
     /// </summary>
     /// <param name="id">The unique identifier of the resource pool.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to cancel the resource pool lookup before it completes.</param>
     /// <returns>The resource pool.</returns>
     /// <response code="200">Returns the requested resource pool.</response>
     /// <response code="404">No resource pool was found with the given identifier.</response>
@@ -70,7 +70,7 @@ public class ResourcePoolsController : ControllerBase
     /// Creates a new resource pool.
     /// </summary>
     /// <param name="pool">The resource pool to create.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to abort the create-resource-pool request before it is persisted.</param>
     /// <returns>The created resource pool.</returns>
     /// <response code="201">The resource pool was created successfully.</response>
     /// <response code="409">A resource pool with the same identifier already exists.</response>
@@ -90,7 +90,7 @@ public class ResourcePoolsController : ControllerBase
     /// </summary>
     /// <param name="id">The unique identifier of the resource pool to update.</param>
     /// <param name="pool">The updated resource pool.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to abort the resource pool update before it is persisted.</param>
     /// <returns>The updated resource pool.</returns>
     /// <response code="200">The resource pool was updated successfully.</response>
     /// <response code="404">No resource pool was found with the given identifier.</response>
@@ -109,7 +109,7 @@ public class ResourcePoolsController : ControllerBase
     /// Deletes a resource pool.
     /// </summary>
     /// <param name="id">The unique identifier of the resource pool to delete.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to abort the resource pool deletion before it completes.</param>
     /// <response code="204">The resource pool was deleted successfully.</response>
     /// <response code="404">No resource pool was found with the given identifier.</response>
     /// <response code="503">The storage service is temporarily unavailable.</response>

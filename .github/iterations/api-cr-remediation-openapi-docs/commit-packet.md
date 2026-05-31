@@ -33,13 +33,15 @@ feat(api): surface OpenAPI documentation and expand response annotations
 
 ## Result
 
-- Commit hash:
-- Push result:
-- Workspace status after commit:
-- Remaining uncommitted files:
-- Follow-up needed:
+- Commit hash: ede02c6
+- Push result: pushed to origin with --set-upstream (feature/api-cr-remediation-openapi-docs)
+- Workspace status after commit: only this packet's bookkeeping rows remain dirty (cannot be in the commit they describe)
+- Remaining uncommitted files: commit-packet.md (Result + Commit History), timeline.md (result entry)
+- Follow-up needed: orchestrator folds these bookkeeping edits into closeout
 
 ## Commit History
 
 | Pass | Commit | Branch | Notes |
 |------|--------|--------|-------|
+| Initial implementation (Step 5) | ede02c6 | feature/api-cr-remediation-openapi-docs | OpenAPI docs surfacing + ProducesResponseType/503 sweep; one commit |
+| CR follow-up (RVW-001) | (this commit) | feature/api-cr-remediation-openapi-docs | Reworded 39 boilerplate `cancellationToken` param docs to method-context descriptions across 11 controllers; docs-only; iteration/agent-progress bookkeeping folded in; `git add -A` |

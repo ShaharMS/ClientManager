@@ -32,7 +32,7 @@ public class AccessCheckController : ControllerBase
     /// Checks if a client can access a service right now.
     /// </summary>
     /// <param name="request">The access check request containing client and service IDs.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to abort the access check before it completes.</param>
     /// <returns>The access check response with remaining request information.</returns>
     /// <response code="200">Access is granted.</response>
     /// <response code="401">No access configuration exists for the client-service relationship.</response>
@@ -57,7 +57,7 @@ public class AccessCheckController : ControllerBase
     /// Gets a full accessibility report for a client across all services.
     /// </summary>
     /// <param name="clientId">The unique identifier of the client.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to cancel the client accessibility report before it completes.</param>
     /// <returns>The client accessibility report.</returns>
     /// <response code="200">Returns the accessibility report.</response>
     /// <response code="404">No client was found with the given identifier.</response>

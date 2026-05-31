@@ -32,7 +32,7 @@ public class GlobalRateLimitsController : ControllerBase
     /// Searches global rate limits with optional filtering, sorting, and pagination.
     /// </summary>
     /// <param name="query">Query with filters, sort, and pagination. Pass an empty body or null for all results.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to cancel the global rate limit search before it completes.</param>
     /// <returns>Matching global rate limits and total count.</returns>
     /// <response code="200">Returns the matching global rate limits.</response>
     /// <response code="503">The storage service is temporarily unavailable.</response>
@@ -51,7 +51,7 @@ public class GlobalRateLimitsController : ControllerBase
     /// Retrieves a global rate limit by its unique identifier.
     /// </summary>
     /// <param name="id">The unique identifier of the global rate limit.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to cancel the global rate limit lookup before it completes.</param>
     /// <returns>The global rate limit.</returns>
     /// <response code="200">Returns the requested global rate limit.</response>
     /// <response code="404">No global rate limit was found with the given identifier.</response>
@@ -70,7 +70,7 @@ public class GlobalRateLimitsController : ControllerBase
     /// Creates a new global rate limit.
     /// </summary>
     /// <param name="limit">The global rate limit to create.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to abort the create-global-rate-limit request before it is persisted.</param>
     /// <returns>The created global rate limit.</returns>
     /// <response code="201">The global rate limit was created successfully.</response>
     /// <response code="409">A global rate limit for the same target already exists.</response>
@@ -90,7 +90,7 @@ public class GlobalRateLimitsController : ControllerBase
     /// </summary>
     /// <param name="id">The unique identifier of the global rate limit to update.</param>
     /// <param name="limit">The updated global rate limit.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to abort the global rate limit update before it is persisted.</param>
     /// <returns>The updated global rate limit.</returns>
     /// <response code="200">The global rate limit was updated successfully.</response>
     /// <response code="404">No global rate limit was found with the given identifier.</response>
@@ -109,7 +109,7 @@ public class GlobalRateLimitsController : ControllerBase
     /// Deletes a global rate limit.
     /// </summary>
     /// <param name="id">The unique identifier of the global rate limit to delete.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Token used to abort the global rate limit deletion before it completes.</param>
     /// <response code="204">The global rate limit was deleted successfully.</response>
     /// <response code="404">No global rate limit was found with the given identifier.</response>
     /// <response code="503">The storage service is temporarily unavailable.</response>
