@@ -1,6 +1,6 @@
 # Plan: Address ClientManager.Api Review Notes
 
-## Status: 🔄 In progress (Step 3 of 5 complete)
+## Status: 🔄 In progress (Step 4 of 5 complete)
 
 ## Overview
 

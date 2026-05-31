@@ -1,6 +1,6 @@
 # Plan: Address ClientManager.Api Review Notes — Step 4: Services and Controllers
 
-> **Status**: 🔲 Not started
+> **Status**: ✅ Completed
 > **Prerequisite**: [api-cr-remediation-3-internal-transport-structure.md](api-cr-remediation-3-internal-transport-structure.md)
 > **Next**: [api-cr-remediation-5-openapi-and-documentation.md](api-cr-remediation-5-openapi-and-documentation.md)
 > **Parent**: [api-cr-remediation-overview.md](api-cr-remediation-overview.md)

@@ -3,7 +3,7 @@
 ## Iteration
 
 - Slug: api-cr-remediation-services-controllers
-- Status: Bootstrapped — awaiting first implementation pass
+- Status: ✅ Step 4 APPROVED — finalized
 - Owning orchestrator: @Iterate
 
 ## Selected Scope
@@ -20,10 +20,10 @@
 
 ## Current Loop State
 
-- Next agent: @Inscribe (create branch + commit + push), then @Inspect
-- Review round: 0
+- Next agent: advancing to Step 5 (api-cr-remediation-5-openapi-and-documentation.md)
+- Review round: 1 (APPROVED)
 - Latest verification: dotnet build Api succeeded (0 errors); grep confirms no controller injects internal transport clients
-- Latest decision: none yet
+- Latest decision: DEC-401 accepted; RVW-401 + RVW-402 deferred (non-blocking)
 
 ## Packet Links
 
@@ -38,8 +38,8 @@
 ## Open Items
 
 - Blockers: none
-- Outstanding findings: none
-- Next action: @Inscribe creates feature/api-cr-remediation-services-controllers from the Step 3 tip, commits the pass, then @Inspect reviews.
+- Outstanding findings: RVW-401, RVW-402 (non-blocking deferred)
+- Next action: Closeout commit, then advance to Step 5 of the overview.
 
 ## Resume Notes
 

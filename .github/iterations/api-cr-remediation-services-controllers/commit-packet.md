@@ -46,14 +46,15 @@ Pass: initial implementation (Step 4)
 
 ## Result
 
-- Commit hash: (to be folded into closeout — recorded post-commit in summary)
-- Push result: (set-upstream push to origin)
+- Commit hash: fa971a1
+- Push result: Pushed to origin with --set-upstream (new tracking branch feature/api-cr-remediation-services-controllers)
 - Workspace status after commit: commit-packet.md + timeline.md left dirty by design (cannot embed their own commit hash)
-- Remaining uncommitted files: commit-packet.md Commit History row + timeline.md result entry — deferred to closeout commit
+- Remaining uncommitted files: commit-packet.md (this Result/Commit History update) + timeline.md result entry — deferred to closeout commit
 - Follow-up needed: Orchestrator closeout commit folds in this packet's Commit History row and the timeline result entry.
 
 ## Commit History
 
 | Pass | Commit | Branch | Notes |
 |------|--------|--------|-------|
-| 1 (initial impl, Step 4) | (recorded at closeout) | feature/api-cr-remediation-services-controllers | 18 new service files + DI + 9 controllers migrated; build green |
+| 1 (initial impl, Step 4) | fa971a1 | feature/api-cr-remediation-services-controllers | 18 new service files + DI + 9 controllers migrated; build green; pushed to origin |
+| 2 (finalization/closeout, Step 4) | (this commit) | feature/api-cr-remediation-services-controllers | Bookkeeping-only closeout: plan statuses (Step 4 -> Completed, overview Step 4 of 5 complete), iteration state, progress note, deferred commit-packet/timeline result entries; no source changed |
