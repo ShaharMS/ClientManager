@@ -24,6 +24,7 @@ else
             <RadzenTextBox Placeholder="Search pools..."
                 Value="@_search"
                 ValueChanged="@((string v) => { _search = v; StateHasChanged(); })"
+                @oninput="@(args => { _search = args.Value?.ToString(); StateHasChanged(); })"
                 Style="width: 280px;" />
             <RadzenButton Text="Create Resource Pool" Icon="add" Click="@(() => Nav.NavigateTo("/resource-pools/new"))"
                 ButtonStyle="ButtonStyle.Primary" />

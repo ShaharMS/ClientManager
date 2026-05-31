@@ -144,7 +144,9 @@ else
         <div class="cm-dashboard__chart-header">
             <span class="cm-dashboard__chart-title">Client Overview</span>
             <RadzenTextBox Placeholder="Search clients..." @bind-Value="_tableSearch"
-                Change="@OnTableSearchChanged" Style="width: 250px;" />
+                Change="@OnTableSearchChanged"
+                @oninput="@(args => { _tableSearch = args.Value?.ToString(); OnTableSearchChanged(); })"
+                Style="width: 250px;" />
         </div>
 
         <RadzenDataGrid Data="@_filteredClientSummaries" TItem="ClientSummaryTableRow"

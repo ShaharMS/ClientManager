@@ -25,6 +25,7 @@ else
                 <RadzenTextBox Placeholder="Search clients..."
                     Value="@_search"
                     ValueChanged="@((string v) => { _search = v; StateHasChanged(); })"
+                    @oninput="@(args => { _search = args.Value?.ToString(); StateHasChanged(); })"
                     Style="width: 280px;" />
                 <RadzenDropDown TValue="bool?" Data="@_enabledOptions"
                     TextProperty="Label" ValueProperty="Value"
