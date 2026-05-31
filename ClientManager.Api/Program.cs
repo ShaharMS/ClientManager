@@ -1,14 +1,19 @@
 using System.Reflection;
 using System.Text.Json.Serialization;
+
 using Asp.Versioning;
+
 using ClientManager.Api.Middlewares;
 using ClientManager.Api.Utils.Extensions;
 using ClientManager.Api.Utils.Instrumentation;
 using ClientManager.Api.Utils.Swagger;
 using ClientManager.Shared.Logging;
+
 using Microsoft.OpenApi;
+
 using NLog;
 using NLog.Web;
+
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;

@@ -8,6 +8,7 @@ using ClientManager.Shared.Models.Search;
 
 namespace ClientManager.Api.Services.InternalClients.Implementations.Configuration;
 
+// CR: Class should have some documentation for itself, and should inherit documentation for methods, or provide some alternative one if necessary for a specific method.
 internal sealed class ResourcePoolCatalogClient(HttpClient httpClient) : IResourcePoolCatalogClient
 {
     public async Task<SearchResult<ResourcePool>> SearchAsync(DocumentQuery query, CancellationToken cancellationToken)
@@ -72,6 +73,7 @@ internal sealed class ResourcePoolCatalogClient(HttpClient httpClient) : IResour
 
         if (response.StatusCode == HttpStatusCode.NotFound)
         {
+            // CR: does this really need to be a function? why not just a parameter of type `Exception`?
             throw createNotFoundException();
         }
 

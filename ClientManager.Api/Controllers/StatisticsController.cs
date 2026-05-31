@@ -292,6 +292,7 @@ public class StatisticsController : ControllerBase
         return Ok(result);
     }
 
+    // CR: helpers should not be placed in a controller file. in that specific case, i think that can be avoided entirely and be removed, using some type convertor like we do in enums.
     private static IEnumerable<string> ParseIds(string ids)
     {
         return ids.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);

@@ -1,8 +1,10 @@
 using ClientManager.Api.Models.Configuration;
 using Microsoft.Extensions.Options;
 
+// CR: Namespace should match folder structre
 namespace ClientManager.Api.Services.InternalClients.Implementations;
 
+// CR: Extend this doc - why is this needed? whats the purpose? not too much doc - just enough to explain the intent of this class and how it should be used.
 /// <summary>
 /// Tracks short-lived failure state for the internal storage-facing API circuit.
 /// </summary>

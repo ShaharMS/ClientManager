@@ -195,6 +195,7 @@ internal sealed class StatisticsReadClient(HttpClient httpClient) : IStatisticsR
 
         if (response.StatusCode == HttpStatusCode.NotFound && createNotFoundException is not null)
         {
+            // CR: does this really need to be a function? why not just a parameter of type `Exception`?
             throw createNotFoundException();
         }
 

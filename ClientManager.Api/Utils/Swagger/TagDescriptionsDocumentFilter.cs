@@ -1,4 +1,5 @@
 using Microsoft.OpenApi;
+
 using Swashbuckle.AspNetCore.SwaggerGen;
 
 namespace ClientManager.Api.Utils.Swagger;

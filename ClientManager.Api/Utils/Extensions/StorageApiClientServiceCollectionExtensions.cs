@@ -7,6 +7,8 @@ using Microsoft.Extensions.Options;
 
 namespace ClientManager.Api.Utils.Extensions;
 
+
+// CR: This file should be merged into ServiceCollectionExtensions.cs
 /// <summary>
 /// Registers typed HTTP clients for the internal storage-facing API.
 /// </summary>
@@ -23,6 +25,7 @@ public static class StorageApiClientServiceCollectionExtensions
         IConfiguration configuration,
         IHostEnvironment environment)
     {
+        // CR: Don't do validation like this, in place. Refer to project-wide cr to understand the desired configuration approach.
         services.AddOptions<StorageApiOptions>()
             .Bind(configuration.GetSection(StorageApiOptions.SectionName))
             .ValidateDataAnnotations()

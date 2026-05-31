@@ -6,6 +6,8 @@ using Microsoft.Extensions.Options;
 
 namespace ClientManager.Api.Services.InternalClients.Implementations;
 
+// CR: Extend this doc - why is this needed? whats the purpose? not too much doc - just enough to explain the intent of this class and how it should be used.
+// CR: In general - class needs documentation.
 /// <summary>
 /// Adds narrow retry and fast-fail behavior around internal storage API calls.
 /// </summary>
@@ -103,6 +105,7 @@ public sealed class StorageApiResilienceHandler : DelegatingHandler
         }
 
         var path = request.RequestUri?.ToString() ?? string.Empty;
+        // CR: This looks a little sensitive - what if it doesnt end with /search, but /lookup? also , why specifically search? seems arbitrary while undocumented.
         return request.Method == HttpMethod.Post
             && path.EndsWith("/search", StringComparison.OrdinalIgnoreCase);
     }

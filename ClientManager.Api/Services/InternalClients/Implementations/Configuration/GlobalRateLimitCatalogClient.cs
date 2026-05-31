@@ -10,6 +10,7 @@ namespace ClientManager.Api.Services.InternalClients.Implementations.Configurati
 
 internal sealed class GlobalRateLimitCatalogClient(HttpClient httpClient) : IGlobalRateLimitCatalogClient
 {
+    // CR: Class should have some documentation for itself, and should inherit documentation for methods, or provide some alternative one if necessary for a specific method.
     public async Task<SearchResult<GlobalRateLimit>> SearchAsync(DocumentQuery query, CancellationToken cancellationToken)
     {
         var response = await httpClient.PostAsJsonAsync(StorageApiRoutes.GlobalRateLimits.Search, query, cancellationToken);
@@ -80,6 +81,7 @@ internal sealed class GlobalRateLimitCatalogClient(HttpClient httpClient) : IGlo
 
         if (response.StatusCode == HttpStatusCode.NotFound)
         {
+            // CR: does this really need to be a function? why not just a parameter of type `Exception`?
             throw createNotFoundException();
         }
 

@@ -2,12 +2,14 @@ using ClientManager.Shared.Models.Enums;
 
 namespace ClientManager.Api.Services.InternalClients;
 
+// CR: This entire class and it's children is missing documentation. This main class should be documented, and each route should have a summary of what it does, what parameters it takes (especially the query parameters), and what it returns. This is especially important for the more complex routes in the Statistics section.
 internal static class StorageApiRoutes
 {
     internal static class ClientConfigurations
     {
+        // CR: Place in configuration, load from there
         private const string Base = "internal/v1/configuration/clients";
-
+        // CR: Place in configuration as well
         public const string Search = Base + "/search";
 
         public static string ById(string clientId) => $"{Base}/{Uri.EscapeDataString(clientId)}";
@@ -39,8 +41,10 @@ internal static class StorageApiRoutes
 
     internal static class ResourcePools
     {
+        // CR: Place in configuration, load from there
         private const string Base = "internal/v1/configuration/resource-pools";
 
+        // CR: Place in configuration, load from there
         public const string Search = Base + "/search";
 
         public static string ById(string poolId) => $"{Base}/{Uri.EscapeDataString(poolId)}";
@@ -48,8 +52,10 @@ internal static class StorageApiRoutes
 
     internal static class GlobalRateLimits
     {
+        // CR: Place in configuration, load from there
         private const string Base = "internal/v1/configuration/global-rate-limits";
 
+        // CR: Place in configuration, load from there
         public const string Search = Base + "/search";
 
         public static string ById(string id) => $"{Base}/{Uri.EscapeDataString(id)}";
@@ -57,10 +63,14 @@ internal static class StorageApiRoutes
 
     internal static class Runtime
     {
+        // CR: Place in configuration, load from there
         private const string Base = "internal/v1/runtime";
 
+        // CR: Place in configuration, load from there
         public const string CheckAccess = Base + "/access/check";
+        // CR: Place in configuration, load from there
         public const string AcquireResource = Base + "/resources/acquire";
+        // CR: Place in configuration, load from there
         public const string ReleaseResource = Base + "/resources/release";
 
         public static string GetAccessibility(string clientId) => $"{Base}/access/{clientId}";
@@ -68,13 +78,20 @@ internal static class StorageApiRoutes
 
     internal static class Statistics
     {
+        // CR: Place in configuration, load from there
         private const string Base = "internal/v1/statistics";
 
+        // CR: Place in configuration, load from there
         public const string Overview = Base + "/overview";
+        // CR: Place in configuration, load from there
         public const string SearchClientSummaries = Base + "/clients/search";
+        // CR: Place in configuration, load from there
         public const string SearchServiceStatistics = Base + "/services/search";
+        // CR: Place in configuration, load from there
         public const string SearchResourcePoolStatistics = Base + "/resource-pools/search";
+        // CR: Place in configuration, load from there
         public const string GlobalUsage = Base + "/global-usage";
+        // CR: Place in configuration, load from there
         public const string ClientSummaries = Base + "/client-summaries";
 
         public static string ClientDetails(string clientId) => $"{Base}/clients/{Uri.EscapeDataString(clientId)}";
@@ -193,9 +210,12 @@ internal static class StorageApiRoutes
 
     internal static class Metrics
     {
+        // CR: Place in configuration, load from there
         private const string Base = "internal/v1/metrics";
 
+        // CR: Place in configuration, load from there
         public const string Prometheus = Base + "/prometheus";
+        // CR: Place in configuration, load from there
         public const string Grafana = Base + "/grafana";
     }
 }

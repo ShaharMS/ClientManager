@@ -11,6 +11,7 @@ using ClientManager.Shared.Models.Search;
 
 namespace ClientManager.Api.Services.InternalClients.Implementations.Configuration;
 
+// CR: Class should have some documentation for itself, and should inherit documentation for methods, or provide some alternative one if necessary for a specific method.
 internal sealed class ClientConfigurationStoreClient(HttpClient httpClient) : IClientConfigurationStoreClient
 {
     public async Task<SearchResult<ClientConfiguration>> SearchAsync(DocumentQuery query, CancellationToken cancellationToken)
@@ -149,7 +150,7 @@ internal sealed class ClientConfigurationStoreClient(HttpClient httpClient) : IC
         return problem.ErrorCode switch
         {
             StorageErrorCodes.ClientNotFound => throw new ClientNotFoundException(clientId),
-            var code when string.Equals(code, missingErrorCode, StringComparison.Ordinal) => default,
+            var code when code == missingErrorCode => default,
             _ => throw StorageApiResponseReader.CreateUnexpectedException(response, problem)
         };
     }

@@ -1,13 +1,15 @@
-using System.Net.Http.Json;
 using ClientManager.Shared.Models.Problems;
 
 namespace ClientManager.Api.Services.InternalClients;
+
+// CR: This classes is missing documentation, and its naming is a bit vauge - i dont mind not changing naming, but the methods definitely need documentation.
 
 internal static class StorageApiResponseReader
 {
     public static async Task<T> ReadRequiredAsync<T>(
         HttpResponseMessage response,
         CancellationToken cancellationToken,
+        // CR: What is `emptyMessage`? naming is not clear - is this just a message for the error? name it more appropriately
         string emptyMessage)
     {
         return await response.Content.ReadFromJsonAsync<T>(cancellationToken)
@@ -21,8 +23,10 @@ internal static class StorageApiResponseReader
         return await response.Content.ReadFromJsonAsync<StorageProblemResponse>(cancellationToken)
             ?? new StorageProblemResponse
             {
+                Title = "Unexpected Storage API Response",
                 Status = (int)response.StatusCode,
                 Detail = $"The storage API returned status {(int)response.StatusCode}."
+                
             };
     }
 
