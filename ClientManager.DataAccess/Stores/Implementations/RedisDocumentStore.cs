@@ -22,6 +22,7 @@ public class RedisDocumentStore : IDocumentStore
 {
     private readonly IConnectionMultiplexer _redis;
     private readonly int _databaseIndex;
+    private readonly string _globalKeyPrefix;
     private readonly bool _hasRediSearch;
     private readonly ConcurrentDictionary<string, bool> _createdIndexes = new();
 
@@ -35,19 +36,17 @@ public class RedisDocumentStore : IDocumentStore
     /// </summary>
     /// <param name="redis">The Redis connection multiplexer.</param>
     /// <param name="databaseIndex">The Redis logical database index to use for all operations.</param>
-    public RedisDocumentStore(IConnectionMultiplexer redis, int databaseIndex)
+    /// <param name="globalKeyPrefix">An optional prefix prepended to every Redis key created by this store.</param>
+    public RedisDocumentStore(IConnectionMultiplexer redis, int databaseIndex, string? globalKeyPrefix = null)
     {
         _redis = redis;
         _databaseIndex = databaseIndex;
+        _globalKeyPrefix = globalKeyPrefix ?? string.Empty;
         _hasRediSearch = DetectRediSearch();
     }
 
     private IDatabase Database => _redis.GetDatabase(_databaseIndex);
 
-    private static string HashKey(string collection) => $"collection:{collection}";
-    private static string DocKey(string collection, string id) => $"doc:{collection}:{id}";
-    private static string IndexName(string collection) => $"idx:{collection}";
-    private static RedisKey CounterKey(string key) => $"{CounterPrefix}{key}";
     private const string CounterPrefix = "counter:";
     private const string JsonRootPath = "$";
     private const string DecrementCounterScript = """
@@ -70,6 +69,18 @@ if ttl > 0 then
 end
 return next
 """;
+
+    private string HashKey(string collection) => PrefixKey($"collection:{collection}");
+
+    private string DocKey(string collection, string id) => PrefixKey($"doc:{collection}:{id}");
+
+    private string IndexName(string collection) => PrefixKey($"idx:{collection}");
+
+    private RedisKey CounterKey(string key) => PrefixKey($"{CounterPrefix}{key}");
+
+    private string PrefixKey(string key) => string.IsNullOrEmpty(_globalKeyPrefix)
+        ? key
+        : $"{_globalKeyPrefix}{key}";
 
     /// <inheritdoc />
     public async Task<T?> GetAsync<T>(string collection, string id, CancellationToken cancellationToken = default) where T : class
@@ -186,7 +197,7 @@ return next
     /// <inheritdoc />
     public async Task<long> IncrementCounterAsync(string key, TimeSpan window, CancellationToken cancellationToken = default)
     {
-        var redisKey = $"{CounterPrefix}{key}";
+        var redisKey = CounterKey(key);
         var db = Database;
 
         var count = await db.StringIncrementAsync(redisKey);
@@ -221,7 +232,7 @@ return next
     /// <inheritdoc />
     public async Task<long> GetCounterAsync(string key, CancellationToken cancellationToken = default)
     {
-        var redisKey = $"{CounterPrefix}{key}";
+        var redisKey = CounterKey(key);
         var value = await Database.StringGetAsync(redisKey);
         return value.IsNullOrEmpty ? 0 : (long)value;
     }
@@ -272,14 +283,14 @@ return next
     /// <inheritdoc />
     public async Task ResetCounterAsync(string key, CancellationToken cancellationToken = default)
     {
-        var redisKey = $"{CounterPrefix}{key}";
+        var redisKey = CounterKey(key);
         await Database.KeyDeleteAsync(redisKey);
     }
 
     /// <inheritdoc />
     public async Task SetCounterAsync(string key, long value, TimeSpan window, CancellationToken cancellationToken = default)
     {
-        var redisKey = $"{CounterPrefix}{key}";
+        var redisKey = CounterKey(key);
         var db = Database;
         await db.StringSetAsync(redisKey, value, window);
     }

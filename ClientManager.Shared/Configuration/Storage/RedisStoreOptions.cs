@@ -78,6 +78,12 @@ public class RedisStoreOptions
     public int DatabaseIndex { get; set; }
 
     /// <summary>
+    /// Optional prefix applied to every Redis key created by this backend.
+    /// Include any delimiter characters you want preserved, such as <c>clientmanager:</c>.
+    /// </summary>
+    public string? GlobalKeyPrefix { get; set; }
+
+    /// <summary>
     /// Optional password when the connection string does not embed credentials.
     /// </summary>
     public string? Password { get; set; }

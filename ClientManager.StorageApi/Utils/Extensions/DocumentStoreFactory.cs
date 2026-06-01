@@ -151,7 +151,7 @@ internal static class DocumentStoreFactory
             multiplexerCache[cacheKey] = multiplexer;
         }
 
-        return new RedisDocumentStore(multiplexer, options.DatabaseIndex);
+        return new RedisDocumentStore(multiplexer, options.DatabaseIndex, options.GlobalKeyPrefix);
     }
 
     private static string BuildRedisMultiplexerCacheKey(RedisStoreOptions options)
