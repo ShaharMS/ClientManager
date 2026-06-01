@@ -41,6 +41,17 @@ public class RedisStoreOptions
     public int ConnectTimeoutMilliseconds { get; set; } = 5000;
 
     /// <summary>
+    /// Number of connection retries attempted during the initial connect sequence.
+    /// </summary>
+    public int ConnectRetry { get; set; } = 5;
+
+    /// <summary>
+    /// When false, startup continues and the multiplexer keeps retrying if Redis is
+    /// temporarily unavailable.
+    /// </summary>
+    public bool AbortOnConnectFail { get; set; }
+
+    /// <summary>
     /// Maximum time in milliseconds to wait for a synchronous operation to complete.
     /// </summary>
     public int SyncTimeoutMilliseconds { get; set; } = 5000;

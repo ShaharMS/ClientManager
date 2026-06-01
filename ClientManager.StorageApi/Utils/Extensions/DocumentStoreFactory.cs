@@ -110,6 +110,8 @@ internal static class DocumentStoreFactory
         {
             var config = ConfigurationOptions.Parse(options.ConnectionString);
             config.ConnectTimeout = options.ConnectTimeoutMilliseconds;
+            config.ConnectRetry = options.ConnectRetry;
+            config.AbortOnConnectFail = options.AbortOnConnectFail;
             config.SyncTimeout = options.SyncTimeoutMilliseconds;
             config.DefaultDatabase = options.DatabaseIndex;
 
