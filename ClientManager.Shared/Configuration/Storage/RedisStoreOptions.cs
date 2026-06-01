@@ -18,7 +18,7 @@ public class RedisStoreOptions
     /// <summary>
     /// Redis TCP port.
     /// </summary>
-    public int Port { get; set; } = 6379;
+    public int Port { get; set; }
 
     /// <summary>
     /// Optional ACL user name for Redis authentication.

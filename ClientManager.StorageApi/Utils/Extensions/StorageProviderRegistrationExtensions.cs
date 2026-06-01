@@ -166,6 +166,15 @@ public static class StorageProviderRegistrationExtensions
     {
         if (options.Roles is not null && options.Roles.TryGetValue(role, out var explicitBinding))
         {
+            if (explicitBinding.Provider == PersistenceProvider.Redis)
+            {
+                return new StorageRoleBinding
+                {
+                    Provider = explicitBinding.Provider,
+                    Redis = MergeRedisOptions(options.DefaultRedis, explicitBinding.Redis)
+                };
+            }
+
             return explicitBinding;
         }
 
@@ -176,6 +185,46 @@ public static class StorageProviderRegistrationExtensions
             Redis = options.DefaultRedis,
             JsonFile = options.DefaultJsonFile,
             Lucene = options.DefaultLucene
+        };
+    }
+
+    private static RedisStoreOptions? MergeRedisOptions(
+        RedisStoreOptions? defaultOptions,
+        RedisStoreOptions? overrideOptions)
+    {
+        if (overrideOptions is null)
+        {
+            return defaultOptions;
+        }
+
+        if (defaultOptions is null)
+        {
+            return overrideOptions;
+        }
+
+        return new RedisStoreOptions
+        {
+            Host = string.IsNullOrWhiteSpace(overrideOptions.Host) ? defaultOptions.Host : overrideOptions.Host,
+            Port = overrideOptions.Port == 0 ? defaultOptions.Port : overrideOptions.Port,
+            User = overrideOptions.User ?? defaultOptions.User,
+            UseSsl = overrideOptions.UseSsl || defaultOptions.UseSsl,
+            UseTls = overrideOptions.UseTls || defaultOptions.UseTls,
+            TlsCertificatePath = overrideOptions.TlsCertificatePath ?? defaultOptions.TlsCertificatePath,
+            TlsCertificatePassword = overrideOptions.TlsCertificatePassword ?? defaultOptions.TlsCertificatePassword,
+            AllowInsecureTls = overrideOptions.AllowInsecureTls || defaultOptions.AllowInsecureTls,
+            ConnectTimeoutMilliseconds = overrideOptions.ConnectTimeoutMilliseconds == 5000
+                ? defaultOptions.ConnectTimeoutMilliseconds
+                : overrideOptions.ConnectTimeoutMilliseconds,
+            ConnectRetry = overrideOptions.ConnectRetry == 5
+                ? defaultOptions.ConnectRetry
+                : overrideOptions.ConnectRetry,
+            AbortOnConnectFail = overrideOptions.AbortOnConnectFail || defaultOptions.AbortOnConnectFail,
+            SyncTimeoutMilliseconds = overrideOptions.SyncTimeoutMilliseconds == 5000
+                ? defaultOptions.SyncTimeoutMilliseconds
+                : overrideOptions.SyncTimeoutMilliseconds,
+            DatabaseIndex = overrideOptions.DatabaseIndex,
+            GlobalKeyPrefix = overrideOptions.GlobalKeyPrefix ?? defaultOptions.GlobalKeyPrefix,
+            Password = overrideOptions.Password ?? defaultOptions.Password
         };
     }
 }
