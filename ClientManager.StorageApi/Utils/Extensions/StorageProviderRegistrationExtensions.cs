@@ -77,6 +77,10 @@ public static class StorageProviderRegistrationExtensions
                     throw new InvalidOperationException(
                         $"Storage role '{role}' uses Redis but no Host was configured.");
 
+                case PersistenceProvider.Redis when binding.Redis?.Host.Contains(':') == true:
+                    throw new InvalidOperationException(
+                        $"Storage role '{role}' uses Redis but Host '{binding.Redis.Host}' includes a port. Configure only the hostname in Host and put the TCP port in Port.");
+
                 case PersistenceProvider.Redis when binding.Redis?.Port is < 1 or > 65535:
                     throw new InvalidOperationException(
                         $"Storage role '{role}' uses Redis but Port '{binding.Redis?.Port}' is outside 1-65535.");
