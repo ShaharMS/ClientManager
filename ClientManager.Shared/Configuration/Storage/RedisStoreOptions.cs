@@ -11,12 +11,28 @@ namespace ClientManager.Shared.Configuration.Storage;
 public class RedisStoreOptions
 {
     /// <summary>
-    /// The Redis connection string (for example <c>localhost:6379</c>).
+    /// Redis host or DNS name (for example <c>redis</c> or <c>cache-01.redis.internal</c>).
     /// </summary>
-    public required string ConnectionString { get; set; }
+    public required string Host { get; set; }
 
     /// <summary>
-    /// Whether to encrypt the connection with TLS.
+    /// Redis TCP port.
+    /// </summary>
+    public int Port { get; set; } = 6379;
+
+    /// <summary>
+    /// Optional ACL user name for Redis authentication.
+    /// </summary>
+    public string? User { get; set; }
+
+    /// <summary>
+    /// Controls the Redis SSL flag directly.
+    /// </summary>
+    public bool UseSsl { get; set; }
+
+    /// <summary>
+    /// Enables TLS behavior and implies SSL. When enabled, certificate settings are
+    /// applied when configured.
     /// </summary>
     public bool UseTls { get; set; }
 

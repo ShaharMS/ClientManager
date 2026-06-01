@@ -164,8 +164,10 @@ All Redis:
   "Persistence": {
     "DefaultProvider": "Redis",
     "DefaultRedis": {
-      "ConnectionString": "redis:6379",
-      "DatabaseIndex": 0
+      "Host": "redis",
+      "Port": 6379,
+      "DatabaseIndex": 0,
+      "useSsl": false
     }
   }
 }
@@ -184,16 +186,18 @@ Redis for hot runtime state, MongoDB for the rest:
     "Roles": {
       "RateLimiting": {
         "Provider": "Redis",
-        "Redis": { "ConnectionString": "redis:6379", "DatabaseIndex": 1 }
+        "Redis": { "Host": "redis", "Port": 6379, "DatabaseIndex": 1, "useSsl": false }
       },
       "Allocations": {
         "Provider": "Redis",
-        "Redis": { "ConnectionString": "redis:6379", "DatabaseIndex": 2 }
+        "Redis": { "Host": "redis", "Port": 6379, "DatabaseIndex": 2, "useSsl": false }
       }
     }
   }
 }
 ```
+
+For certificate-backed TLS/mTLS, set `UseTls` to `true` (this also enables SSL and applies configured certificate settings). Use `useSsl` when you only need to toggle SSL on/off.
 
 Using different Redis `DatabaseIndex` values for different roles is supported. For a full explanation of what each backend actually stores, how all-Redis behaves, and how mixed Redis/Mongo or Redis/NFS splits behave, see [docs/persistence-guide.md](docs/persistence-guide.md).
 

@@ -73,9 +73,13 @@ public static class StorageProviderRegistrationExtensions
                     throw new InvalidOperationException(
                         $"Storage role '{role}' uses MongoDb but no ConnectionString was configured.");
 
-                case PersistenceProvider.Redis when string.IsNullOrWhiteSpace(binding.Redis?.ConnectionString):
+                case PersistenceProvider.Redis when string.IsNullOrWhiteSpace(binding.Redis?.Host):
                     throw new InvalidOperationException(
-                        $"Storage role '{role}' uses Redis but no ConnectionString was configured.");
+                        $"Storage role '{role}' uses Redis but no Host was configured.");
+
+                case PersistenceProvider.Redis when binding.Redis?.Port is < 1 or > 65535:
+                    throw new InvalidOperationException(
+                        $"Storage role '{role}' uses Redis but Port '{binding.Redis?.Port}' is outside 1-65535.");
 
                 case PersistenceProvider.JsonFile when string.IsNullOrWhiteSpace((binding.JsonFile ?? new JsonFileStoreOptions()).DataDirectory):
                     throw new InvalidOperationException(
@@ -99,7 +103,7 @@ public static class StorageProviderRegistrationExtensions
             {
                 PersistenceProvider.JsonFile => binding.JsonFile?.DataDirectory ?? "./data",
                 PersistenceProvider.MongoDb => MaskConnectionString(binding.MongoDb?.ConnectionString),
-                PersistenceProvider.Redis => MaskConnectionString(binding.Redis?.ConnectionString),
+                PersistenceProvider.Redis => DescribeRedisEndpoint(binding.Redis),
                 PersistenceProvider.Lucene => binding.Lucene?.IndexDirectory ?? "./lucene-index",
                 _ => "unknown"
             };
@@ -134,6 +138,17 @@ public static class StorageProviderRegistrationExtensions
             var parts = connectionString.Split(',');
             return parts.Length > 0 ? parts[0] : "(masked)";
         }
+    }
+
+    private static string DescribeRedisEndpoint(RedisStoreOptions? options)
+    {
+        if (options is null || string.IsNullOrWhiteSpace(options.Host))
+        {
+            return "(not configured)";
+        }
+
+        var useSsl = options.UseSsl || options.UseTls;
+        return $"{options.Host}:{options.Port} (ssl: {useSsl})";
     }
 
     private static StringComparer GetPathComparer()

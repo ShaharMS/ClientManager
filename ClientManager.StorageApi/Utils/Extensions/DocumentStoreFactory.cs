@@ -106,14 +106,25 @@ internal static class DocumentStoreFactory
                 "Redis settings are required for roles using the Redis provider.");
         }
 
-        if (!multiplexerCache.TryGetValue(options.ConnectionString, out var multiplexer))
+        var cacheKey = BuildRedisMultiplexerCacheKey(options);
+        if (!multiplexerCache.TryGetValue(cacheKey, out var multiplexer))
         {
-            var config = ConfigurationOptions.Parse(options.ConnectionString);
-            config.ConnectTimeout = options.ConnectTimeoutMilliseconds;
-            config.ConnectRetry = options.ConnectRetry;
-            config.AbortOnConnectFail = options.AbortOnConnectFail;
-            config.SyncTimeout = options.SyncTimeoutMilliseconds;
-            config.DefaultDatabase = options.DatabaseIndex;
+            var sslEnabled = options.UseSsl || options.UseTls;
+            var config = new ConfigurationOptions
+            {
+                ConnectTimeout = options.ConnectTimeoutMilliseconds,
+                ConnectRetry = options.ConnectRetry,
+                AbortOnConnectFail = options.AbortOnConnectFail,
+                SyncTimeout = options.SyncTimeoutMilliseconds,
+                DefaultDatabase = options.DatabaseIndex,
+                Ssl = sslEnabled
+            };
+            config.EndPoints.Add(options.Host, options.Port);
+
+            if (!string.IsNullOrWhiteSpace(options.User))
+            {
+                config.User = options.User;
+            }
 
             if (options.Password is not null)
             {
@@ -122,8 +133,6 @@ internal static class DocumentStoreFactory
 
             if (options.UseTls)
             {
-                config.Ssl = true;
-
                 if (options.TlsCertificatePath is not null)
                 {
                     var certificate = X509CertificateLoader.LoadPkcs12FromFile(
@@ -139,10 +148,24 @@ internal static class DocumentStoreFactory
             }
 
             multiplexer = ConnectionMultiplexer.Connect(config);
-            multiplexerCache[options.ConnectionString] = multiplexer;
+            multiplexerCache[cacheKey] = multiplexer;
         }
 
         return new RedisDocumentStore(multiplexer, options.DatabaseIndex);
+    }
+
+    private static string BuildRedisMultiplexerCacheKey(RedisStoreOptions options)
+    {
+        return string.Join(
+            '|',
+            options.Host,
+            options.Port,
+            options.UseSsl,
+            options.UseTls,
+            options.User ?? string.Empty,
+            options.Password ?? string.Empty,
+            options.TlsCertificatePath ?? string.Empty,
+            options.AllowInsecureTls);
     }
 
     private static LuceneDocumentStore CreateLuceneStore(
