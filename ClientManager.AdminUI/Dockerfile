@@ -28,8 +28,8 @@ RUN dotnet publish "ClientManager.AdminUI/ClientManager.AdminUI.csproj" -c Relea
 
 FROM ${ASPNET_IMAGE} AS final
 WORKDIR /app
-EXPOSE 8080
-ENV ASPNETCORE_URLS=http://+:8080
+EXPOSE 5100
+ENV ASPNETCORE_URLS=http://+:5100
 
 COPY --from=build /app/publish .
 ENTRYPOINT ["dotnet", "ClientManager.AdminUI.dll"]

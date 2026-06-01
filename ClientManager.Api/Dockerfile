@@ -28,8 +28,8 @@ RUN dotnet publish "ClientManager.Api/ClientManager.Api.csproj" -c Release -o /a
 
 FROM ${ASPNET_IMAGE} AS final
 WORKDIR /app
-EXPOSE 8080
-ENV ASPNETCORE_URLS=http://+:8080
+EXPOSE 5062
+ENV ASPNETCORE_URLS=http://+:5062
 
 COPY --from=build /app/publish .
 ENTRYPOINT ["dotnet", "ClientManager.Api.dll"]

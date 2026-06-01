@@ -29,10 +29,8 @@ RUN dotnet publish "ClientManager.StorageApi/ClientManager.StorageApi.csproj" -c
 
 FROM ${ASPNET_IMAGE} AS final
 WORKDIR /app
-EXPOSE 8080
-ENV ASPNETCORE_URLS=http://+:8080
-ENV Persistence__DefaultJsonFile__DataDirectory=/data
+EXPOSE 5063
+ENV ASPNETCORE_URLS=http://+:5063
 
 COPY --from=build /app/publish .
-COPY data/ /data/
 ENTRYPOINT ["dotnet", "ClientManager.StorageApi.dll"]
