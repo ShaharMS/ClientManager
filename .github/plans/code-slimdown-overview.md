@@ -1,6 +1,6 @@
 # Plan: Code Slim-Down — Reduce Lines of Code Across the Solution
 
-## Status: � In progress — Step 1 (Shared Foundation) completed
+## Status: 🔄 In progress — Steps 1 (Shared Foundation) and 2 (Data Access Layer) completed
 
 ## Overview
 

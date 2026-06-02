@@ -12,40 +12,60 @@ namespace ClientManager.DataAccess.Databases.Implementations;
 /// Delegates storage to <see cref="IDocumentStore"/> and pushes filtering down
 /// to the store via <see cref="DocumentQuery"/>.
 /// </summary>
-public class GlobalRateLimitDatabase : EntityRepository<GlobalRateLimit>, IGlobalRateLimitDatabase
+/// <param name="store">The document store to delegate operations to.</param>
+public class GlobalRateLimitDatabase(IDocumentStore store) : IGlobalRateLimitDatabase
 {
-    private readonly IDocumentStore _store;
     private const string Collection = "GlobalRateLimit";
+    private readonly EntityRepository<GlobalRateLimit> _repository =
+        new(store, Collection, limit => limit.Id);
 
-    /// <summary>
-    /// Initializes a new instance of <see cref="GlobalRateLimitDatabase"/>.
-    /// </summary>
-    /// <param name="store">The document store to delegate operations to.</param>
-    public GlobalRateLimitDatabase(IDocumentStore store)
-        : base(store, Collection, g => g.Id)
-    {
-        _store = store;
-    }
+    /// <inheritdoc />
+    public Task<GlobalRateLimit?> GetByIdAsync(string id, CancellationToken cancellationToken = default) =>
+        _repository.GetByIdAsync(id, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<IReadOnlyList<GlobalRateLimit>> GetAllAsync(CancellationToken cancellationToken = default) =>
+        _repository.GetAllAsync(cancellationToken);
+
+    /// <inheritdoc />
+    public Task CreateAsync(GlobalRateLimit entity, CancellationToken cancellationToken = default) =>
+        _repository.CreateAsync(entity, cancellationToken);
+
+    /// <inheritdoc />
+    public Task UpdateAsync(GlobalRateLimit entity, CancellationToken cancellationToken = default) =>
+        _repository.UpdateAsync(entity, cancellationToken);
+
+    /// <inheritdoc />
+    public Task DeleteAsync(string id, CancellationToken cancellationToken = default) =>
+        _repository.DeleteAsync(id, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<SearchResult<GlobalRateLimit>> SearchAsync(DocumentQuery query, CancellationToken cancellationToken = default) =>
+        _repository.SearchAsync(query, cancellationToken);
 
     /// <inheritdoc />
     public async Task<GlobalRateLimit?> GetByTargetAsync(string targetId, TargetType targetType, CancellationToken cancellationToken = default)
     {
-        var query = new DocumentQuery()
-            .Where(nameof(GlobalRateLimit.TargetId), FilterOperator.Equals, targetId)
-            .Where(nameof(GlobalRateLimit.TargetType), FilterOperator.Equals, targetType.ToString())
-            .WithPagination(0, 1);
-
-        var result = await _store.SearchAsync<GlobalRateLimit>(Collection, query, cancellationToken);
+        var query = BuildTargetQuery(targetType, targetId).WithPagination(0, 1);
+        var result = await store.SearchAsync<GlobalRateLimit>(Collection, query, cancellationToken);
         return result.Items.FirstOrDefault();
     }
 
     /// <inheritdoc />
     public async Task<IReadOnlyList<GlobalRateLimit>> GetByTargetTypeAsync(TargetType targetType, CancellationToken cancellationToken = default)
     {
+        var result = await store.SearchAsync<GlobalRateLimit>(Collection, BuildTargetQuery(targetType), cancellationToken);
+        return [.. result.Items];
+    }
+
+    private static DocumentQuery BuildTargetQuery(TargetType targetType, string? targetId = null)
+    {
         var query = new DocumentQuery()
             .Where(nameof(GlobalRateLimit.TargetType), FilterOperator.Equals, targetType.ToString());
 
-        var result = await _store.SearchAsync<GlobalRateLimit>(Collection, query, cancellationToken);
-        return [.. result.Items];
+        if (targetId is not null)
+            query.Where(nameof(GlobalRateLimit.TargetId), FilterOperator.Equals, targetId);
+
+        return query;
     }
 }

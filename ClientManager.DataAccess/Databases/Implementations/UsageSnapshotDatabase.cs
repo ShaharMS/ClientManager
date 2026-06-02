@@ -39,20 +39,12 @@ public class UsageSnapshotDatabase : IUsageSnapshotDatabase
         _store.GetManyAsync<UsageSnapshot>(Collection, ids, cancellationToken);
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<UsageSnapshot>> GetByTargetAsync(
+    public Task<IReadOnlyList<UsageSnapshot>> GetByTargetAsync(
         string targetId,
         TargetType targetType,
         BucketGranularity granularity,
-        CancellationToken cancellationToken = default)
-    {
-        var query = new DocumentQuery()
-            .Where(nameof(UsageSnapshot.TargetId), FilterOperator.Equals, targetId)
-            .Where(nameof(UsageSnapshot.TargetType), FilterOperator.Equals, targetType.ToString())
-            .Where(nameof(UsageSnapshot.Granularity), FilterOperator.Equals, granularity.ToString());
-
-        var result = await _store.SearchAsync<UsageSnapshot>(Collection, query, cancellationToken);
-        return [.. result.Items];
-    }
+        CancellationToken cancellationToken = default) =>
+        ExecuteQueryAsync(BuildQuery(targetId, targetType, granularity), cancellationToken);
 
     /// <inheritdoc />
     public async Task<UsageSnapshot?> GetByClientAndTargetAsync(
@@ -87,15 +79,36 @@ public class UsageSnapshotDatabase : IUsageSnapshotDatabase
         _store.DeleteAsync(Collection, id, cancellationToken);
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<UsageSnapshot>> GetAllByGranularityAsync(
+    public Task<IReadOnlyList<UsageSnapshot>> GetAllByGranularityAsync(
         BucketGranularity granularity,
-        CancellationToken cancellationToken = default)
-    {
-        var query = new DocumentQuery()
-            .Where(nameof(UsageSnapshot.Granularity), FilterOperator.Equals, granularity.ToString());
+        CancellationToken cancellationToken = default) =>
+        ExecuteQueryAsync(BuildQuery(granularity: granularity), cancellationToken);
 
+    private async Task<IReadOnlyList<UsageSnapshot>> ExecuteQueryAsync(
+        DocumentQuery query,
+        CancellationToken cancellationToken)
+    {
         var result = await _store.SearchAsync<UsageSnapshot>(Collection, query, cancellationToken);
         return [.. result.Items];
+    }
+
+    private static DocumentQuery BuildQuery(
+        string? targetId = null,
+        TargetType? targetType = null,
+        BucketGranularity? granularity = null)
+    {
+        var query = new DocumentQuery();
+
+        if (targetId is not null)
+            query.Where(nameof(UsageSnapshot.TargetId), FilterOperator.Equals, targetId);
+
+        if (targetType is not null)
+            query.Where(nameof(UsageSnapshot.TargetType), FilterOperator.Equals, targetType.Value.ToString());
+
+        if (granularity is not null)
+            query.Where(nameof(UsageSnapshot.Granularity), FilterOperator.Equals, granularity.Value.ToString());
+
+        return query;
     }
 
     /// <summary>

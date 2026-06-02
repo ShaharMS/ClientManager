@@ -10,43 +10,34 @@ namespace ClientManager.DataAccess.Databases.Implementations;
 /// Delegates storage to <see cref="IDocumentStore"/> and implements sub-document helpers
 /// by loading, modifying, and saving the full document.
 /// </summary>
-public class ClientConfigurationDatabase : IClientConfigurationDatabase
+/// <param name="store">The document store to delegate operations to.</param>
+public class ClientConfigurationDatabase(IDocumentStore store) : IClientConfigurationDatabase
 {
-    private readonly IDocumentStore _store;
     private const string Collection = "ClientConfiguration";
-
-    /// <summary>
-    /// Initializes a new instance of <see cref="ClientConfigurationDatabase"/>.
-    /// </summary>
-    /// <param name="store">The document store to delegate operations to.</param>
-    public ClientConfigurationDatabase(IDocumentStore store)
-    {
-        _store = store;
-    }
 
     /// <inheritdoc />
     public Task<ClientConfiguration?> GetByIdAsync(string clientId, CancellationToken cancellationToken = default) =>
-        _store.GetAsync<ClientConfiguration>(Collection, clientId, cancellationToken);
+        store.GetAsync<ClientConfiguration>(Collection, clientId, cancellationToken);
 
     /// <inheritdoc />
     public Task<IReadOnlyList<ClientConfiguration>> GetAllAsync(CancellationToken cancellationToken = default) =>
-        _store.GetAllAsync<ClientConfiguration>(Collection, cancellationToken);
+        store.GetAllAsync<ClientConfiguration>(Collection, cancellationToken);
 
     /// <inheritdoc />
     public Task<SearchResult<ClientConfiguration>> SearchAsync(DocumentQuery query, CancellationToken cancellationToken = default) =>
-        _store.SearchAsync<ClientConfiguration>(Collection, query, cancellationToken);
+        store.SearchAsync<ClientConfiguration>(Collection, query, cancellationToken);
 
     /// <inheritdoc />
     public Task CreateAsync(ClientConfiguration configuration, CancellationToken cancellationToken = default) =>
-        _store.SetAsync(Collection, configuration.Id, configuration, cancellationToken);
+        store.SetAsync(Collection, configuration.Id, configuration, cancellationToken);
 
     /// <inheritdoc />
     public Task UpdateAsync(ClientConfiguration configuration, CancellationToken cancellationToken = default) =>
-        _store.SetAsync(Collection, configuration.Id, configuration, cancellationToken);
+        store.SetAsync(Collection, configuration.Id, configuration, cancellationToken);
 
     /// <inheritdoc />
     public Task DeleteAsync(string clientId, CancellationToken cancellationToken = default) =>
-        _store.DeleteAsync(Collection, clientId, cancellationToken);
+        store.DeleteAsync(Collection, clientId, cancellationToken);
 
     /// <inheritdoc />
     public async Task<ServiceAccessSettings?> GetServiceSettingsAsync(string clientId, string serviceId, CancellationToken cancellationToken = default)
@@ -56,58 +47,61 @@ public class ClientConfigurationDatabase : IClientConfigurationDatabase
     }
 
     /// <inheritdoc />
-    public async Task SetServiceSettingsAsync(string clientId, string serviceId, ServiceAccessSettings settings, CancellationToken cancellationToken = default)
-    {
-        var config = await GetByIdAsync(clientId, cancellationToken);
-        if (config is null)
-            return;
-
-        var services = new Dictionary<string, ServiceAccessSettings>(config.Services) { [serviceId] = settings };
-        await UpdateAsync(config with { Services = services }, cancellationToken);
-    }
+    public Task SetServiceSettingsAsync(string clientId, string serviceId, ServiceAccessSettings settings, CancellationToken cancellationToken = default) =>
+        MutateAsync(
+            clientId,
+            config => config.Services,
+            (config, services) => config with { Services = services },
+            services => services[serviceId] = settings,
+            cancellationToken);
 
     /// <inheritdoc />
-    public async Task RemoveServiceSettingsAsync(string clientId, string serviceId, CancellationToken cancellationToken = default)
-    {
-        var config = await GetByIdAsync(clientId, cancellationToken);
-        if (config is null)
-            return;
-
-        var services = new Dictionary<string, ServiceAccessSettings>(config.Services);
-        services.Remove(serviceId);
-        await UpdateAsync(config with { Services = services }, cancellationToken);
-    }
+    public Task RemoveServiceSettingsAsync(string clientId, string serviceId, CancellationToken cancellationToken = default) =>
+        MutateAsync(
+            clientId,
+            config => config.Services,
+            (config, services) => config with { Services = services },
+            services => services.Remove(serviceId),
+            cancellationToken);
 
     /// <inheritdoc />
     public async Task<ResourcePoolSettings?> GetResourcePoolSettingsAsync(string clientId, string resourcePoolId, CancellationToken cancellationToken = default)
     {
         var config = await GetByIdAsync(clientId, cancellationToken);
-        if (config is null)
-            return null;
-
-        return config.ResourcePools.TryGetValue(resourcePoolId, out var settings) ? settings : null;
+        return config?.ResourcePools.GetValueOrDefault(resourcePoolId);
     }
 
     /// <inheritdoc />
-    public async Task SetResourcePoolSettingsAsync(string clientId, string resourcePoolId, ResourcePoolSettings settings, CancellationToken cancellationToken = default)
+    public Task SetResourcePoolSettingsAsync(string clientId, string resourcePoolId, ResourcePoolSettings settings, CancellationToken cancellationToken = default) =>
+        MutateAsync(
+            clientId,
+            config => config.ResourcePools,
+            (config, pools) => config with { ResourcePools = pools },
+            pools => pools[resourcePoolId] = settings,
+            cancellationToken);
+
+    /// <inheritdoc />
+    public Task RemoveResourcePoolSettingsAsync(string clientId, string resourcePoolId, CancellationToken cancellationToken = default) =>
+        MutateAsync(
+            clientId,
+            config => config.ResourcePools,
+            (config, pools) => config with { ResourcePools = pools },
+            pools => pools.Remove(resourcePoolId),
+            cancellationToken);
+
+    private async Task MutateAsync<TValue>(
+        string clientId,
+        Func<ClientConfiguration, Dictionary<string, TValue>> select,
+        Func<ClientConfiguration, Dictionary<string, TValue>, ClientConfiguration> apply,
+        Action<Dictionary<string, TValue>> mutate,
+        CancellationToken cancellationToken)
     {
         var config = await GetByIdAsync(clientId, cancellationToken);
         if (config is null)
             return;
 
-        var pools = new Dictionary<string, ResourcePoolSettings>(config.ResourcePools) { [resourcePoolId] = settings };
-        await UpdateAsync(config with { ResourcePools = pools }, cancellationToken);
-    }
-
-    /// <inheritdoc />
-    public async Task RemoveResourcePoolSettingsAsync(string clientId, string resourcePoolId, CancellationToken cancellationToken = default)
-    {
-        var config = await GetByIdAsync(clientId, cancellationToken);
-        if (config is null)
-            return;
-
-        var pools = new Dictionary<string, ResourcePoolSettings>(config.ResourcePools);
-        pools.Remove(resourcePoolId);
-        await UpdateAsync(config with { ResourcePools = pools }, cancellationToken);
+        var updated = new Dictionary<string, TValue>(select(config));
+        mutate(updated);
+        await UpdateAsync(apply(config, updated), cancellationToken);
     }
 }
