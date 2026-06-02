@@ -92,15 +92,12 @@ try
     app.UseMiddleware<RequestTrackingMiddleware>();
     app.UseMiddleware<ErrorHandlingMiddleware>();
 
-    if (app.Environment.IsDevelopment())
+    app.UseSwagger();
+    app.UseSwaggerUI(options =>
     {
-        app.UseSwagger();
-        app.UseSwaggerUI(options =>
-        {
-            options.SwaggerEndpoint("/swagger/v1/swagger.json", "ClientManager Storage API v1");
-            options.RoutePrefix = "docs";
-        });
-    }
+        options.SwaggerEndpoint("/swagger/v1/swagger.json", "ClientManager Storage API v1");
+        options.RoutePrefix = "docs";
+    });
 
     app.UseHttpsRedirection();
     app.UseAuthorization();
@@ -113,10 +110,7 @@ try
         foreach (var url in app.Urls)
         {
             appLogger.Info("Storage API listening", new { Url = url });
-            if (app.Environment.IsDevelopment())
-            {
-                appLogger.Info("Swagger docs available", new { DocsUrl = $"{url}/docs" });
-            }
+            appLogger.Info("Swagger docs available", new { DocsUrl = $"{url}/docs" });
         }
     });
 

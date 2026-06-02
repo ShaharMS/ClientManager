@@ -37,7 +37,17 @@ public class StatisticsApiService
         string filterType, IEnumerable<string> targetIds, IEnumerable<string>? clientIds,
         DateTime? from = null, DateTime? to = null, string? granularity = null)
     {
-        var url = $"api/v1/statistics/usage-timeseries?filterType={Uri.EscapeDataString(filterType)}&targetIds={Uri.EscapeDataString(string.Join(",", targetIds))}";
+        var targetIdList = targetIds
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Distinct()
+            .ToList();
+
+        if (targetIdList.Count == 0)
+        {
+            return [];
+        }
+
+        var url = $"api/v1/statistics/usage-timeseries?filterType={Uri.EscapeDataString(filterType)}&targetIds={Uri.EscapeDataString(string.Join(",", targetIdList))}";
         if (clientIds?.Any() == true)
         {
             url += $"&clientIds={Uri.EscapeDataString(string.Join(",", clientIds))}";
@@ -56,7 +66,17 @@ public class StatisticsApiService
         string filterType, IEnumerable<string> targetIds, IEnumerable<string>? clientIds,
         DateTime? from = null, DateTime? to = null, string? granularity = null)
     {
-        var url = $"api/v1/statistics/client-usage-breakdown?filterType={Uri.EscapeDataString(filterType)}&targetIds={Uri.EscapeDataString(string.Join(",", targetIds))}";
+        var targetIdList = targetIds
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Distinct()
+            .ToList();
+
+        if (targetIdList.Count == 0)
+        {
+            return [];
+        }
+
+        var url = $"api/v1/statistics/client-usage-breakdown?filterType={Uri.EscapeDataString(filterType)}&targetIds={Uri.EscapeDataString(string.Join(",", targetIdList))}";
         if (clientIds?.Any() == true)
         {
             url += $"&clientIds={Uri.EscapeDataString(string.Join(",", clientIds))}";
@@ -83,8 +103,18 @@ public class StatisticsApiService
         string filterType, IEnumerable<string> targetIds, string? clientId,
         DateTime from, DateTime to, string granularity)
     {
+        var targetIdList = targetIds
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Distinct()
+            .ToList();
+
+        if (targetIdList.Count == 0)
+        {
+            return [];
+        }
+
         var url = $"api/v1/statistics/historical-usage?filterType={Uri.EscapeDataString(filterType)}"
-            + $"&targetIds={Uri.EscapeDataString(string.Join(",", targetIds))}"
+            + $"&targetIds={Uri.EscapeDataString(string.Join(",", targetIdList))}"
             + $"&from={from:O}&to={to:O}"
             + $"&granularity={Uri.EscapeDataString(granularity)}";
         if (clientId is not null)
@@ -98,14 +128,18 @@ public class StatisticsApiService
         string filterType, IEnumerable<string> targetIds, IEnumerable<string> clientIds,
         DateTime from, DateTime to, string granularity)
     {
+        var targetIdList = targetIds
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Distinct()
+            .ToList();
         var clientIdList = clientIds.Distinct().ToList();
-        if (clientIdList.Count == 0)
+        if (targetIdList.Count == 0 || clientIdList.Count == 0)
         {
             return [];
         }
 
         var url = $"api/v1/statistics/historical-usage/by-client?filterType={Uri.EscapeDataString(filterType)}"
-            + $"&targetIds={Uri.EscapeDataString(string.Join(",", targetIds))}"
+            + $"&targetIds={Uri.EscapeDataString(string.Join(",", targetIdList))}"
             + $"&clientIds={Uri.EscapeDataString(string.Join(",", clientIdList))}"
             + $"&from={from:O}&to={to:O}"
             + $"&granularity={Uri.EscapeDataString(granularity)}";
