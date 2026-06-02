@@ -423,7 +423,7 @@ public class AccessControlService : IAccessControlService
 
         if (unexpectedException is not null)
         {
-            _logger.Error("Access check failed", unexpectedException, extraData);
+            _logger.Error("Access check failed", extraData, unexpectedException);
             return;
         }
 

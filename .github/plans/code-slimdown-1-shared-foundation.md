@@ -1,6 +1,6 @@
 # Plan: Code Slim-Down — Step 1: Shared Foundation
 
-> **Status**: 🔲 Not started
+> **Status**: ✅ Completed
 > **Prerequisite**: None — this is the first step.
 > **Next**: [code-slimdown-2-dataaccess.md](code-slimdown-2-dataaccess.md)
 > **Parent**: [code-slimdown-overview.md](code-slimdown-overview.md)

@@ -15,6 +15,8 @@ namespace ClientManager.Shared.Contracts.Storage;
 /// </remarks>
 public static class StorageApiRoutes
 {
+    private static string Escape(string value) => Uri.EscapeDataString(value);
+
     /// <summary>
     /// Routes for client configuration documents and their nested settings.
     /// </summary>
@@ -27,38 +29,38 @@ public static class StorageApiRoutes
 
         /// <summary>Returns the route for a single client configuration by identifier.</summary>
         /// <param name="clientId">The client identifier.</param>
-        public static string ById(string clientId) => $"{Base}/{Uri.EscapeDataString(clientId)}";
+        public static string ById(string clientId) => $"{Base}/{Escape(clientId)}";
 
         /// <summary>Returns the paged route for a client's service settings.</summary>
         /// <param name="clientId">The client identifier.</param>
         /// <param name="page">The 1-based page number.</param>
         /// <param name="pageSize">The page size.</param>
         public static string Services(string clientId, int page, int pageSize) =>
-            $"{Base}/{Uri.EscapeDataString(clientId)}/services?page={page}&pageSize={pageSize}";
+            $"{Base}/{Escape(clientId)}/services?page={page}&pageSize={pageSize}";
 
         /// <summary>Returns the route for a single client/service settings pair.</summary>
         /// <param name="clientId">The client identifier.</param>
         /// <param name="serviceId">The service identifier.</param>
         public static string ServiceSettings(string clientId, string serviceId) =>
-            $"{Base}/{Uri.EscapeDataString(clientId)}/services/{Uri.EscapeDataString(serviceId)}";
+            $"{Base}/{Escape(clientId)}/services/{Escape(serviceId)}";
 
         /// <summary>Returns the paged route for a client's resource-pool settings.</summary>
         /// <param name="clientId">The client identifier.</param>
         /// <param name="page">The 1-based page number.</param>
         /// <param name="pageSize">The page size.</param>
         public static string ResourcePools(string clientId, int page, int pageSize) =>
-            $"{Base}/{Uri.EscapeDataString(clientId)}/resource-pools?page={page}&pageSize={pageSize}";
+            $"{Base}/{Escape(clientId)}/resource-pools?page={page}&pageSize={pageSize}";
 
         /// <summary>Returns the route for a single client/resource-pool settings pair.</summary>
         /// <param name="clientId">The client identifier.</param>
         /// <param name="poolId">The resource-pool identifier.</param>
         public static string ResourcePoolSettings(string clientId, string poolId) =>
-            $"{Base}/{Uri.EscapeDataString(clientId)}/resource-pools/{Uri.EscapeDataString(poolId)}";
+            $"{Base}/{Escape(clientId)}/resource-pools/{Escape(poolId)}";
 
         /// <summary>Returns the route for a client's global rate limit.</summary>
         /// <param name="clientId">The client identifier.</param>
         public static string GlobalRateLimit(string clientId) =>
-            $"{Base}/{Uri.EscapeDataString(clientId)}/global-rate-limit";
+            $"{Base}/{Escape(clientId)}/global-rate-limit";
     }
 
     /// <summary>
@@ -73,7 +75,7 @@ public static class StorageApiRoutes
 
         /// <summary>Returns the route for a single service by identifier.</summary>
         /// <param name="serviceId">The service identifier.</param>
-        public static string ById(string serviceId) => $"{Base}/{Uri.EscapeDataString(serviceId)}";
+        public static string ById(string serviceId) => $"{Base}/{Escape(serviceId)}";
     }
 
     /// <summary>
@@ -88,7 +90,7 @@ public static class StorageApiRoutes
 
         /// <summary>Returns the route for a single resource pool by identifier.</summary>
         /// <param name="poolId">The resource-pool identifier.</param>
-        public static string ById(string poolId) => $"{Base}/{Uri.EscapeDataString(poolId)}";
+        public static string ById(string poolId) => $"{Base}/{Escape(poolId)}";
     }
 
     /// <summary>
@@ -103,7 +105,7 @@ public static class StorageApiRoutes
 
         /// <summary>Returns the route for a single global rate limit by identifier.</summary>
         /// <param name="id">The global rate-limit identifier.</param>
-        public static string ById(string id) => $"{Base}/{Uri.EscapeDataString(id)}";
+        public static string ById(string id) => $"{Base}/{Escape(id)}";
     }
 
     /// <summary>
@@ -154,16 +156,16 @@ public static class StorageApiRoutes
 
         /// <summary>Returns the route for a single client's detailed statistics.</summary>
         /// <param name="clientId">The client identifier.</param>
-        public static string ClientDetails(string clientId) => $"{Base}/clients/{Uri.EscapeDataString(clientId)}";
+        public static string ClientDetails(string clientId) => $"{Base}/clients/{Escape(clientId)}";
 
         /// <summary>Returns the route for a single service's detailed statistics.</summary>
         /// <param name="serviceId">The service identifier.</param>
-        public static string ServiceDetails(string serviceId) => $"{Base}/services/{Uri.EscapeDataString(serviceId)}";
+        public static string ServiceDetails(string serviceId) => $"{Base}/services/{Escape(serviceId)}";
 
         /// <summary>Returns the route for a single resource pool's detailed statistics.</summary>
         /// <param name="resourcePoolId">The resource-pool identifier.</param>
         public static string ResourcePoolDetails(string resourcePoolId) =>
-            $"{Base}/resource-pools/{Uri.EscapeDataString(resourcePoolId)}";
+            $"{Base}/resource-pools/{Escape(resourcePoolId)}";
 
         /// <summary>
         /// Builds the usage time-series route for one or more targets over an optional range.
@@ -269,28 +271,28 @@ public static class StorageApiRoutes
         {
             var parameters = new List<string>
             {
-                $"{StatisticsQueryParameters.FilterType}={Uri.EscapeDataString(filterType.ToString())}",
-                $"{StatisticsQueryParameters.TargetIds}={Uri.EscapeDataString(IdentifierList.Join(targetIds))}"
+                $"{StatisticsQueryParameters.FilterType}={Escape(filterType.ToString())}",
+                $"{StatisticsQueryParameters.TargetIds}={Escape(IdentifierList.Join(targetIds))}"
             };
 
             if (!string.IsNullOrWhiteSpace(clientIds))
             {
-                parameters.Add($"{StatisticsQueryParameters.ClientIds}={Uri.EscapeDataString(clientIds)}");
+                parameters.Add($"{StatisticsQueryParameters.ClientIds}={Escape(clientIds)}");
             }
 
             if (from is not null)
             {
-                parameters.Add($"{StatisticsQueryParameters.From}={Uri.EscapeDataString(from.Value.ToString("O"))}");
+                parameters.Add($"{StatisticsQueryParameters.From}={Escape(from.Value.ToString("O"))}");
             }
 
             if (to is not null)
             {
-                parameters.Add($"{StatisticsQueryParameters.To}={Uri.EscapeDataString(to.Value.ToString("O"))}");
+                parameters.Add($"{StatisticsQueryParameters.To}={Escape(to.Value.ToString("O"))}");
             }
 
             if (granularity is not null)
             {
-                parameters.Add($"{StatisticsQueryParameters.Granularity}={Uri.EscapeDataString(granularity.Value.ToString())}");
+                parameters.Add($"{StatisticsQueryParameters.Granularity}={Escape(granularity.Value.ToString())}");
             }
 
             return $"{basePath}?{string.Join("&", parameters)}";
@@ -306,16 +308,16 @@ public static class StorageApiRoutes
         {
             var parameters = new List<string>
             {
-                $"{StatisticsQueryParameters.FilterType}={Uri.EscapeDataString(filterType.ToString())}",
-                $"{StatisticsQueryParameters.TargetIds}={Uri.EscapeDataString(IdentifierList.Join(targetIds))}",
-                $"{StatisticsQueryParameters.From}={Uri.EscapeDataString(from.ToString("O"))}",
-                $"{StatisticsQueryParameters.To}={Uri.EscapeDataString(to.ToString("O"))}",
-                $"{StatisticsQueryParameters.Granularity}={Uri.EscapeDataString(granularity.ToString())}"
+                $"{StatisticsQueryParameters.FilterType}={Escape(filterType.ToString())}",
+                $"{StatisticsQueryParameters.TargetIds}={Escape(IdentifierList.Join(targetIds))}",
+                $"{StatisticsQueryParameters.From}={Escape(from.ToString("O"))}",
+                $"{StatisticsQueryParameters.To}={Escape(to.ToString("O"))}",
+                $"{StatisticsQueryParameters.Granularity}={Escape(granularity.ToString())}"
             };
 
             if (!string.IsNullOrWhiteSpace(clientId))
             {
-                parameters.Add($"{StatisticsQueryParameters.ClientId}={Uri.EscapeDataString(clientId)}");
+                parameters.Add($"{StatisticsQueryParameters.ClientId}={Escape(clientId)}");
             }
 
             return $"{Base}/historical-usage?{string.Join("&", parameters)}";

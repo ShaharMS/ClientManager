@@ -193,12 +193,12 @@ public class RateLimitService : IRateLimitService
             stopwatch.Stop();
             activity?.SetTag("error.type", exception.GetType().Name);
             activity?.SetStatus(ActivityStatusCode.Error);
-            _logger.Error("Rate limit operation failed", exception, new
+            _logger.Error("Rate limit operation failed", new
             {
                 Operation = operation,
                 DurationMs = stopwatch.Elapsed.TotalMilliseconds,
                 Result = "exception"
-            });
+            }, exception);
             throw;
         }
     }

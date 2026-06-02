@@ -17,3 +17,12 @@ public enum FilterOperator
     LessThan,
     LessThanOrEqual
 }
+
+/// <summary>
+/// Sort direction for a <see cref="SortClause"/> within a <see cref="DocumentQuery"/>.
+/// </summary>
+public enum SortDirection
+{
+    Ascending,
+    Descending
+}

@@ -38,7 +38,7 @@ public class ErrorHandlingMiddleware
         }
         catch (Exception exception)
         {
-            _logger.Error("Internal error occured while processing request", exception, new { Path = context.Request.Path.Value, context.Request.Method });
+            _logger.Error("Internal error occured while processing request", new { Path = context.Request.Path.Value, context.Request.Method }, exception);
             await WriteProblemDetailsAsync(context, StatusCodes.Status500InternalServerError, "Internal Server Error", "An unexpected error occurred.");
         }
     }

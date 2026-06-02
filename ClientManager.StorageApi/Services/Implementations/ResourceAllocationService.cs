@@ -546,7 +546,7 @@ public class ResourceAllocationService : IResourceAllocationService
 
         if (unexpectedException is not null)
         {
-            _logger.Error("Resource operation failed", unexpectedException, extraData);
+            _logger.Error("Resource operation failed", extraData, unexpectedException);
             return;
         }
 

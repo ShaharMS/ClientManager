@@ -61,7 +61,7 @@ public partial class UsagePersistenceService : BackgroundService
             }
             catch (Exception exception)
             {
-                _logger.Error("Error in fast usage persistence cycle", exception);
+                _logger.Error("Error in fast usage persistence cycle", exception: exception);
             }
         }
     }
@@ -94,7 +94,7 @@ public partial class UsagePersistenceService : BackgroundService
             }
             catch (Exception exception)
             {
-                _logger.Error("Error in slow usage persistence cycle", exception);
+                _logger.Error("Error in slow usage persistence cycle", exception: exception);
             }
         }
     }

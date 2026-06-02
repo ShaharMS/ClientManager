@@ -7,27 +7,15 @@ namespace ClientManager.Shared.Logging;
 /// used to name the underlying NLog logger.</typeparam>
 public interface IAppLogger<T>
 {
-    void Trace(string message);
-    void Trace(string message, object extraData);
-    void Trace(string message, Exception exception, object? extraData = null);
+    void Trace(string message, object? extraData = null, Exception? exception = null);
 
-    void Debug(string message);
-    void Debug(string message, object extraData);
-    void Debug(string message, Exception exception, object? extraData = null);
+    void Debug(string message, object? extraData = null, Exception? exception = null);
 
-    void Info(string message);
-    void Info(string message, object extraData);
-    void Info(string message, Exception exception, object? extraData = null);
+    void Info(string message, object? extraData = null, Exception? exception = null);
 
-    void Warn(string message);
-    void Warn(string message, object extraData);
-    void Warn(string message, Exception exception, object? extraData = null);
+    void Warn(string message, object? extraData = null, Exception? exception = null);
 
-    void Error(string message);
-    void Error(string message, object extraData);
-    void Error(string message, Exception exception, object? extraData = null);
+    void Error(string message, object? extraData = null, Exception? exception = null);
 
-    void Fatal(string message);
-    void Fatal(string message, object extraData);
-    void Fatal(string message, Exception exception, object? extraData = null);
+    void Fatal(string message, object? extraData = null, Exception? exception = null);
 }

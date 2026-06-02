@@ -44,7 +44,7 @@ public class AllocationCleanupService : BackgroundService
             }
             catch (Exception exception)
             {
-                _logger.Error("Error cleaning up expired resource allocations", exception);
+                _logger.Error("Error cleaning up expired resource allocations", exception: exception);
             }
 
             await Task.Delay(_interval, stoppingToken);

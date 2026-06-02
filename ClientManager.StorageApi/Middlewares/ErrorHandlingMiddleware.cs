@@ -59,11 +59,11 @@ public class ErrorHandlingMiddleware
         }
         catch (Exception exception)
         {
-            _logger.Error("Unhandled exception", exception, new
+            _logger.Error("Unhandled exception", new
             {
                 Path = context.Request.Path.Value,
                 context.Request.Method
-            });
+            }, exception);
 
             await WriteProblemDetailsAsync(
                 context,

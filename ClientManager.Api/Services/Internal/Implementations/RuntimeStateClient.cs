@@ -359,7 +359,7 @@ internal sealed class RuntimeStateClient : IRuntimeStateClient
 
         if (exception is not null && result is not "denied")
         {
-            _logger.Error("Storage API runtime call failed", exception, extraData);
+            _logger.Error("Storage API runtime call failed", extraData, exception);
             return;
         }
 

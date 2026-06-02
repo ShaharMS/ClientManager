@@ -70,13 +70,13 @@ public sealed class HotPathFailOpenFilter : IAsyncActionFilter
 
         _logger.Error(
             "Hot-path fail-open engaged: suppressing server error and returning a success response",
-            executed.Exception!,
             new
             {
                 Path = context.HttpContext.Request.Path.Value,
                 context.HttpContext.Request.Method,
                 failOpen.Kind
-            });
+            },
+            executed.Exception!);
 
         executed.Result = new OkObjectResult(fallback);
         executed.ExceptionHandled = true;

@@ -233,7 +233,7 @@ public sealed class InstrumentedDocumentStore : IDocumentStore
 
         if (exception is not null)
         {
-            _logger.Error("Document-store operation failed", exception, extraData);
+            _logger.Error("Document-store operation failed", extraData, exception);
             return;
         }
 
