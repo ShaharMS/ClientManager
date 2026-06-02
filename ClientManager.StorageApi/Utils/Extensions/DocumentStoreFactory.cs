@@ -147,11 +147,46 @@ internal static class DocumentStoreFactory
                 config.CertificateValidation += (_, _, _, _) => true;
             }
 
-            multiplexer = ConnectionMultiplexer.Connect(config);
+            try
+            {
+                multiplexer = ConnectionMultiplexer.Connect(config);
+            }
+            catch (RedisException exception)
+            {
+                throw new InvalidOperationException(
+                    $"Failed to initialize the Redis storage provider. {DescribeRedisConnection(options)}",
+                    exception);
+            }
+
             multiplexerCache[cacheKey] = multiplexer;
         }
 
         return new RedisDocumentStore(multiplexer, options.DatabaseIndex, options.GlobalKeyPrefix);
+    }
+
+    private static string DescribeRedisConnection(RedisStoreOptions options)
+    {
+        var details = new List<string>
+        {
+            $"host='{options.Host}'",
+            $"port={options.Port}",
+            $"user='{(string.IsNullOrWhiteSpace(options.User) ? "(default)" : options.User)}'",
+            $"database={options.DatabaseIndex}",
+            $"prefix='{(string.IsNullOrEmpty(options.GlobalKeyPrefix) ? "(none)" : options.GlobalKeyPrefix)}'",
+            $"ssl={options.UseSsl || options.UseTls}",
+            $"tls={options.UseTls}",
+            $"abortOnConnectFail={options.AbortOnConnectFail}",
+            $"connectTimeoutMs={options.ConnectTimeoutMilliseconds}",
+            $"connectRetry={options.ConnectRetry}",
+            $"syncTimeoutMs={options.SyncTimeoutMilliseconds}"
+        };
+
+        if (!string.IsNullOrWhiteSpace(options.TlsCertificatePath))
+        {
+            details.Add($"tlsCertificatePath='{options.TlsCertificatePath}'");
+        }
+
+        return string.Join(", ", details);
     }
 
     private static string BuildRedisMultiplexerCacheKey(RedisStoreOptions options)

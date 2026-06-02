@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using System.Text;
+using ClientManager.DataAccess.Stores.Implementations;
 using ClientManager.DataAccess.Stores.Interfaces;
 using ClientManager.Shared.Logging;
 using ClientManager.Shared.Models.Enums;
@@ -17,8 +19,10 @@ public sealed class InstrumentedDocumentStore : IDocumentStore
     private readonly IDocumentStore _inner;
     private readonly StorageRole _role;
     private readonly PersistenceProvider _provider;
+    private readonly PersistenceProvider _configuredProvider;
     private readonly StorageApiMetrics _metrics;
     private readonly IAppLogger<InstrumentedDocumentStore> _logger;
+    private readonly string _storeType;
 
     public InstrumentedDocumentStore(
         IDocumentStore inner,
@@ -29,9 +33,11 @@ public sealed class InstrumentedDocumentStore : IDocumentStore
     {
         _inner = inner;
         _role = role;
-        _provider = provider;
+        _configuredProvider = provider;
+        _provider = ResolveProvider(inner, provider);
         _metrics = metrics;
         _logger = logger;
+        _storeType = inner.GetType().Name;
     }
 
     public Task<T?> GetAsync<T>(string collection, string id, CancellationToken cancellationToken = default) where T : class =>
@@ -209,9 +215,14 @@ public sealed class InstrumentedDocumentStore : IDocumentStore
             Operation = operation,
             Role = _role.ToString(),
             Provider = _provider.ToString(),
+            ConfiguredProvider = _provider == _configuredProvider ? null : _configuredProvider.ToString(),
+            StoreType = _storeType,
             DurationMs = durationMs,
             Result = result,
-            LockWaitMs = activity?.GetTagItem("storage.lock_wait_ms")
+            LockWaitMs = activity?.GetTagItem("storage.lock_wait_ms"),
+            ExceptionType = exception?.GetType().Name,
+            ExceptionMessage = exception?.Message,
+            ExceptionContext = exception is null ? null : DescribeExceptionContext(exception)
         };
 
         if (result == "canceled")
@@ -233,5 +244,41 @@ public sealed class InstrumentedDocumentStore : IDocumentStore
         }
 
         _logger.Debug("Document-store operation completed", extraData);
+    }
+
+    private static PersistenceProvider ResolveProvider(IDocumentStore inner, PersistenceProvider configuredProvider)
+    {
+        return inner switch
+        {
+            RedisDocumentStore => PersistenceProvider.Redis,
+            MongoDBDocumentStore => PersistenceProvider.MongoDb,
+            JsonFileDocumentStore => PersistenceProvider.JsonFile,
+            LuceneDocumentStore => PersistenceProvider.Lucene,
+            _ => configuredProvider
+        };
+    }
+
+    private static string? DescribeExceptionContext(Exception exception)
+    {
+        if (exception.Data.Count == 0)
+        {
+            return null;
+        }
+
+        var builder = new StringBuilder();
+
+        foreach (System.Collections.DictionaryEntry entry in exception.Data)
+        {
+            if (builder.Length > 0)
+            {
+                builder.Append(", ");
+            }
+
+            builder.Append(entry.Key);
+            builder.Append('=');
+            builder.Append(entry.Value);
+        }
+
+        return builder.ToString();
     }
 }

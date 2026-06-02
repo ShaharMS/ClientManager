@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Net;
 using System.Text.Json;
 using ClientManager.DataAccess.Stores.Implementations.Helpers;
 using ClientManager.DataAccess.Stores.Interfaces;
@@ -82,20 +83,28 @@ return next
         ? key
         : $"{_globalKeyPrefix}{key}";
 
+    private string StorageMode => _hasRediSearch ? "json-search" : "hash";
+
     /// <inheritdoc />
     public async Task<T?> GetAsync<T>(string collection, string id, CancellationToken cancellationToken = default) where T : class
     {
-        if (_hasRediSearch)
-        {
-            var json = await Database.JSON().GetAsync(DocKey(collection, id), JsonRootPath);
-            if (json is null || json.IsNull)
-                return null;
+        return await ExecuteWithRedisContextAsync(
+            "get",
+            async () =>
+            {
+                if (_hasRediSearch)
+                {
+                    var json = await Database.JSON().GetAsync(DocKey(collection, id), JsonRootPath);
+                    if (json is null || json.IsNull)
+                        return null;
 
-            return DeserializeRedisJson<T>(json.ToString());
-        }
+                    return DeserializeRedisJson<T>(json.ToString());
+                }
 
-        var value = await Database.HashGetAsync(HashKey(collection), id);
-        return value.IsNullOrEmpty ? null : JsonSerializer.Deserialize<T>(value.ToString(), JsonOptions);
+                var value = await Database.HashGetAsync(HashKey(collection), id);
+                return value.IsNullOrEmpty ? null : JsonSerializer.Deserialize<T>(value.ToString(), JsonOptions);
+            },
+            DescribeCollectionContext(collection, id));
     }
 
     /// <inheritdoc />
@@ -110,54 +119,72 @@ return next
             return [];
         }
 
-        cancellationToken.ThrowIfCancellationRequested();
+        return await ExecuteWithRedisContextAsync(
+            "get_many",
+            async () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
 
-        return _hasRediSearch
-            ? await GetManyFromJsonAsync<T>(collection, requestedIds, cancellationToken)
-            : await GetManyFromHashAsync<T>(collection, requestedIds, cancellationToken);
+                return _hasRediSearch
+                    ? await GetManyFromJsonAsync<T>(collection, requestedIds, cancellationToken)
+                    : await GetManyFromHashAsync<T>(collection, requestedIds, cancellationToken);
+            },
+            DescribeCollectionContext(collection, null, requestedIds.Length));
     }
 
     /// <inheritdoc />
     public async Task<IReadOnlyList<T>> GetAllAsync<T>(string collection, CancellationToken cancellationToken = default) where T : class
     {
-        if (_hasRediSearch)
-        {
-            EnsureIndex(collection);
-            var search = Database.FT();
-            var result = search.Search(IndexName(collection), new Query("*").SetNoContent(false).Limit(0, int.MaxValue));
-
-            var items = new List<T>(result.Documents.Count);
-            foreach (var doc in result.Documents)
+        return await ExecuteWithRedisContextAsync(
+            "get_all",
+            async () =>
             {
-                var jsonField = doc["$"];
-                if (jsonField == RedisValue.Null) continue;
-                var json = jsonField.ToString();
-                var item = JsonSerializer.Deserialize<T>(json, JsonOptions);
-                if (item is not null)
-                    items.Add(item);
-            }
+                if (_hasRediSearch)
+                {
+                    EnsureIndex(collection);
+                    var search = Database.FT();
+                    var result = search.Search(IndexName(collection), new Query("*").SetNoContent(false).Limit(0, int.MaxValue));
 
-            return items;
-        }
+                    var items = new List<T>(result.Documents.Count);
+                    foreach (var doc in result.Documents)
+                    {
+                        var jsonField = doc["$"];
+                        if (jsonField == RedisValue.Null) continue;
+                        var json = jsonField.ToString();
+                        var item = JsonSerializer.Deserialize<T>(json, JsonOptions);
+                        if (item is not null)
+                            items.Add(item);
+                    }
 
-        var entries = await Database.HashGetAllAsync(HashKey(collection));
-        return [.. entries.Select(e => JsonSerializer.Deserialize<T>(e.Value.ToString(), JsonOptions)!)];
+                    return items;
+                }
+
+                var entries = await Database.HashGetAllAsync(HashKey(collection));
+                return [.. entries.Select(e => JsonSerializer.Deserialize<T>(e.Value.ToString(), JsonOptions)!)];
+            },
+            DescribeCollectionContext(collection));
     }
 
     /// <inheritdoc />
     public async Task SetAsync<T>(string collection, string id, T document, CancellationToken cancellationToken = default) where T : class
     {
-        var json = JsonSerializer.Serialize(document, JsonOptions);
+        await ExecuteWithRedisContextAsync(
+            "set",
+            async () =>
+            {
+                var json = JsonSerializer.Serialize(document, JsonOptions);
 
-        if (_hasRediSearch)
-        {
-            EnsureIndex(collection);
-            await Database.JSON().SetAsync(DocKey(collection, id), JsonRootPath, json);
-        }
-        else
-        {
-            await Database.HashSetAsync(HashKey(collection), id, json);
-        }
+                if (_hasRediSearch)
+                {
+                    EnsureIndex(collection);
+                    await Database.JSON().SetAsync(DocKey(collection, id), JsonRootPath, json);
+                }
+                else
+                {
+                    await Database.HashSetAsync(HashKey(collection), id, json);
+                }
+            },
+            DescribeCollectionContext(collection, id));
     }
 
     /// <inheritdoc />
@@ -169,45 +196,63 @@ return next
         if (documents.Count == 0)
             return;
 
-        cancellationToken.ThrowIfCancellationRequested();
-        if (_hasRediSearch)
-        {
-            await SetManyJsonDocumentsAsync(collection, documents);
-            return;
-        }
+        await ExecuteWithRedisContextAsync(
+            "set_many",
+            async () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (_hasRediSearch)
+                {
+                    await SetManyJsonDocumentsAsync(collection, documents);
+                    return;
+                }
 
-        var entries = documents.Select(entry =>
-            new HashEntry(entry.Key, JsonSerializer.Serialize(entry.Value, JsonOptions))).ToArray();
-        await Database.HashSetAsync(HashKey(collection), entries);
+                var entries = documents.Select(entry =>
+                    new HashEntry(entry.Key, JsonSerializer.Serialize(entry.Value, JsonOptions))).ToArray();
+                await Database.HashSetAsync(HashKey(collection), entries);
+            },
+            DescribeCollectionContext(collection, null, documents.Count));
     }
 
     /// <inheritdoc />
     public async Task DeleteAsync(string collection, string id, CancellationToken cancellationToken = default)
     {
-        if (_hasRediSearch)
-        {
-            await Database.KeyDeleteAsync(DocKey(collection, id));
-        }
-        else
-        {
-            await Database.HashDeleteAsync(HashKey(collection), id);
-        }
+        await ExecuteWithRedisContextAsync(
+            "delete",
+            async () =>
+            {
+                if (_hasRediSearch)
+                {
+                    await Database.KeyDeleteAsync(DocKey(collection, id));
+                }
+                else
+                {
+                    await Database.HashDeleteAsync(HashKey(collection), id);
+                }
+            },
+            DescribeCollectionContext(collection, id));
     }
 
     /// <inheritdoc />
     public async Task<long> IncrementCounterAsync(string key, TimeSpan window, CancellationToken cancellationToken = default)
     {
-        var redisKey = CounterKey(key);
-        var db = Database;
+        return await ExecuteWithRedisContextAsync(
+            "counter_increment",
+            async () =>
+            {
+                var redisKey = CounterKey(key);
+                var db = Database;
 
-        var count = await db.StringIncrementAsync(redisKey);
+                var count = await db.StringIncrementAsync(redisKey);
 
-        if (count == 1)
-        {
-            await db.KeyExpireAsync(redisKey, window);
-        }
+                if (count == 1)
+                {
+                    await db.KeyExpireAsync(redisKey, window);
+                }
 
-        return count;
+                return count;
+            },
+            DescribeCounterContext(key, window));
     }
 
     /// <inheritdoc />
@@ -218,23 +263,35 @@ return next
         if (entries.Count == 0)
             return new Dictionary<string, long>();
 
-        cancellationToken.ThrowIfCancellationRequested();
-        var batch = Database.CreateBatch();
-        var tasks = entries.ToDictionary(
-            entry => entry.Key,
-            entry => batch.StringIncrementAsync(CounterKey(entry.Key), entry.Value.amount),
-            StringComparer.Ordinal);
+        return await ExecuteWithRedisContextAsync(
+            "counter_increment_many",
+            async () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var batch = Database.CreateBatch();
+                var tasks = entries.ToDictionary(
+                    entry => entry.Key,
+                    entry => batch.StringIncrementAsync(CounterKey(entry.Key), entry.Value.amount),
+                    StringComparer.Ordinal);
 
-        batch.Execute();
-        return await CompleteIncrementBatchAsync(entries, tasks, cancellationToken);
+                batch.Execute();
+                return await CompleteIncrementBatchAsync(entries, tasks, cancellationToken);
+            },
+            DescribeCounterBatchContext(entries.Keys));
     }
 
     /// <inheritdoc />
     public async Task<long> GetCounterAsync(string key, CancellationToken cancellationToken = default)
     {
-        var redisKey = CounterKey(key);
-        var value = await Database.StringGetAsync(redisKey);
-        return value.IsNullOrEmpty ? 0 : (long)value;
+        return await ExecuteWithRedisContextAsync(
+            "counter_get",
+            async () =>
+            {
+                var redisKey = CounterKey(key);
+                var value = await Database.StringGetAsync(redisKey);
+                return value.IsNullOrEmpty ? 0 : (long)value;
+            },
+            DescribeCounterContext(key));
     }
 
     /// <inheritdoc />
@@ -246,16 +303,25 @@ return next
         if (requestedKeys.Length == 0)
             return new Dictionary<string, long>();
 
-        cancellationToken.ThrowIfCancellationRequested();
-        var redisKeys = requestedKeys.Select(CounterKey).ToArray();
-        var values = await Database.StringGetAsync(redisKeys);
-        return MapCounterValues(requestedKeys, values);
+        return await ExecuteWithRedisContextAsync(
+            "counter_get_many",
+            async () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var redisKeys = requestedKeys.Select(CounterKey).ToArray();
+                var values = await Database.StringGetAsync(redisKeys);
+                return MapCounterValues(requestedKeys, values);
+            },
+            DescribeCounterBatchContext(requestedKeys));
     }
 
     /// <inheritdoc />
     public async Task<long> DecrementCounterAsync(string key, CancellationToken cancellationToken = default)
     {
-        return await DecrementCounterByAsync(key, 1, cancellationToken);
+        return await ExecuteWithRedisContextAsync(
+            "counter_decrement",
+            () => DecrementCounterByAsync(key, 1, cancellationToken),
+            DescribeCounterContext(key, amount: 1));
     }
 
     /// <inheritdoc />
@@ -266,33 +332,51 @@ return next
         if (entries.Count == 0)
             return new Dictionary<string, long>();
 
-        cancellationToken.ThrowIfCancellationRequested();
-        var batch = Database.CreateBatch();
-        var tasks = entries.ToDictionary(
-            entry => entry.Key,
-            entry => batch.ScriptEvaluateAsync(
-                DecrementCounterScript,
-                new[] { CounterKey(entry.Key) },
-                new RedisValue[] { entry.Value }),
-            StringComparer.Ordinal);
+        return await ExecuteWithRedisContextAsync(
+            "counter_decrement_many",
+            async () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var batch = Database.CreateBatch();
+                var tasks = entries.ToDictionary(
+                    entry => entry.Key,
+                    entry => batch.ScriptEvaluateAsync(
+                        DecrementCounterScript,
+                        new[] { CounterKey(entry.Key) },
+                        new RedisValue[] { entry.Value }),
+                    StringComparer.Ordinal);
 
-        batch.Execute();
-        return await CompleteDecrementBatchAsync(tasks, cancellationToken);
+                batch.Execute();
+                return await CompleteDecrementBatchAsync(tasks, cancellationToken);
+            },
+            DescribeCounterBatchContext(entries.Keys));
     }
 
     /// <inheritdoc />
     public async Task ResetCounterAsync(string key, CancellationToken cancellationToken = default)
     {
-        var redisKey = CounterKey(key);
-        await Database.KeyDeleteAsync(redisKey);
+        await ExecuteWithRedisContextAsync(
+            "counter_reset",
+            async () =>
+            {
+                var redisKey = CounterKey(key);
+                await Database.KeyDeleteAsync(redisKey);
+            },
+            DescribeCounterContext(key));
     }
 
     /// <inheritdoc />
     public async Task SetCounterAsync(string key, long value, TimeSpan window, CancellationToken cancellationToken = default)
     {
-        var redisKey = CounterKey(key);
-        var db = Database;
-        await db.StringSetAsync(redisKey, value, window);
+        await ExecuteWithRedisContextAsync(
+            "counter_set",
+            async () =>
+            {
+                var redisKey = CounterKey(key);
+                var db = Database;
+                await db.StringSetAsync(redisKey, value, window);
+            },
+            DescribeCounterContext(key, window, value));
     }
 
     /// <inheritdoc />
@@ -303,13 +387,19 @@ return next
         if (entries.Count == 0)
             return;
 
-        cancellationToken.ThrowIfCancellationRequested();
-        var batch = Database.CreateBatch();
-        var tasks = entries.Select(entry =>
-            batch.StringSetAsync(CounterKey(entry.Key), entry.Value.value, entry.Value.window)).ToArray();
+        await ExecuteWithRedisContextAsync(
+            "counter_set_many",
+            async () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var batch = Database.CreateBatch();
+                var tasks = entries.Select(entry =>
+                    batch.StringSetAsync(CounterKey(entry.Key), entry.Value.value, entry.Value.window)).ToArray();
 
-        batch.Execute();
-        await Task.WhenAll(tasks);
+                batch.Execute();
+                await Task.WhenAll(tasks);
+            },
+            DescribeCounterBatchContext(entries.Keys));
     }
 
     /// <inheritdoc />
@@ -317,29 +407,35 @@ return next
         string collection, DocumentQuery query,
         CancellationToken cancellationToken = default) where T : class
     {
-        if (!_hasRediSearch)
-        {
-            var all = await GetAllAsync<T>(collection, cancellationToken);
-            return InMemoryQueryEvaluator.Apply(all, query);
-        }
+        return await ExecuteWithRedisContextAsync(
+            "search",
+            async () =>
+            {
+                if (!_hasRediSearch)
+                {
+                    var all = await GetAllAsync<T>(collection, cancellationToken);
+                    return InMemoryQueryEvaluator.Apply(all, query);
+                }
 
-        EnsureIndex(collection);
-        var searchQuery = BuildRediSearchQuery(query);
-        var search = Database.FT();
-        var result = search.Search(IndexName(collection), searchQuery);
+                EnsureIndex(collection);
+                var searchQuery = BuildRediSearchQuery(query);
+                var search = Database.FT();
+                var result = search.Search(IndexName(collection), searchQuery);
 
-        var items = new List<T>();
-        foreach (var doc in result.Documents)
-        {
-            var jsonField = doc["$"];
-            if (jsonField == RedisValue.Null) continue;
-            var json = jsonField.ToString();
-            var item = JsonSerializer.Deserialize<T>(json, JsonOptions);
-            if (item is not null)
-                items.Add(item);
-        }
+                var items = new List<T>();
+                foreach (var doc in result.Documents)
+                {
+                    var jsonField = doc["$"];
+                    if (jsonField == RedisValue.Null) continue;
+                    var json = jsonField.ToString();
+                    var item = JsonSerializer.Deserialize<T>(json, JsonOptions);
+                    if (item is not null)
+                        items.Add(item);
+                }
 
-        return new SearchResult<T>(items, result.TotalResults);
+                return new SearchResult<T>(items, result.TotalResults);
+            },
+            DescribeQueryContext(collection, query));
     }
 
     /// <inheritdoc />
@@ -347,19 +443,65 @@ return next
         string collection, DocumentQuery query,
         CancellationToken cancellationToken = default) where T : class
     {
-        if (!_hasRediSearch)
+        return await ExecuteWithRedisContextAsync(
+            "count",
+            async () =>
+            {
+                if (!_hasRediSearch)
+                {
+                    var all = await GetAllAsync<T>(collection, cancellationToken);
+                    return InMemoryQueryEvaluator.Apply(all, query).TotalCount;
+                }
+
+                EnsureIndex(collection);
+                var searchQuery = BuildRediSearchQuery(query);
+                searchQuery.Limit(0, 0);
+                var search = Database.FT();
+                var result = search.Search(IndexName(collection), searchQuery);
+
+                return result.TotalResults;
+            },
+            DescribeQueryContext(collection, query));
+    }
+
+    private async Task ExecuteWithRedisContextAsync(
+        string operation,
+        Func<Task> action,
+        params (string Name, object? Value)[] context)
+    {
+        try
         {
-            var all = await GetAllAsync<T>(collection, cancellationToken);
-            return InMemoryQueryEvaluator.Apply(all, query).TotalCount;
+            await action();
         }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (RedisException exception)
+        {
+            EnrichException(exception, operation, context);
+            throw;
+        }
+    }
 
-        EnsureIndex(collection);
-        var searchQuery = BuildRediSearchQuery(query);
-        searchQuery.Limit(0, 0);
-        var search = Database.FT();
-        var result = search.Search(IndexName(collection), searchQuery);
-
-        return result.TotalResults;
+    private async Task<TResult> ExecuteWithRedisContextAsync<TResult>(
+        string operation,
+        Func<Task<TResult>> action,
+        params (string Name, object? Value)[] context)
+    {
+        try
+        {
+            return await action();
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (RedisException exception)
+        {
+            EnrichException(exception, operation, context);
+            throw;
+        }
     }
 
     private bool DetectRediSearch()
@@ -423,6 +565,113 @@ return next
         {
             // Index already exists — safe to continue
         }
+    }
+
+    private void EnrichException(
+        RedisException exception,
+        string operation,
+        params (string Name, object? Value)[] context)
+    {
+        SetExceptionData(exception, "RedisOperation", operation);
+        SetExceptionData(exception, "RedisDatabase", _databaseIndex);
+        SetExceptionData(exception, "RedisStorageMode", StorageMode);
+        SetExceptionData(exception, "RedisGlobalKeyPrefix", string.IsNullOrEmpty(_globalKeyPrefix) ? "(none)" : _globalKeyPrefix);
+        SetExceptionData(exception, "RedisEndpoints", DescribeEndpoints());
+
+        foreach (var (name, value) in context)
+        {
+            if (value is null)
+            {
+                continue;
+            }
+
+            SetExceptionData(exception, name, value);
+        }
+    }
+
+    private static void SetExceptionData(Exception exception, string key, object value)
+    {
+        exception.Data[key] = value;
+    }
+
+    private string DescribeEndpoints()
+    {
+        var endpoints = _redis.GetEndPoints();
+        if (endpoints.Length == 0)
+        {
+            return "(unavailable)";
+        }
+
+        return string.Join(",", endpoints.Select(FormatEndpoint));
+    }
+
+    private static string FormatEndpoint(EndPoint endpoint)
+    {
+        return endpoint switch
+        {
+            DnsEndPoint dns => $"{dns.Host}:{dns.Port}",
+            IPEndPoint ip => $"{ip.Address}:{ip.Port}",
+            _ => endpoint.ToString() ?? "(unknown)"
+        };
+    }
+
+    private (string Name, object? Value)[] DescribeCollectionContext(
+        string collection,
+        string? id = null,
+        int? count = null)
+    {
+        return
+        [
+            ("RedisCollection", collection),
+            ("RedisDocumentId", id),
+            ("RedisHashKey", HashKey(collection)),
+            ("RedisDocumentKey", id is null ? null : DocKey(collection, id)),
+            ("RedisIndexName", _hasRediSearch ? IndexName(collection) : null),
+            ("RedisDocumentCount", count)
+        ];
+    }
+
+    private (string Name, object? Value)[] DescribeCounterContext(
+        string key,
+        TimeSpan? window = null,
+        long? value = null,
+        long? amount = null)
+    {
+        return
+        [
+            ("RedisCounterName", key),
+            ("RedisCounterKey", CounterKey(key).ToString()),
+            ("RedisCounterWindow", window?.ToString()),
+            ("RedisCounterValue", value),
+            ("RedisCounterAmount", amount)
+        ];
+    }
+
+    private (string Name, object? Value)[] DescribeCounterBatchContext(IEnumerable<string> keys)
+    {
+        var keyArray = keys.Take(5).ToArray();
+        return
+        [
+            ("RedisCounterCount", keyArray.Length),
+            ("RedisCounterSample", string.Join(",", keyArray)),
+            ("RedisCounterSampleKeys", string.Join(",", keyArray.Select(key => CounterKey(key).ToString())))
+        ];
+    }
+
+    private (string Name, object? Value)[] DescribeQueryContext(string collection, DocumentQuery query)
+    {
+        return
+        [
+            ("RedisCollection", collection),
+            ("RedisHashKey", HashKey(collection)),
+            ("RedisIndexName", _hasRediSearch ? IndexName(collection) : null),
+            ("RedisTextSearch", query.TextSearch),
+            ("RedisFilterCount", query.Filters.Count),
+            ("RedisSkip", query.Skip),
+            ("RedisTake", query.Take),
+            ("RedisSortField", query.Sort?.FieldName),
+            ("RedisSortDirection", query.Sort?.Direction.ToString())
+        ];
     }
 
     private static Query BuildRediSearchQuery(DocumentQuery query)
