@@ -1,5 +1,6 @@
 using ClientManager.Api.Models.Exceptions;
 using ClientManager.Api.Services.Interfaces;
+using ClientManager.Api.Services.Storage;
 using ClientManager.Api.Services.Storage.Interfaces;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Requests;
@@ -34,12 +35,10 @@ public class ClientResourcePoolSettingsService : IClientResourcePoolSettingsServ
     public async Task<ResourcePoolSettings> GetResourcePoolSettingsAsync(string clientId, string poolId, CancellationToken cancellationToken = default)
     {
         var lookup = await _clientConfigurationCatalogService.GetResourcePoolSettingsAsync(clientId, poolId, cancellationToken);
-        if (!lookup.ClientExists)
-        {
-            throw new ClientNotFoundException(clientId);
-        }
-
-        return lookup.Value ?? throw new ResourcePoolSettingsNotFoundException(poolId, clientId);
+        return lookup.RequireClientValue(
+            clientId,
+            id => new ClientNotFoundException(id),
+            () => new ResourcePoolSettingsNotFoundException(poolId, clientId));
     }
 
     /// <inheritdoc />

@@ -1,5 +1,6 @@
 using ClientManager.Api.Models.Exceptions;
 using ClientManager.Api.Services.Interfaces;
+using ClientManager.Api.Services.Storage;
 using ClientManager.Api.Services.Storage.Interfaces;
 using ClientManager.Shared.Models.Entities;
 
@@ -27,12 +28,10 @@ public class ClientGlobalRateLimitService : IClientGlobalRateLimitService
     public async Task<ClientRateLimit> GetGlobalRateLimitAsync(string clientId, CancellationToken cancellationToken = default)
     {
         var lookup = await _clientConfigurationCatalogService.GetGlobalRateLimitAsync(clientId, cancellationToken);
-        if (!lookup.ClientExists)
-        {
-            throw new ClientNotFoundException(clientId);
-        }
-
-        return lookup.Value ?? throw new ClientGlobalRateLimitNotFoundException(clientId);
+        return lookup.RequireClientValue(
+            clientId,
+            id => new ClientNotFoundException(id),
+            () => new ClientGlobalRateLimitNotFoundException(clientId));
     }
 
     /// <inheritdoc />

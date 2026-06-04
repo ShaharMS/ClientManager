@@ -2,7 +2,7 @@
 
 ## Current Pass
 
-Step 5: Generic consolidation on the merged API ([code-slimdown-5-api-services.md](../../plans/code-slimdown-5-api-services.md)) — generic catalog service base, telemetry wrapper extraction, activity-helper inlining, settings/null-check helpers. Prerequisite: Step 4 complete (commit `e4b2670` on `refactor/debloat-project`).
+Step 6: Merged API controllers consolidation ([code-slimdown-6-api-controllers.md](../../plans/code-slimdown-6-api-controllers.md)) — generic CRUD controller base, consolidate settings controllers, split StatisticsController. Prerequisite: Step 5 complete.
 
 ## Pass History
 
@@ -13,6 +13,7 @@ Step 5: Generic consolidation on the merged API ([code-slimdown-5-api-services.m
 | 3 | 2026-06-02 | Step 2b (Storage Bindings) implemented and verified (build + tests + JsonFile & Lucene CRUD round-trip + UI edit/persist) |
 | 4 | 2026-06-04 | Step 3 (Relocate Storage Services) implemented and verified (build + tests + API DI/hosted-services startup + UI Dashboard) |
 | 5 | 2026-06-04 | Step 4 (Delete Transport Layer + StorageApi Host) implemented and verified (build + tests + grep-clean + live traffic + UI CRUD round-trip) |
+| 6 | 2026-06-04 | Step 5 (Merged API Services) implemented and verified (API build + DataAccess.Tests; net −220 on storage service refactor) |
 
 ## Changed Files
 
@@ -128,6 +129,26 @@ Step 5: Generic consolidation on the merged API ([code-slimdown-5-api-services.m
 - `git show --shortstat e4b2670` → 128 files changed, +683 / −5220 (net −4537 lines in the Step 4 commit).
 - Grep (`.cs` / `.csproj` / `.slnx` / `.yml` / `.json`): zero hits for `IRuntimeStateClient`, `IStatisticsReadClient`, `StorageApiRoutes`, `HotPathFailOpen`, `AddStorageApiClients`, `FailOpenOnError`, `ClientManager.StorageApi` project references. Intentional retained names: `StorageApiMetrics`, `StorageApiProblemException`, OpenTelemetry meter/activity source `"ClientManager.StorageApi"`.
 - Bookkeeping follow-up (same session): marked Step 4 plan/timeline/overview complete; advanced handoff Current Pass to Step 5; removed orphaned `StorageApi` / `HotPathResilience` appsettings sections and deleted unused `StorageApiUnavailableException.cs`.
+
+### Step 5 (Merged API Services Consolidation)
+
+**New shared infrastructure:**
+- `Services/Storage/Implementations/GenericEntityCatalogService.cs` — generic Search/GetById/Create/Update/Delete + cache invalidation for `IEntityRepository<T>` catalogs.
+- `Services/Storage/Utils/Instrumentation/StorageHotPathTrace.cs` + `StorageHotPathCompletion` — shared activity/stopwatch envelope (denied/canceled/exception tagging preserved).
+- `Services/Storage/Utils/Instrumentation/StorageActivityExtensions.cs` — `StartInternalActivity` helper.
+- `Services/Storage/ClientLookupExtensions.cs` — `RequireClientValue` for adapter services.
+
+**Refactored services:**
+- `ServiceCatalogService`, `ResourcePoolCatalogService`, `GlobalRateLimitCatalogService` — thin subclasses of `GenericEntityCatalogService` (global limit overrides `CreateAsync` for target uniqueness).
+- `ClientConfigurationCatalogService` — `GetSubDocumentAsync` helper for settings lookups; CRUD stays on `IClientConfigurationDatabase` (not `IEntityRepository`).
+- `AccessControlService`, `ResourceAllocationService` — `CheckAccessAsync` / `AcquireAsync` / `ReleaseAsync` use `StorageHotPathTrace`; sub-steps use `StartInternalActivity`.
+- `RateLimitService` — `StartInternalActivity` for strategy/global-limit reads (existing `TraceRateLimitAsync` retained).
+- Public adapters `ClientServiceSettingsService`, `ClientResourcePoolSettingsService`, `ClientGlobalRateLimitService` — `RequireClientValue`.
+
+**Verification:**
+- `dotnet build ClientManager.Api` → 0 errors.
+- `dotnet run ClientManager.DataAccess.Tests` → passed.
+- `git diff --shortstat` (Step 5 storage slice) → net −220 lines on touched files.
 
 ## Finding Dispositions
 

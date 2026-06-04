@@ -1,65 +1,38 @@
 using ClientManager.DataAccess.Databases.Interfaces;
 using ClientManager.Shared.Models.Entities;
-using ClientManager.Shared.Models.Search;
 using ClientManager.Api.Services.Storage.Models.Exceptions;
 using ClientManager.Api.Services.Storage.Interfaces;
-using System.Text.Json;
 
 namespace ClientManager.Api.Services.Storage.Implementations;
 
 /// <summary>
 /// Implements global-rate-limit catalog operations.
 /// </summary>
-public class GlobalRateLimitCatalogService : IGlobalRateLimitCatalogService
+public sealed class GlobalRateLimitCatalogService(
+    IGlobalRateLimitDatabase database,
+    IStorageReadCache cache)
+    : GenericEntityCatalogService<GlobalRateLimit>(database, cache, "global-rate-limits"),
+        IGlobalRateLimitCatalogService
 {
-    private readonly IGlobalRateLimitDatabase _database;
-    private readonly IStorageReadCache _cache;
+    private readonly IGlobalRateLimitDatabase _database = database;
 
-    public GlobalRateLimitCatalogService(IGlobalRateLimitDatabase database, IStorageReadCache cache)
+    protected override string GetEntityId(GlobalRateLimit entity) => entity.Id;
+
+    protected override GlobalRateLimit ApplyId(GlobalRateLimit entity, string id) => entity with { Id = id };
+
+    protected override Exception NotFound(string id) => new GlobalRateLimitNotFoundException(id);
+
+    protected override Exception AlreadyExists(string id) =>
+        throw new InvalidOperationException("Use target-based conflict detection for global rate limits.");
+
+    public override async Task CreateAsync(GlobalRateLimit limit, CancellationToken cancellationToken)
     {
-        _database = database;
-        _cache = cache;
-    }
-
-    public Task<SearchResult<GlobalRateLimit>> SearchAsync(DocumentQuery query, CancellationToken cancellationToken) =>
-        _cache.GetOrCreateCatalogAsync($"global-rate-limits:search:{JsonSerializer.Serialize(query)}", token => _database.SearchAsync(query, token), cancellationToken);
-
-    public Task<GlobalRateLimit?> GetByIdAsync(string id, CancellationToken cancellationToken) =>
-        _cache.GetOrCreateCatalogAsync($"global-rate-limits:id:{id}", token => _database.GetByIdAsync(id, token), cancellationToken);
-
-    public async Task CreateAsync(GlobalRateLimit limit, CancellationToken cancellationToken)
-    {
-        var existing = await _database.GetByTargetAsync(limit.TargetId, limit.TargetType, cancellationToken);
-        if (existing is not null)
+        if (await _database.GetByTargetAsync(limit.TargetId, limit.TargetType, cancellationToken) is not null)
         {
             throw new GlobalRateLimitAlreadyExistsException(limit.TargetId, limit.TargetType);
         }
 
-        await _database.CreateAsync(limit, cancellationToken);
-        _cache.InvalidateCatalog();
-    }
-
-    public async Task<GlobalRateLimit> UpdateAsync(string id, GlobalRateLimit limit, CancellationToken cancellationToken)
-    {
-        if (await GetByIdAsync(id, cancellationToken) is null)
-        {
-            throw new GlobalRateLimitNotFoundException(id);
-        }
-
-        var updated = limit with { Id = id };
-        await _database.UpdateAsync(updated, cancellationToken);
-        _cache.InvalidateCatalog();
-        return updated;
-    }
-
-    public async Task DeleteAsync(string id, CancellationToken cancellationToken)
-    {
-        if (await GetByIdAsync(id, cancellationToken) is null)
-        {
-            throw new GlobalRateLimitNotFoundException(id);
-        }
-
-        await _database.DeleteAsync(id, cancellationToken);
-        _cache.InvalidateCatalog();
+        await Repository.CreateAsync(limit, cancellationToken);
+        Cache.InvalidateCatalog();
     }
 }

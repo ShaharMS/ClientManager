@@ -164,8 +164,7 @@ public class RateLimitService : IRateLimitService
         Func<Task<RateLimitResult>> action,
         CancellationToken cancellationToken)
     {
-        using var activity = _metrics.ActivitySource.StartActivity(activityName, ActivityKind.Internal);
-        configureActivity(activity);
+        using var activity = _metrics.ActivitySource.StartInternalActivity(activityName, configureActivity);
         var stopwatch = Stopwatch.StartNew();
 
         try
@@ -292,11 +291,13 @@ public class RateLimitService : IRateLimitService
         bool increment,
         CancellationToken cancellationToken)
     {
-        using var activity = _metrics.ActivitySource.StartActivity(
+        using var activity = _metrics.ActivitySource.StartInternalActivity(
             "storage.ratelimit.strategy_dispatch",
-            ActivityKind.Internal);
-        activity?.SetTag("ratelimit.configured", rateLimit is not null);
-        activity?.SetTag("ratelimit.mode", increment ? "increment" : "peek");
+            act =>
+            {
+                act?.SetTag("ratelimit.configured", rateLimit is not null);
+                act?.SetTag("ratelimit.mode", increment ? "increment" : "peek");
+            });
 
         if (rateLimit is null)
         {
@@ -319,11 +320,13 @@ public class RateLimitService : IRateLimitService
         TargetType targetType,
         CancellationToken cancellationToken)
     {
-        using var activity = _metrics.ActivitySource.StartActivity(
+        using var activity = _metrics.ActivitySource.StartInternalActivity(
             "storage.ratelimit.global_limit_read",
-            ActivityKind.Internal);
-        activity?.SetTag("ratelimit.target_id", targetId);
-        activity?.SetTag("ratelimit.target_type", targetType.ToString());
+            act =>
+            {
+                act?.SetTag("ratelimit.target_id", targetId);
+                act?.SetTag("ratelimit.target_type", targetType.ToString());
+            });
 
         var globalLimit = await _cache.GetOrCreateCatalogAsync(
             $"global-limit:{targetId}:{targetType}",

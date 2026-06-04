@@ -1,6 +1,6 @@
 # Plan: Code Slim-Down — Reduce Lines of Code Across the Solution
 
-## Status: 🔄 In progress — Steps 1 (Shared Foundation), 2 (Data Access Layer), 2b (Storage Bindings), 3 (Relocate Storage Services), and 4 (Delete Transport Layer + StorageApi Host) completed
+## Status: 🔄 In progress — Steps 1–5 completed (through Merged API Services consolidation); Steps 6–8 remain
 
 ## Overview
 

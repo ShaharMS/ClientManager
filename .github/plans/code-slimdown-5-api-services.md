@@ -1,6 +1,6 @@
 # Plan: Code Slim-Down — Step 5: Merged API Services Consolidation
 
-> **Status**: 🔲 Not started
+> **Status**: ✅ Completed
 > **Prerequisite**: [code-slimdown-4-storageapi-controllers-wiring.md](code-slimdown-4-storageapi-controllers-wiring.md)
 > **Next**: [code-slimdown-6-api-controllers.md](code-slimdown-6-api-controllers.md)
 > **Parent**: [code-slimdown-overview.md](code-slimdown-overview.md)

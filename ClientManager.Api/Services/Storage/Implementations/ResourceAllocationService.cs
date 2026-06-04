@@ -47,161 +47,91 @@ public class ResourceAllocationService : IResourceAllocationService
     }
 
     /// <inheritdoc />
-    public async Task<ResourceAcquireResponse> AcquireAsync(
+    public Task<ResourceAcquireResponse> AcquireAsync(
         string clientId,
         string resourcePoolId,
-        CancellationToken cancellationToken = default)
-    {
-        using var activity = _metrics.ActivitySource.StartActivity(
+        CancellationToken cancellationToken = default) =>
+        StorageHotPathTrace.RunAsync(
+            _metrics.ActivitySource,
             "storage.resource.acquire",
-            ActivityKind.Internal);
-        activity?.SetTag("client.id", clientId);
-        activity?.SetTag("resource_pool.id", resourcePoolId);
-
-        var stopwatch = Stopwatch.StartNew();
-        var result = "unknown";
-        var reason = "Unknown";
-        Exception? unexpectedException = null;
-
-        try
-        {
-            var poolTask = GetPoolAsync(resourcePoolId, cancellationToken);
-            var configurationTask = GetConfigurationAsync(clientId, resourcePoolId, cancellationToken);
-            ObserveFault(configurationTask);
-
-            var pool = await poolTask;
-            var configuration = await configurationTask;
-            var activeCounts = await GetActiveCountsAsync(clientId, resourcePoolId, cancellationToken);
-
-            EnsureClientCapacity(configuration, clientId, resourcePoolId, activeCounts.ClientCount);
-            await EnsureGlobalLimitAsync(configuration, clientId, resourcePoolId, cancellationToken);
-            EnsurePoolCapacity(pool, clientId, resourcePoolId, activeCounts.PoolCount);
-
-            var allocation = CreateAllocation(clientId, resourcePoolId, pool.AllocationTtl);
-            await WriteAllocationAsync(allocation, cancellationToken);
-
-            _logger.Info("Resource acquired", new
+            activity =>
             {
-                ClientId = clientId,
-                ResourcePoolId = resourcePoolId,
-                allocation.Id,
-                allocation.ExpiresAt
-            });
-
-            RecordGranted(clientId, resourcePoolId);
-            result = "acquired";
-            reason = "Allowed";
-            activity?.SetTag("allocation.id", allocation.Id);
-
-            return new ResourceAcquireResponse
+                activity?.SetTag("client.id", clientId);
+                activity?.SetTag("resource_pool.id", resourcePoolId);
+            },
+            async (completion, ct) =>
             {
-                AllocationId = allocation.Id,
-                ExpiresAt = allocation.ExpiresAt
-            };
-        }
-        catch (StorageApiProblemException exception)
-        {
-            result = "denied";
-            reason = exception.ErrorCode;
-            throw;
-        }
-        catch (OperationCanceledException exception) when (cancellationToken.IsCancellationRequested)
-        {
-            result = "canceled";
-            reason = exception.GetType().Name;
-            unexpectedException = exception;
-            throw;
-        }
-        catch (Exception exception)
-        {
-            result = "exception";
-            reason = exception.GetType().Name;
-            unexpectedException = exception;
-            activity?.SetTag("error.type", exception.GetType().Name);
-            activity?.SetStatus(ActivityStatusCode.Error);
-            throw;
-        }
-        finally
-        {
-            stopwatch.Stop();
-            var durationMs = stopwatch.Elapsed.TotalMilliseconds;
-            activity?.SetTag("operation.result", result);
-            activity?.SetTag("denial.reason", reason);
-            activity?.SetTag("duration_ms", durationMs);
-            RecordResourceDuration("acquire", clientId, resourcePoolId, durationMs, result, reason);
-            LogResourceCompletion("acquire", clientId, resourcePoolId, null, durationMs, result, reason, unexpectedException);
-        }
-    }
+                var poolTask = ReadPoolAsync(resourcePoolId, ct);
+                var configurationTask = ReadConfigurationAsync(clientId, resourcePoolId, ct);
+                ObserveFault(configurationTask);
+
+                var pool = await poolTask;
+                var configuration = await configurationTask;
+                var activeCounts = await ReadActiveCountsAsync(clientId, resourcePoolId, ct);
+
+                EnsureClientCapacity(configuration, clientId, resourcePoolId, activeCounts.ClientCount);
+                await EnsureGlobalLimitAsync(configuration, clientId, resourcePoolId, ct);
+                EnsurePoolCapacity(pool, clientId, resourcePoolId, activeCounts.PoolCount);
+
+                var allocation = CreateAllocation(clientId, resourcePoolId, pool.AllocationTtl);
+                await WriteAllocationAsync(allocation, ct);
+
+                _logger.Info("Resource acquired", new
+                {
+                    ClientId = clientId,
+                    ResourcePoolId = resourcePoolId,
+                    allocation.Id,
+                    allocation.ExpiresAt
+                });
+
+                RecordGranted(clientId, resourcePoolId);
+                completion.SetOutcome("acquired", "Allowed");
+                completion.Activity?.SetTag("allocation.id", allocation.Id);
+
+                return new ResourceAcquireResponse
+                {
+                    AllocationId = allocation.Id,
+                    ExpiresAt = allocation.ExpiresAt
+                };
+            },
+            completion => RecordResourceCompletion("acquire", clientId, resourcePoolId, null, completion),
+            cancellationToken);
 
     /// <inheritdoc />
-    public async Task<ResourceReleaseResponse> ReleaseAsync(
+    public Task<ResourceReleaseResponse> ReleaseAsync(
         string allocationId,
         CancellationToken cancellationToken = default)
     {
-        using var activity = _metrics.ActivitySource.StartActivity(
+        string? clientId = null;
+        string? resourcePoolId = null;
+
+        return StorageHotPathTrace.RunAsync(
+            _metrics.ActivitySource,
             "storage.resource.release",
-            ActivityKind.Internal);
-        activity?.SetTag("allocation.id", allocationId);
-
-        var stopwatch = Stopwatch.StartNew();
-        ResourceAllocation? allocation = null;
-        var result = "unknown";
-        var reason = "Unknown";
-        Exception? unexpectedException = null;
-
-        try
-        {
-            allocation = await GetAllocationAsync(allocationId, cancellationToken);
-            activity?.SetTag("client.id", allocation.ClientId);
-            activity?.SetTag("resource_pool.id", allocation.ResourcePoolId);
-
-            if (allocation.IsReleased)
+            activity => activity?.SetTag("allocation.id", allocationId),
+            async (completion, ct) =>
             {
-                result = "already_released";
-                reason = "AlreadyReleased";
-                return new ResourceReleaseResponse { Released = false };
-            }
+                var allocation = await ReadAllocationAsync(allocationId, ct);
+                clientId = allocation.ClientId;
+                resourcePoolId = allocation.ResourcePoolId;
+                completion.Activity?.SetTag("client.id", clientId);
+                completion.Activity?.SetTag("resource_pool.id", resourcePoolId);
 
-            await MarkReleasedAsync(allocation, cancellationToken);
-            RecordReleased(allocation);
-            _logger.Info("Resource released", new { AllocationId = allocationId });
-            result = "released";
-            reason = "Released";
+                if (allocation.IsReleased)
+                {
+                    completion.SetOutcome("already_released", "AlreadyReleased");
+                    return new ResourceReleaseResponse { Released = false };
+                }
 
-            return new ResourceReleaseResponse { Released = true };
-        }
-        catch (StorageApiProblemException exception)
-        {
-            result = "denied";
-            reason = exception.ErrorCode;
-            throw;
-        }
-        catch (OperationCanceledException exception) when (cancellationToken.IsCancellationRequested)
-        {
-            result = "canceled";
-            reason = exception.GetType().Name;
-            unexpectedException = exception;
-            throw;
-        }
-        catch (Exception exception)
-        {
-            result = "exception";
-            reason = exception.GetType().Name;
-            unexpectedException = exception;
-            activity?.SetTag("error.type", exception.GetType().Name);
-            activity?.SetStatus(ActivityStatusCode.Error);
-            throw;
-        }
-        finally
-        {
-            stopwatch.Stop();
-            var durationMs = stopwatch.Elapsed.TotalMilliseconds;
-            activity?.SetTag("operation.result", result);
-            activity?.SetTag("denial.reason", reason);
-            activity?.SetTag("duration_ms", durationMs);
-            RecordResourceDuration("release", allocation?.ClientId, allocation?.ResourcePoolId, durationMs, result, reason);
-            LogResourceCompletion("release", allocation?.ClientId, allocation?.ResourcePoolId, allocationId, durationMs, result, reason, unexpectedException);
-        }
+                await MarkReleasedAsync(allocation, ct);
+                RecordReleased(allocation);
+                _logger.Info("Resource released", new { AllocationId = allocationId });
+                completion.SetOutcome("released", "Released");
+
+                return new ResourceReleaseResponse { Released = true };
+            },
+            completion => RecordResourceCompletion("release", clientId, resourcePoolId, allocationId, completion),
+            cancellationToken);
     }
 
     /// <inheritdoc />
@@ -217,14 +147,13 @@ public class ResourceAllocationService : IResourceAllocationService
         _logger.Info("Expired allocations cleaned up", new { Count = cleanedUp });
     }
 
-    private async Task<ResourcePool> GetPoolAsync(
+    private async Task<ResourcePool> ReadPoolAsync(
         string resourcePoolId,
         CancellationToken cancellationToken)
     {
-        using var activity = _metrics.ActivitySource.StartActivity(
+        using var activity = _metrics.ActivitySource.StartInternalActivity(
             "storage.resource.pool_read",
-            ActivityKind.Internal);
-        activity?.SetTag("resource_pool.id", resourcePoolId);
+            act => act?.SetTag("resource_pool.id", resourcePoolId));
 
         var pool = await _poolRepository.GetByIdAsync(resourcePoolId, cancellationToken)
             ?? throw new ResourcePoolNotFoundException(resourcePoolId);
@@ -233,14 +162,13 @@ public class ResourceAllocationService : IResourceAllocationService
         return pool;
     }
 
-    private async Task<ResourceAllocation> GetAllocationAsync(
+    private async Task<ResourceAllocation> ReadAllocationAsync(
         string allocationId,
         CancellationToken cancellationToken)
     {
-        using var activity = _metrics.ActivitySource.StartActivity(
+        using var activity = _metrics.ActivitySource.StartInternalActivity(
             "storage.resource.allocation_read",
-            ActivityKind.Internal);
-        activity?.SetTag("allocation.id", allocationId);
+            act => act?.SetTag("allocation.id", allocationId));
 
         var allocation = await _allocationDatabase.GetByIdAsync(allocationId, cancellationToken)
             ?? throw new AllocationNotFoundException(allocationId);
@@ -249,16 +177,18 @@ public class ResourceAllocationService : IResourceAllocationService
         return allocation;
     }
 
-    private async Task<ClientConfiguration> GetConfigurationAsync(
+    private async Task<ClientConfiguration> ReadConfigurationAsync(
         string clientId,
         string resourcePoolId,
         CancellationToken cancellationToken)
     {
-        using var activity = _metrics.ActivitySource.StartActivity(
+        using var activity = _metrics.ActivitySource.StartInternalActivity(
             "storage.resource.configuration_read",
-            ActivityKind.Internal);
-        activity?.SetTag("client.id", clientId);
-        activity?.SetTag("resource_pool.id", resourcePoolId);
+            act =>
+            {
+                act?.SetTag("client.id", clientId);
+                act?.SetTag("resource_pool.id", resourcePoolId);
+            });
 
         var configuration = await _clientConfigDatabase.GetByIdAsync(clientId, cancellationToken)
             ?? throw new ClientNotFoundException(clientId);
@@ -273,16 +203,18 @@ public class ResourceAllocationService : IResourceAllocationService
         throw new ClientDisabledException(clientId);
     }
 
-    private async Task<(int PoolCount, int ClientCount)> GetActiveCountsAsync(
+    private async Task<(int PoolCount, int ClientCount)> ReadActiveCountsAsync(
         string clientId,
         string resourcePoolId,
         CancellationToken cancellationToken)
     {
-        using var activity = _metrics.ActivitySource.StartActivity(
+        using var activity = _metrics.ActivitySource.StartInternalActivity(
             "storage.resource.capacity_counts_read",
-            ActivityKind.Internal);
-        activity?.SetTag("client.id", clientId);
-        activity?.SetTag("resource_pool.id", resourcePoolId);
+            act =>
+            {
+                act?.SetTag("client.id", clientId);
+                act?.SetTag("resource_pool.id", resourcePoolId);
+            });
 
         var counts = await _allocationDatabase.GetActiveCountsAsync(resourcePoolId, clientId, cancellationToken);
         activity?.SetTag("capacity.pool_active_count", counts.PoolCount);
@@ -296,11 +228,13 @@ public class ResourceAllocationService : IResourceAllocationService
         string resourcePoolId,
         int clientActiveCount)
     {
-        using var activity = _metrics.ActivitySource.StartActivity(
+        using var activity = _metrics.ActivitySource.StartInternalActivity(
             "storage.resource.client_capacity_check",
-            ActivityKind.Internal);
-        activity?.SetTag("client.id", clientId);
-        activity?.SetTag("resource_pool.id", resourcePoolId);
+            act =>
+            {
+                act?.SetTag("client.id", clientId);
+                act?.SetTag("resource_pool.id", resourcePoolId);
+            });
 
         if (!configuration.ResourcePools.TryGetValue(resourcePoolId, out var poolSettings))
         {
@@ -327,11 +261,13 @@ public class ResourceAllocationService : IResourceAllocationService
         string resourcePoolId,
         CancellationToken cancellationToken)
     {
-        using var activity = _metrics.ActivitySource.StartActivity(
+        using var activity = _metrics.ActivitySource.StartInternalActivity(
             "storage.resource.global_rate_limit",
-            ActivityKind.Internal);
-        activity?.SetTag("client.id", clientId);
-        activity?.SetTag("resource_pool.id", resourcePoolId);
+            act =>
+            {
+                act?.SetTag("client.id", clientId);
+                act?.SetTag("resource_pool.id", resourcePoolId);
+            });
 
         var result = await _rateLimitService.CheckGlobalResourcePoolLimitAsync(
             configuration,
@@ -356,12 +292,14 @@ public class ResourceAllocationService : IResourceAllocationService
         string resourcePoolId,
         int activeCount)
     {
-        using var activity = _metrics.ActivitySource.StartActivity(
+        using var activity = _metrics.ActivitySource.StartInternalActivity(
             "storage.resource.pool_capacity_check",
-            ActivityKind.Internal);
-        activity?.SetTag("client.id", clientId);
-        activity?.SetTag("resource_pool.id", resourcePoolId);
-        activity?.SetTag("capacity.max_slots", pool.MaxSlots);
+            act =>
+            {
+                act?.SetTag("client.id", clientId);
+                act?.SetTag("resource_pool.id", resourcePoolId);
+                act?.SetTag("capacity.max_slots", pool.MaxSlots);
+            });
 
         activity?.SetTag("capacity.active_count", activeCount);
         if (activeCount < pool.MaxSlots)
@@ -395,12 +333,14 @@ public class ResourceAllocationService : IResourceAllocationService
         ResourceAllocation allocation,
         CancellationToken cancellationToken)
     {
-        using var activity = _metrics.ActivitySource.StartActivity(
+        using var activity = _metrics.ActivitySource.StartInternalActivity(
             "storage.resource.allocation_write",
-            ActivityKind.Internal);
-        activity?.SetTag("client.id", allocation.ClientId);
-        activity?.SetTag("resource_pool.id", allocation.ResourcePoolId);
-        activity?.SetTag("allocation.id", allocation.Id);
+            act =>
+            {
+                act?.SetTag("client.id", allocation.ClientId);
+                act?.SetTag("resource_pool.id", allocation.ResourcePoolId);
+                act?.SetTag("allocation.id", allocation.Id);
+            });
 
         await _allocationDatabase.CreateAsync(allocation, cancellationToken);
     }
@@ -409,25 +349,29 @@ public class ResourceAllocationService : IResourceAllocationService
         ResourceAllocation allocation,
         CancellationToken cancellationToken)
     {
-        using var activity = _metrics.ActivitySource.StartActivity(
+        using var activity = _metrics.ActivitySource.StartInternalActivity(
             "storage.resource.release_write",
-            ActivityKind.Internal);
-        activity?.SetTag("allocation.id", allocation.Id);
-        activity?.SetTag("client.id", allocation.ClientId);
-        activity?.SetTag("resource_pool.id", allocation.ResourcePoolId);
+            act =>
+            {
+                act?.SetTag("allocation.id", allocation.Id);
+                act?.SetTag("client.id", allocation.ClientId);
+                act?.SetTag("resource_pool.id", allocation.ResourcePoolId);
+            });
 
         await _allocationDatabase.MarkReleasedAsync(allocation, cancellationToken);
     }
 
     private void RecordGranted(string clientId, string resourcePoolId)
     {
-        using (var activity = _metrics.ActivitySource.StartActivity(
+        using (var activity = _metrics.ActivitySource.StartInternalActivity(
             "storage.resource.metrics",
-            ActivityKind.Internal))
+            act =>
+            {
+                act?.SetTag("client.id", clientId);
+                act?.SetTag("resource_pool.id", resourcePoolId);
+                act?.SetTag("operation.result", "acquired");
+            }))
         {
-            activity?.SetTag("client.id", clientId);
-            activity?.SetTag("resource_pool.id", resourcePoolId);
-            activity?.SetTag("operation.result", "acquired");
             _metrics.ResourceAcquired.Add(1, new TagList
             {
                 { MetricTagKey.ClientId.ToTagName(), clientId },
@@ -443,13 +387,15 @@ public class ResourceAllocationService : IResourceAllocationService
         string resourcePoolId,
         ResourceAllocationDenialReason reason)
     {
-        using (var activity = _metrics.ActivitySource.StartActivity(
+        using (var activity = _metrics.ActivitySource.StartInternalActivity(
             "storage.resource.metrics",
-            ActivityKind.Internal))
+            act =>
+            {
+                act?.SetTag("client.id", clientId);
+                act?.SetTag("resource_pool.id", resourcePoolId);
+                act?.SetTag("denial.reason", reason.ToTagValue());
+            }))
         {
-            activity?.SetTag("client.id", clientId);
-            activity?.SetTag("resource_pool.id", resourcePoolId);
-            activity?.SetTag("denial.reason", reason.ToTagValue());
             _metrics.ResourceDenied.Add(1, new TagList
             {
                 { MetricTagKey.ClientId.ToTagName(), clientId },
@@ -463,14 +409,16 @@ public class ResourceAllocationService : IResourceAllocationService
 
     private void RecordReleased(ResourceAllocation allocation)
     {
-        using (var activity = _metrics.ActivitySource.StartActivity(
+        using (var activity = _metrics.ActivitySource.StartInternalActivity(
             "storage.resource.metrics",
-            ActivityKind.Internal))
+            act =>
+            {
+                act?.SetTag("client.id", allocation.ClientId);
+                act?.SetTag("resource_pool.id", allocation.ResourcePoolId);
+                act?.SetTag("allocation.id", allocation.Id);
+                act?.SetTag("operation.result", "released");
+            }))
         {
-            activity?.SetTag("client.id", allocation.ClientId);
-            activity?.SetTag("resource_pool.id", allocation.ResourcePoolId);
-            activity?.SetTag("allocation.id", allocation.Id);
-            activity?.SetTag("operation.result", "released");
             _metrics.ResourceReleased.Add(1, new TagList
             {
                 { MetricTagKey.AllocationId.ToTagName(), allocation.Id }
@@ -482,81 +430,72 @@ public class ResourceAllocationService : IResourceAllocationService
 
     private void RecordAllocationUsage(string clientId, string resourcePoolId, UsageEventType eventType)
     {
-        using var activity = _metrics.ActivitySource.StartActivity(
+        using var activity = _metrics.ActivitySource.StartInternalActivity(
             "storage.resource.usage_record",
-            ActivityKind.Internal);
-        activity?.SetTag("client.id", clientId);
-        activity?.SetTag("resource_pool.id", resourcePoolId);
-        activity?.SetTag("usage.event_type", eventType.ToString());
+            act =>
+            {
+                act?.SetTag("client.id", clientId);
+                act?.SetTag("resource_pool.id", resourcePoolId);
+                act?.SetTag("usage.event_type", eventType.ToString());
+            });
         _usageRecorder.RecordAllocationEvent(clientId, resourcePoolId, eventType);
     }
 
-    private void RecordResourceDuration(
+    private void RecordResourceCompletion(
         string operation,
         string? clientId,
         string? resourcePoolId,
-        double durationMs,
-        string result,
-        string reason)
+        string? allocationId,
+        StorageHotPathCompletion completion)
     {
         var tags = new TagList
         {
             { "operation", operation },
-            { "result", result },
-            { "reason", reason }
+            { "result", completion.Result },
+            { "reason", completion.Reason }
         };
         AddOptionalTag(ref tags, MetricTagKey.ClientId.ToTagName(), clientId);
         AddOptionalTag(ref tags, MetricTagKey.ResourcePoolId.ToTagName(), resourcePoolId);
 
         if (operation == "acquire")
         {
-            _metrics.ResourceAcquireDuration.Record(durationMs, tags);
-            return;
+            _metrics.ResourceAcquireDuration.Record(completion.DurationMs, tags);
+        }
+        else
+        {
+            _metrics.ResourceReleaseDuration.Record(completion.DurationMs, tags);
         }
 
-        _metrics.ResourceReleaseDuration.Record(durationMs, tags);
-    }
-
-    private void LogResourceCompletion(
-        string operation,
-        string? clientId,
-        string? resourcePoolId,
-        string? allocationId,
-        double durationMs,
-        string result,
-        string reason,
-        Exception? unexpectedException)
-    {
         var extraData = new
         {
             Operation = operation,
             ClientId = clientId,
             ResourcePoolId = resourcePoolId,
             AllocationId = allocationId,
-            DurationMs = durationMs,
-            Result = result,
-            Reason = reason
+            DurationMs = completion.DurationMs,
+            Result = completion.Result,
+            Reason = completion.Reason
         };
 
-        if (result == "canceled")
+        if (completion.Result == "canceled")
         {
             _logger.Debug("Resource operation canceled", extraData);
             return;
         }
 
-        if (unexpectedException is not null)
+        if (completion.UnexpectedException is not null)
         {
-            _logger.Error("Resource operation failed", extraData, unexpectedException);
+            _logger.Error("Resource operation failed", extraData, completion.UnexpectedException);
             return;
         }
 
-        if (durationMs >= SlowResourceOperationThresholdMs)
+        if (completion.DurationMs >= SlowResourceOperationThresholdMs)
         {
             _logger.Warn("Resource operation completed slowly", extraData);
             return;
         }
 
-        if (result == "denied")
+        if (completion.Result == "denied")
         {
             _logger.Info("Resource operation denied", extraData);
             return;

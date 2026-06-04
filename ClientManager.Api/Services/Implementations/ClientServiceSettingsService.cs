@@ -1,5 +1,6 @@
 using ClientManager.Api.Models.Exceptions;
 using ClientManager.Api.Services.Interfaces;
+using ClientManager.Api.Services.Storage;
 using ClientManager.Api.Services.Storage.Interfaces;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Requests;
@@ -34,12 +35,10 @@ public class ClientServiceSettingsService : IClientServiceSettingsService
     public async Task<ServiceAccessSettings> GetServiceSettingsAsync(string clientId, string serviceId, CancellationToken cancellationToken = default)
     {
         var lookup = await _clientConfigurationCatalogService.GetServiceSettingsAsync(clientId, serviceId, cancellationToken);
-        if (!lookup.ClientExists)
-        {
-            throw new ClientNotFoundException(clientId);
-        }
-
-        return lookup.Value ?? throw new ServiceSettingsNotFoundException(serviceId, clientId);
+        return lookup.RequireClientValue(
+            clientId,
+            id => new ClientNotFoundException(id),
+            () => new ServiceSettingsNotFoundException(serviceId, clientId));
     }
 
     /// <inheritdoc />
