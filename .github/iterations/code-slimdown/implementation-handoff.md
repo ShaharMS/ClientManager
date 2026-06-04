@@ -2,7 +2,7 @@
 
 ## Current Pass
 
-Step 7: API exceptions and instrumentation ([code-slimdown-7-api-exceptions-instrumentation.md](../../plans/code-slimdown-7-api-exceptions-instrumentation.md)). Prerequisite: Step 6 complete.
+Step 8: AdminUI ([code-slimdown-8-adminui.md](../../plans/code-slimdown-8-adminui.md)). Prerequisite: Step 7 complete.
 
 ## Pass History
 
@@ -15,6 +15,7 @@ Step 7: API exceptions and instrumentation ([code-slimdown-7-api-exceptions-inst
 | 5 | 2026-06-04 | Step 4 (Delete Transport Layer + StorageApi Host) implemented and verified (build + tests + grep-clean + live traffic + UI CRUD round-trip) |
 | 6 | 2026-06-04 | Step 5 (Merged API Services) implemented and verified (API build + DataAccess.Tests; net −220 on storage service refactor) |
 | 7 | 2026-06-04 | Step 6 (Merged API Controllers) implemented and verified (API build + live HTTP smoke after restart) |
+| 8 | 2026-06-04 | Step 7 (API Exceptions & Instrumentation) implemented and verified (API build + DataAccess.Tests + HTTP 404/409 parity + net −521 on Api slice) |
 
 ## Changed Files
 
@@ -165,6 +166,24 @@ Step 7: API exceptions and instrumentation ([code-slimdown-7-api-exceptions-inst
 - `swagger/v1/swagger.json` → **200**.
 
 **Note:** No interactive browser automation in this environment; validation used `Invoke-WebRequest` against public API routes the AdminUI calls.
+
+### Step 7 (API Exceptions & Instrumentation)
+
+**Exceptions:**
+- `DomainErrors` factory — public adapter layer throws `NotFoundException` / `ConflictException` / `RateLimitedException` via static builders; removed 20 thin `Models/Exceptions/*` subclasses (plus unused duplicate access/rate-limit types that only existed on the public side).
+- `StorageDomainErrors` + concrete `StorageApiProblemException` — storage hot path uses the same pattern; deleted `RuntimeExceptions.cs` and `ConfigurationContractExceptions.cs`.
+- `ConflictException` is now concrete (was abstract).
+
+**Instrumentation:**
+- `ClientManagerMetrics` / `StorageApiMetrics` — grouped `CreateCounter` / `CreateHistogram` initialization (instrument names + units unchanged).
+- `RequestTrackingMiddleware` — `CreateRequestTags` helper dedupes `TagList` construction; primary constructor.
+- `ErrorHandlingMiddleware` — primary constructor.
+
+**Verification:**
+- `dotnet build ClientManager.Api` → succeeded.
+- `dotnet run ClientManager.DataAccess.Tests` → "JsonFile storage verification passed."
+- Live HTTP (`api/v1.0`): GET unknown service → **404**; POST duplicate `billing-service` → **409**; statistics overview → **200**.
+- `git diff --shortstat ClientManager.Api/` → 40 files, +124 / −645 (net −521).
 
 ## Finding Dispositions
 

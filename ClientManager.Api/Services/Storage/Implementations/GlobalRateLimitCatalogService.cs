@@ -20,7 +20,7 @@ public sealed class GlobalRateLimitCatalogService(
 
     protected override GlobalRateLimit ApplyId(GlobalRateLimit entity, string id) => entity with { Id = id };
 
-    protected override Exception NotFound(string id) => new GlobalRateLimitNotFoundException(id);
+    protected override Exception NotFound(string id) => StorageDomainErrors.GlobalRateLimitNotFound(id);
 
     protected override Exception AlreadyExists(string id) =>
         throw new InvalidOperationException("Use target-based conflict detection for global rate limits.");
@@ -29,7 +29,7 @@ public sealed class GlobalRateLimitCatalogService(
     {
         if (await _database.GetByTargetAsync(limit.TargetId, limit.TargetType, cancellationToken) is not null)
         {
-            throw new GlobalRateLimitAlreadyExistsException(limit.TargetId, limit.TargetType);
+            throw StorageDomainErrors.GlobalRateLimitAlreadyExists(limit.TargetId, limit.TargetType);
         }
 
         await Repository.CreateAsync(limit, cancellationToken);

@@ -3,10 +3,6 @@ using Microsoft.AspNetCore.Http;
 namespace ClientManager.Api.Models.Exceptions;
 
 /// <summary>
-/// Base type for typed conflict exceptions that map to HTTP 409.
+/// Expected failure when a create or update conflicts with existing data. Mapped to HTTP 409.
 /// </summary>
-public abstract class ConflictException : HttpProblemException
-{
-    protected ConflictException(string message)
-        : base(StatusCodes.Status409Conflict, "Conflict", message) { }
-}
+public class ConflictException(string message) : HttpProblemException(StatusCodes.Status409Conflict, "Conflict", message);

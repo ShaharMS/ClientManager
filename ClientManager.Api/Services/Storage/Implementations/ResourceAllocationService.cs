@@ -156,7 +156,7 @@ public class ResourceAllocationService : IResourceAllocationService
             act => act?.SetTag("resource_pool.id", resourcePoolId));
 
         var pool = await _poolRepository.GetByIdAsync(resourcePoolId, cancellationToken)
-            ?? throw new ResourcePoolNotFoundException(resourcePoolId);
+            ?? throw StorageDomainErrors.ResourcePoolNotFound(resourcePoolId);
 
         activity?.SetTag("resource_pool.max_slots", pool.MaxSlots);
         return pool;
@@ -171,7 +171,7 @@ public class ResourceAllocationService : IResourceAllocationService
             act => act?.SetTag("allocation.id", allocationId));
 
         var allocation = await _allocationDatabase.GetByIdAsync(allocationId, cancellationToken)
-            ?? throw new AllocationNotFoundException(allocationId);
+            ?? throw StorageDomainErrors.AllocationNotFound(allocationId);
 
         activity?.SetTag("allocation.released", allocation.IsReleased);
         return allocation;
@@ -191,7 +191,7 @@ public class ResourceAllocationService : IResourceAllocationService
             });
 
         var configuration = await _clientConfigDatabase.GetByIdAsync(clientId, cancellationToken)
-            ?? throw new ClientNotFoundException(clientId);
+            ?? throw StorageDomainErrors.ClientNotFound(clientId);
 
         activity?.SetTag("configuration.enabled", configuration.IsEnabled);
 
@@ -200,7 +200,7 @@ public class ResourceAllocationService : IResourceAllocationService
             return configuration;
         }
 
-        throw new ClientDisabledException(clientId);
+        throw StorageDomainErrors.ClientDisabled(clientId);
     }
 
     private async Task<(int PoolCount, int ClientCount)> ReadActiveCountsAsync(
@@ -252,7 +252,7 @@ public class ResourceAllocationService : IResourceAllocationService
         }
 
         RecordDenied(clientId, resourcePoolId, ResourceAllocationDenialReason.ClientCapReached);
-        throw new ClientSlotLimitReachedException(resourcePoolId);
+        throw StorageDomainErrors.ClientSlotLimitReached(resourcePoolId);
     }
 
     private async Task EnsureGlobalLimitAsync(
@@ -283,7 +283,7 @@ public class ResourceAllocationService : IResourceAllocationService
         }
 
         RecordDenied(clientId, resourcePoolId, ResourceAllocationDenialReason.RateLimited);
-        throw new GlobalResourcePoolRateLimitExceededException(result.RetryAfterSeconds);
+        throw StorageDomainErrors.GlobalResourcePoolRateLimitExceeded(result.RetryAfterSeconds);
     }
 
     private void EnsurePoolCapacity(
@@ -308,7 +308,7 @@ public class ResourceAllocationService : IResourceAllocationService
         }
 
         RecordDenied(clientId, resourcePoolId, ResourceAllocationDenialReason.NoSlots);
-        throw new NoSlotsAvailableException(resourcePoolId);
+        throw StorageDomainErrors.NoSlotsAvailable(resourcePoolId);
     }
 
     private static ResourceAllocation CreateAllocation(

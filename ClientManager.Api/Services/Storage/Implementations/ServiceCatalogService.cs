@@ -18,7 +18,7 @@ public sealed class ServiceCatalogService(
 
     protected override Service ApplyId(Service entity, string id) => entity with { Id = id };
 
-    protected override Exception NotFound(string id) => new ServiceNotFoundException(id);
+    protected override Exception NotFound(string id) => StorageDomainErrors.ServiceNotFound(id);
 
-    protected override Exception AlreadyExists(string id) => new ServiceAlreadyExistsException(id);
+    protected override Exception AlreadyExists(string id) => StorageDomainErrors.ServiceAlreadyExists(id);
 }

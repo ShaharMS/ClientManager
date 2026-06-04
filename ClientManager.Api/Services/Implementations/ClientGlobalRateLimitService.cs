@@ -8,8 +8,7 @@ namespace ClientManager.Api.Services.Implementations;
 
 /// <summary>
 /// Adapts public client global-rate-limit requests onto the in-process storage configuration catalog,
-/// translating a missing client into a <see cref="ClientNotFoundException"/> and an absent limit into a
-/// <see cref="ClientGlobalRateLimitNotFoundException"/> so controllers stay free of null checks.
+/// translating a missing client or absent limit into <see cref="DomainErrors"/> so controllers stay free of null checks.
 /// </summary>
 public class ClientGlobalRateLimitService : IClientGlobalRateLimitService
 {
@@ -30,8 +29,8 @@ public class ClientGlobalRateLimitService : IClientGlobalRateLimitService
         var lookup = await _clientConfigurationCatalogService.GetGlobalRateLimitAsync(clientId, cancellationToken);
         return lookup.RequireClientValue(
             clientId,
-            id => new ClientNotFoundException(id),
-            () => new ClientGlobalRateLimitNotFoundException(clientId));
+            DomainErrors.Client,
+            () => DomainErrors.ClientGlobalRateLimit(clientId));
     }
 
     /// <inheritdoc />
@@ -40,7 +39,7 @@ public class ClientGlobalRateLimitService : IClientGlobalRateLimitService
         var updated = await _clientConfigurationCatalogService.SetGlobalRateLimitAsync(clientId, rateLimit, cancellationToken);
         if (!updated)
         {
-            throw new ClientNotFoundException(clientId);
+            throw DomainErrors.Client(clientId);
         }
 
         return rateLimit;
@@ -52,7 +51,7 @@ public class ClientGlobalRateLimitService : IClientGlobalRateLimitService
         var removed = await _clientConfigurationCatalogService.RemoveGlobalRateLimitAsync(clientId, cancellationToken);
         if (!removed)
         {
-            throw new ClientNotFoundException(clientId);
+            throw DomainErrors.Client(clientId);
         }
     }
 }

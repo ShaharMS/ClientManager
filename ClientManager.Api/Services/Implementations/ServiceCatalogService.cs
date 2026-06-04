@@ -8,7 +8,7 @@ namespace ClientManager.Api.Services.Implementations;
 
 /// <summary>
 /// Adapts public service-catalog requests onto the in-process storage service catalog,
-/// translating an absent service into a <see cref="ServiceNotFoundException"/> and reconciling
+/// translating an absent service via <see cref="DomainErrors.Service"/> and reconciling
 /// route identifiers on update so the controller never has to reshape the persisted document.
 /// </summary>
 public class ServiceCatalogService : IServiceCatalogService
@@ -31,7 +31,7 @@ public class ServiceCatalogService : IServiceCatalogService
     /// <inheritdoc />
     public async Task<Service> GetByIdAsync(string serviceId, CancellationToken cancellationToken = default) =>
         await _serviceCatalogService.GetByIdAsync(serviceId, cancellationToken)
-            ?? throw new ServiceNotFoundException(serviceId);
+            ?? throw DomainErrors.Service(serviceId);
 
     /// <inheritdoc />
     public async Task<Service> CreateAsync(Service service, CancellationToken cancellationToken = default)

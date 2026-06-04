@@ -10,8 +10,7 @@ namespace ClientManager.Api.Services.Implementations;
 
 /// <summary>
 /// Adapts public client resource-pool-settings requests onto the in-process storage configuration
-/// catalog, translating a missing client into a <see cref="ClientNotFoundException"/> and absent
-/// settings into a <see cref="ResourcePoolSettingsNotFoundException"/> so controllers stay free of null checks.
+/// catalog, translating missing clients or settings via <see cref="DomainErrors"/> so controllers stay free of null checks.
 /// </summary>
 public class ClientResourcePoolSettingsService : IClientResourcePoolSettingsService
 {
@@ -29,7 +28,7 @@ public class ClientResourcePoolSettingsService : IClientResourcePoolSettingsServ
     /// <inheritdoc />
     public async Task<PagedResponse<KeyedEntry<ResourcePoolSettings>>> GetResourcePoolsAsync(string clientId, PagedRequest paging, CancellationToken cancellationToken = default) =>
         await _clientConfigurationCatalogService.GetResourcePoolsAsync(clientId, paging, cancellationToken)
-            ?? throw new ClientNotFoundException(clientId);
+            ?? throw DomainErrors.Client(clientId);
 
     /// <inheritdoc />
     public async Task<ResourcePoolSettings> GetResourcePoolSettingsAsync(string clientId, string poolId, CancellationToken cancellationToken = default)
@@ -37,8 +36,8 @@ public class ClientResourcePoolSettingsService : IClientResourcePoolSettingsServ
         var lookup = await _clientConfigurationCatalogService.GetResourcePoolSettingsAsync(clientId, poolId, cancellationToken);
         return lookup.RequireClientValue(
             clientId,
-            id => new ClientNotFoundException(id),
-            () => new ResourcePoolSettingsNotFoundException(poolId, clientId));
+            DomainErrors.Client,
+            () => DomainErrors.ResourcePoolSettings(poolId, clientId));
     }
 
     /// <inheritdoc />

@@ -1,6 +1,6 @@
 # Plan: Code Slim-Down — Reduce Lines of Code Across the Solution
 
-## Status: 🔄 In progress — Steps 1–6 completed; Steps 7–8 remain
+## Status: 🔄 In progress — Steps 1–7 completed; Step 8 (AdminUI) remains
 
 ## Overview
 

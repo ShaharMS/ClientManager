@@ -12,22 +12,15 @@ namespace ClientManager.Api.Middlewares;
 /// they are translated and logged at warning level through a single path. Any other exception is
 /// treated as an unexpected defect and surfaced as a 500 with an error-level log.
 /// </summary>
-public class ErrorHandlingMiddleware
+public class ErrorHandlingMiddleware(
+    RequestDelegate next,
+    IAppLogger<ErrorHandlingMiddleware> logger)
 {
-    private readonly RequestDelegate _next;
-    private readonly IAppLogger<ErrorHandlingMiddleware> _logger;
-
-    public ErrorHandlingMiddleware(RequestDelegate next, IAppLogger<ErrorHandlingMiddleware> logger)
-    {
-        _next = next;
-        _logger = logger;
-    }
-
     public async Task InvokeAsync(HttpContext context)
     {
         try
         {
-            await _next(context);
+            await next(context);
         }
         catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
         {
@@ -43,20 +36,14 @@ public class ErrorHandlingMiddleware
         }
         catch (Exception exception)
         {
-            _logger.Error("Internal error occured while processing request", new { Path = context.Request.Path.Value, context.Request.Method }, exception);
+            logger.Error("Internal error occured while processing request", new { Path = context.Request.Path.Value, context.Request.Method }, exception);
             await WriteProblemDetailsAsync(context, StatusCodes.Status500InternalServerError, "Internal Server Error", "An unexpected error occurred.");
         }
     }
 
-    /// <summary>
-    /// Writes the RFC 7807 response for an expected failure. Expected failures are logged at
-    /// warning level — never error level — because they are part of the public contract rather
-    /// than defects, and the <c>Retry-After</c> header is preserved for throttled or unavailable
-    /// responses that carry a retry hint.
-    /// </summary>
     private async Task HandleProblemAsync(HttpContext context, HttpProblemException exception)
     {
-        _logger.Info(
+        logger.Info(
             "User fault encountered while processing request",
             new
             {
@@ -75,15 +62,9 @@ public class ErrorHandlingMiddleware
         await WriteProblemDetailsAsync(context, exception.StatusCode, exception.Title, exception.Message);
     }
 
-    /// <summary>
-    /// Writes the RFC 7807 response for an expected failure raised by an in-process storage domain
-    /// service. These failures are part of the public contract — surfaced previously by the storage
-    /// API host — so they are logged at warning level and their status code, title, and retry hint
-    /// are preserved verbatim.
-    /// </summary>
     private async Task HandleStorageProblemAsync(HttpContext context, StorageApiProblemException exception)
     {
-        _logger.Info(
+        logger.Info(
             "User fault encountered while processing request",
             new
             {

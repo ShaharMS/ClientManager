@@ -8,7 +8,7 @@ namespace ClientManager.Api.Services.Implementations;
 
 /// <summary>
 /// Adapts public resource-pool catalog requests onto the in-process storage resource-pool catalog,
-/// translating an absent pool into a <see cref="ResourcePoolNotFoundException"/> and reconciling
+/// translating an absent pool via <see cref="DomainErrors.ResourcePool"/> and reconciling
 /// route identifiers on update so the controller never has to reshape the persisted document.
 /// </summary>
 public class ResourcePoolCatalogService : IResourcePoolCatalogService
@@ -31,7 +31,7 @@ public class ResourcePoolCatalogService : IResourcePoolCatalogService
     /// <inheritdoc />
     public async Task<ResourcePool> GetByIdAsync(string poolId, CancellationToken cancellationToken = default) =>
         await _resourcePoolCatalogService.GetByIdAsync(poolId, cancellationToken)
-            ?? throw new ResourcePoolNotFoundException(poolId);
+            ?? throw DomainErrors.ResourcePool(poolId);
 
     /// <inheritdoc />
     public async Task<ResourcePool> CreateAsync(ResourcePool pool, CancellationToken cancellationToken = default)

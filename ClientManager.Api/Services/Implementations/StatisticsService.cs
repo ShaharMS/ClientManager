@@ -102,7 +102,7 @@ public class StatisticsService : IStatisticsService
     public async Task<JsonElement> GetClientDetailsAsync(string clientId, CancellationToken cancellationToken = default)
     {
         var configuration = await _clientConfigurationDatabase.GetByIdAsync(clientId, cancellationToken)
-            ?? throw new ClientNotFoundException(clientId);
+            ?? throw DomainErrors.Client(clientId);
 
         var services = configuration.Services.ToDictionary(
             entry => entry.Key,
@@ -153,7 +153,7 @@ public class StatisticsService : IStatisticsService
     public async Task<JsonElement> GetServiceDetailsAsync(string serviceId, CancellationToken cancellationToken = default)
     {
         var service = await _serviceRepository.GetByIdAsync(serviceId, cancellationToken)
-            ?? throw new ServiceNotFoundException(serviceId);
+            ?? throw DomainErrors.Service(serviceId);
         var clients = await _clientConfigurationDatabase.GetAllAsync(cancellationToken);
         var globalLimit = await _globalRateLimitDatabase.GetByTargetAsync(serviceId, TargetType.Service, cancellationToken);
 
@@ -207,7 +207,7 @@ public class StatisticsService : IStatisticsService
     public async Task<JsonElement> GetResourcePoolDetailsAsync(string resourcePoolId, CancellationToken cancellationToken = default)
     {
         var pool = await _resourcePoolRepository.GetByIdAsync(resourcePoolId, cancellationToken)
-            ?? throw new ResourcePoolNotFoundException(resourcePoolId);
+            ?? throw DomainErrors.ResourcePool(resourcePoolId);
         var activeCount = await _allocationDatabase.GetActiveCountAsync(pool.Id, cancellationToken);
         var globalLimit = await _globalRateLimitDatabase.GetByTargetAsync(pool.Id, TargetType.ResourcePool, cancellationToken);
         var clients = await _clientConfigurationDatabase.GetAllAsync(cancellationToken);

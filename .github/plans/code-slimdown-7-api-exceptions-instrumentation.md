@@ -1,6 +1,6 @@
 # Plan: Code Slim-Down — Step 7: API Exceptions & Instrumentation
 
-> **Status**: 🔲 Not started
+> **Status**: ✅ Complete
 > **Prerequisite**: [code-slimdown-6-api-controllers.md](code-slimdown-6-api-controllers.md)
 > **Next**: [code-slimdown-8-adminui.md](code-slimdown-8-adminui.md)
 > **Parent**: [code-slimdown-overview.md](code-slimdown-overview.md)

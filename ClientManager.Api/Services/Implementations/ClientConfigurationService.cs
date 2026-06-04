@@ -8,7 +8,7 @@ namespace ClientManager.Api.Services.Implementations;
 
 /// <summary>
 /// Adapts public client-configuration requests onto the in-process storage configuration catalog,
-/// translating an absent client into a <see cref="ClientNotFoundException"/> so the controller never
+/// translating an absent client via <see cref="DomainErrors.Client"/> so the controller never
 /// has to perform null checks or reshape the persisted document.
 /// </summary>
 public class ClientConfigurationService : IClientConfigurationService
@@ -31,7 +31,7 @@ public class ClientConfigurationService : IClientConfigurationService
     /// <inheritdoc />
     public async Task<ClientConfiguration> GetByIdAsync(string clientId, CancellationToken cancellationToken = default) =>
         await _clientConfigurationCatalogService.GetByIdAsync(clientId, cancellationToken)
-            ?? throw new ClientNotFoundException(clientId);
+            ?? throw DomainErrors.Client(clientId);
 
     /// <inheritdoc />
     public async Task<ClientConfiguration> CreateAsync(ClientConfiguration configuration, CancellationToken cancellationToken = default)

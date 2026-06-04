@@ -8,7 +8,7 @@ namespace ClientManager.Api.Services.Implementations;
 
 /// <summary>
 /// Adapts public global rate-limit catalog requests onto the in-process storage global rate-limit
-/// catalog, translating an absent limit into a <see cref="GlobalRateLimitNotFoundException"/> and
+/// catalog, translating an absent limit via <see cref="DomainErrors.GlobalRateLimit"/> and
 /// reconciling route identifiers on update so the controller never has to reshape the persisted document.
 /// </summary>
 public class GlobalRateLimitCatalogService : IGlobalRateLimitCatalogService
@@ -31,7 +31,7 @@ public class GlobalRateLimitCatalogService : IGlobalRateLimitCatalogService
     /// <inheritdoc />
     public async Task<GlobalRateLimit> GetByIdAsync(string id, CancellationToken cancellationToken = default) =>
         await _globalRateLimitCatalogService.GetByIdAsync(id, cancellationToken)
-            ?? throw new GlobalRateLimitNotFoundException(id);
+            ?? throw DomainErrors.GlobalRateLimit(id);
 
     /// <inheritdoc />
     public async Task<GlobalRateLimit> CreateAsync(GlobalRateLimit limit, CancellationToken cancellationToken = default)
