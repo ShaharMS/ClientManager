@@ -1,6 +1,6 @@
 # Plan: Code Slim-Down — Step 4: Delete the Transport Layer and the StorageApi Host
 
-> **Status**: 🔲 Not started
+> **Status**: ✅ Completed
 > **Prerequisite**: [code-slimdown-3-storageapi-services.md](code-slimdown-3-storageapi-services.md)
 > **Next**: [code-slimdown-5-api-services.md](code-slimdown-5-api-services.md)
 > **Parent**: [code-slimdown-overview.md](code-slimdown-overview.md)

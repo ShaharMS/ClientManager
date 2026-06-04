@@ -2,7 +2,7 @@
 
 ## Current Pass
 
-Step 4: Delete the Transport Layer and the StorageApi Host. Cut the API's controllers/services over to the in-process storage services from Step 3, then delete the entire HTTP transport layer (`Services/Internal` storage clients + interfaces, `StorageApiRoutes`, `StorageApiResilienceHandler`, `HotPathFailOpenFilter`, the HTTP client registration) and delete the `ClientManager.StorageApi` project itself. Update the solution, docker-compose, scripts, and the local-testing runbook. Largest LOC reduction in the plan.
+Step 5: Generic consolidation on the merged API ([code-slimdown-5-api-services.md](../../plans/code-slimdown-5-api-services.md)) — generic catalog service base, telemetry wrapper extraction, activity-helper inlining, settings/null-check helpers. Prerequisite: Step 4 complete (commit `e4b2670` on `refactor/debloat-project`).
 
 ## Pass History
 
@@ -17,7 +17,7 @@ Step 4: Delete the Transport Layer and the StorageApi Host. Cut the API's contro
 ## Changed Files
 
 - `ClientManager.Shared/Models/Problems/ProblemResponse.cs` — class → record.
-- `ClientManager.Shared/Models/Problems/StorageProblemResponse.cs` — class → record.
+- `ClientManager.Shared/Models/Problems/StorageProblemResponse.cs` — class → record (Step 1); **deleted** in Step 4 (in-process problems use `StorageApiProblemException` + `StorageErrorCodes`).
 - `ClientManager.AdminUI/Models/UserPreferences.cs` — class → record (kept `set` accessors; Settings.razor mutates).
 - `ClientManager.Shared/Logging/IAppLogger.cs` — one signature per level `(message, extraData, exception)`.
 - `ClientManager.Shared/Logging/AppLogger.cs` — expression-bodied members for reduced interface.
@@ -121,6 +121,14 @@ Step 4: Delete the Transport Layer and the StorageApi Host. Cut the API's contro
 - Browser UI: Dashboard (`/`) renders live data (25 clients / 20 services / 10 pools) with no error banners — the running system is not broken by the relocation. Controllers still use the HTTP-adapter services this step (cut-over is Step 4), so public endpoints behave exactly as before.
 - `git diff --stat` → 49 files changed, +6046 insertions (storage layer duplicated into the API per the plan; the transport layer is removed in Step 4, so the net reduction lands then).
 
+### Step 4 (Delete Transport Layer + StorageApi Host)
+
+- `dotnet build ClientManager.slnx` → Build succeeded, 0 errors (10 pre-existing NU1510/NU1903 warnings).
+- `dotnet run ClientManager.DataAccess.Tests` → "JsonFile storage verification passed." exit 0.
+- `git show --shortstat e4b2670` → 128 files changed, +683 / −5220 (net −4537 lines in the Step 4 commit).
+- Grep (`.cs` / `.csproj` / `.slnx` / `.yml` / `.json`): zero hits for `IRuntimeStateClient`, `IStatisticsReadClient`, `StorageApiRoutes`, `HotPathFailOpen`, `AddStorageApiClients`, `FailOpenOnError`, `ClientManager.StorageApi` project references. Intentional retained names: `StorageApiMetrics`, `StorageApiProblemException`, OpenTelemetry meter/activity source `"ClientManager.StorageApi"`.
+- Bookkeeping follow-up (same session): marked Step 4 plan/timeline/overview complete; advanced handoff Current Pass to Step 5; removed orphaned `StorageApi` / `HotPathResilience` appsettings sections and deleted unused `StorageApiUnavailableException.cs`.
+
 ## Finding Dispositions
 
 - **Net-deletion expectation vs. actual (≈neutral +5):** `WON'T FIX BECAUSE` Step 3 mandates converting `GlobalRateLimitDatabase` from inheritance to composition, which legitimately *adds* six explicit `IEntityRepository` delegation one-liners. The step's substantive goal — removing copy-paste `DocumentQuery` building and the mirrored sub-document mutation blocks — was achieved (helpers `BuildTargetQuery`, `BuildQuery`, `MutateAsync`, `ForEachAllocationKey`). The composition boilerplate offsets those deletions, yielding a roughly flat diff. Forcing artificial deletions would contradict the mandated design.
@@ -130,6 +138,8 @@ Step 4: Delete the Transport Layer and the StorageApi Host. Cut the API's contro
 - **Step 3 large positive diff (+6046):** `WON'T FIX BECAUSE` this step intentionally *adds* the relocated in-process storage layer alongside the existing HTTP transport path so the API keeps compiling and running. The plan explicitly defers the deletion of the old transport layer (storage clients, adapters, and the duplicated source it replaces) to Step 4, where the net reduction materializes. A negative diff here would require deleting the transport path prematurely and break the running system.
 - **`StorageApiMetrics` singleton + meter not in the copied source:** `FIXED` — in the Storage API these were registered in its host `Program.cs`, not in `AddStorageApi`, so the relocated services failed DI validation (`Unable to resolve StorageApiMetrics`). Registered the singleton inside `AddInProcessStorageServices` and added `metrics.AddMeter(StorageApiMetrics.MeterName)` to the API's OpenTelemetry pipeline, preserving metric/activity behavior.
 - **Storage services duplicated rather than shared (Option A):** `ALREADY SATISFIED` (user-confirmed decision, logged in `decision-log.md`) — duplicating into `ClientManager.Api.Services.Storage.*` keeps the Storage API host intact and avoids name collisions with the existing API HTTP-adapter services (same type names live in `ClientManager.Api.Services.Interfaces`). The duplication is temporary; Step 4 removes the transport layer.
+- **Step 4 large negative diff (−4537 in commit):** `ALREADY SATISFIED` — deleting the StorageApi project, internal HTTP clients, transport contracts, resilience/fail-open plumbing, and duplicated host code materializes the plan's headline LOC win. Step 3's +6046 was expected temporary growth.
+- **Orphaned appsettings / exception after Step 4 commit:** `FIXED` during bookkeeping — `StorageApi` and `HotPathResilience` config blocks and `StorageApiUnavailableException` survived the main commit because options/DI registration were removed first; config and the unused exception type are now deleted.
 
 ## Blockers
 
