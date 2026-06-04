@@ -1,0 +1,119 @@
+@typeparam TItem
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<div class="cm-page-header">
+    <h1>@Title</h1>
+    <p>@Description</p>
+</div>
+
+@if (_loading)
+{
+    <TableSkeleton />
+}
+else if (_error is not null)
+{
+    <div class="alert alert-danger">@_error</div>
+}
+else
+{
+    <div class="cm-list-page__table-card">
+        <div class="cm-list-page__header">
+            <div style="display: flex; gap: 12px; align-items: center;">
+                <RadzenTextBox Placeholder="@SearchPlaceholder"
+                    @bind-Value="_search"
+                    Style="width: 280px;" />
+                @ToolbarExtra
+            </div>
+            <RadzenButton Text="@CreateButtonText" Icon="add"
+                Click="@(() => Nav.NavigateTo(CreateUrl))"
+                ButtonStyle="ButtonStyle.Primary" />
+        </div>
+
+        <RadzenDataGrid Data="@FilteredItems" TItem="TItem"
+            AllowSorting="true" AllowPaging="true" PageSize="@_pageSize"
+            PagerHorizontalAlign="HorizontalAlign.Center">
+            @Columns
+        </RadzenDataGrid>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string Description { get; set; } = string.Empty;
+    [Parameter] public string SearchPlaceholder { get; set; } = "Search...";
+    [Parameter, EditorRequired] public string CreateButtonText { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string CreateUrl { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public Func<Task<IReadOnlyList<TItem>>> LoadItemsAsync { get; set; } = default!;
+    [Parameter, EditorRequired] public Func<TItem, IEnumerable<string>> SearchableValues { get; set; } = default!;
+    [Parameter, EditorRequired] public RenderFragment Columns { get; set; } = default!;
+    [Parameter] public RenderFragment? ToolbarExtra { get; set; }
+
+    private bool _loading = true;
+    private string? _error;
+    private string? _search;
+    private List<TItem> _items = [];
+    private int _pageSize = 10;
+    private IJSObjectReference? _tableJs;
+    private DotNetObjectReference<ListPageTemplate<TItem>>? _selfRef;
+
+    private IEnumerable<TItem> FilteredItems =>
+        string.IsNullOrWhiteSpace(_search)
+            ? _items
+            : _items.Where(item => SearchableValues(item).Any(value =>
+                value.Contains(_search, StringComparison.OrdinalIgnoreCase)));
+
+    protected override async Task OnInitializedAsync() => await ReloadAsync();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        _tableJs = await JS.InvokeAsync<IJSObjectReference>("import", "./js/table.js");
+        _selfRef = DotNetObjectReference.Create(this);
+        await _tableJs.InvokeVoidAsync("register", _selfRef);
+        await RecalculatePageSizeAsync();
+    }
+
+    [JSInvokable]
+    public async Task OnWindowResize() => await RecalculatePageSizeAsync();
+
+    public async Task ReloadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _items = (await LoadItemsAsync()).ToList();
+            _error = null;
+        }
+        catch (HttpRequestException ex)
+        {
+            _error = $"Unable to connect to the API: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task RecalculatePageSizeAsync()
+    {
+        _pageSize = await _tableJs!.InvokeAsync<int>("getPageSize", 45);
+        StateHasChanged();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_tableJs is not null)
+        {
+            await _tableJs.InvokeVoidAsync("unregister");
+            await _tableJs.DisposeAsync();
+        }
+
+        _selfRef?.Dispose();
+    }
+}

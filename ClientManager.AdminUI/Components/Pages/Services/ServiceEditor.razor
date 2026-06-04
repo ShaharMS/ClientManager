@@ -3,52 +3,27 @@
 @inject ServiceApiService ServiceApi
 @inject NavigationManager Nav
 
-<div style="margin-bottom: var(--space-md);">
-    <RadzenLink Path="services" Text="← Back to Services" Style="font-size: var(--font-size-sm);" />
-</div>
-
-<div class="cm-page-header">
-    <h1>@(_isNew ? "Create Service" : $"Edit Service: {Id}")</h1>
-    <p>@(_isNew ? "Define a new service." : "Update service configuration.")</p>
-</div>
-
-@if (_loading)
-{
-    <FormSkeleton />
-}
-else if (_error is not null)
-{
-    <div class="alert alert-danger">@_error</div>
-}
-else
-{
-    <div class="cm-editor">
-        <EditForm Model="_model" OnValidSubmit="SaveAsync" FormName="serviceForm">
-            <DataAnnotationsValidator />
-
-            <div class="cm-editor__card">
-                <div class="cm-editor__field">
-                    <label>Service ID</label>
-                    <EntityIdInput @bind-Value="_model.Id" Suggestions="_existingIds"
-                        Mode="EntityIdInputMode.Unique" EntityName="service" Disabled="@(!_isNew)" />
-                </div>
-                <div class="cm-editor__field">
-                    <label>Name</label>
-                    <RadzenTextBox @bind-Value="_model.Name" Style="width: 100%;" />
-                </div>
-                <div class="cm-editor__field">
-                    <label>Enabled</label>
-                    <RadzenSwitch @bind-Value="_model.IsEnabled" />
-                </div>
-            </div>
-
-            <div class="cm-editor__actions">
-                <RadzenButton Text="Save" ButtonType="ButtonType.Submit" ButtonStyle="ButtonStyle.Primary" />
-                <RadzenButton Text="Cancel" Variant="Variant.Outlined" Click="@(() => Nav.NavigateTo("/services"))" />
-            </div>
-        </EditForm>
+<EditorPageTemplate TModel="ServiceFormModel"
+    Id="@Id" IsNew="_isNew"
+    BackPath="services" BackLinkText="← Back to Services"
+    CreateTitle="Create Service" CreateDescription="Define a new service."
+    EditTitlePrefix="Edit Service: " EditDescription="Update service configuration."
+    FormName="serviceForm" Model="_model" Loading="_loading" Error="_error"
+    OnValidSubmit="SaveAsync">
+    <div class="cm-editor__field">
+        <label>Service ID</label>
+        <EntityIdInput @bind-Value="_model.Id" Suggestions="_existingIds"
+            Mode="EntityIdInputMode.Unique" EntityName="service" Disabled="@(!_isNew)" />
     </div>
-}
+    <div class="cm-editor__field">
+        <label>Name</label>
+        <RadzenTextBox @bind-Value="_model.Name" Style="width: 100%;" />
+    </div>
+    <div class="cm-editor__field">
+        <label>Enabled</label>
+        <RadzenSwitch @bind-Value="_model.IsEnabled" />
+    </div>
+</EditorPageTemplate>
 
 @code {
     [Parameter] public string? Id { get; set; }
@@ -62,8 +37,7 @@ else
     {
         try
         {
-            var all = await ServiceApi.GetAllAsync();
-            _existingIds = all.Select(s => s.Id).ToList();
+            _existingIds = (await ServiceApi.GetAllAsync()).Select(s => s.Id).ToList();
 
             if (!_isNew)
             {
@@ -73,6 +47,7 @@ else
                     _error = $"Service '{Id}' not found.";
                     return;
                 }
+
                 _model = new ServiceFormModel
                 {
                     Id = svc.Id,
@@ -103,9 +78,13 @@ else
         try
         {
             if (_isNew)
+            {
                 await ServiceApi.CreateAsync(service);
+            }
             else
+            {
                 await ServiceApi.UpdateAsync(Id!, service);
+            }
 
             Nav.NavigateTo("/services");
         }
@@ -113,12 +92,5 @@ else
         {
             _error = $"Save failed: {ex.Message}";
         }
-    }
-
-    private class ServiceFormModel
-    {
-        public string Id { get; set; } = string.Empty;
-        public string Name { get; set; } = string.Empty;
-        public bool IsEnabled { get; set; } = true;
     }
 }

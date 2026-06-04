@@ -4,70 +4,45 @@
 @inject ResourcePoolApiService PoolApi
 @inject NavigationManager Nav
 
-<div style="margin-bottom: var(--space-md);">
-    <RadzenLink Path="quotas" Text="← Back to Quotas" Style="font-size: var(--font-size-sm);" />
-</div>
-
-<div class="cm-page-header">
-    <h1>@(_isNew ? "Create Quota" : $"Edit Quota: {Id}")</h1>
-    <p>@(_isNew ? "Define a request quota for a resource pool." : "Update quota configuration.")</p>
-</div>
-
-@if (_loading)
-{
-    <FormSkeleton />
-}
-else if (_error is not null)
-{
-    <div class="alert alert-danger">@_error</div>
-}
-else
-{
-    <div class="cm-editor">
-        <EditForm Model="_model" OnValidSubmit="SaveAsync" FormName="quotaForm">
-            <DataAnnotationsValidator />
-
-            <div class="cm-editor__card">
-                <div class="cm-editor__field">
-                    <label>Quota ID</label>
-                    <EntityIdInput @bind-Value="_model.Id" Suggestions="_existingIds"
-                        Mode="EntityIdInputMode.Unique" EntityName="quota" Disabled="@(!_isNew)" />
-                </div>
-                <div class="cm-editor__field">
-                    <label>Resource Pool</label>
-                    <EntityIdInput @bind-Value="_model.TargetId" Suggestions="_poolIds"
-                        Mode="EntityIdInputMode.Reference" EntityName="resource pool" />
-                </div>
-                <div class="cm-editor__field">
-                    <label>Strategy</label>
-                    <RadzenDropDown TValue="RateLimitStrategy" @bind-Value="_model.Strategy"
-                        Data="@(Enum.GetValues<RateLimitStrategy>())" Style="width: 100%;"
-                        Change="@(_ => StateHasChanged())" />
-                </div>
-                <div class="cm-editor__field">
-                    <label>Max Requests</label>
-                    <RadzenNumeric TValue="int" @bind-Value="_model.MaxRequests" Style="width: 100%;" />
-                </div>
-                <div class="cm-editor__field">
-                    <label>Window (seconds)</label>
-                    <RadzenNumeric TValue="double" @bind-Value="_model.WindowSeconds" Style="width: 100%;" />
-                </div>
-                @if (_model.Strategy == RateLimitStrategy.TokenBucket)
-                {
-                    <div class="cm-editor__field">
-                        <label>Tokens Per Refill</label>
-                        <RadzenNumeric TValue="int?" @bind-Value="_model.TokensPerRefill" Style="width: 100%;" />
-                    </div>
-                }
-            </div>
-
-            <div class="cm-editor__actions">
-                <RadzenButton Text="Save" ButtonType="ButtonType.Submit" ButtonStyle="ButtonStyle.Primary" />
-                <RadzenButton Text="Cancel" Variant="Variant.Outlined" Click="@(() => Nav.NavigateTo("/quotas"))" />
-            </div>
-        </EditForm>
+<EditorPageTemplate TModel="RateLimitFormModel"
+    Id="@Id" IsNew="_isNew"
+    BackPath="quotas" BackLinkText="← Back to Quotas"
+    CreateTitle="Create Quota" CreateDescription="Define a request quota for a resource pool."
+    EditTitlePrefix="Edit Quota: " EditDescription="Update quota configuration."
+    FormName="quotaForm" Model="_model" Loading="_loading" Error="_error"
+    OnValidSubmit="SaveAsync">
+    <div class="cm-editor__field">
+        <label>Quota ID</label>
+        <EntityIdInput @bind-Value="_model.Id" Suggestions="_existingIds"
+            Mode="EntityIdInputMode.Unique" EntityName="quota" Disabled="@(!_isNew)" />
     </div>
-}
+    <div class="cm-editor__field">
+        <label>Resource Pool</label>
+        <EntityIdInput @bind-Value="_model.TargetId" Suggestions="_poolIds"
+            Mode="EntityIdInputMode.Reference" EntityName="resource pool" />
+    </div>
+    <div class="cm-editor__field">
+        <label>Strategy</label>
+        <RadzenDropDown TValue="RateLimitStrategy" @bind-Value="_model.Strategy"
+            Data="@(Enum.GetValues<RateLimitStrategy>())" Style="width: 100%;"
+            Change="@(_ => StateHasChanged())" />
+    </div>
+    <div class="cm-editor__field">
+        <label>Max Requests</label>
+        <RadzenNumeric TValue="int" @bind-Value="_model.MaxRequests" Style="width: 100%;" />
+    </div>
+    <div class="cm-editor__field">
+        <label>Window (seconds)</label>
+        <RadzenNumeric TValue="double" @bind-Value="_model.WindowSeconds" Style="width: 100%;" />
+    </div>
+    @if (_model.Strategy == RateLimitStrategy.TokenBucket)
+    {
+        <div class="cm-editor__field">
+            <label>Tokens Per Refill</label>
+            <RadzenNumeric TValue="int?" @bind-Value="_model.TokensPerRefill" Style="width: 100%;" />
+        </div>
+    }
+</EditorPageTemplate>
 
 @code {
     [Parameter] public string? Id { get; set; }
@@ -93,6 +68,7 @@ else
                     _error = $"Quota '{Id}' not found.";
                     return;
                 }
+
                 _model = new RateLimitFormModel
                 {
                     Id = limit.Id,
@@ -132,9 +108,13 @@ else
         try
         {
             if (_isNew)
+            {
                 await RateLimitApi.CreateAsync(limit);
+            }
             else
+            {
                 await RateLimitApi.UpdateAsync(Id!, limit);
+            }
 
             Nav.NavigateTo("/quotas");
         }
@@ -142,16 +122,5 @@ else
         {
             _error = $"Save failed: {ex.Message}";
         }
-    }
-
-    private class RateLimitFormModel
-    {
-        public string Id { get; set; } = string.Empty;
-        public string TargetId { get; set; } = string.Empty;
-        public TargetType TargetType { get; set; } = TargetType.ResourcePool;
-        public RateLimitStrategy Strategy { get; set; }
-        public int MaxRequests { get; set; } = 100;
-        public double WindowSeconds { get; set; } = 60;
-        public int? TokensPerRefill { get; set; }
     }
 }

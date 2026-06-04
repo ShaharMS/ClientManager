@@ -1,6 +1,6 @@
 # Plan: Code Slim-Down — Step 8: AdminUI
 
-> **Status**: 🔲 Not started
+> **Status**: ✅ Complete
 > **Prerequisite**: [code-slimdown-7-api-exceptions-instrumentation.md](code-slimdown-7-api-exceptions-instrumentation.md)
 > **Next**: None — this is the final step.
 > **Parent**: [code-slimdown-overview.md](code-slimdown-overview.md)

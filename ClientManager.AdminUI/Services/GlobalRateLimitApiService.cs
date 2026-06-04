@@ -1,38 +1,20 @@
-using System.Net.Http.Json;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Enums;
 using ClientManager.Shared.Models.Search;
 
 namespace ClientManager.AdminUI.Services;
 
-public class GlobalRateLimitApiService
+public class GlobalRateLimitApiService(IHttpClientFactory httpClientFactory)
+    : GenericApiService<GlobalRateLimit>(httpClientFactory, "api/v1/global-rate-limits")
 {
-    private readonly HttpClient _httpClient;
-    private static readonly TimeSpan CacheTtl = TimeSpan.FromSeconds(30);
-    private List<GlobalRateLimit>? _cachedAll;
-    private DateTime _cachedAllAt;
     private readonly Dictionary<TargetType, (List<GlobalRateLimit> Data, DateTime At)> _cachedByTarget = [];
-
-    public GlobalRateLimitApiService(IHttpClientFactory httpClientFactory)
-    {
-        _httpClient = httpClientFactory.CreateClient("ClientManagerApi");
-    }
-
-    public async Task<List<GlobalRateLimit>> GetAllAsync()
-    {
-        if (_cachedAll is not null && DateTime.UtcNow - _cachedAllAt < CacheTtl)
-            return _cachedAll;
-
-        var result = await SearchAsync(new DocumentQuery { Take = 100 });
-        _cachedAll = result.Items.ToList();
-        _cachedAllAt = DateTime.UtcNow;
-        return _cachedAll;
-    }
 
     public async Task<List<GlobalRateLimit>> GetByTargetTypeAsync(TargetType targetType)
     {
-        if (_cachedByTarget.TryGetValue(targetType, out var cached) && DateTime.UtcNow - cached.At < CacheTtl)
+        if (_cachedByTarget.TryGetValue(targetType, out var cached) && DateTime.UtcNow - cached.At < TimeSpan.FromSeconds(30))
+        {
             return cached.Data;
+        }
 
         var query = new DocumentQuery { Take = 100 }
             .Where(nameof(GlobalRateLimit.TargetType), FilterOperator.Equals, targetType.ToString());
@@ -42,43 +24,21 @@ public class GlobalRateLimitApiService
         return data;
     }
 
-    public async Task<SearchResult<GlobalRateLimit>> SearchAsync(DocumentQuery? query = null)
+    public new async Task CreateAsync(GlobalRateLimit limit)
     {
-        var response = await _httpClient.PostAsJsonAsync("api/v1/global-rate-limits/search", query ?? DocumentQuery.All);
-        await ApiResponseHandler.EnsureSuccessAsync(response);
-        return await response.Content.ReadFromJsonAsync<SearchResult<GlobalRateLimit>>()
-            ?? new SearchResult<GlobalRateLimit>([], 0);
+        await base.CreateAsync(limit);
+        _cachedByTarget.Clear();
     }
 
-    public async Task<GlobalRateLimit?> GetByIdAsync(string id)
+    public new async Task UpdateAsync(string id, GlobalRateLimit limit)
     {
-        return await ApiResponseHandler.GetOptionalFromJsonAsync<GlobalRateLimit>(_httpClient, $"api/v1/global-rate-limits/{id}");
+        await base.UpdateAsync(id, limit);
+        _cachedByTarget.Clear();
     }
 
-    public async Task CreateAsync(GlobalRateLimit limit)
+    public new async Task DeleteAsync(string id)
     {
-        var response = await _httpClient.PostAsJsonAsync("api/v1/global-rate-limits", limit);
-        await ApiResponseHandler.EnsureSuccessAsync(response);
-        InvalidateCache();
-    }
-
-    public async Task UpdateAsync(string id, GlobalRateLimit limit)
-    {
-        var response = await _httpClient.PutAsJsonAsync($"api/v1/global-rate-limits/{id}", limit);
-        await ApiResponseHandler.EnsureSuccessAsync(response);
-        InvalidateCache();
-    }
-
-    public async Task DeleteAsync(string id)
-    {
-        var response = await _httpClient.DeleteAsync($"api/v1/global-rate-limits/{id}");
-        await ApiResponseHandler.EnsureSuccessAsync(response);
-        InvalidateCache();
-    }
-
-    private void InvalidateCache()
-    {
-        _cachedAll = null;
+        await base.DeleteAsync(id);
         _cachedByTarget.Clear();
     }
 }

@@ -177,12 +177,7 @@ else
     private IEnumerable<string>? _selectedClientIds;
     private string? _tableSearch;
 
-    // Polling state
-    private Timer? _timer;
-    private TimeSpan _pollingInterval = TimeSpan.FromSeconds(10);
-    private bool _isVisible = true;
-    private IJSObjectReference? _visibilityModule;
-    private DotNetObjectReference<Dashboard>? _dotNetRef;
+    private PagePollingLifecycle? _polling;
 
     private List<FilterOption> _filterTypes = new()
     {
@@ -211,7 +206,6 @@ else
         try
         {
             _overview = await StatsService.GetOverviewAsync();
-            StartTimer();
 
             var services = await ServiceService.GetAllAsync();
             var pools = await PoolService.GetAllAsync();
@@ -257,6 +251,9 @@ else
         {
             _loading = false;
         }
+
+        _polling = new PagePollingLifecycle(JS, InvokeAsync, RefreshDataAsync);
+        _polling.Start();
     }
 
     private async Task OnTimeRangeChanged(TimeRangePreset preset)
@@ -630,54 +627,17 @@ else
     private record ClientSummaryTableRow(string ClientId, string DisplayName, int AccessibleServices,
         string TotalRateLimitCap, int AccessiblePools, string SlotsDisplay);
 
-    // --- Polling & Visibility ---
-
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
+        if (firstRender && _polling is not null)
         {
-            _visibilityModule = await JS.InvokeAsync<IJSObjectReference>(
-                "import", "./js/visibility.js");
-            _dotNetRef = DotNetObjectReference.Create(this);
-            await _visibilityModule.InvokeVoidAsync("register", _dotNetRef);
+            await _polling.RegisterVisibilityAsync();
         }
-    }
-
-    [JSInvokable]
-    public async Task OnVisibilityChanged(bool visible)
-    {
-        _isVisible = visible;
-        if (visible)
-        {
-            await RefreshDataAsync();
-            await InvokeAsync(StateHasChanged);
-            StartTimer();
-        }
-        else
-        {
-            _timer?.Dispose();
-            _timer = null;
-        }
-    }
-
-    private void StartTimer()
-    {
-        _timer?.Dispose();
-        _timer = new Timer(_ =>
-        {
-            if (!_isVisible) return;
-            _ = InvokeAsync(async () =>
-            {
-                await RefreshDataAsync();
-                StateHasChanged();
-            });
-        }, null, _pollingInterval, _pollingInterval);
     }
 
     private Task OnPollingIntervalChanged(PollingIntervalPreset preset)
     {
-        _pollingInterval = preset.Interval;
-        StartTimer();
+        _polling?.SetInterval(preset.Interval);
         return Task.CompletedTask;
     }
 
@@ -743,12 +703,9 @@ else
 
     public async ValueTask DisposeAsync()
     {
-        _timer?.Dispose();
-        if (_visibilityModule is not null)
+        if (_polling is not null)
         {
-            await _visibilityModule.InvokeVoidAsync("unregister");
-            await _visibilityModule.DisposeAsync();
+            await _polling.DisposeAsync();
         }
-        _dotNetRef?.Dispose();
     }
 }

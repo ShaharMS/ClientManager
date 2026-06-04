@@ -2,7 +2,7 @@
 
 ## Current Pass
 
-Step 8: AdminUI ([code-slimdown-8-adminui.md](../../plans/code-slimdown-8-adminui.md)). Prerequisite: Step 7 complete.
+Code slim-down iteration complete (Steps 1–8). Next work is outside this iteration unless a new pass is opened.
 
 ## Pass History
 
@@ -16,6 +16,7 @@ Step 8: AdminUI ([code-slimdown-8-adminui.md](../../plans/code-slimdown-8-adminu
 | 6 | 2026-06-04 | Step 5 (Merged API Services) implemented and verified (API build + DataAccess.Tests; net −220 on storage service refactor) |
 | 7 | 2026-06-04 | Step 6 (Merged API Controllers) implemented and verified (API build + live HTTP smoke after restart) |
 | 8 | 2026-06-04 | Step 7 (API Exceptions & Instrumentation) implemented and verified (API build + DataAccess.Tests + HTTP 404/409 parity + net −521 on Api slice) |
+| 9 | 2026-06-04 | Step 8 (AdminUI) implemented and verified (AdminUI build clean; net −1085 on AdminUI slice) |
 
 ## Changed Files
 
@@ -184,6 +185,23 @@ Step 8: AdminUI ([code-slimdown-8-adminui.md](../../plans/code-slimdown-8-adminu
 - `dotnet run ClientManager.DataAccess.Tests` → "JsonFile storage verification passed."
 - Live HTTP (`api/v1.0`): GET unknown service → **404**; POST duplicate `billing-service` → **409**; statistics overview → **200**.
 - `git diff --shortstat ClientManager.Api/` → 40 files, +124 / −645 (net −521).
+
+### Step 8 (AdminUI)
+
+**Services & shared UI:**
+- `GenericApiService<TEntity>` — shared CRUD + cache; `ClientApiService`, `ServiceApiService`, `ResourcePoolApiService` are thin subclasses; `GlobalRateLimitApiService` keeps `GetByTargetTypeAsync`.
+- `ListPageTemplate<TItem>` — header, loading/error, search (`@bind-Value` only), pagination/JS resize, filter predicate.
+- `EditorPageTemplate<TModel>` — back-link, header, skeleton/error, form shell, save/cancel.
+- `StatusBadge` + `StatusBadgeVariant` — Monitor/Allocations/list enabled states.
+- `TimeSpanFormatter.FormatCompact` — replaces duplicated `FormatWindow`/`FormatTtl`.
+- `PagePollingLifecycle` — timer + visibility for Dashboard, Monitor, ActiveAllocations.
+- `StatisticsQueryBuilder` — shared statistics URL construction.
+- `RateLimitFormModel`, `ServiceFormModel`, `PoolFormModel` in `Models/`.
+- Deleted unused `TimeRangeSelector.razor`, `PollingIntervalSelector.razor` (superseded by `ChartSettingsDropdown`).
+
+**Verification:**
+- `dotnet build ClientManager.AdminUI` → succeeded.
+- `git diff --shortstat ClientManager.AdminUI/` → 20 files, +470 / −1555 (net −1085).
 
 ## Finding Dispositions
 

@@ -1,167 +1,82 @@
 @page "/services"
 @inject ServiceApiService ServiceApi
 @inject NavigationManager Nav
-@inject IJSRuntime JS
-@implements IAsyncDisposable
 
-<div class="cm-page-header">
-    <h1>Services</h1>
-    <p>Manage service definitions and availability.</p>
-</div>
-
-@if (_loading)
-{
-    <TableSkeleton />
-}
-else if (_error is not null)
-{
-    <div class="alert alert-danger">@_error</div>
-}
-else
-{
-    <div class="cm-list-page__table-card">
-        <div class="cm-list-page__header">
-            <div style="display: flex; gap: 12px; align-items: center;">
-                <RadzenTextBox Placeholder="Search services..."
-                    Value="@_search"
-                    ValueChanged="@((string v) => { _search = v; StateHasChanged(); })"
-                    @oninput="@(args => { _search = args.Value?.ToString(); StateHasChanged(); })"
-                    Style="width: 280px;" />
-                <RadzenDropDown TValue="bool?" Data="@_enabledOptions"
-                    TextProperty="Label" ValueProperty="Value"
-                    Value="@_enabledFilter"
-                    ValueChanged="@((bool? v) => OnEnabledFilterChanged(v))"
-                    Placeholder="All statuses" AllowClear="true"
-                    Style="width: 160px;" />
-            </div>
-            <RadzenButton Text="Create Service" Icon="add" Click="@(() => Nav.NavigateTo("/services/new"))"
-                ButtonStyle="ButtonStyle.Primary" />
-        </div>
-
-        <RadzenDataGrid Data="@_filteredServices" TItem="Service"
-            AllowSorting="true" AllowPaging="true" PageSize="@_pageSize"
-            PagerHorizontalAlign="HorizontalAlign.Center">
-            <Columns>
-                <RadzenDataGridColumn TItem="Service" Property="Id" Title="ID" Width="200px" />
-                <RadzenDataGridColumn TItem="Service" Property="Name" Title="Name" />
-                <RadzenDataGridColumn TItem="Service" Title="Status" Width="100px">
-                    <Template Context="svc">
-                        @if (svc.IsEnabled)
-                        {
-                            <span class="cm-badge cm-badge--success">Enabled</span>
-                        }
-                        else
-                        {
-                            <span class="cm-badge cm-badge--muted">Disabled</span>
-                        }
-                    </Template>
-                </RadzenDataGridColumn>
-                <RadzenDataGridColumn TItem="Service" Title="Actions" Width="160px" Sortable="false">
-                    <Template Context="svc">
-                        <RadzenButton Icon="edit" Size="ButtonSize.Small" Variant="Variant.Text"
-                            Click="@(() => Nav.NavigateTo($"/services/{svc.Id}"))" />
-                        <RadzenButton Icon="delete" Size="ButtonSize.Small" Variant="Variant.Text"
-                            ButtonStyle="ButtonStyle.Danger"
-                            Click="@(() => DeleteAsync(svc.Id))" />
-                    </Template>
-                </RadzenDataGridColumn>
-            </Columns>
-        </RadzenDataGrid>
-    </div>
-}
+<ListPageTemplate @ref="_list" TItem="Service"
+    Title="Services"
+    Description="Manage service definitions and availability."
+    SearchPlaceholder="Search services..."
+    CreateButtonText="Create Service"
+    CreateUrl="/services/new"
+    LoadItemsAsync="LoadServicesAsync"
+    SearchableValues="service => [service.Id, service.Name]">
+    <ToolbarExtra>
+        <RadzenDropDown TValue="bool?" Data="@EnabledFilterOptions"
+            TextProperty="Label" ValueProperty="Value"
+            Value="@_enabledFilter"
+            ValueChanged="OnEnabledFilterChanged"
+            Placeholder="All statuses" AllowClear="true"
+            Style="width: 160px;" />
+    </ToolbarExtra>
+    <Columns>
+        <RadzenDataGridColumn TItem="Service" Property="Id" Title="ID" Width="200px" />
+        <RadzenDataGridColumn TItem="Service" Property="Name" Title="Name" />
+        <RadzenDataGridColumn TItem="Service" Title="Status" Width="100px">
+            <Template Context="svc">
+                <StatusBadge Text="@(svc.IsEnabled ? "Enabled" : "Disabled")"
+                    Variant="@(svc.IsEnabled ? StatusBadgeVariant.Success : StatusBadgeVariant.Muted)" />
+            </Template>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn TItem="Service" Title="Actions" Width="160px" Sortable="false">
+            <Template Context="svc">
+                <RadzenButton Icon="edit" Size="ButtonSize.Small" Variant="Variant.Text"
+                    Click="@(() => Nav.NavigateTo($"/services/{svc.Id}"))" />
+                <RadzenButton Icon="delete" Size="ButtonSize.Small" Variant="Variant.Text"
+                    ButtonStyle="ButtonStyle.Danger"
+                    Click="@(() => DeleteAsync(svc.Id))" />
+            </Template>
+        </RadzenDataGridColumn>
+    </Columns>
+</ListPageTemplate>
 
 @code {
-    private bool _loading = true;
-    private string? _error;
-    private string? _search;
+    private ListPageTemplate<Service>? _list;
     private bool? _enabledFilter;
-    private List<Service> _services = [];
-    private int _pageSize = 10;
-    private IJSObjectReference? _tableJs;
-    private DotNetObjectReference<ServiceList>? _selfRef;
 
-    private static readonly List<object> _enabledOptions =
+    private static readonly List<object> EnabledFilterOptions =
     [
         new { Label = "Enabled", Value = (bool?)true },
         new { Label = "Disabled", Value = (bool?)false }
     ];
 
-    private IEnumerable<Service> _filteredServices =>
-        string.IsNullOrWhiteSpace(_search)
-            ? _services
-            : _services.Where(s =>
-                s.Id.Contains(_search, StringComparison.OrdinalIgnoreCase) ||
-                s.Name.Contains(_search, StringComparison.OrdinalIgnoreCase));
-
-    protected override async Task OnInitializedAsync() => await LoadAsync();
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    private async Task<IReadOnlyList<Service>> LoadServicesAsync()
     {
-        if (firstRender)
+        if (_enabledFilter.HasValue)
         {
-            _tableJs = await JS.InvokeAsync<IJSObjectReference>("import", "./js/table.js");
-            _selfRef = DotNetObjectReference.Create(this);
-            await _tableJs.InvokeVoidAsync("register", _selfRef);
-            await RecalculatePageSizeAsync();
+            var query = new DocumentQuery { Take = 100 }
+                .Where(nameof(Service.IsEnabled), ClientManager.Shared.Models.Search.FilterOperator.Equals, _enabledFilter.Value);
+            var result = await ServiceApi.SearchAsync(query);
+            return result.Items.ToList();
         }
-    }
 
-    [JSInvokable]
-    public async Task OnWindowResize() => await RecalculatePageSizeAsync();
-
-    private async Task RecalculatePageSizeAsync()
-    {
-        _pageSize = await _tableJs!.InvokeAsync<int>("getPageSize", 45);
-        StateHasChanged();
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        if (_tableJs is not null)
-        {
-            await _tableJs.InvokeVoidAsync("unregister");
-            await _tableJs.DisposeAsync();
-        }
-        _selfRef?.Dispose();
-    }
-
-    private async Task LoadAsync()
-    {
-        try
-        {
-            if (_enabledFilter.HasValue)
-            {
-                var query = new DocumentQuery { Take = 100 }
-                    .Where(nameof(Service.IsEnabled), ClientManager.Shared.Models.Search.FilterOperator.Equals, _enabledFilter.Value);
-                var result = await ServiceApi.SearchAsync(query);
-                _services = result.Items.ToList();
-            }
-            else
-            {
-                _services = await ServiceApi.GetAllAsync();
-            }
-            _error = null;
-        }
-        catch (HttpRequestException ex)
-        {
-            _error = $"Unable to connect to the API: {ex.Message}";
-        }
-        finally
-        {
-            _loading = false;
-        }
+        return await ServiceApi.GetAllAsync();
     }
 
     private async Task OnEnabledFilterChanged(bool? value)
     {
         _enabledFilter = value;
-        _loading = true;
-        await LoadAsync();
+        if (_list is not null)
+        {
+            await _list.ReloadAsync();
+        }
     }
 
     private async Task DeleteAsync(string id)
     {
         await ServiceApi.DeleteAsync(id);
-        await LoadAsync();
+        if (_list is not null)
+        {
+            await _list.ReloadAsync();
+        }
     }
 }

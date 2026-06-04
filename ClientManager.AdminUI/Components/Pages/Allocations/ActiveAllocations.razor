@@ -127,27 +127,27 @@
                 <Template Context="row">
                     @if (!IsAccessMetric && row.CapValue > 0 && row.CurrentValue >= row.CapValue)
                     {
-                        <span class="cm-badge" style="background: #fee2e2; color: #991b1b;">At Capacity</span>
+                        <StatusBadge Text="At Capacity" Variant="StatusBadgeVariant.Danger" />
                     }
                     else if (!IsAccessMetric && row.DeniedLast5Min > 0)
                     {
-                        <span class="cm-badge" style="background: #fef3c7; color: #92400e;">Contention</span>
+                        <StatusBadge Text="Contention" Variant="StatusBadgeVariant.Warning" />
                     }
                     else if (IsAccessMetric && row.DeniedLast5Min > 0 && row.CapValue > 0 && row.CurrentValue >= row.CapValue * 0.9)
                     {
-                        <span class="cm-badge" style="background: #fee2e2; color: #991b1b;">Hitting Limit</span>
+                        <StatusBadge Text="Hitting Limit" Variant="StatusBadgeVariant.Danger" />
                     }
                     else if (IsAccessMetric && row.DeniedLast5Min > 0)
                     {
-                        <span class="cm-badge" style="background: #fef3c7; color: #92400e;">Denied</span>
+                        <StatusBadge Text="Denied" Variant="StatusBadgeVariant.Warning" />
                     }
                     else if (IsAccessMetric && row.CapValue > 0 && row.CurrentValue >= row.CapValue * 0.9)
                     {
-                        <span class="cm-badge" style="background: #fef3c7; color: #92400e;">Near Limit</span>
+                        <StatusBadge Text="Near Limit" Variant="StatusBadgeVariant.Warning" />
                     }
                     else
                     {
-                        <span class="cm-badge cm-badge--success">@(IsAccessMetric ? "Healthy" : "Available")</span>
+                        <StatusBadge Text="@(IsAccessMetric ? "Healthy" : "Available")" Variant="StatusBadgeVariant.Success" />
                     }
                 </Template>
             </RadzenDataGridColumn>
@@ -195,23 +195,23 @@
                 <Template Context="pool">
                     @if (!IsAccessMetric && pool.RemainingValue == 0)
                     {
-                        <span class="cm-badge" style="background: #fee2e2; color: #991b1b;">At Capacity</span>
+                        <StatusBadge Text="At Capacity" Variant="StatusBadgeVariant.Danger" />
                     }
                     else if (IsAccessMetric && pool.DeniedLast5Min > 0 && pool.CapValue > 0 && pool.CurrentValue >= pool.CapValue * 0.9)
                     {
-                        <span class="cm-badge" style="background: #fee2e2; color: #991b1b;">Hitting Limit</span>
+                        <StatusBadge Text="Hitting Limit" Variant="StatusBadgeVariant.Danger" />
                     }
                     else if (IsAccessMetric && pool.DeniedLast5Min > 0)
                     {
-                        <span class="cm-badge" style="background: #fef3c7; color: #92400e;">Denied</span>
+                        <StatusBadge Text="Denied" Variant="StatusBadgeVariant.Warning" />
                     }
                     else if (IsAccessMetric && pool.CapValue > 0 && pool.CurrentValue >= pool.CapValue * 0.9)
                     {
-                        <span class="cm-badge" style="background: #fef3c7; color: #92400e;">Near Limit</span>
+                        <StatusBadge Text="Near Limit" Variant="StatusBadgeVariant.Warning" />
                     }
                     else
                     {
-                        <span class="cm-badge cm-badge--success">Available</span>
+                        <StatusBadge Text="Available" Variant="StatusBadgeVariant.Success" />
                     }
                 </Template>
             </RadzenDataGridColumn>
@@ -240,11 +240,7 @@
 
     private bool _loading;
     private string? _error;
-    private Timer? _timer;
-    private TimeSpan _pollingInterval = TimeSpan.FromSeconds(10);
-    private bool _isVisible = true;
-    private IJSObjectReference? _visibilityModule;
-    private DotNetObjectReference<ActiveAllocations>? _dotNetRef;
+    private PagePollingLifecycle? _polling;
     private int _loadVersion;
 
     private TimeRangePreset _timeRange = TimeRangePreset.Default;
@@ -287,51 +283,21 @@
             _loading = false;
         }
 
-        StartTimer();
+        _polling = new PagePollingLifecycle(JS, InvokeAsync, LoadDataAsync);
+        _polling.Start();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
+        if (firstRender && _polling is not null)
         {
-            _visibilityModule = await JS.InvokeAsync<IJSObjectReference>(
-                "import", "./js/visibility.js");
-            _dotNetRef = DotNetObjectReference.Create(this);
-            await _visibilityModule.InvokeVoidAsync("register", _dotNetRef);
+            await _polling.RegisterVisibilityAsync();
         }
-    }
-
-    [JSInvokable]
-    public async Task OnVisibilityChanged(bool visible)
-    {
-        _isVisible = visible;
-        if (visible)
-        {
-            await LoadDataAsync();
-            await InvokeAsync(StateHasChanged);
-            StartTimer();
-        }
-        else
-        {
-            _timer?.Dispose();
-            _timer = null;
-        }
-    }
-
-    private void StartTimer()
-    {
-        _timer?.Dispose();
-        _timer = new Timer(async _ =>
-        {
-            await LoadDataAsync();
-            await InvokeAsync(StateHasChanged);
-        }, null, _pollingInterval, _pollingInterval);
     }
 
     private Task OnPollingIntervalChanged(PollingIntervalPreset preset)
     {
-        _pollingInterval = preset.Interval;
-        StartTimer();
+        _polling?.SetInterval(preset.Interval);
         return Task.CompletedTask;
     }
 
@@ -753,13 +719,10 @@
 
     public async ValueTask DisposeAsync()
     {
-        _timer?.Dispose();
-        if (_visibilityModule is not null)
+        if (_polling is not null)
         {
-            await _visibilityModule.InvokeVoidAsync("unregister");
-            await _visibilityModule.DisposeAsync();
+            await _polling.DisposeAsync();
         }
-        _dotNetRef?.Dispose();
     }
 
     private record NamedItem(string Id, string Name);
