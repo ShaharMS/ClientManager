@@ -1,30 +1,16 @@
 services:
-  storageapi:
-    image: clientmanager/storageapi:local
-    build:
-      context: .
-      dockerfile: ClientManager.StorageApi/Dockerfile
-    restart: unless-stopped
-    environment:
-      ASPNETCORE_ENVIRONMENT: Development
-    ports:
-      - "5063:5063"
-    volumes:
-      - ./data:/app/data
-
   api:
     image: clientmanager/api:local
     build:
       context: .
       dockerfile: ClientManager.Api/Dockerfile
     restart: unless-stopped
-    depends_on:
-      - storageapi
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      StorageApi__BaseUrl: http://storageapi:5063
     ports:
       - "5062:5062"
+    volumes:
+      - ./data:/app/data
 
   adminui:
     image: clientmanager/adminui:local

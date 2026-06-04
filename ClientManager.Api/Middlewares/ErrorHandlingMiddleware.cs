@@ -1,4 +1,5 @@
 using ClientManager.Api.Models.Exceptions;
+using ClientManager.Api.Services.Storage.Models.Exceptions;
 using ClientManager.Shared.Models.Problems;
 using ClientManager.Shared.Logging;
 
@@ -36,6 +37,10 @@ public class ErrorHandlingMiddleware
         {
             await HandleProblemAsync(context, exception);
         }
+        catch (StorageApiProblemException exception)
+        {
+            await HandleStorageProblemAsync(context, exception);
+        }
         catch (Exception exception)
         {
             _logger.Error("Internal error occured while processing request", new { Path = context.Request.Path.Value, context.Request.Method }, exception);
@@ -50,6 +55,33 @@ public class ErrorHandlingMiddleware
     /// responses that carry a retry hint.
     /// </summary>
     private async Task HandleProblemAsync(HttpContext context, HttpProblemException exception)
+    {
+        _logger.Info(
+            "User fault encountered while processing request",
+            new
+            {
+                Path = context.Request.Path.Value,
+                exception.StatusCode,
+                exception.Title,
+                Detail = exception.Message,
+                exception.RetryAfterSeconds
+            });
+
+        if (exception.RetryAfterSeconds.HasValue)
+        {
+            context.Response.Headers.RetryAfter = exception.RetryAfterSeconds.Value.ToString();
+        }
+
+        await WriteProblemDetailsAsync(context, exception.StatusCode, exception.Title, exception.Message);
+    }
+
+    /// <summary>
+    /// Writes the RFC 7807 response for an expected failure raised by an in-process storage domain
+    /// service. These failures are part of the public contract — surfaced previously by the storage
+    /// API host — so they are logged at warning level and their status code, title, and retry hint
+    /// are preserved verbatim.
+    /// </summary>
+    private async Task HandleStorageProblemAsync(HttpContext context, StorageApiProblemException exception)
     {
         _logger.Info(
             "User fault encountered while processing request",

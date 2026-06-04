@@ -1,8 +1,9 @@
 """
 Launches a local Grafana, Prometheus, and Jaeger stack for ClientManager.
 
-The stack is meant to visualize both public API and Storage API metrics plus
-distributed traces emitted from the existing OTLP instrumentation.
+The stack is meant to visualize public API metrics (including the in-process
+storage metrics) plus distributed traces emitted from the existing OTLP
+instrumentation.
 
 Running the script without a subcommand defaults to the full stack startup path.
 
@@ -76,9 +77,7 @@ JAEGER_CONTAINER = OBSERVABILITY_CONTAINERS["jaeger_container"]
 CONTAINER_NAMES = (GRAFANA_CONTAINER, PROMETHEUS_CONTAINER, JAEGER_CONTAINER)
 
 DEFAULT_API_HOST = GLOBAL_SETTINGS["local_runtime"]["docker_host"]
-DEFAULT_STORAGE_HOST = GLOBAL_SETTINGS["local_runtime"]["docker_host"]
 DEFAULT_API_PORT = GLOBAL_SETTINGS["local_runtime"]["api_port"]
-DEFAULT_STORAGE_PORT = GLOBAL_SETTINGS["local_runtime"]["storage_port"]
 DEFAULT_GRAFANA_PORT = OBSERVABILITY_DEFAULTS["grafana_port"]
 DEFAULT_PROMETHEUS_PORT = OBSERVABILITY_DEFAULTS["prometheus_port"]
 DEFAULT_JAEGER_PORT = OBSERVABILITY_DEFAULTS["jaeger_port"]
@@ -122,18 +121,7 @@ def parse_args() -> argparse.Namespace:
         help="Container launch strategy. Defaults to compose when available.",
     )
     up_parser.add_argument("--api-host", default=DEFAULT_API_HOST, help="Host Prometheus should use to scrape the public API.")
-    up_parser.add_argument(
-        "--storage-host",
-        default=DEFAULT_STORAGE_HOST,
-        help="Host Prometheus should use to scrape the Storage API.",
-    )
     up_parser.add_argument("--api-port", type=int, default=DEFAULT_API_PORT, help="Public API port exposing /prometheus/otel.")
-    up_parser.add_argument(
-        "--storage-port",
-        type=int,
-        default=DEFAULT_STORAGE_PORT,
-        help="Storage API port exposing /prometheus/otel.",
-    )
     up_parser.add_argument(
         "--grafana-port",
         type=int,
@@ -199,7 +187,7 @@ def parse_args() -> argparse.Namespace:
         snippet_parser.add_argument(
             "--otlp-endpoint",
             default=DEFAULT_OTLP_ENDPOINT,
-            help="OTLP endpoint to inject into ClientManager.Api and ClientManager.StorageApi.",
+            help="OTLP endpoint to inject into ClientManager.Api.",
         )
 
     return parser.parse_args(raw_args)
@@ -245,7 +233,6 @@ def command_up(args: argparse.Namespace) -> None:
 
     grafana_url = f"http://localhost:{args.grafana_port}"
     api_trace_search_url = build_grafana_trace_search_url(args.grafana_port, "ClientManager.Api")
-    storage_trace_search_url = build_grafana_trace_search_url(args.grafana_port, "ClientManager.StorageApi")
     prometheus_url = f"http://localhost:{args.prometheus_port}"
     jaeger_url = f"http://localhost:{args.jaeger_port}"
     otlp_endpoint = f"http://localhost:{args.otlp_grpc_port}"
@@ -258,16 +245,15 @@ def command_up(args: argparse.Namespace) -> None:
     print()
     print(f"Grafana:    {grafana_url}")
     print(f"Trace Search (API):     {api_trace_search_url}")
-    print(f"Trace Search (Storage): {storage_trace_search_url}")
     print(f"Prometheus: {prometheus_url}")
     print(f"Jaeger:     {jaeger_url}")
     print(f"OTLP gRPC:  {otlp_endpoint}")
     print()
     if args.otlp_grpc_port == DEFAULT_OTLP_GRPC_PORT:
-        print("Development defaults in ClientManager.StorageApi and ClientManager.Api already export to this OTLP endpoint.")
+        print("Development defaults in ClientManager.Api already export to this OTLP endpoint.")
         print("Use the helper commands below only if you override the OTLP port or run outside Development.")
     else:
-        print("This stack is using a non-default OTLP endpoint. Configure both hosts before generating traces:")
+        print("This stack is using a non-default OTLP endpoint. Configure the API host before generating traces:")
         print(f'  $env:Observability__OtlpEndpoint = "{otlp_endpoint}"')
         print()
         print("Or update the hosts with one of these helpers:")
@@ -276,13 +262,12 @@ def command_up(args: argparse.Namespace) -> None:
     print(f"  python {Path(__file__).relative_to(SCRIPT_DIR.parent)} print-launchsettings")
     print()
     print("Grafana comes preloaded with:")
-    print("  - a Prometheus datasource for Api and StorageApi /prometheus/otel")
-    print("  - a Jaeger datasource for ClientManager.Api and ClientManager.StorageApi traces")
+    print("  - a Prometheus datasource for the Api /prometheus/otel")
+    print("  - a Jaeger datasource for ClientManager.Api traces")
     print("  - a starter dashboard for request, storage-client, and document-store latency")
     print("  - direct Grafana Trace Search URLs that open Jaeger Explore in Search mode")
 
     report_scrape_target("Public API metrics", f"http://localhost:{args.api_port}/prometheus/otel")
-    report_scrape_target("Storage API metrics", f"http://localhost:{args.storage_port}/prometheus/otel")
 
     if args.open_browser:
         webbrowser.open(api_trace_search_url)
@@ -485,8 +470,6 @@ def write_stack_files(args: argparse.Namespace) -> None:
         build_prometheus_config(
             api_host=args.api_host,
             api_port=args.api_port,
-            storage_host=args.storage_host,
-            storage_port=args.storage_port,
             scrape_interval=args.scrape_interval,
         ),
     )
@@ -524,8 +507,6 @@ def write_text(path: Path, content: str) -> None:
 def build_prometheus_config(
     api_host: str,
     api_port: int,
-    storage_host: str,
-    storage_port: int,
     scrape_interval: str,
 ) -> str:
     return textwrap.dedent(
@@ -540,12 +521,6 @@ def build_prometheus_config(
             static_configs:
               - targets:
                   - {api_host}:{api_port}
-
-          - job_name: clientmanager-storageapi
-            metrics_path: /prometheus/otel
-            static_configs:
-              - targets:
-                  - {storage_host}:{storage_port}
         """
     ).strip() + "\n"
 
@@ -589,7 +564,6 @@ def build_grafana_dashboard_provider() -> str:
 
 def build_grafana_dashboard(grafana_port: int, jaeger_port: int, prometheus_port: int, otlp_endpoint: str) -> dict:
     api_trace_search_url = build_grafana_trace_search_url(grafana_port, "ClientManager.Api")
-    storage_trace_search_url = build_grafana_trace_search_url(grafana_port, "ClientManager.StorageApi")
     panels = [
         text_panel(
             panel_id=1,
@@ -598,23 +572,21 @@ def build_grafana_dashboard(grafana_port: int, jaeger_port: int, prometheus_port
                 f"""
                 ## ClientManager Observability
 
-                Metrics are preloaded in this dashboard from both hosts.
+                Metrics are preloaded in this dashboard from the API host.
 
                 Traces are available in Grafana Explore via the **ClientManager Jaeger** datasource.
                 Search by service name:
 
                 - `ClientManager.Api`
-                - `ClientManager.StorageApi`
 
                 Direct links:
 
                 - [Grafana Home](http://localhost:{grafana_port})
                 - [Grafana API Trace Search]({api_trace_search_url})
-                - [Grafana Storage Trace Search]({storage_trace_search_url})
                 - [Prometheus](http://localhost:{prometheus_port})
                 - [Jaeger UI](http://localhost:{jaeger_port})
 
-                OTLP endpoint to set on both hosts:
+                OTLP endpoint to set on the API host:
 
                 - `{otlp_endpoint}`
                 """
@@ -637,7 +609,7 @@ def build_grafana_dashboard(grafana_port: int, jaeger_port: int, prometheus_port
         stat_panel(
             panel_id=3,
             title="Storage Requests / Sec",
-            expression="sum(rate(clientmanager_storageapi_requests_total{job=\"clientmanager-storageapi\"}[$__rate_interval]))",
+            expression="sum(rate(clientmanager_storageapi_requests_total{job=\"clientmanager-api\"}[$__rate_interval]))",
             unit="ops",
             x=6,
             y=7,
@@ -657,7 +629,7 @@ def build_grafana_dashboard(grafana_port: int, jaeger_port: int, prometheus_port
         stat_panel(
             panel_id=5,
             title="Storage Errors / Sec",
-            expression="sum(rate(clientmanager_storageapi_requests_errors_total{job=\"clientmanager-storageapi\"}[$__rate_interval]))",
+            expression="sum(rate(clientmanager_storageapi_requests_errors_total{job=\"clientmanager-api\"}[$__rate_interval]))",
             unit="ops",
             x=18,
             y=7,
@@ -685,7 +657,7 @@ def build_grafana_dashboard(grafana_port: int, jaeger_port: int, prometheus_port
             expression=(
                 "histogram_quantile(0.95, "
                 "sum by (le) (rate({__name__=~\"clientmanager_storageapi_requests_duration(_milliseconds)?_bucket\", "
-                "job=\"clientmanager-storageapi\"}[$__rate_interval])))"
+                "job=\"clientmanager-api\"}[$__rate_interval])))"
             ),
             legend_format="Storage",
             unit="ms",
@@ -715,7 +687,7 @@ def build_grafana_dashboard(grafana_port: int, jaeger_port: int, prometheus_port
             expression=(
                 "histogram_quantile(0.95, "
                 "sum by (le, operation) (rate({__name__=~\"clientmanager_storageapi_document_store_duration(_milliseconds)?_bucket\", "
-                "job=\"clientmanager-storageapi\"}[$__rate_interval])))"
+                "job=\"clientmanager-api\"}[$__rate_interval])))"
             ),
             legend_format="{{operation}}",
             unit="ms",
@@ -730,7 +702,7 @@ def build_grafana_dashboard(grafana_port: int, jaeger_port: int, prometheus_port
             expression=(
                 "histogram_quantile(0.95, "
                 "sum by (le, strategy) (rate({__name__=~\"clientmanager_storageapi_ratelimit_strategy_duration(_milliseconds)?_bucket\", "
-                "job=\"clientmanager-storageapi\"}[$__rate_interval])))"
+                "job=\"clientmanager-api\"}[$__rate_interval])))"
             ),
             legend_format="{{strategy}}",
             unit="ms",
@@ -993,34 +965,31 @@ def report_scrape_target(label: str, url: str) -> None:
 
 
 def print_env_snippet(otlp_endpoint: str) -> None:
-    print("Set this in the same PowerShell session before starting both hosts:")
+    print("Set this in the same PowerShell session before starting the API host:")
     print()
     print(f'$env:Observability__OtlpEndpoint = "{otlp_endpoint}"')
     print()
     print("Then start:")
-    print("  - ClientManager.StorageApi")
     print("  - ClientManager.Api")
 
 
 def print_appsettings_snippet(otlp_endpoint: str) -> None:
     snippet = {"Observability": {"OtlpEndpoint": otlp_endpoint}}
-    print("Add this to both appsettings.Development.json files:")
+    print("Add this to the appsettings.Development.json file:")
     print()
     print(json.dumps(snippet, indent=2))
     print()
     print("Files:")
-    print("  - ClientManager.StorageApi/appsettings.Development.json")
     print("  - ClientManager.Api/appsettings.Development.json")
 
 
 def print_launchsettings_snippet(otlp_endpoint: str) -> None:
     snippet = {"environmentVariables": {"Observability__OtlpEndpoint": otlp_endpoint}}
-    print("Add this to the active launch profile in both launchSettings.json files:")
+    print("Add this to the active launch profile in the launchSettings.json file:")
     print()
     print(json.dumps(snippet, indent=2))
     print()
     print("Files:")
-    print("  - ClientManager.StorageApi/Properties/launchSettings.json")
     print("  - ClientManager.Api/Properties/launchSettings.json")
 
 

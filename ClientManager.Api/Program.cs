@@ -3,9 +3,10 @@ using System.Text.Json.Serialization;
 
 using Asp.Versioning;
 
-using ClientManager.Api.Filters;
 using ClientManager.Api.Middlewares;
 using ClientManager.Api.Models.Configuration;
+using ClientManager.Api.Services.Storage;
+using ClientManager.Api.Services.Storage.Utils.Instrumentation;
 using ClientManager.Api.Utils.Extensions;
 using ClientManager.Api.Utils.Instrumentation;
 using ClientManager.Api.Utils.Swagger;
@@ -33,19 +34,11 @@ try
     builder.Logging.ClearProviders();
     builder.Host.UseNLog();
 
-    builder.Services.AddControllers(options =>
-        {
-            // Converts unexpected hot-path server errors into fail-open success responses
-            // when HotPathResilience:FailOpenOnServerError is enabled (off by default).
-            options.Filters.Add<HotPathFailOpenFilter>();
-        })
+    builder.Services.AddControllers()
         .AddJsonOptions(options =>
         {
             options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
         });
-
-    builder.Services.AddOptions<HotPathResilienceOptions>()
-        .Bind(builder.Configuration.GetSection(HotPathResilienceOptions.SectionName));
 
     builder.Services.AddSingleton<IValidateOptions<ApiVersioningSettings>, ApiVersioningSettingsValidator>();
     builder.Services.AddOptions<ApiVersioningSettings>()
@@ -94,10 +87,11 @@ try
         options.DocumentFilter<TagDescriptionsDocumentFilter>();
     });
 
-    builder.Services.AddStorageApiClients(builder.Configuration, builder.Environment);
-
     // Public API adapters that remain local after the storage split.
     builder.Services.AddPublicApiServices();
+
+    // In-process storage domain services relocated from the Storage API host.
+    builder.Services.AddInProcessStorageServices(builder.Configuration, builder.Environment);
 
     // OpenTelemetry metrics, traces, and Prometheus
     builder.Services.AddSingleton<ClientManagerMetrics>();
@@ -116,6 +110,7 @@ try
         {
             metrics.AddAspNetCoreInstrumentation();
             metrics.AddMeter(ClientManagerMetrics.MeterName);
+            metrics.AddMeter(StorageApiMetrics.MeterName);
             metrics.AddPrometheusExporter();
         })
         .WithTracing(tracing =>

@@ -1,6 +1,6 @@
 # Plan: Code Slim-Down — Step 3: Relocate Storage Services into the API
 
-> **Status**: 🔲 Not started
+> **Status**: ✅ Completed
 > **Prerequisite**: [code-slimdown-2b-storage-bindings.md](code-slimdown-2b-storage-bindings.md)
 > **Next**: [code-slimdown-4-storageapi-controllers-wiring.md](code-slimdown-4-storageapi-controllers-wiring.md)
 > **Parent**: [code-slimdown-overview.md](code-slimdown-overview.md)

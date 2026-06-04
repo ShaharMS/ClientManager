@@ -1,51 +1,50 @@
+using ClientManager.Api.Models.Exceptions;
 using ClientManager.Api.Services.Interfaces;
-using ClientManager.Api.Services.Internal.Interfaces;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Search;
+using StorageServiceCatalogService = ClientManager.Api.Services.Storage.Interfaces.IServiceCatalogService;
 
 namespace ClientManager.Api.Services.Implementations;
 
 /// <summary>
-/// Adapts public service-catalog requests onto the storage-facing
-/// <see cref="IServiceCatalogClient"/>, reconciling route identifiers on update so the
-/// controller never has to reshape the persisted document.
+/// Adapts public service-catalog requests onto the in-process storage service catalog,
+/// translating an absent service into a <see cref="ServiceNotFoundException"/> and reconciling
+/// route identifiers on update so the controller never has to reshape the persisted document.
 /// </summary>
 public class ServiceCatalogService : IServiceCatalogService
 {
-    private readonly IServiceCatalogClient _serviceCatalogClient;
+    private readonly StorageServiceCatalogService _serviceCatalogService;
 
     /// <summary>
     /// Initializes a new instance of <see cref="ServiceCatalogService"/>.
     /// </summary>
-    /// <param name="serviceCatalogClient">Typed client for the storage-facing service catalog.</param>
-    public ServiceCatalogService(IServiceCatalogClient serviceCatalogClient)
+    /// <param name="serviceCatalogService">In-process storage service catalog.</param>
+    public ServiceCatalogService(StorageServiceCatalogService serviceCatalogService)
     {
-        _serviceCatalogClient = serviceCatalogClient;
+        _serviceCatalogService = serviceCatalogService;
     }
 
     /// <inheritdoc />
     public Task<SearchResult<Service>> SearchAsync(DocumentQuery query, CancellationToken cancellationToken = default) =>
-        _serviceCatalogClient.SearchAsync(query, cancellationToken);
+        _serviceCatalogService.SearchAsync(query, cancellationToken);
 
     /// <inheritdoc />
-    public Task<Service> GetByIdAsync(string serviceId, CancellationToken cancellationToken = default) =>
-        _serviceCatalogClient.GetByIdAsync(serviceId, cancellationToken);
+    public async Task<Service> GetByIdAsync(string serviceId, CancellationToken cancellationToken = default) =>
+        await _serviceCatalogService.GetByIdAsync(serviceId, cancellationToken)
+            ?? throw new ServiceNotFoundException(serviceId);
 
     /// <inheritdoc />
     public async Task<Service> CreateAsync(Service service, CancellationToken cancellationToken = default)
     {
-        await _serviceCatalogClient.CreateAsync(service, cancellationToken);
+        await _serviceCatalogService.CreateAsync(service, cancellationToken);
         return service;
     }
 
     /// <inheritdoc />
-    public async Task<Service> UpdateAsync(string serviceId, Service service, CancellationToken cancellationToken = default)
-    {
-        await _serviceCatalogClient.UpdateAsync(serviceId, service, cancellationToken);
-        return service with { Id = serviceId };
-    }
+    public Task<Service> UpdateAsync(string serviceId, Service service, CancellationToken cancellationToken = default) =>
+        _serviceCatalogService.UpdateAsync(serviceId, service, cancellationToken);
 
     /// <inheritdoc />
     public Task DeleteAsync(string serviceId, CancellationToken cancellationToken = default) =>
-        _serviceCatalogClient.DeleteAsync(serviceId, cancellationToken);
+        _serviceCatalogService.DeleteAsync(serviceId, cancellationToken);
 }

@@ -1,26 +1,25 @@
-using ClientManager.Api.Services.Internal.Interfaces;
 using ClientManager.Api.Services.Interfaces;
-using ClientManager.Shared.Models.Requests;
 using ClientManager.Shared.Models.Responses;
+using StorageResourceAllocationService = ClientManager.Api.Services.Storage.Interfaces.IResourceAllocationService;
 
 namespace ClientManager.Api.Services.Implementations;
 
 /// <summary>
-/// Proxies resource slot acquisition and release to the storage-facing runtime API.
-/// Keeps the public allocation endpoints stable while moving counter ownership,
-/// cleanup, and rate-limit state behind the internal service boundary.
+/// Adapts resource slot acquisition and release onto the in-process storage resource-allocation
+/// service. Keeps the public allocation endpoints stable while counter ownership, cleanup, and
+/// rate-limit state run in-process.
 /// </summary>
 public class ResourceAllocationService : IResourceAllocationService
 {
-    private readonly IRuntimeStateClient _runtimeStateClient;
+    private readonly StorageResourceAllocationService _resourceAllocationService;
 
     /// <summary>
     /// Initializes a new instance of <see cref="ResourceAllocationService"/>.
     /// </summary>
-    /// <param name="runtimeStateClient">Typed client for the storage-facing runtime endpoints.</param>
-    public ResourceAllocationService(IRuntimeStateClient runtimeStateClient)
+    /// <param name="resourceAllocationService">In-process storage resource-allocation service.</param>
+    public ResourceAllocationService(StorageResourceAllocationService resourceAllocationService)
     {
-        _runtimeStateClient = runtimeStateClient;
+        _resourceAllocationService = resourceAllocationService;
     }
 
     /// <inheritdoc />
@@ -28,9 +27,9 @@ public class ResourceAllocationService : IResourceAllocationService
         string clientId,
         string resourcePoolId,
         CancellationToken cancellationToken = default) =>
-        _runtimeStateClient.AcquireAsync(new AcquireResourceRequest(clientId, resourcePoolId), cancellationToken);
+        _resourceAllocationService.AcquireAsync(clientId, resourcePoolId, cancellationToken);
 
     /// <inheritdoc />
     public Task<ResourceReleaseResponse> ReleaseAsync(string allocationId, CancellationToken cancellationToken = default) =>
-        _runtimeStateClient.ReleaseAsync(new ReleaseResourceRequest(allocationId), cancellationToken);
+        _resourceAllocationService.ReleaseAsync(allocationId, cancellationToken);
 }

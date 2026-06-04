@@ -1,31 +1,36 @@
 using ClientManager.Api.Services.Interfaces;
-using ClientManager.Api.Services.Internal.Interfaces;
+using ClientManager.Api.Services.Storage.Interfaces;
 using ClientManager.Shared.Models.Responses;
 
 namespace ClientManager.Api.Services.Implementations;
 
 /// <summary>
-/// Adapts public metrics requests onto the storage-facing <see cref="IStatisticsReadClient"/>,
-/// exposing only the exporter payloads so the controller stays focused on HTTP content shaping.
+/// Adapts public metrics requests onto the in-process storage exporters, exposing only the exporter
+/// payloads so the controller stays focused on HTTP content shaping.
 /// </summary>
 public class MetricsService : IMetricsService
 {
-    private readonly IStatisticsReadClient _statisticsReadClient;
+    private readonly IPrometheusExportService _prometheusExportService;
+    private readonly IGrafanaExportService _grafanaExportService;
 
     /// <summary>
     /// Initializes a new instance of <see cref="MetricsService"/>.
     /// </summary>
-    /// <param name="statisticsReadClient">Typed client for the storage-facing metrics endpoints.</param>
-    public MetricsService(IStatisticsReadClient statisticsReadClient)
+    /// <param name="prometheusExportService">In-process Prometheus exposition exporter.</param>
+    /// <param name="grafanaExportService">In-process Grafana-shaped metrics exporter.</param>
+    public MetricsService(
+        IPrometheusExportService prometheusExportService,
+        IGrafanaExportService grafanaExportService)
     {
-        _statisticsReadClient = statisticsReadClient;
+        _prometheusExportService = prometheusExportService;
+        _grafanaExportService = grafanaExportService;
     }
 
     /// <inheritdoc />
     public Task<string> GetPrometheusMetricsAsync(CancellationToken cancellationToken = default) =>
-        _statisticsReadClient.GetPrometheusMetricsAsync(cancellationToken);
+        _prometheusExportService.ExportMetricsAsync(cancellationToken);
 
     /// <inheritdoc />
-    public Task<GrafanaMetricsResponse> GetGrafanaMetricsAsync(CancellationToken cancellationToken = default) =>
-        _statisticsReadClient.GetGrafanaMetricsAsync(cancellationToken);
+    public async Task<GrafanaMetricsResponse> GetGrafanaMetricsAsync(CancellationToken cancellationToken = default) =>
+        (GrafanaMetricsResponse)await _grafanaExportService.ExportMetricsAsync(cancellationToken);
 }

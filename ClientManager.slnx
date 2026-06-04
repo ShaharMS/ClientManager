@@ -2,7 +2,6 @@
   <Folder Name="/Executables/">
     <Project Path="ClientManager.AdminUI/ClientManager.AdminUI.csproj" />
     <Project Path="ClientManager.Api/ClientManager.Api.csproj" />
-    <Project Path="ClientManager.StorageApi/ClientManager.StorageApi.csproj" />
   </Folder>
   <Folder Name="/Libraries/">
     <Project Path="ClientManager.DataAccess/ClientManager.DataAccess.csproj" />
@@ -21,7 +20,6 @@
   <Folder Name="/_Solution Items_/Quick Access/" />
   <Folder Name="/_Solution Items_/Quick Access/AdminUI/" />
   <Folder Name="/_Solution Items_/Quick Access/Api/" />
-  <Folder Name="/_Solution Items_/Quick Access/StorageApi/" />
   <Folder Name="/_Solution Items_/Scripts/">
     <File Path="_scripts/launch_observability_ui.py" />
     <File Path="_scripts/performance_baseline.py" />

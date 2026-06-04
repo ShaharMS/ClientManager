@@ -3,7 +3,7 @@ Runs a deterministic baseline load profile against the public ClientManager API.
 
 The profile approximates 1M requests/day by pacing requests at a configurable rate,
 reuses the seeded IDs from traffic_generator.py, and reports latency plus Json-file
-storage sizes from ClientManager.StorageApi so later optimization steps have a stable
+storage sizes from ClientManager.Api so later optimization steps have a stable
 before-state to compare.
 """
 
@@ -331,7 +331,7 @@ def summarize_unexpected_runtime_failures(sample_groups: dict[str, list[dict]]) 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run a deterministic ClientManager performance baseline")
-    parser.add_argument("--base-url", default=DEFAULT_BASE_URL, help="Public API base URL (start StorageApi first)")
+    parser.add_argument("--base-url", default=DEFAULT_BASE_URL, help="Public API base URL")
     parser.add_argument("--requests-per-day", type=int, default=DEFAULT_REQUESTS_PER_DAY)
     parser.add_argument("--duration-seconds", type=int, default=DEFAULT_DURATION_SECONDS)
     parser.add_argument("--virtual-clients", type=int, default=DEFAULT_VIRTUAL_CLIENTS)
@@ -342,7 +342,7 @@ def main() -> None:
         default=DEFAULT_GRAPH_RANGES,
         help="Comma-separated graph range presets to use when graph reads are enabled (7d,30d,90d)",
     )
-    parser.add_argument("--data-directory", type=Path, default=DEFAULT_DATA_DIRECTORY, help="JsonFile data directory owned by ClientManager.StorageApi")
+    parser.add_argument("--data-directory", type=Path, default=DEFAULT_DATA_DIRECTORY, help="JsonFile data directory owned by ClientManager.Api")
     parser.add_argument("--output", type=Path, help="Write the JSON summary to this file instead of stdout")
     args = parser.parse_args()
 

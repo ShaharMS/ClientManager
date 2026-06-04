@@ -7,7 +7,7 @@ services:
     volumes:
       - redis-data:/data
 
-  storageapi:
+  api:
     depends_on:
       - redis
 

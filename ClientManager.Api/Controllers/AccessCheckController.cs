@@ -1,5 +1,4 @@
 using Asp.Versioning;
-using ClientManager.Api.Filters;
 using ClientManager.Shared.Models.Requests;
 using ClientManager.Shared.Models.Responses;
 using ClientManager.Shared.Models.Problems;
@@ -42,7 +41,6 @@ public class AccessCheckController : ControllerBase
     /// <response code="429">Rate limit exceeded.</response>
     /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpPost("check")]
-    [FailOpenOnError(HotPathFailOpenKind.GrantAccess)]
     [ProducesResponseType(typeof(AccessCheckResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status403Forbidden)]

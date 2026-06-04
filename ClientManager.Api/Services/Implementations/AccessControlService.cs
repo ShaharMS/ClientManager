@@ -1,26 +1,25 @@
-using ClientManager.Api.Services.Internal.Interfaces;
 using ClientManager.Api.Services.Interfaces;
-using ClientManager.Shared.Models.Requests;
 using ClientManager.Shared.Models.Responses;
+using StorageAccessControlService = ClientManager.Api.Services.Storage.Interfaces.IAccessControlService;
 
 namespace ClientManager.Api.Services.Implementations;
 
 /// <summary>
-/// Proxies deny-by-default access checks to the storage-facing runtime API.
-/// Keeps the public controller surface unchanged while moving rate-limit state,
-/// usage recording, and configuration-backed decision logic behind the internal boundary.
+/// Adapts deny-by-default access checks onto the in-process storage access-control service.
+/// Keeps the public controller surface unchanged while the rate-limit state, usage recording,
+/// and configuration-backed decision logic run in-process.
 /// </summary>
 public class AccessControlService : IAccessControlService
 {
-    private readonly IRuntimeStateClient _runtimeStateClient;
+    private readonly StorageAccessControlService _accessControlService;
 
     /// <summary>
     /// Initializes a new instance of <see cref="AccessControlService"/>.
     /// </summary>
-    /// <param name="runtimeStateClient">Typed client for the storage-facing runtime endpoints.</param>
-    public AccessControlService(IRuntimeStateClient runtimeStateClient)
+    /// <param name="accessControlService">In-process storage access-control service.</param>
+    public AccessControlService(StorageAccessControlService accessControlService)
     {
-        _runtimeStateClient = runtimeStateClient;
+        _accessControlService = accessControlService;
     }
 
     /// <inheritdoc />
@@ -28,11 +27,11 @@ public class AccessControlService : IAccessControlService
         string clientId,
         string serviceId,
         CancellationToken cancellationToken = default) =>
-        _runtimeStateClient.CheckAccessAsync(new CheckAccessRequest(clientId, serviceId), cancellationToken);
+        _accessControlService.CheckAccessAsync(clientId, serviceId, cancellationToken);
 
     /// <inheritdoc />
     public Task<ClientAccessibilityResponse> GetClientAccessibilityAsync(
         string clientId,
         CancellationToken cancellationToken = default) =>
-        _runtimeStateClient.GetAccessibilityAsync(clientId, cancellationToken);
+        _accessControlService.GetClientAccessibilityAsync(clientId, cancellationToken);
 }
