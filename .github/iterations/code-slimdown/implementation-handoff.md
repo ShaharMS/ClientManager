@@ -2,7 +2,7 @@
 
 ## Current Pass
 
-Step 6: Merged API controllers consolidation ([code-slimdown-6-api-controllers.md](../../plans/code-slimdown-6-api-controllers.md)) — generic CRUD controller base, consolidate settings controllers, split StatisticsController. Prerequisite: Step 5 complete.
+Step 7: API exceptions and instrumentation ([code-slimdown-7-api-exceptions-instrumentation.md](../../plans/code-slimdown-7-api-exceptions-instrumentation.md)). Prerequisite: Step 6 complete.
 
 ## Pass History
 
@@ -14,6 +14,7 @@ Step 6: Merged API controllers consolidation ([code-slimdown-6-api-controllers.m
 | 4 | 2026-06-04 | Step 3 (Relocate Storage Services) implemented and verified (build + tests + API DI/hosted-services startup + UI Dashboard) |
 | 5 | 2026-06-04 | Step 4 (Delete Transport Layer + StorageApi Host) implemented and verified (build + tests + grep-clean + live traffic + UI CRUD round-trip) |
 | 6 | 2026-06-04 | Step 5 (Merged API Services) implemented and verified (API build + DataAccess.Tests; net −220 on storage service refactor) |
+| 7 | 2026-06-04 | Step 6 (Merged API Controllers) implemented and verified (API build + live HTTP smoke after restart) |
 
 ## Changed Files
 
@@ -149,6 +150,21 @@ Step 6: Merged API controllers consolidation ([code-slimdown-6-api-controllers.m
 - `dotnet build ClientManager.Api` → 0 errors.
 - `dotnet run ClientManager.DataAccess.Tests` → passed.
 - `git diff --shortstat` (Step 5 storage slice) → net −220 lines on touched files.
+
+### Step 6 (Merged API Controllers) + live verification
+
+**Controllers:**
+- `CatalogCrudControllerBase<TEntity>` + `ICatalogCrudService<TEntity>` — shared catalog CRUD; typed `[ProducesResponseType]` on concrete controllers only (C# disallows open generic types in attributes).
+- `ServicesController`, `ResourcePoolsController`, `GlobalRateLimitsController` — thin route/tag subclasses.
+- `ClientConfigurationSettingsController` — merged the three client settings controllers (same routes preserved).
+- Split `StatisticsController` → `StatisticsOverviewController`, `StatisticsCatalogController`, `StatisticsUsageController` (same `/statistics` route prefix).
+
+**Live HTTP smoke (Api @ 5062, AdminUI shell @ 5100 returns 200):**
+- Access check, resource acquire, services search, client service settings list, statistics overview → **200**.
+- Acquire + release round-trip (Step 5 telemetry path) → **200 / 200 / 200** (release-again `released:false`).
+- `swagger/v1/swagger.json` → **200**.
+
+**Note:** No interactive browser automation in this environment; validation used `Invoke-WebRequest` against public API routes the AdminUI calls.
 
 ## Finding Dispositions
 

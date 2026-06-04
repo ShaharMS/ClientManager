@@ -1,6 +1,6 @@
 # Plan: Code Slim-Down — Step 6: Merged API Controllers Consolidation
 
-> **Status**: 🔲 Not started
+> **Status**: ✅ Completed
 > **Prerequisite**: [code-slimdown-5-api-services.md](code-slimdown-5-api-services.md)
 > **Next**: [code-slimdown-7-api-exceptions-instrumentation.md](code-slimdown-7-api-exceptions-instrumentation.md)
 > **Parent**: [code-slimdown-overview.md](code-slimdown-overview.md)
