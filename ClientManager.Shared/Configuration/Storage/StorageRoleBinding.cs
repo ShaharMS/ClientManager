@@ -11,7 +11,7 @@ namespace ClientManager.Shared.Configuration.Storage;
 /// <see cref="Provider"/>.
 /// </para>
 /// </summary>
-public class StorageRoleBinding
+public record StorageRoleBinding
 {
     /// <summary>
     /// The storage backend to use for this role.

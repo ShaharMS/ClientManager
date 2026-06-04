@@ -35,15 +35,8 @@ internal static class DocumentStoreFactory
         JsonFileStoreOptions? options,
         Dictionary<string, JsonFileDocumentStore> storeCache)
     {
-        var resolved = options ?? new JsonFileStoreOptions();
-        var dataDirectory = ResolvePath(resolved.DataDirectory);
-        if (!storeCache.TryGetValue(dataDirectory, out var store))
-        {
-            store = new JsonFileDocumentStore(dataDirectory);
-            storeCache[dataDirectory] = store;
-        }
-
-        return store;
+        var dataDirectory = ResolvePath((options ?? new JsonFileStoreOptions()).DataDirectory);
+        return GetOrCreate(storeCache, dataDirectory, () => new JsonFileDocumentStore(dataDirectory));
     }
 
     private static MongoDBDocumentStore CreateMongoStore(
@@ -56,44 +49,53 @@ internal static class DocumentStoreFactory
                 "MongoDb settings are required for roles using the MongoDb provider.");
         }
 
-        if (!clientCache.TryGetValue(options.ConnectionString, out var client))
+        var client = GetOrCreate(clientCache, options.ConnectionString, () => CreateMongoClient(options));
+        return new MongoDBDocumentStore(client.GetDatabase(options.DatabaseName));
+    }
+
+    private static IMongoClient CreateMongoClient(MongoDbStoreOptions options)
+    {
+        var settings = MongoClientSettings.FromConnectionString(options.ConnectionString);
+        settings.ConnectTimeout = TimeSpan.FromSeconds(options.ConnectTimeoutSeconds);
+        settings.MaxConnectionPoolSize = options.MaxConnectionPoolSize;
+        settings.RetryWrites = options.RetryWrites;
+
+        ApplyMongoTls(settings, options);
+        ApplyMongoAuthentication(settings, options);
+
+        return new MongoClient(settings);
+    }
+
+    private static void ApplyMongoTls(MongoClientSettings settings, MongoDbStoreOptions options)
+    {
+        if (options.UseTls)
         {
-            var settings = MongoClientSettings.FromConnectionString(options.ConnectionString);
-            settings.ConnectTimeout = TimeSpan.FromSeconds(options.ConnectTimeoutSeconds);
-            settings.MaxConnectionPoolSize = options.MaxConnectionPoolSize;
-            settings.RetryWrites = options.RetryWrites;
+            settings.UseTls = true;
+            settings.SslSettings ??= new SslSettings();
 
-            if (options.UseTls)
+            if (options.TlsCertificatePath is not null)
             {
-                settings.UseTls = true;
-                settings.SslSettings ??= new SslSettings();
-
-                if (options.TlsCertificatePath is not null)
-                {
-                    var certificate = X509CertificateLoader.LoadPkcs12FromFile(
-                        options.TlsCertificatePath,
-                        options.TlsCertificatePassword);
-                    settings.SslSettings.ClientCertificates = [certificate];
-                }
+                settings.SslSettings.ClientCertificates =
+                    [LoadCertificate(options.TlsCertificatePath, options.TlsCertificatePassword)];
             }
-
-            if (options.AllowInsecureTls)
-            {
-                settings.AllowInsecureTls = true;
-            }
-
-            if (options.AuthenticationMechanism is not null)
-            {
-                settings.Credential = settings.Credential?.WithMechanismProperty(
-                    "MECHANISM",
-                    options.AuthenticationMechanism);
-            }
-
-            client = new MongoClient(settings);
-            clientCache[options.ConnectionString] = client;
         }
 
-        return new MongoDBDocumentStore(client.GetDatabase(options.DatabaseName));
+        if (options.AllowInsecureTls)
+        {
+            settings.AllowInsecureTls = true;
+        }
+    }
+
+    private static void ApplyMongoAuthentication(MongoClientSettings settings, MongoDbStoreOptions options)
+    {
+        if (options.AuthenticationMechanism is null)
+        {
+            return;
+        }
+
+        settings.Credential = settings.Credential?.WithMechanismProperty(
+            "MECHANISM",
+            options.AuthenticationMechanism);
     }
 
     private static RedisDocumentStore CreateRedisStore(
@@ -106,62 +108,63 @@ internal static class DocumentStoreFactory
                 "Redis settings are required for roles using the Redis provider.");
         }
 
-        var cacheKey = BuildRedisMultiplexerCacheKey(options);
-        if (!multiplexerCache.TryGetValue(cacheKey, out var multiplexer))
-        {
-            var sslEnabled = options.UseSsl || options.UseTls;
-            var config = new ConfigurationOptions
-            {
-                ConnectTimeout = options.ConnectTimeoutMilliseconds,
-                ConnectRetry = options.ConnectRetry,
-                AbortOnConnectFail = options.AbortOnConnectFail,
-                SyncTimeout = options.SyncTimeoutMilliseconds,
-                DefaultDatabase = options.DatabaseIndex,
-                Ssl = sslEnabled
-            };
-            config.EndPoints.Add(options.Host, options.Port);
-
-            if (!string.IsNullOrWhiteSpace(options.User))
-            {
-                config.User = options.User;
-            }
-
-            if (options.Password is not null)
-            {
-                config.Password = options.Password;
-            }
-
-            if (options.UseTls)
-            {
-                if (options.TlsCertificatePath is not null)
-                {
-                    var certificate = X509CertificateLoader.LoadPkcs12FromFile(
-                        options.TlsCertificatePath,
-                        options.TlsCertificatePassword);
-                    config.CertificateSelection += (_, _, _, _, _) => certificate;
-                }
-            }
-
-            if (options.AllowInsecureTls)
-            {
-                config.CertificateValidation += (_, _, _, _) => true;
-            }
-
-            try
-            {
-                multiplexer = ConnectionMultiplexer.Connect(config);
-            }
-            catch (RedisException exception)
-            {
-                throw new InvalidOperationException(
-                    $"Failed to initialize the Redis storage provider. {DescribeRedisConnection(options)}",
-                    exception);
-            }
-
-            multiplexerCache[cacheKey] = multiplexer;
-        }
+        var multiplexer = GetOrCreate(
+            multiplexerCache,
+            BuildRedisMultiplexerCacheKey(options),
+            () => CreateRedisMultiplexer(options));
 
         return new RedisDocumentStore(multiplexer, options.DatabaseIndex, options.GlobalKeyPrefix);
+    }
+
+    private static IConnectionMultiplexer CreateRedisMultiplexer(RedisStoreOptions options)
+    {
+        try
+        {
+            return ConnectionMultiplexer.Connect(BuildRedisConfiguration(options));
+        }
+        catch (RedisException exception)
+        {
+            throw new InvalidOperationException(
+                $"Failed to initialize the Redis storage provider. {DescribeRedisConnection(options)}",
+                exception);
+        }
+    }
+
+    private static ConfigurationOptions BuildRedisConfiguration(RedisStoreOptions options)
+    {
+        var config = new ConfigurationOptions
+        {
+            ConnectTimeout = options.ConnectTimeoutMilliseconds,
+            ConnectRetry = options.ConnectRetry,
+            AbortOnConnectFail = options.AbortOnConnectFail,
+            SyncTimeout = options.SyncTimeoutMilliseconds,
+            DefaultDatabase = options.DatabaseIndex,
+            Ssl = options.UseSsl || options.UseTls
+        };
+        config.EndPoints.Add(options.Host, options.Port);
+
+        if (!string.IsNullOrWhiteSpace(options.User))
+        {
+            config.User = options.User;
+        }
+
+        if (options.Password is not null)
+        {
+            config.Password = options.Password;
+        }
+
+        if (options.UseTls && options.TlsCertificatePath is not null)
+        {
+            var certificate = LoadCertificate(options.TlsCertificatePath, options.TlsCertificatePassword);
+            config.CertificateSelection += (_, _, _, _, _) => certificate;
+        }
+
+        if (options.AllowInsecureTls)
+        {
+            config.CertificateValidation += (_, _, _, _) => true;
+        }
+
+        return config;
     }
 
     private static string DescribeRedisConnection(RedisStoreOptions options)
@@ -207,16 +210,27 @@ internal static class DocumentStoreFactory
         LuceneStoreOptions? options,
         Dictionary<string, LuceneDocumentStore> storeCache)
     {
-        var resolved = options ?? new LuceneStoreOptions();
-        var indexDirectory = ResolvePath(resolved.IndexDirectory);
-        if (!storeCache.TryGetValue(indexDirectory, out var store))
+        var indexDirectory = ResolvePath((options ?? new LuceneStoreOptions()).IndexDirectory);
+        return GetOrCreate(storeCache, indexDirectory, () => new LuceneDocumentStore(indexDirectory));
+    }
+
+    private static TStore GetOrCreate<TKey, TStore>(
+        Dictionary<TKey, TStore> cache,
+        TKey key,
+        Func<TStore> create) where TKey : notnull
+    {
+        if (cache.TryGetValue(key, out var existing))
         {
-            store = new LuceneDocumentStore(indexDirectory);
-            storeCache[indexDirectory] = store;
+            return existing;
         }
 
-        return store;
+        var created = create();
+        cache[key] = created;
+        return created;
     }
+
+    private static X509Certificate2 LoadCertificate(string path, string? password) =>
+        X509CertificateLoader.LoadPkcs12FromFile(path, password);
 
     private static string ResolvePath(string path) => Path.GetFullPath(path);
 }

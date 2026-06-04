@@ -1,6 +1,6 @@
 # Plan: Code Slim-Down — Step 2b: Storage Technology Bindings
 
-> **Status**: 🔲 Not started
+> **Status**: ✅ Completed
 > **Prerequisite**: [code-slimdown-2-dataaccess.md](code-slimdown-2-dataaccess.md)
 > **Next**: [code-slimdown-3-storageapi-services.md](code-slimdown-3-storageapi-services.md)
 > **Parent**: [code-slimdown-overview.md](code-slimdown-overview.md)

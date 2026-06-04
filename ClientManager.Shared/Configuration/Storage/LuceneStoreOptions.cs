@@ -9,7 +9,7 @@ namespace ClientManager.Shared.Configuration.Storage;
 /// per-role <see cref="StorageRoleBinding"/>.
 /// </para>
 /// </summary>
-public class LuceneStoreOptions
+public record LuceneStoreOptions
 {
     /// <summary>
     /// The directory path where Lucene index files are stored.

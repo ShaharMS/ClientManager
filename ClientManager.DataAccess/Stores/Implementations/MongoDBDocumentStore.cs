@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using ClientManager.DataAccess.Stores.Interfaces;
 using ClientManager.Shared.Models.Search;
+using static ClientManager.DataAccess.Stores.Implementations.Helpers.StoreSerialization;
 using SearchDirection = ClientManager.Shared.Models.Search.SortDirection;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
@@ -13,28 +14,14 @@ namespace ClientManager.DataAccess.Stores.Implementations;
 /// MongoDB-based implementation of <see cref="IDocumentStore"/>.
 /// Each collection name maps to a MongoDB collection. Counters use a dedicated collection.
 /// </summary>
-public class MongoDBDocumentStore : IDocumentStore
+/// <param name="database">The MongoDB database instance to use.</param>
+public class MongoDBDocumentStore(IMongoDatabase database) : IDocumentStore
 {
-    private readonly IMongoDatabase _database;
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true
-    };
-
-    /// <summary>
-    /// Initializes a new instance of <see cref="MongoDBDocumentStore"/>.
-    /// </summary>
-    /// <param name="database">The MongoDB database instance to use.</param>
-    public MongoDBDocumentStore(IMongoDatabase database)
-    {
-        _database = database;
-    }
-
     private IMongoCollection<BsonDocument> GetCollection(string collection) =>
-        _database.GetCollection<BsonDocument>(collection);
+        database.GetCollection<BsonDocument>(collection);
 
     private IMongoCollection<BsonDocument> CounterCollection =>
-        _database.GetCollection<BsonDocument>("_counters");
+        database.GetCollection<BsonDocument>("_counters");
 
     /// <inheritdoc />
     public async Task<T?> GetAsync<T>(string collection, string id, CancellationToken cancellationToken = default) where T : class

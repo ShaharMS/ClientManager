@@ -12,7 +12,7 @@ namespace ClientManager.Shared.Configuration.Storage;
 /// <see cref="StorageRole"/> values to different providers.
 /// </para>
 /// </summary>
-public class PersistenceOptions
+public record PersistenceOptions
 {
     /// <summary>
     /// The configuration section name.

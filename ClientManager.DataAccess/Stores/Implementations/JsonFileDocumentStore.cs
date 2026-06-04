@@ -4,6 +4,7 @@ using System.Text.Json;
 using ClientManager.DataAccess.Stores.Implementations.Helpers;
 using ClientManager.DataAccess.Stores.Interfaces;
 using ClientManager.Shared.Models.Search;
+using static ClientManager.DataAccess.Stores.Implementations.Helpers.StoreSerialization;
 
 namespace ClientManager.DataAccess.Stores.Implementations;
 
@@ -22,10 +23,6 @@ public class JsonFileDocumentStore : IDocumentStore
     private readonly SharedStoreState _state;
     private static readonly ConcurrentDictionary<string, SharedStoreState> States = new(GetPathComparer());
     private static readonly ConcurrentDictionary<string, SemaphoreSlim> TargetLocks = new(GetPathComparer());
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true
-    };
 
     /// <summary>
     /// Initializes a new instance of <see cref="JsonFileDocumentStore"/>.
