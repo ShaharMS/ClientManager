@@ -53,6 +53,7 @@ _scripts/__pycache__/
 
 TempBlazor/
 .artifacts/
+.build-out/
 # api-cr-remediation planning artifacts kept local-only
 .github/iterations/api-cr-remediation-*/
 .github/agent-progress/api-cr-remediation-*.md

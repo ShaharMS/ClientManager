@@ -1,0 +1,56 @@
+@using ClientManager.AdminUI.Models.Allocations
+
+<div class="cm-list-page__table-card" style="margin-top: var(--space-lg);">
+    <div class="cm-dashboard__chart-header">
+        <span class="cm-dashboard__chart-title">All Resource Pools</span>
+    </div>
+    <RadzenDataGrid @ref="_grid" Data="@Rows" TItem="PoolSummaryRow"
+        AllowSorting="true" AllowPaging="true" PageSize="15"
+        PagerHorizontalAlign="HorizontalAlign.Center">
+        <Columns>
+            <RadzenDataGridColumn TItem="PoolSummaryRow" Property="Name" Title="Pool" />
+            <RadzenDataGridColumn TItem="PoolSummaryRow" Title="@(IsAccessMetric ? "Requests" : "Active")" Width="100px">
+                <Template Context="pool">@pool.CurrentValue.ToString("N0")</Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="PoolSummaryRow" Title="@(IsAccessMetric ? "Cap (5m)" : "Max")" Width="100px">
+                <Template Context="pool">@(IsAccessMetric ? UtilizationHelper.FormatCap(pool.CapValue) : pool.CapValue.ToString("N0"))</Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="PoolSummaryRow" Title="@(IsAccessMetric ? "Remaining" : "Available")" Width="110px">
+                <Template Context="pool">@(IsAccessMetric ? UtilizationHelper.FormatRemaining(pool.RemainingValue) : (pool.RemainingValue ?? 0).ToString("N0"))</Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="PoolSummaryRow" Title="Utilization" Width="200px">
+                <Template Context="pool">
+                    @if (pool.CapValue > 0 || !IsAccessMetric)
+                    {
+                        var pct = pool.CapValue > 0 ? (int)(pool.CurrentValue * 100.0 / pool.CapValue) : 0;
+                        <RadzenProgressBar Value="@pct" Max="100" ShowValue="true"
+                            ProgressBarStyle="@UtilizationHelper.GetProgressBarStyle(pct)" Style="height: 20px;" />
+                    }
+                    else
+                    {
+                        <span>-</span>
+                    }
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="PoolSummaryRow" Title="Status" Width="120px" Sortable="false">
+                <Template Context="pool">
+                    <AllocationPoolStatusBadge Row="pool" IsAccessMetric="IsAccessMetric" />
+                </Template>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
+</div>
+
+@code {
+    [Parameter] public List<PoolSummaryRow> Rows { get; set; } = [];
+    [Parameter] public bool IsAccessMetric { get; set; }
+    private RadzenDataGrid<PoolSummaryRow>? _grid;
+
+    public async Task ReloadAsync(Func<Func<Task>, Task> dispatchAsync)
+    {
+        if (_grid is not null)
+        {
+            await dispatchAsync(_grid.Reload);
+        }
+    }
+}

@@ -1,0 +1,55 @@
+@using ClientManager.AdminUI.Models.Allocations
+
+<div class="cm-list-page__table-card" style="margin-top: var(--space-lg);">
+    <div class="cm-dashboard__chart-header">
+        <span class="cm-dashboard__chart-title">@(IsAccessMetric ? "Client Access Detail" : "Client Allocation Detail")</span>
+    </div>
+    <RadzenDataGrid @ref="_grid" Data="@Rows" TItem="AllocationClientRow"
+        AllowSorting="true" AllowPaging="true" PageSize="15"
+        PagerHorizontalAlign="HorizontalAlign.Center">
+        <Columns>
+            <RadzenDataGridColumn TItem="AllocationClientRow" Property="ClientName" Title="Client" />
+            <RadzenDataGridColumn TItem="AllocationClientRow" Property="PoolName" Title="Pool" />
+            <RadzenDataGridColumn TItem="AllocationClientRow" Title="@(IsAccessMetric ? "Requests" : "Active")" Width="90px">
+                <Template Context="row">@row.CurrentValue.ToString("N0")</Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="AllocationClientRow" Title="@(IsAccessMetric ? "Cap (5m)" : "Max")" Width="90px">
+                <Template Context="row">@(IsAccessMetric ? UtilizationHelper.FormatCap(row.CapValue) : row.CapValue.ToString("N0"))</Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="AllocationClientRow" Title="Utilization" Width="180px">
+                <Template Context="row">
+                    @if (row.CapValue > 0 || !IsAccessMetric)
+                    {
+                        var pct = row.CapValue > 0 ? (int)(row.CurrentValue * 100.0 / row.CapValue) : 0;
+                        <RadzenProgressBar Value="@pct" Max="100" ShowValue="true"
+                            ProgressBarStyle="@UtilizationHelper.GetProgressBarStyle(pct)" Style="height: 18px;" />
+                    }
+                    else
+                    {
+                        <span>-</span>
+                    }
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="AllocationClientRow" Property="DeniedLast5Min" Title="Denied (5m)" Width="110px" />
+            <RadzenDataGridColumn TItem="AllocationClientRow" Title="Status" Width="120px" Sortable="false">
+                <Template Context="row">
+                    <AllocationClientStatusBadge Row="row" IsAccessMetric="IsAccessMetric" />
+                </Template>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
+</div>
+
+@code {
+    [Parameter] public List<AllocationClientRow> Rows { get; set; } = [];
+    [Parameter] public bool IsAccessMetric { get; set; }
+    private RadzenDataGrid<AllocationClientRow>? _grid;
+
+    public async Task ReloadAsync(Func<Func<Task>, Task> dispatchAsync)
+    {
+        if (_grid is not null)
+        {
+            await dispatchAsync(_grid.Reload);
+        }
+    }
+}

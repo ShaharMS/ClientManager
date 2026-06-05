@@ -1,0 +1,37 @@
+@using ClientManager.AdminUI.Models.Charts
+@inject EntityColorService Colors
+
+<RadzenChart Style="@($"height: {HeightPx}px;")">
+    @foreach (var targetChart in Charts)
+    {
+        @foreach (var clientArea in ChartSeriesTransform.GetChartSeries(targetChart.ClientSeries, AxisScale))
+        {
+            <RadzenStackedAreaSeries Data="@clientArea.Points"
+                CategoryProperty="Label" ValueProperty="Value"
+                Title="@clientArea.ClientName"
+                Fill="@Colors.GetColor(clientArea.ClientId)"
+                Stroke="@Colors.GetColor(clientArea.ClientId)">
+                <TooltipTemplate Context="point">
+                    <span>@clientArea.ClientName: @(point.OriginalValue.ToString("N0"))</span>
+                </TooltipTemplate>
+            </RadzenStackedAreaSeries>
+        }
+        <RadzenLineSeries Data="@ChartSeriesTransform.TransformPoints(targetChart.CapSeries, AxisScale)"
+            CategoryProperty="Label" ValueProperty="Value"
+            Title="Cap" LineType="LineType.Dashed"
+            Stroke="var(--color-text-secondary)">
+            <TooltipTemplate Context="point">
+                <span>Cap: @(point.OriginalValue.ToString("N0"))</span>
+            </TooltipTemplate>
+        </RadzenLineSeries>
+    }
+    <RadzenCategoryAxis />
+    <RadzenValueAxis Formatter="@(AxisScale == AxisScaleType.Logarithmic ? LogarithmicScaleHelper.FormatAxisLabel : LogarithmicScaleHelper.FormatLinearAxisLabel)" />
+    <RadzenLegend Position="LegendPosition.Right" />
+</RadzenChart>
+
+@code {
+    [Parameter] public IReadOnlyList<TargetChartData> Charts { get; set; } = [];
+    [Parameter] public AxisScaleType AxisScale { get; set; }
+    [Parameter] public int HeightPx { get; set; } = 400;
+}

@@ -1,0 +1,57 @@
+<div class="cm-editor__card">
+    <div class="cm-editor__nested-header">
+        <div class="cm-editor__section-title" style="margin-bottom: 0; border-bottom: none; padding-bottom: 0;">Global Rate Limit</div>
+        @if (HasRateLimit)
+        {
+            <RadzenButton Text="Remove" Icon="delete" Size="ButtonSize.Small" Variant="Variant.Text"
+                ButtonStyle="ButtonStyle.Danger" Click="@Remove" />
+        }
+        else
+        {
+            <RadzenButton Text="Add" Icon="add" Size="ButtonSize.Small" Variant="Variant.Outlined"
+                Click="@Add" />
+        }
+    </div>
+    @if (HasRateLimit)
+    {
+        <div class="cm-editor__field">
+            <label>Strategy</label>
+            <RadzenDropDown TValue="RateLimitStrategy" @bind-Value="RateLimit.Strategy"
+                Data="@(Enum.GetValues<RateLimitStrategy>())" Style="width: 100%;"
+                Change="@(_ => StateHasChanged())" />
+        </div>
+        <div class="cm-editor__field">
+            <label>Max Requests</label>
+            <RadzenNumeric TValue="int" @bind-Value="RateLimit.MaxRequests" Style="width: 100%;" />
+        </div>
+        <div class="cm-editor__field">
+            <label>Window (seconds)</label>
+            <RadzenNumeric TValue="double" @bind-Value="WindowSeconds" Style="width: 100%;" />
+        </div>
+        @if (RateLimit.Strategy == RateLimitStrategy.TokenBucket)
+        {
+            <div class="cm-editor__field">
+                <label>Tokens Per Refill</label>
+                <RadzenNumeric TValue="int?" @bind-Value="RateLimit.TokensPerRefill" Style="width: 100%;" />
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public bool HasRateLimit { get; set; }
+    [Parameter] public EventCallback<bool> HasRateLimitChanged { get; set; }
+    [Parameter, EditorRequired] public ClientRateLimitEntryModel RateLimit { get; set; } = null!;
+    [Parameter] public double WindowSeconds { get; set; } = 60;
+    [Parameter] public EventCallback<double> WindowSecondsChanged { get; set; }
+
+    private async Task Add()
+    {
+        await HasRateLimitChanged.InvokeAsync(true);
+    }
+
+    private async Task Remove()
+    {
+        await HasRateLimitChanged.InvokeAsync(false);
+    }
+}
