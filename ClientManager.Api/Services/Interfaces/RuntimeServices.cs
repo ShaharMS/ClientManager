@@ -1,7 +1,6 @@
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Enums;
 using ClientManager.Shared.Models.Responses;
-using ClientManager.Api.Services.Storage.Models.Entities;
 
 namespace ClientManager.Api.Services.Interfaces;
 

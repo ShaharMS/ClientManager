@@ -6,7 +6,7 @@ using Asp.Versioning;
 using ClientManager.Api.Middlewares;
 using ClientManager.Api.Models.Configuration;
 using ClientManager.Api.Services.Storage;
-using ClientManager.Api.Services.Storage.Utils.Instrumentation;
+using ClientManager.Api.Services.Storage.Instrumentation;
 using ClientManager.Api.Utils.Extensions;
 using ClientManager.Api.Utils.Instrumentation;
 using ClientManager.Api.Utils.Swagger;

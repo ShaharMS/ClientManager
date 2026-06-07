@@ -1,4 +1,4 @@
-using ClientManager.Api.Services.Implementations;
+using ClientManager.Api.Services;
 using ClientManager.Api.Services.Interfaces;
 using ClientManager.Shared.Logging;
 

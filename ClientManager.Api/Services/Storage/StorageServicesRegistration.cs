@@ -1,13 +1,10 @@
 using ClientManager.Api.Services.Interfaces;
-using ClientManager.Api.Services.Storage.Implementations;
-using ClientManager.Api.Services.Storage.Implementations.Exporters;
-using ClientManager.Api.Services.Storage.Implementations.RateLimiting;
-using ClientManager.Api.Services.Storage.Implementations.RateLimiting.Strategies;
-using ClientManager.Api.Services.Storage.Implementations.UsageTracking;
-using ClientManager.Api.Services.Storage.Interfaces;
-using ClientManager.Api.Services.Storage.Models.Configuration;
-using ClientManager.Api.Services.Storage.Utils.Extensions;
-using ClientManager.Api.Services.Storage.Utils.Instrumentation;
+using ClientManager.Api.Services.Storage.Exporters;
+using ClientManager.Api.Services.Storage.Extensions;
+using ClientManager.Api.Services.Storage.Instrumentation;
+using ClientManager.Api.Services.Storage.RateLimiting;
+using ClientManager.Api.Services.Storage.RateLimiting.Strategies;
+using ClientManager.Api.Services.Storage.UsageTracking;
 using ClientManager.Shared.Configuration.Storage;
 
 namespace ClientManager.Api.Services.Storage;
@@ -82,7 +79,7 @@ public static class StorageServicesRegistration
 
     private static void RegisterReadModelServices(IServiceCollection services)
     {
-        services.AddScoped<IUsageStatisticsService, Implementations.StatisticsService>();
+        services.AddScoped<IUsageStatisticsService, UsageStatisticsService>();
         services.AddScoped<IPrometheusExportService, PrometheusExportService>();
         services.AddScoped<IGrafanaExportService, GrafanaExportService>();
     }
