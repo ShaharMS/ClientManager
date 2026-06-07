@@ -13,7 +13,7 @@ using ClientManager.Api.Services.Storage.Instrumentation;
 namespace ClientManager.Api.Services.Storage;
 
 /// <summary>
-/// Owns the deny-by-default access path inside the storage-facing host.
+/// Owns the deny-by-default access path in the API host.
 /// </summary>
 public class AccessControlService : IAccessControlService
 {

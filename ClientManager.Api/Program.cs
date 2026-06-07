@@ -87,7 +87,6 @@ try
         options.DocumentFilter<TagDescriptionsDocumentFilter>();
     });
 
-    // Public API adapters that remain local after the storage split.
     builder.Services.AddPublicApiServices();
 
     // In-process storage domain services.

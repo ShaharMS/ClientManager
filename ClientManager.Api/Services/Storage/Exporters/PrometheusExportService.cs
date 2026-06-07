@@ -8,7 +8,7 @@ using ClientManager.Api.Services.Interfaces;
 namespace ClientManager.Api.Services.Storage.Exporters;
 
 /// <summary>
-/// Formats storage-owned usage and allocation data as Prometheus exposition text.
+/// Formats usage and allocation data as Prometheus exposition text.
 /// </summary>
 public class PrometheusExportService : IPrometheusExportService
 {

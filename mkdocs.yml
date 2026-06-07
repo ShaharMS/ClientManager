@@ -45,6 +45,11 @@ markdown_extensions:
 
 nav:
   - Home: index.md
+  - Getting started: getting-started.md
+  - Configuration reference: configuration-reference.md
+  - Admin UI guide: admin-ui-guide.md
+  - API overview: api-overview.md
+  - Development and operations: development-and-operations.md
   - Core concepts:
     - Architecture overview: core/architecture.md
     - Domain model: core/domain-model.md

@@ -225,7 +225,7 @@ That split makes two things easier:
 - the public API stays free of direct data-access references
 - storage can be configured per logical role instead of forcing one backend choice for every workload
 
-If documentation is unclear or missing, open an issue or update the docs in this repository. The persistence guide was added specifically to make the storage split understandable without having to reverse-engineer the code.
+If documentation is unclear or missing, open an issue or update the docs in this repository. The persistence guide was added specifically to make the storage role model understandable without having to reverse-engineer the code.
 
 # Documentation site
 
@@ -240,6 +240,11 @@ mkdocs build    # output in site/
 # Additional Links
 
 - [Documentation home](docs/index.md) — build as a static site with `mkdocs serve`
+- [Getting started](docs/getting-started.md) — first run, solution layout, seed data
+- [Configuration reference](docs/configuration-reference.md) — appsettings and environment variables
+- [Admin UI guide](docs/admin-ui-guide.md) — operator screens and workflows
+- [API overview](docs/api-overview.md) — catalog, statistics, and runtime endpoints
+- [Development and operations](docs/development-and-operations.md) — scripts, security, troubleshooting
 - [Integration guide](docs/integration-guide.md) — nginx example, client identification, propagating denials
 - [Persistence guide](docs/persistence-guide.md)
 - [DataAccess notes](ClientManager.DataAccess/README.md)

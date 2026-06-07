@@ -8,7 +8,7 @@ using ClientManager.Api.Services.Interfaces;
 namespace ClientManager.Api.Services.Storage.Exporters;
 
 /// <summary>
-/// Formats storage-owned metrics as Grafana JSON payloads.
+/// Formats usage and allocation metrics as Grafana JSON payloads.
 /// </summary>
 public class GrafanaExportService : IGrafanaExportService
 {

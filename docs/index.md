@@ -6,6 +6,16 @@ These guides explain how ClientManager works internally, how to wire it into you
 
 ## Guides
 
+### New to the repository
+
+| Guide | What you will learn |
+| --- | --- |
+| [Getting started](getting-started.md) | Solution layout, first run, Docker, seed data, and where to read next |
+| [Configuration reference](configuration-reference.md) | Every `appsettings` section, defaults, and environment-variable overrides |
+| [Admin UI guide](admin-ui-guide.md) | Operator screens, routes, and typical workflows |
+| [API overview](api-overview.md) | Catalog CRUD, statistics, metrics, and runtime endpoints |
+| [Development and operations](development-and-operations.md) | Scripts, observability stack, security model, deployment notes, troubleshooting |
+
 ### Core concepts
 
 | Guide | What you will learn |

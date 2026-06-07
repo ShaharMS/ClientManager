@@ -7,7 +7,7 @@ using ClientManager.Shared.Configuration.Storage;
 namespace ClientManager.Api.Services.Storage;
 
 /// <summary>
-/// Seeds initial catalog data into the storage-owned persistence boundary.
+/// Seeds initial catalog data into persistence at API startup.
 /// </summary>
 public class DataSeedService : IHostedService
 {

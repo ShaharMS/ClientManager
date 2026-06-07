@@ -50,7 +50,7 @@ public interface IUsageStatisticsService
 }
 
 /// <summary>
-/// Generates Prometheus exposition output from storage-owned read models.
+/// Generates Prometheus exposition output from usage statistics read models.
 /// </summary>
 public interface IPrometheusExportService
 {
@@ -58,7 +58,7 @@ public interface IPrometheusExportService
 }
 
 /// <summary>
-/// Generates Grafana-oriented JSON metrics from storage-owned read models.
+/// Generates Grafana-oriented JSON metrics from usage statistics read models.
 /// </summary>
 public interface IGrafanaExportService
 {

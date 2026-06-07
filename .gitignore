@@ -57,7 +57,3 @@ TempBlazor/
 
 ## MkDocs static site output
 site/
-# api-cr-remediation planning artifacts kept local-only
-.github/iterations/api-cr-remediation-*/
-.github/agent-progress/api-cr-remediation-*.md
-.github/realized/api-cr-remediation-*.md

@@ -3,7 +3,7 @@ using ClientManager.Shared.Models.Entities;
 namespace ClientManager.Shared.Configuration.Storage;
 
 /// <summary>
-/// Defines initial entities to populate when the storage-facing host starts.
+/// Defines initial entities to populate when the API host starts.
 /// </summary>
 public class SeedOptions
 {
