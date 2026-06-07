@@ -44,7 +44,7 @@
     [Parameter] public bool Loading { get; set; }
     [Parameter] public EventCallback OnFilterChanged { get; set; }
     [Parameter] public EventCallback MetricSelectionChanged { get; set; }
-    [Parameter] public EventCallback<TimeRangePreset> OnTimeRangeChanged { get; set; }
+    [Parameter] public EventCallback<ChartTimeRange> OnTimeRangeChanged { get; set; }
     [Parameter] public EventCallback<PollingIntervalPreset> OnPollingIntervalChanged { get; set; }
     [Parameter] public EventCallback<AxisScaleType> OnAxisScaleChanged { get; set; }
 

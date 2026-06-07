@@ -8,9 +8,9 @@ public partial class Dashboard
 {
     private int _chartLoadVersion;
 
-    private async Task OnTimeRangeChanged(TimeRangePreset preset)
+    private async Task OnTimeRangeChanged(ChartTimeRange range)
     {
-        _timeRange = preset;
+        _timeRange = range;
         await LoadChartDataAsync();
     }
 

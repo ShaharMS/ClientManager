@@ -7,9 +7,9 @@ public partial class ActiveAllocations
 {
     private int _loadVersion;
 
-    private async Task OnTimeRangeChanged(TimeRangePreset preset)
+    private async Task OnTimeRangeChanged(ChartTimeRange range)
     {
-        _timeRange = preset;
+        _timeRange = range;
         await LoadDataAsync();
     }
 

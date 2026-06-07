@@ -10,7 +10,7 @@ public sealed class MonitorLoadContext
 
     public required string SelectedServiceId { get; init; }
     public required IEnumerable<string>? SelectedClientIds { get; init; }
-    public required TimeRangePreset TimeRange { get; init; }
+    public required ChartTimeRange TimeRange { get; init; }
     public required List<Service> AllServices { get; init; }
     public required List<ClientConfiguration> AllClients { get; init; }
 }

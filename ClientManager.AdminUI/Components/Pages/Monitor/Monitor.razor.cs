@@ -34,7 +34,7 @@ public partial class Monitor : ComponentBase, IAsyncDisposable
     private MonitorClientGrid? _clientGrid;
     private MonitorServicesGrid? _servicesGrid;
 
-    private TimeRangePreset _timeRange = TimeRangePreset.Default;
+    private ChartTimeRange _timeRange = ChartTimeRange.FromPreset(TimeRangePreset.Default);
     private AxisScaleType _axisScaleType = AxisScaleType.Linear;
 
     protected override async Task OnInitializedAsync()

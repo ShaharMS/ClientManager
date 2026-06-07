@@ -11,7 +11,7 @@ public sealed class AllocationsLoadContext
 
     public required string SelectedPoolId { get; init; }
     public required IEnumerable<string>? SelectedClientIds { get; init; }
-    public required TimeRangePreset TimeRange { get; init; }
+    public required ChartTimeRange TimeRange { get; init; }
     public required bool IsAccessMetric { get; init; }
     public required List<ClientConfiguration> AllClients { get; init; }
 }

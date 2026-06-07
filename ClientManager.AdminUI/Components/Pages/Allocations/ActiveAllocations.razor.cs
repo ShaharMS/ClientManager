@@ -35,7 +35,7 @@ public partial class ActiveAllocations : ComponentBase, IAsyncDisposable
     private PagePollingLifecycle? _polling;
     private AllocationsDataLoader? _dataLoader;
 
-    private TimeRangePreset _timeRange = TimeRangePreset.Default;
+    private ChartTimeRange _timeRange = ChartTimeRange.FromPreset(TimeRangePreset.Default);
     private AxisScaleType _axisScaleType = AxisScaleType.Linear;
     private string _selectedMetric = AllocationsChartSection.ActiveAllocationsMetric;
 
