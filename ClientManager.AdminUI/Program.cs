@@ -1,6 +1,8 @@
 using ClientManager.AdminUI.Components;
 using ClientManager.AdminUI.Services;
 using ClientManager.Shared.Logging;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting.Server.Features;
 using NLog;
 using NLog.Web;
 using Radzen;
@@ -62,6 +64,24 @@ app.MapStaticAssets();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+
+app.Lifetime.ApplicationStarted.Register(() =>
+{
+    var appLogger = app.Services.GetRequiredService<IAppLogger<Program>>();
+    var addresses = app.Services.GetRequiredService<IServer>()
+        .Features.Get<IServerAddressesFeature>()?.Addresses;
+
+    if (addresses is null || addresses.Count == 0)
+    {
+        appLogger.Info("Admin UI started");
+        return;
+    }
+
+    foreach (var url in addresses)
+    {
+        appLogger.Info("Admin UI listening", new { Url = url });
+    }
+});
 
 app.Run();
 }
