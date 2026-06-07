@@ -20,6 +20,14 @@
     <File Path="docs/index.md" />
     <File Path="docs/integration-guide.md" />
     <File Path="docs/persistence-guide.md" />
+    <File Path="docs/requirements.txt" />
+    <File Path="mkdocs.yml" />
+    <Folder Name="/_Solution Items_/Documentation/Core/">
+      <File Path="docs/core/architecture.md" />
+      <File Path="docs/core/domain-model.md" />
+      <File Path="docs/core/request-flow.md" />
+      <File Path="docs/core/usage-and-observability.md" />
+    </Folder>
   </Folder>
   <Folder Name="/_Solution Items_/Quick Access/" />
   <Folder Name="/_Solution Items_/Quick Access/AdminUI/" />

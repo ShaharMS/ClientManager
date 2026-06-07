@@ -22,6 +22,7 @@ import sys
 import time
 import urllib.request
 import urllib.error
+import urllib.parse
 from datetime import datetime
 
 from configuration import CONFIGURATION
@@ -69,11 +70,11 @@ active_allocations: list[dict] = []
 stats = {"access_checks": 0, "acquires": 0, "releases": 0, "reads": 0, "errors": 0, "total": 0}
 
 
-def api(method: str, path: str, body=None):
+def api(method: str, path: str, params=None):
     url = f"{BASE_URL.rstrip('/')}/{path.lstrip('/')}"
-    data = json.dumps(body).encode() if body is not None else None
-    req = urllib.request.Request(url, data=data, method=method)
-    req.add_header("Content-Type", "application/json")
+    if params:
+        url = f"{url}?{urllib.parse.urlencode(params)}"
+    req = urllib.request.Request(url, method=method)
     start_time = time.time()
     try:
         with urllib.request.urlopen(req) as resp:
@@ -111,7 +112,7 @@ def do_access_check():
         client = random.choice(ALL_CLIENTS)
         service = random.choice(SERVICES)
 
-    status, resp, ms = api("POST", f"{API_PREFIX}/access/check", {"clientId": client, "serviceId": service})
+    status, resp, ms = api("GET", f"{API_PREFIX}/access/check", {"clientId": client, "serviceId": service})
     stats["access_checks"] += 1
     return f"ACCESS  {client} -> {service}: {status} ({ms:.1f}MS)"
 
@@ -124,7 +125,7 @@ def do_acquire():
         return None
 
     pool = random.choice(pools)
-    status, resp, ms = api("POST", f"{API_PREFIX}/resources/acquire", {"clientId": client, "resourcePoolId": pool})
+    status, resp, ms = api("GET", f"{API_PREFIX}/resources/acquire", {"clientId": client, "resourcePoolId": pool})
     stats["acquires"] += 1
 
     if status == 200 and isinstance(resp, dict) and "allocationId" in resp:
@@ -139,7 +140,7 @@ def do_release():
         return None
 
     alloc = active_allocations.pop(random.randrange(len(active_allocations)))
-    status, _, ms = api("POST", f"{API_PREFIX}/resources/release", {"allocationId": alloc["allocationId"]})
+    status, _, ms = api("GET", f"{API_PREFIX}/resources/release", {"allocationId": alloc["allocationId"]})
     stats["releases"] += 1
     return f"RELEASE {alloc['client']} <- {alloc['pool']}: {status} (active={len(active_allocations)}) ({ms:.1f}MS)"
 

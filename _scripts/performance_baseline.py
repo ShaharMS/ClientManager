@@ -55,12 +55,14 @@ USAGE_SNAPSHOTS_FILE = GLOBAL_SETTINGS["data"]["usage_snapshots_file"]
 COUNTERS_FILE = GLOBAL_SETTINGS["data"]["counters_file"]
 
 
-def api_call(base_url: str, method: str, path: str, body: dict | None = None) -> tuple[int, object | None, float]:
+def api_call(base_url: str, method: str, path: str, params: dict | None = None) -> tuple[int, object | None, float]:
+    url = f"{base_url.rstrip('/')}/{path.lstrip('/')}"
+    if params:
+        url = f"{url}?{urllib.parse.urlencode(params)}"
+
     request = urllib.request.Request(
-        f"{base_url.rstrip('/')}/{path.lstrip('/')}",
-        data=json.dumps(body).encode() if body is not None else None,
+        url,
         method=method,
-        headers={"Content-Type": "application/json"},
     )
     start_time = time.perf_counter()
     try:
@@ -391,7 +393,7 @@ def main() -> None:
         if action == "access":
             status, _, latency_ms = api_call(
                 args.base_url,
-                "POST",
+                "GET",
                 f"{API_PREFIX}/access/check",
                 {"clientId": actor["client_id"], "serviceId": service_id},
             )
@@ -404,7 +406,7 @@ def main() -> None:
             )
             status, payload, latency_ms = api_call(
                 args.base_url,
-                "POST",
+                "GET",
                 f"{API_PREFIX}/resources/acquire",
                 {"clientId": actor["client_id"], "resourcePoolId": pool_id},
             )
@@ -415,7 +417,7 @@ def main() -> None:
             allocation = active_allocations.pop(0)
             status, _, latency_ms = api_call(
                 args.base_url,
-                "POST",
+                "GET",
                 f"{API_PREFIX}/resources/release",
                 {"allocationId": allocation["allocationId"]},
             )
@@ -440,7 +442,7 @@ def main() -> None:
             time.sleep(sleep_seconds)
 
     for allocation in active_allocations:
-        api_call(args.base_url, "POST", f"{API_PREFIX}/resources/release", {"allocationId": allocation["allocationId"]})
+        api_call(args.base_url, "GET", f"{API_PREFIX}/resources/release", {"allocationId": allocation["allocationId"]})
 
     elapsed_seconds = max(time.perf_counter() - start_time, MINIMUM_ELAPSED_SECONDS)
     storage_after = snapshot_sizes(args.data_directory)

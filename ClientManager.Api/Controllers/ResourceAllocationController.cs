@@ -31,7 +31,7 @@ public class ResourceAllocationController : ControllerBase
     /// <summary>
     /// Acquires a resource slot from a resource pool.
     /// </summary>
-    /// <param name="request">The acquire request containing client and resource pool IDs.</param>
+    /// <param name="request">Query parameters identifying the client and resource pool.</param>
     /// <param name="cancellationToken">Token used to abort the resource slot acquisition before it completes.</param>
     /// <returns>The allocation response with allocation ID and expiry time.</returns>
     /// <response code="200">The resource slot was acquired successfully.</response>
@@ -39,13 +39,13 @@ public class ResourceAllocationController : ControllerBase
     /// <response code="404">Client or resource pool not found.</response>
     /// <response code="429">Slot limit or rate limit exceeded.</response>
     /// <response code="503">The storage service is temporarily unavailable.</response>
-    [HttpPost("acquire")]
+    [HttpGet("acquire")]
     [ProducesResponseType(typeof(ResourceAcquireResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status429TooManyRequests)]
     [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
-    public async Task<IActionResult> Acquire([FromBody] AcquireResourceRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> Acquire([FromQuery] AcquireResourceRequest request, CancellationToken cancellationToken)
     {
         var response = await _allocationService.AcquireAsync(request.ClientId, request.ResourcePoolId, cancellationToken);
         return Ok(response);
@@ -54,17 +54,17 @@ public class ResourceAllocationController : ControllerBase
     /// <summary>
     /// Releases a previously acquired resource slot.
     /// </summary>
-    /// <param name="request">The release request containing the allocation ID.</param>
+    /// <param name="request">Query parameter identifying the allocation to release.</param>
     /// <param name="cancellationToken">Token used to abort the resource slot release before it completes.</param>
     /// <returns>The release result.</returns>
     /// <response code="200">The allocation was released or was already released.</response>
     /// <response code="404">No allocation was found with the given identifier.</response>
     /// <response code="503">The storage service is temporarily unavailable.</response>
-    [HttpPost("release")]
+    [HttpGet("release")]
     [ProducesResponseType(typeof(ResourceReleaseResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
-    public async Task<IActionResult> Release([FromBody] ReleaseResourceRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> Release([FromQuery] ReleaseResourceRequest request, CancellationToken cancellationToken)
     {
         var response = await _allocationService.ReleaseAsync(request.AllocationId, cancellationToken);
         return Ok(response);

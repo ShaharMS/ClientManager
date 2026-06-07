@@ -6,22 +6,19 @@ This page walks through what ClientManager does on the hot path — the code pat
 
 | Operation | Method | Path | Side effects |
 | --- | --- | --- | --- |
-| Check access | `POST` | `/api/v1/access/check` | Increments rate limits; records `Granted` or `Denied` usage |
+| Check access | `GET` | `/api/v1/access/check` | Increments rate limits; records `Granted` or `Denied` usage |
 | Client accessibility report | `GET` | `/api/v1/access/{clientId}` | Read-only peek; safe for dashboards |
-| Acquire slot | `POST` | `/api/v1/resources/acquire` | Creates allocation; increments counters |
-| Release slot | `POST` | `/api/v1/resources/release` | Frees allocation; decrements counters |
+| Acquire slot | `GET` | `/api/v1/resources/acquire` | Creates allocation; increments counters |
+| Release slot | `GET` | `/api/v1/resources/release` | Frees allocation; decrements counters |
 
 All failures return [RFC 7807](https://datatracker.ietf.org/doc/html/rfc7807) `application/problem+json` with a `traceId` you can correlate to API logs.
 
 ## Service access check
 
-`POST /api/v1/access/check` accepts:
+`GET /api/v1/access/check` accepts query parameters `clientId` and `serviceId`:
 
-```json
-{
-  "clientId": "mobile-app",
-  "serviceId": "pdf-render"
-}
+```
+GET /api/v1/access/check?clientId=mobile-app&serviceId=pdf-render
 ```
 
 On success:
@@ -42,7 +39,7 @@ On success:
 
 ```mermaid
 flowchart TD
-    start[POST /access/check] --> load[Load client config + service in parallel]
+    start[GET /access/check] --> load[Load client config + service in parallel]
     load --> cEnabled{Client enabled?}
     cEnabled -->|no| e403a[403 Client disabled]
     cEnabled -->|yes| sEnabled{Service enabled?}
@@ -97,13 +94,10 @@ Use this from the Admin UI monitor page and operational dashboards. Because it d
 
 ## Resource acquisition
 
-`POST /api/v1/resources/acquire` accepts:
+`GET /api/v1/resources/acquire` accepts query parameters `clientId` and `resourcePoolId`:
 
-```json
-{
-  "clientId": "mobile-app",
-  "resourcePoolId": "pdf-render-slots"
-}
+```
+GET /api/v1/resources/acquire?clientId=mobile-app&resourcePoolId=pdf-render-slots
 ```
 
 On success:
@@ -121,7 +115,7 @@ On success:
 
 ```mermaid
 flowchart TD
-    start[POST /resources/acquire] --> load[Load pool + client config]
+    start[GET /resources/acquire] --> load[Load pool + client config]
     load --> clientCap{Client active count<br/>< client maxSlots?}
     clientCap -->|no| e429a[429 Client slot cap]
     clientCap -->|yes| gPool[Check global pool rate limit]
@@ -137,7 +131,7 @@ Unlike access checks, acquisition does **not** walk the service allow-list. Pool
 
 ### Release
 
-`POST /api/v1/resources/release` accepts `{ "allocationId": "..." }`. A successful release:
+`GET /api/v1/resources/release` accepts query parameter `allocationId`. A successful release:
 
 - Marks the allocation as released
 - Decrements client and pool active counters
@@ -168,7 +162,7 @@ sequenceDiagram
     participant Backend
 
     Caller->>Edge: HTTP request
-    Edge->>CM: POST /access/check
+    Edge->>CM: GET /access/check
     alt granted
         CM-->>Edge: 200
         Edge->>Backend: proxy request
@@ -180,7 +174,7 @@ sequenceDiagram
     end
 ```
 
-See the [Integration guide](../integration-guide.md) for a full nginx + njs example.
+See the [Integration guide](../integration-guide.md) for a full nginx `auth_request` example.
 
 ### Stateful work with pool slots
 
@@ -188,10 +182,10 @@ Acquire before expensive work; release in `finally`:
 
 ```mermaid
 flowchart TD
-    work[Work item arrives] --> acquire[POST /resources/acquire]
+    work[Work item arrives] --> acquire[GET /resources/acquire]
     acquire -->|200| run[Execute job]
     acquire -->|4xx| stop[Return denial]
-    run --> release[POST /resources/release]
+    run --> release[GET /resources/release]
     release --> done[Done]
     run -. crash .-> ttl[Slot expires via cleanup]
 ```

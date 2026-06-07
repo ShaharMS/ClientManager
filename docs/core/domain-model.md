@@ -18,8 +18,8 @@ flowchart LR
     client[ClientConfiguration]
     client -->|Services dict| svc[Service targets]
     client -->|ResourcePools dict| pool[ResourcePool targets]
-    svc --> access[POST /access/check]
-    pool --> acquire[POST /resources/acquire]
+    svc --> access[GET /access/check]
+    pool --> acquire[GET /resources/acquire]
 ```
 
 ## Clients (`ClientConfiguration`)

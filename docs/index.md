@@ -71,10 +71,10 @@ The output lands in `site/` at the repository root.
 
 | Operation | Method | Path |
 | --- | --- | --- |
-| Check access | `POST` | `/api/v1/access/check` |
+| Check access | `GET` | `/api/v1/access/check?clientId=…&serviceId=…` |
 | Client accessibility report | `GET` | `/api/v1/access/{clientId}` |
-| Acquire resource slot | `POST` | `/api/v1/resources/acquire` |
-| Release resource slot | `POST` | `/api/v1/resources/release` |
+| Acquire resource slot | `GET` | `/api/v1/resources/acquire?clientId=…&resourcePoolId=…` |
+| Release resource slot | `GET` | `/api/v1/resources/release?allocationId=…` |
 
 Interactive OpenAPI documentation is available from the running API host (Swagger UI in development).
 

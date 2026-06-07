@@ -31,7 +31,7 @@ public class AccessCheckController : ControllerBase
     /// <summary>
     /// Checks if a client can access a service right now.
     /// </summary>
-    /// <param name="request">The access check request containing client and service IDs.</param>
+    /// <param name="request">Query parameters identifying the client and service.</param>
     /// <param name="cancellationToken">Token used to abort the access check before it completes.</param>
     /// <returns>The access check response with remaining request information.</returns>
     /// <response code="200">Access is granted.</response>
@@ -40,14 +40,14 @@ public class AccessCheckController : ControllerBase
     /// <response code="404">Client or service not found.</response>
     /// <response code="429">Rate limit exceeded.</response>
     /// <response code="503">The storage service is temporarily unavailable.</response>
-    [HttpPost("check")]
+    [HttpGet("check")]
     [ProducesResponseType(typeof(AccessCheckResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status429TooManyRequests)]
     [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
-    public async Task<IActionResult> CheckAccess([FromBody] CheckAccessRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> CheckAccess([FromQuery] CheckAccessRequest request, CancellationToken cancellationToken)
     {
         var response = await _accessControlService.CheckAccessAsync(request.ClientId, request.ServiceId, cancellationToken);
         return Ok(response);

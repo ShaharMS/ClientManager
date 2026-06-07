@@ -69,10 +69,10 @@ The Admin UI's dashboard and monitor pages call these endpoints through `Statist
 
 | Endpoint style | Increments counters? | Records usage? |
 | --- | --- | --- |
-| `POST /access/check` | Yes | Yes (`Granted` / `Denied`) |
+| `GET /access/check` | Yes | Yes (`Granted` / `Denied`) |
 | `GET /access/{clientId}` | No | No |
-| `POST /resources/acquire` | Yes (pool limits) | Yes (`Acquired`) |
-| `POST /resources/release` | No (decrements slot counters) | Yes (`Released`) |
+| `GET /resources/acquire` | Yes (pool limits) | Yes (`Acquired`) |
+| `GET /resources/release` | No (decrements slot counters) | Yes (`Released`) |
 | `GET /statistics/*` | No | No |
 
 When building custom monitoring, prefer statistics and accessibility endpoints over repeated access checks.
