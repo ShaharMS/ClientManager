@@ -66,6 +66,13 @@
     --rz-on-primary-lighter: var(--color-primary-dark);
     --rz-on-primary-dark: #ffffff;
     --rz-on-primary-darker: #ffffff;
+
+    /* Radzen datepicker — align Material secondary accent with app primary */
+    --rz-datepicker-trigger-icon-hover-color: var(--color-primary);
+    --rz-datepicker-calendar-selected-background-color: var(--color-primary);
+    --rz-datepicker-calendar-selected-color: #ffffff;
+    --rz-datepicker-calendar-selected-hover-background-color: var(--color-primary-dark);
+    --rz-datepicker-calendar-selected-hover-color: #ffffff;
 }
 
 /* Radzen calendar / datepicker */
@@ -74,6 +81,14 @@
     background: var(--color-bg-card);
     color: var(--color-text-primary);
     border-color: var(--color-border);
+}
+
+.rz-datepicker-trigger {
+    color: var(--color-text-secondary);
+}
+
+.rz-datepicker:not(.rz-state-disabled):hover .rz-datepicker-trigger {
+    color: var(--color-primary);
 }
 
 .rz-calendar .rz-state-active,
@@ -85,7 +100,10 @@
 .rz-button.rz-primary,
 .rz-datepicker .rz-button.rz-primary,
 .rz-calendar .rz-button.rz-primary,
-.rz-timepicker .rz-button.rz-primary {
+.rz-timepicker .rz-button.rz-primary,
+.rz-datepicker-footer .rz-button.rz-secondary,
+.rz-timepicker > .rz-button.rz-secondary,
+.rz-timepicker > .rz-button {
     background-color: var(--color-primary) !important;
     color: #ffffff !important;
     border-color: var(--color-primary) !important;
@@ -94,7 +112,11 @@
 .rz-button.rz-primary:hover,
 .rz-datepicker .rz-button.rz-primary:hover,
 .rz-calendar .rz-button.rz-primary:hover,
-.rz-timepicker .rz-button.rz-primary:hover {
+.rz-timepicker .rz-button.rz-primary:hover,
+.rz-datepicker-footer .rz-button.rz-secondary:hover,
+.rz-timepicker > .rz-button.rz-secondary:hover,
+.rz-timepicker > .rz-button:hover {
     background-color: var(--color-primary-dark) !important;
     border-color: var(--color-primary-dark) !important;
+    color: #ffffff !important;
 }

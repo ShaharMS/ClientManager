@@ -45,6 +45,15 @@ html[data-theme="dark"] {
     --rz-body-background-color: #0f172a;
     --rz-text-color: #f1f5f9;
     --rz-text-secondary-color: #94a3b8;
+    --rz-text-title-color: #f1f5f9;
+
+    /* Radzen datepicker — keep trigger icon readable on dark surfaces */
+    --rz-datepicker-trigger-icon-color: var(--color-text-secondary);
+    --rz-datepicker-trigger-icon-hover-color: var(--color-primary-light);
+    --rz-datepicker-calendar-selected-background-color: var(--color-primary);
+    --rz-datepicker-calendar-selected-color: #ffffff;
+    --rz-datepicker-calendar-selected-hover-background-color: var(--color-primary-dark);
+    --rz-datepicker-calendar-selected-hover-color: #ffffff;
 
     /* Grid / Table */
     --rz-grid-background-color: #1e293b;
@@ -125,6 +134,14 @@ html[data-theme="dark"] .rz-datepicker-panel {
     border-color: var(--color-border);
 }
 
+html[data-theme="dark"] .rz-datepicker-trigger {
+    color: var(--color-text-secondary);
+}
+
+html[data-theme="dark"] .rz-datepicker:not(.rz-state-disabled):hover .rz-datepicker-trigger {
+    color: var(--color-primary-light);
+}
+
 html[data-theme="dark"] .rz-calendar .rz-state-active,
 html[data-theme="dark"] .rz-calendar td .rz-state-active {
     background: var(--color-primary) !important;
@@ -134,7 +151,10 @@ html[data-theme="dark"] .rz-calendar td .rz-state-active {
 html[data-theme="dark"] .rz-button.rz-primary,
 html[data-theme="dark"] .rz-datepicker .rz-button.rz-primary,
 html[data-theme="dark"] .rz-calendar .rz-button.rz-primary,
-html[data-theme="dark"] .rz-timepicker .rz-button.rz-primary {
+html[data-theme="dark"] .rz-timepicker .rz-button.rz-primary,
+html[data-theme="dark"] .rz-datepicker-footer .rz-button.rz-secondary,
+html[data-theme="dark"] .rz-timepicker > .rz-button.rz-secondary,
+html[data-theme="dark"] .rz-timepicker > .rz-button {
     background-color: var(--color-primary) !important;
     color: #ffffff !important;
     border-color: var(--color-primary) !important;
@@ -143,9 +163,13 @@ html[data-theme="dark"] .rz-timepicker .rz-button.rz-primary {
 html[data-theme="dark"] .rz-button.rz-primary:hover,
 html[data-theme="dark"] .rz-datepicker .rz-button.rz-primary:hover,
 html[data-theme="dark"] .rz-calendar .rz-button.rz-primary:hover,
-html[data-theme="dark"] .rz-timepicker .rz-button.rz-primary:hover {
+html[data-theme="dark"] .rz-timepicker .rz-button.rz-primary:hover,
+html[data-theme="dark"] .rz-datepicker-footer .rz-button.rz-secondary:hover,
+html[data-theme="dark"] .rz-timepicker > .rz-button.rz-secondary:hover,
+html[data-theme="dark"] .rz-timepicker > .rz-button:hover {
     background-color: var(--color-primary-dark) !important;
     border-color: var(--color-primary-dark) !important;
+    color: #ffffff !important;
 }
 
 html[data-theme="dark"] .rz-spinner .rz-spinner-button {
