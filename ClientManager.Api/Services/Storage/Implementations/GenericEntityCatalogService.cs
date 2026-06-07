@@ -1,6 +1,7 @@
 using System.Text.Json;
 using ClientManager.DataAccess.Repositories.Interfaces;
 using ClientManager.Shared.Models.Search;
+using ClientManager.Api.Services.Interfaces;
 using ClientManager.Api.Services.Storage.Interfaces;
 
 namespace ClientManager.Api.Services.Storage.Implementations;
@@ -28,26 +29,24 @@ public abstract class GenericEntityCatalogService<TEntity>(
             token => Repository.SearchAsync(query, token),
             cancellationToken);
 
-    public Task<TEntity?> GetByIdAsync(string id, CancellationToken cancellationToken) =>
-        Cache.GetOrCreateCatalogAsync(
-            $"{catalogCachePrefix}:id:{id}",
-            token => Repository.GetByIdAsync(id, token),
-            cancellationToken);
+    public async Task<TEntity> GetByIdAsync(string id, CancellationToken cancellationToken) =>
+        await TryGetByIdAsync(id, cancellationToken) ?? throw NotFound(id);
 
-    public virtual async Task CreateAsync(TEntity entity, CancellationToken cancellationToken)
+    public virtual async Task<TEntity> CreateAsync(TEntity entity, CancellationToken cancellationToken)
     {
-        if (await GetByIdAsync(GetEntityId(entity), cancellationToken) is not null)
+        if (await TryGetByIdAsync(GetEntityId(entity), cancellationToken) is not null)
         {
             throw AlreadyExists(GetEntityId(entity));
         }
 
         await Repository.CreateAsync(entity, cancellationToken);
         Cache.InvalidateCatalog();
+        return entity;
     }
 
     public virtual async Task<TEntity> UpdateAsync(string id, TEntity entity, CancellationToken cancellationToken)
     {
-        if (await GetByIdAsync(id, cancellationToken) is null)
+        if (await TryGetByIdAsync(id, cancellationToken) is null)
         {
             throw NotFound(id);
         }
@@ -60,7 +59,7 @@ public abstract class GenericEntityCatalogService<TEntity>(
 
     public virtual async Task DeleteAsync(string id, CancellationToken cancellationToken)
     {
-        if (await GetByIdAsync(id, cancellationToken) is null)
+        if (await TryGetByIdAsync(id, cancellationToken) is null)
         {
             throw NotFound(id);
         }
@@ -68,4 +67,10 @@ public abstract class GenericEntityCatalogService<TEntity>(
         await Repository.DeleteAsync(id, cancellationToken);
         Cache.InvalidateCatalog();
     }
+
+    private Task<TEntity?> TryGetByIdAsync(string id, CancellationToken cancellationToken) =>
+        Cache.GetOrCreateCatalogAsync(
+            $"{catalogCachePrefix}:id:{id}",
+            token => Repository.GetByIdAsync(id, token),
+            cancellationToken);
 }

@@ -10,20 +10,13 @@ using ClientManager.Shared.Models.Enums;
 using ClientManager.Shared.Models.Requests;
 using ClientManager.Shared.Models.Responses;
 using ClientManager.Shared.Models.Search;
-using StorageStatisticsService = ClientManager.Api.Services.Storage.Interfaces.IStatisticsService;
-
 namespace ClientManager.Api.Services.Implementations;
 
 /// <summary>
 /// Composes dashboard-oriented statistics directly from in-process storage. Read-model projections
 /// (overview, summary searches, and entity details) are built from the data-access stores, while
-/// usage analytics delegate to the in-process statistics service.
+/// usage analytics delegate to the in-process usage statistics service.
 /// </summary>
-/// <remarks>
-/// This service owns the read-model shaping the storage API host previously performed inline so the
-/// public <c>StatisticsController</c> stays thin. Missing entities surface as the public not-found
-/// exceptions the controller already documents.
-/// </remarks>
 public class StatisticsService : IStatisticsService
 {
     private readonly IClientConfigurationDatabase _clientConfigurationDatabase;
@@ -31,7 +24,7 @@ public class StatisticsService : IStatisticsService
     private readonly IEntityRepository<ResourcePool> _resourcePoolRepository;
     private readonly IResourceAllocationDatabase _allocationDatabase;
     private readonly IGlobalRateLimitDatabase _globalRateLimitDatabase;
-    private readonly StorageStatisticsService _statisticsService;
+    private readonly IUsageStatisticsService _usageStatisticsService;
 
     /// <summary>
     /// Initializes a new instance of <see cref="StatisticsService"/>.
@@ -42,14 +35,14 @@ public class StatisticsService : IStatisticsService
         IEntityRepository<ResourcePool> resourcePoolRepository,
         IResourceAllocationDatabase allocationDatabase,
         IGlobalRateLimitDatabase globalRateLimitDatabase,
-        StorageStatisticsService statisticsService)
+        IUsageStatisticsService usageStatisticsService)
     {
         _clientConfigurationDatabase = clientConfigurationDatabase;
         _serviceRepository = serviceRepository;
         _resourcePoolRepository = resourcePoolRepository;
         _allocationDatabase = allocationDatabase;
         _globalRateLimitDatabase = globalRateLimitDatabase;
-        _statisticsService = statisticsService;
+        _usageStatisticsService = usageStatisticsService;
     }
 
     /// <inheritdoc />
@@ -239,7 +232,7 @@ public class StatisticsService : IStatisticsService
 
     /// <inheritdoc />
     public Task<GlobalUsageStatsResponse> GetGlobalUsageStatsAsync(CancellationToken cancellationToken = default) =>
-        _statisticsService.GetGlobalUsageStatsAsync(cancellationToken);
+        _usageStatisticsService.GetGlobalUsageStatsAsync(cancellationToken);
 
     /// <inheritdoc />
     public Task<IReadOnlyList<TargetUsageTimeSeriesResponse>> GetUsageTimeSeriesAsync(
@@ -250,7 +243,7 @@ public class StatisticsService : IStatisticsService
         DateTime? to,
         BucketGranularity? granularity,
         CancellationToken cancellationToken = default) =>
-        _statisticsService.GetUsageTimeSeriesAsync(
+        _usageStatisticsService.GetUsageTimeSeriesAsync(
             filterType,
             targetIds.Values,
             ResolveOptionalIds(clientIds),
@@ -268,7 +261,7 @@ public class StatisticsService : IStatisticsService
         DateTime? to,
         BucketGranularity? granularity,
         CancellationToken cancellationToken = default) =>
-        _statisticsService.GetClientUsageBreakdownAsync(
+        _usageStatisticsService.GetClientUsageBreakdownAsync(
             filterType,
             targetIds.Values,
             ResolveOptionalIds(clientIds),
@@ -280,7 +273,7 @@ public class StatisticsService : IStatisticsService
     /// <inheritdoc />
     public async Task<PagedResponse<ClientSummaryRow>> GetClientSummariesAsync(PagedRequest paging, CancellationToken cancellationToken = default)
     {
-        var summaries = await _statisticsService.GetClientSummariesAsync(cancellationToken);
+        var summaries = await _usageStatisticsService.GetClientSummariesAsync(cancellationToken);
         return summaries.Rows.ToPagedResponse(paging);
     }
 
@@ -293,7 +286,7 @@ public class StatisticsService : IStatisticsService
         DateTime to,
         BucketGranularity granularity,
         CancellationToken cancellationToken = default) =>
-        _statisticsService.GetHistoricalUsageAsync(
+        _usageStatisticsService.GetHistoricalUsageAsync(
             targetIds.Values,
             filterType,
             clientId,
@@ -311,7 +304,7 @@ public class StatisticsService : IStatisticsService
         DateTime to,
         BucketGranularity granularity,
         CancellationToken cancellationToken = default) =>
-        _statisticsService.GetHistoricalUsageByClientAsync(
+        _usageStatisticsService.GetHistoricalUsageByClientAsync(
             targetIds.Values,
             filterType,
             clientIds.Values,

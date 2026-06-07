@@ -4,6 +4,7 @@ using ClientManager.DataAccess.Repositories.Interfaces;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Enums;
 using ClientManager.Shared.Models.Responses;
+using ClientManager.Api.Services.Interfaces;
 using ClientManager.Api.Services.Storage.Interfaces;
 
 namespace ClientManager.Api.Services.Storage.Implementations;
@@ -11,7 +12,7 @@ namespace ClientManager.Api.Services.Storage.Implementations;
 /// <summary>
 /// Builds dashboard and export read models inside the storage-owning host.
 /// </summary>
-public partial class StatisticsService : IStatisticsService
+public partial class StatisticsService : IUsageStatisticsService
 {
     private readonly IClientConfigurationDatabase _clientConfigDatabase;
     private readonly IEntityRepository<Service> _serviceRepository;

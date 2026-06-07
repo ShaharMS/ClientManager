@@ -3,7 +3,7 @@ using ClientManager.DataAccess.Repositories.Interfaces;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Enums;
 using ClientManager.Shared.Models.Responses;
-using ClientManager.Api.Services.Storage.Interfaces;
+using ClientManager.Api.Services.Interfaces;
 
 namespace ClientManager.Api.Services.Storage.Implementations.Exporters;
 
@@ -15,13 +15,13 @@ public class GrafanaExportService : IGrafanaExportService
     private readonly IUsageSnapshotDatabase _usageSnapshotDatabase;
     private readonly IEntityRepository<ResourcePool> _poolRepository;
     private readonly IResourceAllocationDatabase _allocationDatabase;
-    private readonly IStatisticsService _statisticsService;
+    private readonly IUsageStatisticsService _statisticsService;
 
     public GrafanaExportService(
         IUsageSnapshotDatabase usageSnapshotDatabase,
         IEntityRepository<ResourcePool> poolRepository,
         IResourceAllocationDatabase allocationDatabase,
-        IStatisticsService statisticsService)
+        IUsageStatisticsService statisticsService)
     {
         _usageSnapshotDatabase = usageSnapshotDatabase;
         _poolRepository = poolRepository;

@@ -5,6 +5,7 @@ using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Enums;
 using ClientManager.Api.Services.Storage.Models.Entities;
 using ClientManager.Api.Services.Storage.Models.Enums;
+using ClientManager.Api.Services.Interfaces;
 using ClientManager.Api.Services.Storage.Interfaces;
 using ClientManager.Api.Services.Storage.Utils.Extensions;
 using ClientManager.Api.Services.Storage.Utils.Instrumentation;
@@ -22,7 +23,7 @@ public class RateLimitService : IRateLimitService
     private readonly IClientConfigurationDatabase _clientConfigDatabase;
     private readonly IGlobalRateLimitDatabase _globalRateLimitDatabase;
     private readonly RateLimitStrategyResolver _strategyResolver;
-    private readonly StorageApiMetrics _metrics;
+    private readonly StorageMetrics _metrics;
     private readonly IStorageReadCache _cache;
 
     public RateLimitService(
@@ -30,7 +31,7 @@ public class RateLimitService : IRateLimitService
         IClientConfigurationDatabase clientConfigDatabase,
         IGlobalRateLimitDatabase globalRateLimitDatabase,
         RateLimitStrategyResolver strategyResolver,
-        StorageApiMetrics metrics,
+        StorageMetrics metrics,
         IStorageReadCache cache)
     {
         _logger = logger;

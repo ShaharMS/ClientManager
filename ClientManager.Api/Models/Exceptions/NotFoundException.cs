@@ -8,6 +8,6 @@ namespace ClientManager.Api.Models.Exceptions;
 /// </summary>
 public class NotFoundException : HttpProblemException
 {
-    public NotFoundException(string message)
-        : base(StatusCodes.Status404NotFound, "Not Found", message) { }
+    public NotFoundException(string message, string? errorCode = null)
+        : base(StatusCodes.Status404NotFound, "Not Found", message, errorCode: errorCode) { }
 }

@@ -1,11 +1,14 @@
+using System.Text.Json;
+using ClientManager.Api.Models.Exceptions;
+using ClientManager.Api.Services.Interfaces;
+using ClientManager.Api.Services.Storage;
+using ClientManager.Api.Services.Storage.Interfaces;
+using ClientManager.Api.Services.Storage.Utils.Extensions;
 using ClientManager.DataAccess.Databases.Interfaces;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Requests;
 using ClientManager.Shared.Models.Responses;
 using ClientManager.Shared.Models.Search;
-using ClientManager.Api.Services.Storage.Interfaces;
-using ClientManager.Api.Services.Storage.Utils.Extensions;
-using System.Text.Json;
 
 namespace ClientManager.Api.Services.Storage.Implementations;
 
@@ -18,60 +21,157 @@ public class ClientConfigurationCatalogService(
 {
     private const string CachePrefix = "clients";
 
-    public Task<SearchResult<ClientConfiguration>> SearchAsync(DocumentQuery query, CancellationToken cancellationToken) =>
+    public Task<SearchResult<ClientConfiguration>> SearchAsync(DocumentQuery query, CancellationToken cancellationToken = default) =>
         cache.GetOrCreateCatalogAsync(
             $"{CachePrefix}:search:{JsonSerializer.Serialize(query)}",
             token => database.SearchAsync(query, token),
             cancellationToken);
 
-    public Task<ClientConfiguration?> GetByIdAsync(string clientId, CancellationToken cancellationToken) =>
-        cache.GetOrCreateCatalogAsync(
-            $"{CachePrefix}:id:{clientId}",
-            token => database.GetByIdAsync(clientId, token),
-            cancellationToken);
+    public async Task<ClientConfiguration> GetByIdAsync(string clientId, CancellationToken cancellationToken = default) =>
+        await TryGetByIdAsync(clientId, cancellationToken) ?? throw DomainErrors.Client(clientId);
 
-    public Task CreateAsync(ClientConfiguration configuration, CancellationToken cancellationToken) =>
-        InvalidateAfterAsync(database.CreateAsync(configuration, cancellationToken));
+    public async Task<ClientConfiguration> CreateAsync(ClientConfiguration configuration, CancellationToken cancellationToken = default)
+    {
+        await InvalidateAfterAsync(database.CreateAsync(configuration, cancellationToken));
+        return configuration;
+    }
 
     public async Task<ClientConfiguration> UpdateAsync(
         string clientId,
         ClientConfiguration configuration,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
+        _ = await GetByIdAsync(clientId, cancellationToken);
         var updated = configuration with { Id = clientId };
         await database.UpdateAsync(updated, cancellationToken);
         cache.InvalidateCatalog();
         return updated;
     }
 
-    public Task DeleteAsync(string clientId, CancellationToken cancellationToken) =>
-        InvalidateAfterAsync(database.DeleteAsync(clientId, cancellationToken));
-
-    public async Task<PagedResponse<KeyedEntry<ServiceAccessSettings>>?> GetServicesAsync(
-        string clientId,
-        PagedRequest paging,
-        CancellationToken cancellationToken)
+    public async Task DeleteAsync(string clientId, CancellationToken cancellationToken = default)
     {
-        return await cache.GetOrCreateCatalogAsync(
-            $"clients:{clientId}:services:{paging.Page}:{paging.PageSize}",
-            async token =>
-            {
-                var config = await database.GetByIdAsync(clientId, token);
-                if (config is null)
-                {
-                    return null;
-                }
-
-                IReadOnlyList<KeyedEntry<ServiceAccessSettings>> entries = config.Services
-                    .Select(entry => new KeyedEntry<ServiceAccessSettings>(entry.Key, entry.Value))
-                    .ToList();
-
-                return entries.ToPagedResponse(paging);
-            },
-            cancellationToken);
+        _ = await GetByIdAsync(clientId, cancellationToken);
+        await InvalidateAfterAsync(database.DeleteAsync(clientId, cancellationToken));
     }
 
-    public Task<ClientLookup<ServiceAccessSettings>> GetServiceSettingsAsync(
+    public async Task<PagedResponse<KeyedEntry<ServiceAccessSettings>>> GetServicesAsync(
+        string clientId,
+        PagedRequest paging,
+        CancellationToken cancellationToken = default)
+    {
+        var config = await GetByIdAsync(clientId, cancellationToken);
+        IReadOnlyList<KeyedEntry<ServiceAccessSettings>> entries = config.Services
+            .Select(entry => new KeyedEntry<ServiceAccessSettings>(entry.Key, entry.Value))
+            .ToList();
+
+        return entries.ToPagedResponse(paging);
+    }
+
+    public async Task<ServiceAccessSettings> GetServiceSettingsAsync(
+        string clientId,
+        string serviceId,
+        CancellationToken cancellationToken = default)
+    {
+        var lookup = await GetServiceSettingsLookupAsync(clientId, serviceId, cancellationToken);
+        return lookup.RequireClientValue(
+            clientId,
+            DomainErrors.Client,
+            () => DomainErrors.ServiceSettings(serviceId, clientId));
+    }
+
+    public async Task<ServiceAccessSettings> SetServiceSettingsAsync(
+        string clientId,
+        string serviceId,
+        ServiceAccessSettings settings,
+        CancellationToken cancellationToken = default)
+    {
+        _ = await GetByIdAsync(clientId, cancellationToken);
+        await InvalidateAfterAsync(database.SetServiceSettingsAsync(clientId, serviceId, settings, cancellationToken));
+        return settings;
+    }
+
+    public async Task RemoveServiceSettingsAsync(string clientId, string serviceId, CancellationToken cancellationToken = default)
+    {
+        _ = await GetByIdAsync(clientId, cancellationToken);
+        await InvalidateAfterAsync(database.RemoveServiceSettingsAsync(clientId, serviceId, cancellationToken));
+    }
+
+    public async Task<PagedResponse<KeyedEntry<ResourcePoolSettings>>> GetResourcePoolsAsync(
+        string clientId,
+        PagedRequest paging,
+        CancellationToken cancellationToken = default)
+    {
+        var config = await GetByIdAsync(clientId, cancellationToken);
+        IReadOnlyList<KeyedEntry<ResourcePoolSettings>> entries = config.ResourcePools
+            .Select(entry => new KeyedEntry<ResourcePoolSettings>(entry.Key, entry.Value))
+            .ToList();
+
+        return entries.ToPagedResponse(paging);
+    }
+
+    public async Task<ResourcePoolSettings> GetResourcePoolSettingsAsync(
+        string clientId,
+        string poolId,
+        CancellationToken cancellationToken = default)
+    {
+        var lookup = await GetResourcePoolSettingsLookupAsync(clientId, poolId, cancellationToken);
+        return lookup.RequireClientValue(
+            clientId,
+            DomainErrors.Client,
+            () => DomainErrors.ResourcePoolSettings(poolId, clientId));
+    }
+
+    public async Task<ResourcePoolSettings> SetResourcePoolSettingsAsync(
+        string clientId,
+        string poolId,
+        ResourcePoolSettings settings,
+        CancellationToken cancellationToken = default)
+    {
+        _ = await GetByIdAsync(clientId, cancellationToken);
+        await InvalidateAfterAsync(database.SetResourcePoolSettingsAsync(clientId, poolId, settings, cancellationToken));
+        return settings;
+    }
+
+    public async Task RemoveResourcePoolSettingsAsync(string clientId, string poolId, CancellationToken cancellationToken = default)
+    {
+        _ = await GetByIdAsync(clientId, cancellationToken);
+        await InvalidateAfterAsync(database.RemoveResourcePoolSettingsAsync(clientId, poolId, cancellationToken));
+    }
+
+    public async Task<ClientRateLimit> GetGlobalRateLimitAsync(string clientId, CancellationToken cancellationToken = default)
+    {
+        var lookup = await GetGlobalRateLimitLookupAsync(clientId, cancellationToken);
+        return lookup.RequireClientValue(
+            clientId,
+            DomainErrors.Client,
+            () => DomainErrors.ClientGlobalRateLimit(clientId));
+    }
+
+    public async Task<ClientRateLimit> SetGlobalRateLimitAsync(
+        string clientId,
+        ClientRateLimit rateLimit,
+        CancellationToken cancellationToken = default)
+    {
+        var config = await GetByIdAsync(clientId, cancellationToken);
+        await database.UpdateAsync(config with { GlobalRateLimit = rateLimit }, cancellationToken);
+        cache.InvalidateCatalog();
+        return rateLimit;
+    }
+
+    public async Task RemoveGlobalRateLimitAsync(string clientId, CancellationToken cancellationToken = default)
+    {
+        var config = await GetByIdAsync(clientId, cancellationToken);
+        await database.UpdateAsync(config with { GlobalRateLimit = null }, cancellationToken);
+        cache.InvalidateCatalog();
+    }
+
+    private Task<ClientConfiguration?> TryGetByIdAsync(string clientId, CancellationToken cancellationToken) =>
+        cache.GetOrCreateCatalogAsync(
+            $"{CachePrefix}:id:{clientId}",
+            token => database.GetByIdAsync(clientId, token),
+            cancellationToken);
+
+    private Task<ClientLookup<ServiceAccessSettings>> GetServiceSettingsLookupAsync(
         string clientId,
         string serviceId,
         CancellationToken cancellationToken) =>
@@ -81,41 +181,7 @@ public class ClientConfigurationCatalogService(
             config => new ClientLookup<ServiceAccessSettings>(true, config.Services.GetValueOrDefault(serviceId)),
             cancellationToken);
 
-    public Task SetServiceSettingsAsync(
-        string clientId,
-        string serviceId,
-        ServiceAccessSettings settings,
-        CancellationToken cancellationToken) =>
-        InvalidateAfterAsync(database.SetServiceSettingsAsync(clientId, serviceId, settings, cancellationToken));
-
-    public Task RemoveServiceSettingsAsync(string clientId, string serviceId, CancellationToken cancellationToken) =>
-        InvalidateAfterAsync(database.RemoveServiceSettingsAsync(clientId, serviceId, cancellationToken));
-
-    public async Task<PagedResponse<KeyedEntry<ResourcePoolSettings>>?> GetResourcePoolsAsync(
-        string clientId,
-        PagedRequest paging,
-        CancellationToken cancellationToken)
-    {
-        return await cache.GetOrCreateCatalogAsync(
-            $"clients:{clientId}:resource-pools:{paging.Page}:{paging.PageSize}",
-            async token =>
-            {
-                var config = await database.GetByIdAsync(clientId, token);
-                if (config is null)
-                {
-                    return null;
-                }
-
-                IReadOnlyList<KeyedEntry<ResourcePoolSettings>> entries = config.ResourcePools
-                    .Select(entry => new KeyedEntry<ResourcePoolSettings>(entry.Key, entry.Value))
-                    .ToList();
-
-                return entries.ToPagedResponse(paging);
-            },
-            cancellationToken);
-    }
-
-    public Task<ClientLookup<ResourcePoolSettings>> GetResourcePoolSettingsAsync(
+    private Task<ClientLookup<ResourcePoolSettings>> GetResourcePoolSettingsLookupAsync(
         string clientId,
         string poolId,
         CancellationToken cancellationToken) =>
@@ -127,17 +193,7 @@ public class ClientConfigurationCatalogService(
                 config.ResourcePools.TryGetValue(poolId, out var settings) ? settings : null),
             cancellationToken);
 
-    public Task SetResourcePoolSettingsAsync(
-        string clientId,
-        string poolId,
-        ResourcePoolSettings settings,
-        CancellationToken cancellationToken) =>
-        InvalidateAfterAsync(database.SetResourcePoolSettingsAsync(clientId, poolId, settings, cancellationToken));
-
-    public Task RemoveResourcePoolSettingsAsync(string clientId, string poolId, CancellationToken cancellationToken) =>
-        InvalidateAfterAsync(database.RemoveResourcePoolSettingsAsync(clientId, poolId, cancellationToken));
-
-    public Task<ClientLookup<ClientRateLimit>> GetGlobalRateLimitAsync(
+    private Task<ClientLookup<ClientRateLimit>> GetGlobalRateLimitLookupAsync(
         string clientId,
         CancellationToken cancellationToken) =>
         GetSubDocumentAsync(
@@ -145,35 +201,6 @@ public class ClientConfigurationCatalogService(
             $"clients:{clientId}:global-rate-limit",
             config => new ClientLookup<ClientRateLimit>(true, config.GlobalRateLimit),
             cancellationToken);
-
-    public async Task<bool> SetGlobalRateLimitAsync(
-        string clientId,
-        ClientRateLimit rateLimit,
-        CancellationToken cancellationToken)
-    {
-        var config = await database.GetByIdAsync(clientId, cancellationToken);
-        if (config is null)
-        {
-            return false;
-        }
-
-        await database.UpdateAsync(config with { GlobalRateLimit = rateLimit }, cancellationToken);
-        cache.InvalidateCatalog();
-        return true;
-    }
-
-    public async Task<bool> RemoveGlobalRateLimitAsync(string clientId, CancellationToken cancellationToken)
-    {
-        var config = await database.GetByIdAsync(clientId, cancellationToken);
-        if (config is null)
-        {
-            return false;
-        }
-
-        await database.UpdateAsync(config with { GlobalRateLimit = null }, cancellationToken);
-        cache.InvalidateCatalog();
-        return true;
-    }
 
     private Task<ClientLookup<T>> GetSubDocumentAsync<T>(
         string clientId,
@@ -196,5 +223,4 @@ public class ClientConfigurationCatalogService(
         await operation;
         cache.InvalidateCatalog();
     }
-
 }

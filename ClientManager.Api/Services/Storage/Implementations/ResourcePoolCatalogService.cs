@@ -1,6 +1,7 @@
 using ClientManager.DataAccess.Repositories.Interfaces;
 using ClientManager.Shared.Models.Entities;
-using ClientManager.Api.Services.Storage.Models.Exceptions;
+using ClientManager.Api.Models.Exceptions;
+using ClientManager.Api.Services.Interfaces;
 using ClientManager.Api.Services.Storage.Interfaces;
 
 namespace ClientManager.Api.Services.Storage.Implementations;
@@ -18,7 +19,7 @@ public sealed class ResourcePoolCatalogService(
 
     protected override ResourcePool ApplyId(ResourcePool entity, string id) => entity with { Id = id };
 
-    protected override Exception NotFound(string id) => StorageDomainErrors.ResourcePoolNotFound(id);
+    protected override Exception NotFound(string id) => DomainErrors.ResourcePool(id);
 
-    protected override Exception AlreadyExists(string id) => StorageDomainErrors.ResourcePoolAlreadyExists(id);
+    protected override Exception AlreadyExists(string id) => DomainErrors.DuplicateResourcePool(id);
 }

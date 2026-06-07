@@ -1,6 +1,6 @@
 using ClientManager.Shared.Models.Enums;
 using ClientManager.Api.Services.Storage.Implementations.RateLimiting.Strategies;
-using ClientManager.Api.Services.Storage.Interfaces;
+using ClientManager.Api.Services.Interfaces;
 
 namespace ClientManager.Api.Services.Storage.Implementations.RateLimiting;
 

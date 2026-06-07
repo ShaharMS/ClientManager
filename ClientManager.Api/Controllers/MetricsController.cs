@@ -1,7 +1,7 @@
 using Asp.Versioning;
-using ClientManager.Shared.Models.Responses;
-using ClientManager.Shared.Models.Problems;
 using ClientManager.Api.Services.Interfaces;
+using ClientManager.Shared.Models.Problems;
+using ClientManager.Shared.Models.Responses;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ClientManager.Api.Controllers;
@@ -13,19 +13,10 @@ namespace ClientManager.Api.Controllers;
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/metrics")]
 [Tags("Metrics")]
-public class MetricsController : ControllerBase
+public class MetricsController(
+    IPrometheusExportService prometheusExportService,
+    IGrafanaExportService grafanaExportService) : ControllerBase
 {
-    private readonly IMetricsService _metricsService;
-
-    /// <summary>
-    /// Initializes a new instance of <see cref="MetricsController"/>.
-    /// </summary>
-    /// <param name="metricsService">The metrics read service.</param>
-    public MetricsController(IMetricsService metricsService)
-    {
-        _metricsService = metricsService;
-    }
-
     /// <summary>
     /// Returns system metrics in Prometheus exposition format.
     /// </summary>
@@ -38,7 +29,7 @@ public class MetricsController : ControllerBase
     [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> GetPrometheusMetrics(CancellationToken cancellationToken)
     {
-        var metrics = await _metricsService.GetPrometheusMetricsAsync(cancellationToken);
+        var metrics = await prometheusExportService.ExportMetricsAsync(cancellationToken);
         return Content(metrics, "text/plain; version=0.0.4; charset=utf-8");
     }
 
@@ -54,7 +45,7 @@ public class MetricsController : ControllerBase
     [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> GetGrafanaMetrics(CancellationToken cancellationToken)
     {
-        var metrics = await _metricsService.GetGrafanaMetricsAsync(cancellationToken);
+        var metrics = (GrafanaMetricsResponse)await grafanaExportService.ExportMetricsAsync(cancellationToken);
         return Ok(metrics);
     }
 }

@@ -608,8 +608,8 @@ def build_grafana_dashboard(grafana_port: int, jaeger_port: int, prometheus_port
         ),
         stat_panel(
             panel_id=3,
-            title="Storage Requests / Sec",
-            expression="sum(rate(clientmanager_storageapi_requests_total{job=\"clientmanager-api\"}[$__rate_interval]))",
+            title="Access Granted / Sec",
+            expression="sum(rate(clientmanager_access_granted_total{job=\"clientmanager-api\"}[$__rate_interval]))",
             unit="ops",
             x=6,
             y=7,
@@ -628,8 +628,8 @@ def build_grafana_dashboard(grafana_port: int, jaeger_port: int, prometheus_port
         ),
         stat_panel(
             panel_id=5,
-            title="Storage Errors / Sec",
-            expression="sum(rate(clientmanager_storageapi_requests_errors_total{job=\"clientmanager-api\"}[$__rate_interval]))",
+            title="Access Denied / Sec",
+            expression="sum(rate(clientmanager_access_denied_total{job=\"clientmanager-api\"}[$__rate_interval]))",
             unit="ops",
             x=18,
             y=7,
@@ -648,65 +648,65 @@ def build_grafana_dashboard(grafana_port: int, jaeger_port: int, prometheus_port
             unit="ms",
             x=0,
             y=12,
-            w=12,
+            w=24,
             h=8,
         ),
         timeseries_panel(
             panel_id=7,
-            title="Storage Request P95",
+            title="Storage Document Store P95 By Operation",
             expression=(
                 "histogram_quantile(0.95, "
-                "sum by (le) (rate({__name__=~\"clientmanager_storageapi_requests_duration(_milliseconds)?_bucket\", "
-                "job=\"clientmanager-api\"}[$__rate_interval])))"
-            ),
-            legend_format="Storage",
-            unit="ms",
-            x=12,
-            y=12,
-            w=12,
-            h=8,
-        ),
-        timeseries_panel(
-            panel_id=8,
-            title="Public API Storage Client P95 By Operation",
-            expression=(
-                "histogram_quantile(0.95, "
-                "sum by (le, operation) (rate({__name__=~\"clientmanager_storage_client_duration(_milliseconds)?_bucket\", "
+                "sum by (le, operation) (rate({__name__=~\"clientmanager_storage_document_store_duration(_milliseconds)?_bucket\", "
                 "job=\"clientmanager-api\"}[$__rate_interval])))"
             ),
             legend_format="{{operation}}",
             unit="ms",
             x=0,
+            y=20,
+            w=12,
+            h=8,
+        ),
+        timeseries_panel(
+            panel_id=8,
+            title="Storage Rate-Limit Strategy P95 By Strategy",
+            expression=(
+                "histogram_quantile(0.95, "
+                "sum by (le, strategy) (rate({__name__=~\"clientmanager_storage_ratelimit_strategy_duration(_milliseconds)?_bucket\", "
+                "job=\"clientmanager-api\"}[$__rate_interval])))"
+            ),
+            legend_format="{{strategy}}",
+            unit="ms",
+            x=12,
             y=20,
             w=12,
             h=8,
         ),
         timeseries_panel(
             panel_id=9,
-            title="Storage Document Store P95 By Operation",
+            title="Storage Access Check P95",
             expression=(
                 "histogram_quantile(0.95, "
-                "sum by (le, operation) (rate({__name__=~\"clientmanager_storageapi_document_store_duration(_milliseconds)?_bucket\", "
+                "sum by (le) (rate({__name__=~\"clientmanager_storage_access_duration(_milliseconds)?_bucket\", "
                 "job=\"clientmanager-api\"}[$__rate_interval])))"
             ),
-            legend_format="{{operation}}",
+            legend_format="Access",
             unit="ms",
-            x=12,
-            y=20,
+            x=0,
+            y=28,
             w=12,
             h=8,
         ),
         timeseries_panel(
             panel_id=10,
-            title="Storage Rate-Limit Strategy P95 By Strategy",
+            title="Storage Resource Acquire P95",
             expression=(
                 "histogram_quantile(0.95, "
-                "sum by (le, strategy) (rate({__name__=~\"clientmanager_storageapi_ratelimit_strategy_duration(_milliseconds)?_bucket\", "
+                "sum by (le) (rate({__name__=~\"clientmanager_storage_resources_acquire_duration(_milliseconds)?_bucket\", "
                 "job=\"clientmanager-api\"}[$__rate_interval])))"
             ),
-            legend_format="{{strategy}}",
+            legend_format="Acquire",
             unit="ms",
-            x=0,
+            x=12,
             y=28,
             w=12,
             h=8,
@@ -719,9 +719,9 @@ def build_grafana_dashboard(grafana_port: int, jaeger_port: int, prometheus_port
             ),
             legend_format="{{statusCode}} {{endpoint}}",
             unit="ops",
-            x=12,
-            y=28,
-            w=12,
+            x=0,
+            y=36,
+            w=24,
             h=8,
         ),
     ]

@@ -7,7 +7,7 @@ namespace ClientManager.Api.Services.Storage.Implementations.RateLimiting.Strate
 internal static class RateLimitStrategyInstrumentation
 {
     internal static async Task<RateLimitResult> TraceAsync(
-        StorageApiMetrics metrics,
+        StorageMetrics metrics,
         string strategyName,
         string mode,
         int counterKeyCount,
@@ -43,7 +43,7 @@ internal static class RateLimitStrategyInstrumentation
     }
 
     private static void Complete(
-        StorageApiMetrics metrics,
+        StorageMetrics metrics,
         Activity? activity,
         string strategyName,
         string mode,
@@ -60,7 +60,7 @@ internal static class RateLimitStrategyInstrumentation
     }
 
     private static void Complete(
-        StorageApiMetrics metrics,
+        StorageMetrics metrics,
         Activity? activity,
         string strategyName,
         string mode,
@@ -75,7 +75,7 @@ internal static class RateLimitStrategyInstrumentation
     }
 
     private static void RecordDuration(
-        StorageApiMetrics metrics,
+        StorageMetrics metrics,
         string strategyName,
         string mode,
         int counterKeyCount,

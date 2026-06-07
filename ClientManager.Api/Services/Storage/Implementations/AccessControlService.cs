@@ -7,8 +7,8 @@ using ClientManager.Shared.Models.Enums;
 using ClientManager.Shared.Models.Responses;
 using ClientManager.Api.Services.Storage.Models.Entities;
 using ClientManager.Api.Services.Storage.Models.Enums;
-using ClientManager.Api.Services.Storage.Models.Exceptions;
-using ClientManager.Api.Services.Storage.Interfaces;
+using ClientManager.Api.Models.Exceptions;
+using ClientManager.Api.Services.Interfaces;
 using ClientManager.Api.Services.Storage.Utils.Extensions;
 using ClientManager.Api.Services.Storage.Utils.Instrumentation;
 
@@ -25,7 +25,7 @@ public class AccessControlService : IAccessControlService
     private readonly IClientConfigurationDatabase _clientConfigDatabase;
     private readonly IEntityRepository<Service> _serviceRepository;
     private readonly IRateLimitService _rateLimitService;
-    private readonly StorageApiMetrics _metrics;
+    private readonly StorageMetrics _metrics;
     private readonly IUsageRecorder _usageRecorder;
 
     public AccessControlService(
@@ -33,7 +33,7 @@ public class AccessControlService : IAccessControlService
         IClientConfigurationDatabase clientConfigDatabase,
         IEntityRepository<Service> serviceRepository,
         IRateLimitService rateLimitService,
-        StorageApiMetrics metrics,
+        StorageMetrics metrics,
         IUsageRecorder usageRecorder)
     {
         _logger = logger;
@@ -99,7 +99,7 @@ public class AccessControlService : IAccessControlService
         CancellationToken cancellationToken = default)
     {
         var configuration = await _clientConfigDatabase.GetByIdAsync(clientId, cancellationToken)
-            ?? throw StorageDomainErrors.ClientNotFound(clientId);
+            ?? throw DomainErrors.Client(clientId);
 
         var services = await _serviceRepository.GetAllAsync(cancellationToken);
         var accessibilities = new List<ServiceAccessibility>(services.Count);
@@ -139,7 +139,7 @@ public class AccessControlService : IAccessControlService
             act => act?.SetTag("client.id", clientId));
 
         var configuration = await _clientConfigDatabase.GetByIdAsync(clientId, cancellationToken)
-            ?? throw StorageDomainErrors.ClientNotFound(clientId);
+            ?? throw DomainErrors.Client(clientId);
 
         activity?.SetTag("configuration.enabled", configuration.IsEnabled);
         return configuration;
@@ -156,7 +156,7 @@ public class AccessControlService : IAccessControlService
         }
 
         RecordDenied(clientId, serviceId, ServiceAccessDenialReason.ClientDisabled);
-        throw StorageDomainErrors.ClientDisabled(clientId);
+        throw DomainErrors.ClientDisabled(clientId);
     }
 
     private async Task<Service> ReadServiceAsync(
@@ -173,7 +173,7 @@ public class AccessControlService : IAccessControlService
             });
 
         var service = await _serviceRepository.GetByIdAsync(serviceId, cancellationToken)
-            ?? throw StorageDomainErrors.ServiceNotFound(serviceId);
+            ?? throw DomainErrors.Service(serviceId);
 
         activity?.SetTag("service.enabled", service.IsEnabled);
         return service;
@@ -187,7 +187,7 @@ public class AccessControlService : IAccessControlService
         }
 
         RecordDenied(clientId, service.Id, ServiceAccessDenialReason.ServiceDisabled);
-        throw StorageDomainErrors.ServiceDisabled(service.Id);
+        throw DomainErrors.ServiceDisabled(service.Id);
     }
 
     private ServiceAccessSettings ReadServiceSettings(
@@ -211,7 +211,7 @@ public class AccessControlService : IAccessControlService
 
         activity?.SetTag("access.configured", false);
         RecordDenied(clientId, serviceId, ServiceAccessDenialReason.NotConfigured);
-        throw StorageDomainErrors.AccessNotConfigured(clientId, serviceId);
+        throw DomainErrors.AccessNotConfigured(clientId, serviceId);
     }
 
     private void EnsureServiceAccessAllowed(
@@ -234,7 +234,7 @@ public class AccessControlService : IAccessControlService
         }
 
         RecordDenied(clientId, serviceId, ServiceAccessDenialReason.NotAllowed);
-        throw StorageDomainErrors.AccessDenied(clientId, serviceId);
+        throw DomainErrors.AccessDenied(clientId, serviceId);
     }
 
     private async Task EnsureGlobalLimitAsync(
@@ -265,7 +265,7 @@ public class AccessControlService : IAccessControlService
         }
 
         RecordDenied(clientId, serviceId, ServiceAccessDenialReason.GlobalRateLimited);
-        throw StorageDomainErrors.GlobalServiceRateLimitExceeded(result.RetryAfterSeconds);
+        throw DomainErrors.GlobalServiceRateLimitExceeded(result.RetryAfterSeconds);
     }
 
     private async Task<RateLimitResult> EnsureClientLimitAsync(
@@ -296,7 +296,7 @@ public class AccessControlService : IAccessControlService
         }
 
         RecordDenied(clientId, serviceId, ServiceAccessDenialReason.RateLimited);
-        throw StorageDomainErrors.ClientRateLimitExceeded(result.RetryAfterSeconds);
+        throw DomainErrors.ClientRateLimitExceeded(result.RetryAfterSeconds);
     }
 
     private void RecordGranted(string clientId, string serviceId)

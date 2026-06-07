@@ -90,7 +90,7 @@ try
     // Public API adapters that remain local after the storage split.
     builder.Services.AddPublicApiServices();
 
-    // In-process storage domain services relocated from the Storage API host.
+    // In-process storage domain services.
     builder.Services.AddInProcessStorageServices(builder.Configuration, builder.Environment);
 
     // OpenTelemetry metrics, traces, and Prometheus
@@ -110,7 +110,7 @@ try
         {
             metrics.AddAspNetCoreInstrumentation();
             metrics.AddMeter(ClientManagerMetrics.MeterName);
-            metrics.AddMeter(StorageApiMetrics.MeterName);
+            metrics.AddMeter(StorageMetrics.MeterName);
             metrics.AddPrometheusExporter();
         })
         .WithTracing(tracing =>
@@ -118,7 +118,7 @@ try
             tracing.AddAspNetCoreInstrumentation();
             tracing.AddHttpClientInstrumentation();
             tracing.AddSource(ClientManagerMetrics.ActivitySourceName);
-            tracing.AddSource("ClientManager.StorageApi");
+            tracing.AddSource(StorageMetrics.ActivitySourceName);
 
             if (Uri.TryCreate(otlpEndpoint, UriKind.Absolute, out var endpoint))
             {

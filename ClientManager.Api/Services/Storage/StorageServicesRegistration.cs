@@ -1,3 +1,4 @@
+using ClientManager.Api.Services.Interfaces;
 using ClientManager.Api.Services.Storage.Implementations;
 using ClientManager.Api.Services.Storage.Implementations.Exporters;
 using ClientManager.Api.Services.Storage.Implementations.RateLimiting;
@@ -12,14 +13,13 @@ using ClientManager.Shared.Configuration.Storage;
 namespace ClientManager.Api.Services.Storage;
 
 /// <summary>
-/// Registers the relocated, in-process storage domain services so the API can run
+/// Registers the in-process storage domain services so the API can run
 /// its runtime, read-model, catalog, seeding, and background work directly against
-/// <c>ClientManager.DataAccess</c> instead of calling the Storage API over HTTP.
+/// <c>ClientManager.DataAccess</c>.
 /// </summary>
 /// <remarks>
-/// This mirrors the Storage API host's composition root. <see cref="ClientManager.Shared.Logging.IAppLogger{T}"/>
-/// is intentionally not registered here because the API already adds it as part of its
-/// public services registration.
+/// <see cref="ClientManager.Shared.Logging.IAppLogger{T}"/> is intentionally not registered here
+/// because the API already adds it as part of its public services registration.
 /// </remarks>
 public static class StorageServicesRegistration
 {
@@ -38,7 +38,7 @@ public static class StorageServicesRegistration
             .GetSection(PersistenceOptions.SectionName)
             .Get<PersistenceOptions>() ?? new PersistenceOptions();
 
-        services.AddSingleton<StorageApiMetrics>();
+        services.AddSingleton<StorageMetrics>();
         services.AddStorageProviders(persistenceOptions, environment);
         services.AddStorageRepositories();
         services.AddMemoryCache();
@@ -82,7 +82,7 @@ public static class StorageServicesRegistration
 
     private static void RegisterReadModelServices(IServiceCollection services)
     {
-        services.AddScoped<IStatisticsService, StatisticsService>();
+        services.AddScoped<IUsageStatisticsService, Implementations.StatisticsService>();
         services.AddScoped<IPrometheusExportService, PrometheusExportService>();
         services.AddScoped<IGrafanaExportService, GrafanaExportService>();
     }

@@ -17,9 +17,7 @@ namespace ClientManager.Api.Controllers;
 [Route("api/v{version:apiVersion}/clients")]
 [Tags("Client Configurations")]
 public class ClientConfigurationSettingsController(
-    IClientServiceSettingsService clientServiceSettingsService,
-    IClientResourcePoolSettingsService clientResourcePoolSettingsService,
-    IClientGlobalRateLimitService clientGlobalRateLimitService) : ControllerBase
+    IClientConfigurationCatalogService clientConfigurationCatalogService) : ControllerBase
 {
     /// <summary>
     /// Lists all service access settings for a client, paginated.
@@ -37,7 +35,7 @@ public class ClientConfigurationSettingsController(
     [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> GetServices(string id, [FromQuery] PagedRequest paging, CancellationToken cancellationToken)
     {
-        var settings = await clientServiceSettingsService.GetServicesAsync(id, paging, cancellationToken);
+        var settings = await clientConfigurationCatalogService.GetServicesAsync(id, paging, cancellationToken);
         return Ok(settings);
     }
 
@@ -57,7 +55,7 @@ public class ClientConfigurationSettingsController(
     [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> GetServiceSettings(string id, string serviceId, CancellationToken cancellationToken)
     {
-        var settings = await clientServiceSettingsService.GetServiceSettingsAsync(id, serviceId, cancellationToken);
+        var settings = await clientConfigurationCatalogService.GetServiceSettingsAsync(id, serviceId, cancellationToken);
         return Ok(settings);
     }
 
@@ -81,7 +79,7 @@ public class ClientConfigurationSettingsController(
         [FromBody] ServiceAccessSettings settings,
         CancellationToken cancellationToken)
     {
-        var applied = await clientServiceSettingsService.SetServiceSettingsAsync(id, serviceId, settings, cancellationToken);
+        var applied = await clientConfigurationCatalogService.SetServiceSettingsAsync(id, serviceId, settings, cancellationToken);
         return Ok(applied);
     }
 
@@ -100,7 +98,7 @@ public class ClientConfigurationSettingsController(
     [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> RemoveServiceSettings(string id, string serviceId, CancellationToken cancellationToken)
     {
-        await clientServiceSettingsService.RemoveServiceSettingsAsync(id, serviceId, cancellationToken);
+        await clientConfigurationCatalogService.RemoveServiceSettingsAsync(id, serviceId, cancellationToken);
         return NoContent();
     }
 
@@ -120,7 +118,7 @@ public class ClientConfigurationSettingsController(
     [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> GetResourcePools(string id, [FromQuery] PagedRequest paging, CancellationToken cancellationToken)
     {
-        var settings = await clientResourcePoolSettingsService.GetResourcePoolsAsync(id, paging, cancellationToken);
+        var settings = await clientConfigurationCatalogService.GetResourcePoolsAsync(id, paging, cancellationToken);
         return Ok(settings);
     }
 
@@ -140,7 +138,7 @@ public class ClientConfigurationSettingsController(
     [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> GetResourcePoolSettings(string id, string poolId, CancellationToken cancellationToken)
     {
-        var settings = await clientResourcePoolSettingsService.GetResourcePoolSettingsAsync(id, poolId, cancellationToken);
+        var settings = await clientConfigurationCatalogService.GetResourcePoolSettingsAsync(id, poolId, cancellationToken);
         return Ok(settings);
     }
 
@@ -164,7 +162,7 @@ public class ClientConfigurationSettingsController(
         [FromBody] ResourcePoolSettings settings,
         CancellationToken cancellationToken)
     {
-        var applied = await clientResourcePoolSettingsService.SetResourcePoolSettingsAsync(id, poolId, settings, cancellationToken);
+        var applied = await clientConfigurationCatalogService.SetResourcePoolSettingsAsync(id, poolId, settings, cancellationToken);
         return Ok(applied);
     }
 
@@ -183,7 +181,7 @@ public class ClientConfigurationSettingsController(
     [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> RemoveResourcePoolSettings(string id, string poolId, CancellationToken cancellationToken)
     {
-        await clientResourcePoolSettingsService.RemoveResourcePoolSettingsAsync(id, poolId, cancellationToken);
+        await clientConfigurationCatalogService.RemoveResourcePoolSettingsAsync(id, poolId, cancellationToken);
         return NoContent();
     }
 
@@ -202,7 +200,7 @@ public class ClientConfigurationSettingsController(
     [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> GetGlobalRateLimit(string id, CancellationToken cancellationToken)
     {
-        var rateLimit = await clientGlobalRateLimitService.GetGlobalRateLimitAsync(id, cancellationToken);
+        var rateLimit = await clientConfigurationCatalogService.GetGlobalRateLimitAsync(id, cancellationToken);
         return Ok(rateLimit);
     }
 
@@ -221,7 +219,7 @@ public class ClientConfigurationSettingsController(
     [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> SetGlobalRateLimit(string id, [FromBody] ClientRateLimit rateLimit, CancellationToken cancellationToken)
     {
-        var applied = await clientGlobalRateLimitService.SetGlobalRateLimitAsync(id, rateLimit, cancellationToken);
+        var applied = await clientConfigurationCatalogService.SetGlobalRateLimitAsync(id, rateLimit, cancellationToken);
         return Ok(applied);
     }
 
@@ -239,7 +237,7 @@ public class ClientConfigurationSettingsController(
     [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> RemoveGlobalRateLimit(string id, CancellationToken cancellationToken)
     {
-        await clientGlobalRateLimitService.RemoveGlobalRateLimitAsync(id, cancellationToken);
+        await clientConfigurationCatalogService.RemoveGlobalRateLimitAsync(id, cancellationToken);
         return NoContent();
     }
 }

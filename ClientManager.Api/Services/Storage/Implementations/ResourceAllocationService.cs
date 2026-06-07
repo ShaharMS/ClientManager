@@ -6,8 +6,8 @@ using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Enums;
 using ClientManager.Shared.Models.Responses;
 using ClientManager.Api.Services.Storage.Models.Enums;
-using ClientManager.Api.Services.Storage.Models.Exceptions;
-using ClientManager.Api.Services.Storage.Interfaces;
+using ClientManager.Api.Models.Exceptions;
+using ClientManager.Api.Services.Interfaces;
 using ClientManager.Api.Services.Storage.Utils.Extensions;
 using ClientManager.Api.Services.Storage.Utils.Instrumentation;
 
@@ -25,7 +25,7 @@ public class ResourceAllocationService : IResourceAllocationService
     private readonly IResourceAllocationDatabase _allocationDatabase;
     private readonly IClientConfigurationDatabase _clientConfigDatabase;
     private readonly IRateLimitService _rateLimitService;
-    private readonly StorageApiMetrics _metrics;
+    private readonly StorageMetrics _metrics;
     private readonly IUsageRecorder _usageRecorder;
 
     public ResourceAllocationService(
@@ -34,7 +34,7 @@ public class ResourceAllocationService : IResourceAllocationService
         IResourceAllocationDatabase allocationDatabase,
         IClientConfigurationDatabase clientConfigDatabase,
         IRateLimitService rateLimitService,
-        StorageApiMetrics metrics,
+        StorageMetrics metrics,
         IUsageRecorder usageRecorder)
     {
         _logger = logger;
@@ -156,7 +156,7 @@ public class ResourceAllocationService : IResourceAllocationService
             act => act?.SetTag("resource_pool.id", resourcePoolId));
 
         var pool = await _poolRepository.GetByIdAsync(resourcePoolId, cancellationToken)
-            ?? throw StorageDomainErrors.ResourcePoolNotFound(resourcePoolId);
+            ?? throw DomainErrors.ResourcePool(resourcePoolId);
 
         activity?.SetTag("resource_pool.max_slots", pool.MaxSlots);
         return pool;
@@ -171,7 +171,7 @@ public class ResourceAllocationService : IResourceAllocationService
             act => act?.SetTag("allocation.id", allocationId));
 
         var allocation = await _allocationDatabase.GetByIdAsync(allocationId, cancellationToken)
-            ?? throw StorageDomainErrors.AllocationNotFound(allocationId);
+            ?? throw DomainErrors.Allocation(allocationId);
 
         activity?.SetTag("allocation.released", allocation.IsReleased);
         return allocation;
@@ -191,7 +191,7 @@ public class ResourceAllocationService : IResourceAllocationService
             });
 
         var configuration = await _clientConfigDatabase.GetByIdAsync(clientId, cancellationToken)
-            ?? throw StorageDomainErrors.ClientNotFound(clientId);
+            ?? throw DomainErrors.Client(clientId);
 
         activity?.SetTag("configuration.enabled", configuration.IsEnabled);
 
@@ -200,7 +200,7 @@ public class ResourceAllocationService : IResourceAllocationService
             return configuration;
         }
 
-        throw StorageDomainErrors.ClientDisabled(clientId);
+        throw DomainErrors.ClientDisabled(clientId);
     }
 
     private async Task<(int PoolCount, int ClientCount)> ReadActiveCountsAsync(
@@ -252,7 +252,7 @@ public class ResourceAllocationService : IResourceAllocationService
         }
 
         RecordDenied(clientId, resourcePoolId, ResourceAllocationDenialReason.ClientCapReached);
-        throw StorageDomainErrors.ClientSlotLimitReached(resourcePoolId);
+        throw DomainErrors.ClientSlotLimitReached(resourcePoolId);
     }
 
     private async Task EnsureGlobalLimitAsync(
@@ -283,7 +283,7 @@ public class ResourceAllocationService : IResourceAllocationService
         }
 
         RecordDenied(clientId, resourcePoolId, ResourceAllocationDenialReason.RateLimited);
-        throw StorageDomainErrors.GlobalResourcePoolRateLimitExceeded(result.RetryAfterSeconds);
+        throw DomainErrors.GlobalResourcePoolRateLimitExceeded(result.RetryAfterSeconds);
     }
 
     private void EnsurePoolCapacity(
@@ -308,7 +308,7 @@ public class ResourceAllocationService : IResourceAllocationService
         }
 
         RecordDenied(clientId, resourcePoolId, ResourceAllocationDenialReason.NoSlots);
-        throw StorageDomainErrors.NoSlotsAvailable(resourcePoolId);
+        throw DomainErrors.NoSlotsAvailable(resourcePoolId);
     }
 
     private static ResourceAllocation CreateAllocation(

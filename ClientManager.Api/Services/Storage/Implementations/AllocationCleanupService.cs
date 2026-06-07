@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using ClientManager.DataAccess.Databases.Interfaces;
 using ClientManager.Shared.Logging;
-using ClientManager.Api.Services.Storage.Interfaces;
+using ClientManager.Api.Services.Interfaces;
 
 namespace ClientManager.Api.Services.Storage.Implementations;
 

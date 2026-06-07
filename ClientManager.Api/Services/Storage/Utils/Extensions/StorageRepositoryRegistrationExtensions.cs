@@ -14,7 +14,7 @@ namespace ClientManager.Api.Services.Storage.Utils.Extensions;
 public static class StorageRepositoryRegistrationExtensions
 {
     /// <summary>
-    /// Adds repository and database registrations for the storage API host.
+    /// Adds repository and database registrations for the in-process persistence layer.
     /// </summary>
     /// <param name="services">The service collection.</param>
     public static IServiceCollection AddStorageRepositories(this IServiceCollection services)

@@ -1,11 +1,11 @@
 using System.Diagnostics;
-using ClientManager.Api.Services.Storage.Models.Exceptions;
+using ClientManager.Api.Models.Exceptions;
 
 namespace ClientManager.Api.Services.Storage.Utils.Instrumentation;
 
 /// <summary>
 /// Shared activity/stopwatch envelope for hot-path storage operations (access, resources).
-/// Preserves result/reason tagging and StorageApiProblemException → denied mapping.
+/// Preserves result/reason tagging and expected <see cref="HttpProblemException"/> denial mapping.
 /// </summary>
 public static class StorageHotPathTrace
 {
@@ -27,7 +27,7 @@ public static class StorageHotPathTrace
         {
             return await operation(completion, cancellationToken);
         }
-        catch (StorageApiProblemException exception)
+        catch (HttpProblemException exception) when (exception.ErrorCode is not null)
         {
             completion.SetOutcome("denied", exception.ErrorCode);
             throw;

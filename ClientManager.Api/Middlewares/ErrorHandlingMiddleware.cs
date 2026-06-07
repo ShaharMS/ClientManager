@@ -1,5 +1,4 @@
 using ClientManager.Api.Models.Exceptions;
-using ClientManager.Api.Services.Storage.Models.Exceptions;
 using ClientManager.Shared.Models.Problems;
 using ClientManager.Shared.Logging;
 
@@ -24,15 +23,14 @@ public class ErrorHandlingMiddleware(
         }
         catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
         {
+            // This exception means the use r probably navigated away/terminated the connection
+            // We don't want to accidentally log this as an error, so we just rethrow it
+            // To let Kestrel handle it gracefully (Kestrel is the underlying web server of ASP.NET)
             throw;
         }
         catch (HttpProblemException exception)
         {
             await HandleProblemAsync(context, exception);
-        }
-        catch (StorageApiProblemException exception)
-        {
-            await HandleStorageProblemAsync(context, exception);
         }
         catch (Exception exception)
         {
@@ -42,27 +40,6 @@ public class ErrorHandlingMiddleware(
     }
 
     private async Task HandleProblemAsync(HttpContext context, HttpProblemException exception)
-    {
-        logger.Info(
-            "User fault encountered while processing request",
-            new
-            {
-                Path = context.Request.Path.Value,
-                exception.StatusCode,
-                exception.Title,
-                Detail = exception.Message,
-                exception.RetryAfterSeconds
-            });
-
-        if (exception.RetryAfterSeconds.HasValue)
-        {
-            context.Response.Headers.RetryAfter = exception.RetryAfterSeconds.Value.ToString();
-        }
-
-        await WriteProblemDetailsAsync(context, exception.StatusCode, exception.Title, exception.Message);
-    }
-
-    private async Task HandleStorageProblemAsync(HttpContext context, StorageApiProblemException exception)
     {
         logger.Info(
             "User fault encountered while processing request",

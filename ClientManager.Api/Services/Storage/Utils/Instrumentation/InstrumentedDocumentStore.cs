@@ -9,7 +9,7 @@ using ClientManager.Shared.Models.Search;
 namespace ClientManager.Api.Services.Storage.Utils.Instrumentation;
 
 /// <summary>
-/// Adds StorageApi tracing, metrics, and timing logs around a configured document store.
+/// Adds storage-domain tracing, metrics, and timing logs around a configured document store.
 /// </summary>
 public sealed class InstrumentedDocumentStore : IDocumentStore
 {
@@ -20,7 +20,7 @@ public sealed class InstrumentedDocumentStore : IDocumentStore
     private readonly StorageRole _role;
     private readonly PersistenceProvider _provider;
     private readonly PersistenceProvider _configuredProvider;
-    private readonly StorageApiMetrics _metrics;
+    private readonly StorageMetrics _metrics;
     private readonly IAppLogger<InstrumentedDocumentStore> _logger;
     private readonly string _storeType;
 
@@ -28,7 +28,7 @@ public sealed class InstrumentedDocumentStore : IDocumentStore
         IDocumentStore inner,
         StorageRole role,
         PersistenceProvider provider,
-        StorageApiMetrics metrics,
+        StorageMetrics metrics,
         IAppLogger<InstrumentedDocumentStore> logger)
     {
         _inner = inner;

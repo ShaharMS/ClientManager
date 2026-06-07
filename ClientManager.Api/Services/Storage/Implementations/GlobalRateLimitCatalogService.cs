@@ -1,6 +1,7 @@
 using ClientManager.DataAccess.Databases.Interfaces;
 using ClientManager.Shared.Models.Entities;
-using ClientManager.Api.Services.Storage.Models.Exceptions;
+using ClientManager.Api.Models.Exceptions;
+using ClientManager.Api.Services.Interfaces;
 using ClientManager.Api.Services.Storage.Interfaces;
 
 namespace ClientManager.Api.Services.Storage.Implementations;
@@ -20,19 +21,20 @@ public sealed class GlobalRateLimitCatalogService(
 
     protected override GlobalRateLimit ApplyId(GlobalRateLimit entity, string id) => entity with { Id = id };
 
-    protected override Exception NotFound(string id) => StorageDomainErrors.GlobalRateLimitNotFound(id);
+    protected override Exception NotFound(string id) => DomainErrors.GlobalRateLimit(id);
 
     protected override Exception AlreadyExists(string id) =>
         throw new InvalidOperationException("Use target-based conflict detection for global rate limits.");
 
-    public override async Task CreateAsync(GlobalRateLimit limit, CancellationToken cancellationToken)
+    public override async Task<GlobalRateLimit> CreateAsync(GlobalRateLimit limit, CancellationToken cancellationToken)
     {
         if (await _database.GetByTargetAsync(limit.TargetId, limit.TargetType, cancellationToken) is not null)
         {
-            throw StorageDomainErrors.GlobalRateLimitAlreadyExists(limit.TargetId, limit.TargetType);
+            throw DomainErrors.DuplicateGlobalRateLimit(limit.TargetId, limit.TargetType);
         }
 
         await Repository.CreateAsync(limit, cancellationToken);
         Cache.InvalidateCatalog();
+        return limit;
     }
 }

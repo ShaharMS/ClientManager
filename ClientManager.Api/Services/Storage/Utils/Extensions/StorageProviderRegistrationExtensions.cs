@@ -11,7 +11,7 @@ using StackExchange.Redis;
 namespace ClientManager.Api.Services.Storage.Utils.Extensions;
 
 /// <summary>
-/// Registers configured document-store providers for the storage API host.
+/// Registers configured document-store providers for the in-process persistence layer.
 /// </summary>
 public static class StorageProviderRegistrationExtensions
 {
@@ -48,7 +48,7 @@ public static class StorageProviderRegistrationExtensions
                     store,
                     role,
                     provider,
-                    serviceProvider.GetRequiredService<StorageApiMetrics>(),
+                    serviceProvider.GetRequiredService<StorageMetrics>(),
                     serviceProvider.GetRequiredService<IAppLogger<InstrumentedDocumentStore>>()));
         }
 

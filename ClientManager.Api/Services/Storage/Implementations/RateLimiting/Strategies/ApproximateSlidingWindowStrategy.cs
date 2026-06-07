@@ -1,7 +1,7 @@
 using ClientManager.DataAccess.Databases.Interfaces;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Api.Services.Storage.Models.Entities;
-using ClientManager.Api.Services.Storage.Interfaces;
+using ClientManager.Api.Services.Interfaces;
 using ClientManager.Api.Services.Storage.Utils.Instrumentation;
 
 namespace ClientManager.Api.Services.Storage.Implementations.RateLimiting.Strategies;
@@ -12,9 +12,9 @@ namespace ClientManager.Api.Services.Storage.Implementations.RateLimiting.Strate
 public class ApproximateSlidingWindowStrategy : IRateLimitStrategy
 {
     private readonly IRateLimitStateDatabase _stateDatabase;
-    private readonly StorageApiMetrics _metrics;
+    private readonly StorageMetrics _metrics;
 
-    public ApproximateSlidingWindowStrategy(IRateLimitStateDatabase stateDatabase, StorageApiMetrics metrics)
+    public ApproximateSlidingWindowStrategy(IRateLimitStateDatabase stateDatabase, StorageMetrics metrics)
     {
         _stateDatabase = stateDatabase;
         _metrics = metrics;

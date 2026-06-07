@@ -10,8 +10,7 @@ namespace ClientManager.Api.Utils.Instrumentation;
 /// All instruments share a single <see cref="Meter"/> named
 /// <c>"ClientManager"</c>, which external collectors (Prometheus, OTLP) can subscribe to.
 /// Activity spans are emitted from <c>"ClientManager.Api"</c>. Hot-path operation
-/// histograms record access checks, resource acquire/release calls, and storage-client
-/// round trips in milliseconds.
+/// histograms record HTTP request timing.
 /// </para>
 /// </summary>
 public class ClientManagerMetrics
@@ -38,7 +37,6 @@ public class ClientManagerMetrics
     public Histogram<double> AccessCheckDuration { get; }
     public Histogram<double> ResourceAcquireDuration { get; }
     public Histogram<double> ResourceReleaseDuration { get; }
-    public Histogram<double> StorageClientCallDuration { get; }
 
     public ClientManagerMetrics(IMeterFactory meterFactory)
     {
@@ -60,7 +58,6 @@ public class ClientManagerMetrics
         AccessCheckDuration = CreateHistogram("clientmanager.access.duration", "ms", "Public API access-check duration in milliseconds");
         ResourceAcquireDuration = CreateHistogram("clientmanager.resources.acquire.duration", "ms", "Public API resource-acquire duration in milliseconds");
         ResourceReleaseDuration = CreateHistogram("clientmanager.resources.release.duration", "ms", "Public API resource-release duration in milliseconds");
-        StorageClientCallDuration = CreateHistogram("clientmanager.storage_client.duration", "ms", "Public API outbound storage-client call duration in milliseconds");
     }
 
     private Counter<long> CreateCounter(string name, string description) =>

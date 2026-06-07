@@ -17,13 +17,13 @@ namespace ClientManager.Api.Controllers;
 [Tags("Client Configurations")]
 public class ClientConfigurationsController : ControllerBase
 {
-    private readonly IClientConfigurationService _clientConfigurationService;
+    private readonly IClientConfigurationCatalogService _clientConfigurationService;
 
     /// <summary>
     /// Initializes a new instance of <see cref="ClientConfigurationsController"/>.
     /// </summary>
     /// <param name="clientConfigurationService">The client configuration service.</param>
-    public ClientConfigurationsController(IClientConfigurationService clientConfigurationService)
+    public ClientConfigurationsController(IClientConfigurationCatalogService clientConfigurationService)
     {
         _clientConfigurationService = clientConfigurationService;
     }

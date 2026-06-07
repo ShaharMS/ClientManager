@@ -1,6 +1,7 @@
 using ClientManager.DataAccess.Repositories.Interfaces;
 using ClientManager.Shared.Models.Entities;
-using ClientManager.Api.Services.Storage.Models.Exceptions;
+using ClientManager.Api.Models.Exceptions;
+using ClientManager.Api.Services.Interfaces;
 using ClientManager.Api.Services.Storage.Interfaces;
 
 namespace ClientManager.Api.Services.Storage.Implementations;
@@ -18,7 +19,7 @@ public sealed class ServiceCatalogService(
 
     protected override Service ApplyId(Service entity, string id) => entity with { Id = id };
 
-    protected override Exception NotFound(string id) => StorageDomainErrors.ServiceNotFound(id);
+    protected override Exception NotFound(string id) => DomainErrors.Service(id);
 
-    protected override Exception AlreadyExists(string id) => StorageDomainErrors.ServiceAlreadyExists(id);
+    protected override Exception AlreadyExists(string id) => DomainErrors.DuplicateService(id);
 }

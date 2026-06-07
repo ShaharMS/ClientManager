@@ -2,19 +2,18 @@
 
 ## What This Guide Explains
 
-This project supports multiple persistence providers, but it does **not** choose a backend independently for every entity or request. Instead, `ClientManager.StorageApi` assigns one backend to each logical **storage role**, and every repository in that role uses the same configured provider.
+This project supports multiple persistence providers, but it does **not** choose a backend independently for every entity or request. Instead, `ClientManager.Api` assigns one backend to each logical **storage role** at startup, and every repository in that role uses the same configured provider.
 
 If you are trying to understand what happens when you provide Redis, MongoDB, or an NFS-backed shared volume, this is the split that matters.
 
 ## The Actual Storage Owner
 
-The persistence owner is `ClientManager.StorageApi`.
+The persistence owner is `ClientManager.Api`.
 
 - `ClientManager.AdminUI` talks to `ClientManager.Api`
-- `ClientManager.Api` talks to `ClientManager.StorageApi`
-- `ClientManager.StorageApi` is the only host that references `ClientManager.DataAccess`
+- `ClientManager.Api` references `ClientManager.DataAccess` in-process via `AddInProcessStorageServices`
 
-That means provider configuration is resolved in the Storage API host, not in the UI and not in the public API.
+That means provider configuration is resolved when the API host starts, not in the Admin UI.
 
 ## Storage Roles
 
