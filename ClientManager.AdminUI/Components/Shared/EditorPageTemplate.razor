@@ -1,0 +1,57 @@
+@typeparam TModel
+@inject NavigationManager Nav
+
+<div style="margin-bottom: var(--space-md);">
+    <RadzenLink Path="@BackPath" Text="@BackLinkText" Style="font-size: var(--font-size-sm);" />
+</div>
+
+<div class="cm-page-header">
+    <h1>@HeaderTitle</h1>
+    <p>@HeaderDescription</p>
+</div>
+
+@if (Loading)
+{
+    <FormSkeleton />
+}
+else if (Error is not null)
+{
+    <div class="alert alert-danger">@Error</div>
+}
+else
+{
+    <div class="cm-editor">
+        <EditForm Model="Model" OnValidSubmit="OnValidSubmit" FormName="@FormName">
+            <DataAnnotationsValidator />
+
+            <div class="cm-editor__card">
+                @ChildContent
+            </div>
+
+            <div class="cm-editor__actions">
+                <RadzenButton Text="Save" ButtonType="ButtonType.Submit" ButtonStyle="ButtonStyle.Primary" />
+                <RadzenButton Text="Cancel" Variant="Variant.Outlined" Click="@(() => Nav.NavigateTo(BackPath))" />
+            </div>
+        </EditForm>
+    </div>
+}
+
+@code {
+    [Parameter] public string? Id { get; set; }
+    [Parameter] public bool IsNew { get; set; }
+    [Parameter, EditorRequired] public string BackPath { get; set; } = string.Empty;
+    [Parameter] public string BackLinkText { get; set; } = "← Back";
+    [Parameter, EditorRequired] public string CreateTitle { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string CreateDescription { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string EditTitlePrefix { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string EditDescription { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string FormName { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public TModel Model { get; set; } = default!;
+    [Parameter] public bool Loading { get; set; }
+    [Parameter] public string? Error { get; set; }
+    [Parameter, EditorRequired] public EventCallback OnValidSubmit { get; set; }
+    [Parameter, EditorRequired] public RenderFragment ChildContent { get; set; } = default!;
+
+    private string HeaderTitle => IsNew ? CreateTitle : $"{EditTitlePrefix}{Id}";
+    private string HeaderDescription => IsNew ? CreateDescription : EditDescription;
+}

@@ -6,16 +6,14 @@ namespace ClientManager.AdminUI.Models;
 public enum EntityIdInputMode
 {
     /// <summary>
-    /// The value should reference an entity that already exists. Existing IDs are offered as
-    /// autocomplete suggestions, and a warning is shown while the typed value does not match
-    /// any known ID (likely a typo or a not-yet-created reference).
+    /// The value must be one of the known IDs. A filterable dropdown opens on focus; only
+    /// selections from the list are valid (green), unknown values show as invalid (red).
     /// </summary>
     Reference,
 
     /// <summary>
-    /// The value must be a new, unused ID. Existing IDs are offered as suggestions so the user
-    /// can see what is already taken, and an error is shown the moment the typed value collides
-    /// with an existing ID (for example, trying to create a service that already exists).
+    /// The value must be a new, unused ID. Existing IDs are offered as autocomplete hints;
+    /// a collision with an existing ID is invalid (red), an available ID is valid (green).
     /// </summary>
     Unique
 }

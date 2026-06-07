@@ -1,0 +1,72 @@
+@using ClientManager.AdminUI.Models.Allocations
+@using ClientManager.AdminUI.Models.Charts
+
+<div class="cm-monitor__chart-card">
+    <div class="cm-dashboard__chart-header">
+        <div class="cm-dashboard__filters">
+            <RadzenDropDown TValue="string" Value="@SelectedPoolId"
+                ValueChanged="@OnPoolChanged"
+                Data="@PoolOptions" TextProperty="Name" ValueProperty="Id"
+                Placeholder="Select pool..." Style="width: 220px;" />
+            <RadzenDropDown TValue="IEnumerable<string>" Value="@SelectedClientIds"
+                ValueChanged="@OnClientsChanged" Multiple="true"
+                Data="@ClientOptions" TextProperty="Name" ValueProperty="Id"
+                Placeholder="All clients" Style="width: 200px;" />
+            <RadzenDropDown TValue="string" Value="@SelectedMetric"
+                ValueChanged="@OnMetricChanged"
+                Data="@MetricOptions" TextProperty="Name" ValueProperty="Value"
+                Style="width: 220px;" />
+        </div>
+        <ChartSettingsDropdown OnTimeRangeChanged="OnTimeRangeChanged"
+                               OnPollingIntervalChanged="OnPollingIntervalChanged"
+                               OnAxisScaleChanged="OnAxisScaleChanged" />
+    </div>
+    <StackedUsageChartList Charts="@TargetCharts" AxisScale="@AxisScaleType"
+        CapLineTitle="@CapLineTitle" TitleSuffix="@ChartTitleSuffix"
+        Loading="@Loading" EmptyMessage="No allocation data available" />
+</div>
+
+@code {
+    public const string ActiveAllocationsMetric = "ActiveAllocations";
+    public const string AccessRequestsMetric = "AccessRequests";
+
+    [Parameter] public string SelectedPoolId { get; set; } = "";
+    [Parameter] public EventCallback<string> SelectedPoolIdChanged { get; set; }
+    [Parameter] public IEnumerable<string>? SelectedClientIds { get; set; }
+    [Parameter] public EventCallback<IEnumerable<string>?> SelectedClientIdsChanged { get; set; }
+    [Parameter] public string SelectedMetric { get; set; } = ActiveAllocationsMetric;
+    [Parameter] public EventCallback<string> SelectedMetricChanged { get; set; }
+    [Parameter] public List<NamedItem> PoolOptions { get; set; } = [];
+    [Parameter] public List<NamedItem> ClientOptions { get; set; } = [];
+    [Parameter] public List<MetricOption> MetricOptions { get; set; } = [];
+    [Parameter] public List<TargetChartData> TargetCharts { get; set; } = [];
+    [Parameter] public AxisScaleType AxisScaleType { get; set; }
+    [Parameter] public bool Loading { get; set; }
+    [Parameter] public EventCallback OnFilterChanged { get; set; }
+    [Parameter] public EventCallback MetricSelectionChanged { get; set; }
+    [Parameter] public EventCallback<TimeRangePreset> OnTimeRangeChanged { get; set; }
+    [Parameter] public EventCallback<PollingIntervalPreset> OnPollingIntervalChanged { get; set; }
+    [Parameter] public EventCallback<AxisScaleType> OnAxisScaleChanged { get; set; }
+
+    private bool IsAccessMetric => SelectedMetric == AccessRequestsMetric;
+    private string CapLineTitle => IsAccessMetric ? "Access Cap" : "Max Slots";
+    private string ChartTitleSuffix => IsAccessMetric ? "Access Requests" : "Active Allocations";
+
+    private async Task OnPoolChanged(string value)
+    {
+        await SelectedPoolIdChanged.InvokeAsync(value);
+        await OnFilterChanged.InvokeAsync();
+    }
+
+    private async Task OnClientsChanged(IEnumerable<string>? value)
+    {
+        await SelectedClientIdsChanged.InvokeAsync(value);
+        await OnFilterChanged.InvokeAsync();
+    }
+
+    private async Task OnMetricChanged(string value)
+    {
+        await SelectedMetricChanged.InvokeAsync(value);
+        await MetricSelectionChanged.InvokeAsync();
+    }
+}

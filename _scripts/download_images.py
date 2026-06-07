@@ -65,12 +65,6 @@ PRODUCTION_TARGETS = (
         image_args=(("SDK_IMAGE", "sdk"), ("ASPNET_IMAGE", "aspnet")),
     ),
     DockerfileTarget(
-        project_name="ClientManager.StorageApi",
-        dockerfile_path=REPO_ROOT / "ClientManager.StorageApi" / "Dockerfile",
-        image_repository="clientmanager/storageapi",
-        image_args=(("SDK_IMAGE", "sdk"), ("ASPNET_IMAGE", "aspnet")),
-    ),
-    DockerfileTarget(
         project_name="ClientManager.DataAccess.Tests",
         dockerfile_path=REPO_ROOT / "ClientManager.DataAccess.Tests" / "Dockerfile",
         image_repository="clientmanager/dataaccess-tests",

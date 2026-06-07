@@ -8,7 +8,7 @@ namespace ClientManager.Shared.Configuration.Storage;
 /// per-role <see cref="StorageRoleBinding"/>.
 /// </para>
 /// </summary>
-public class RedisStoreOptions
+public record RedisStoreOptions
 {
     /// <summary>
     /// Redis host or DNS name (for example <c>redis</c> or <c>cache-01.redis.internal</c>).

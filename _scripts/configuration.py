@@ -15,7 +15,6 @@ SHARED_API_SETTINGS = {
 SHARED_LOCAL_RUNTIME_SETTINGS = {
     "docker_host": "host.docker.internal",
     "api_port": 5062,
-    "storage_port": 5063,
 }
 
 SHARED_QUERY_SETTINGS = {
@@ -26,7 +25,7 @@ SHARED_QUERY_SETTINGS = {
 SHARED_DATA_SETTINGS = {
     "storage_data_dir_env_var": "CLIENTMANAGER_STORAGE_DATA_DIR",
     "repo_data_directory": REPO_ROOT / "data",
-    "storage_api_data_directory": REPO_ROOT / "ClientManager.StorageApi" / "data",
+    "api_data_directory": REPO_ROOT / "ClientManager.Api" / "data",
     "usage_snapshots_collection": "UsageSnapshots",
     "usage_snapshots_file": "UsageSnapshots.json",
     "counters_file": "_counters.json",
@@ -592,7 +591,7 @@ def default_history_data_dir() -> Path:
     if repo_data_directory.exists():
         return repo_data_directory
 
-    return SHARED_DATA_SETTINGS["storage_api_data_directory"]
+    return SHARED_DATA_SETTINGS["api_data_directory"]
 
 
 ENABLED_CLIENT_IDS = _enabled_client_ids(CLIENT_CATALOG)

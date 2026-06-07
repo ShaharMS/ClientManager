@@ -5,7 +5,7 @@ namespace ClientManager.Shared.Models.Problems;
 /// title and detail, the HTTP status code, and the request trace identifier so callers can
 /// correlate a failure with server-side logs.
 /// </summary>
-public class ProblemResponse
+public record ProblemResponse
 {
     /// <summary>
     /// Short, human-readable summary of the problem type (for example, "Not Found").

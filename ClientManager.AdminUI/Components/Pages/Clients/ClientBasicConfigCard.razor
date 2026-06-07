@@ -1,0 +1,30 @@
+<div class="cm-editor__card">
+    <div class="cm-editor__section-title">Basic Configuration</div>
+    <div class="cm-editor__field">
+        <label>Client ID</label>
+        <EntityIdInput @bind-Value="Model.Id" Suggestions="ExistingClientIds"
+            Mode="EntityIdInputMode.Unique" EntityName="client" Disabled="@(!IsNew)" />
+    </div>
+    <div class="cm-editor__field">
+        <label>Name</label>
+        <RadzenTextBox @bind-Value="Model.Name" Style="width: 100%;" />
+    </div>
+    <div class="cm-editor__field">
+        <label>Enabled</label>
+        <RadzenSwitch @bind-Value="Model.IsEnabled" />
+    </div>
+    <div class="cm-editor__field">
+        <label>Contributes to Global Limits</label>
+        <RadzenSwitch @bind-Value="Model.ContributesToGlobalLimits" />
+    </div>
+    <div class="cm-editor__field">
+        <label>Exempt from Global Limits</label>
+        <RadzenSwitch @bind-Value="Model.ExemptFromGlobalLimits" />
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public ClientFormModel Model { get; set; } = null!;
+    [Parameter] public bool IsNew { get; set; }
+    [Parameter] public List<string> ExistingClientIds { get; set; } = [];
+}

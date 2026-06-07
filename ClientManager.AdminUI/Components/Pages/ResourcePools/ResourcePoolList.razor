@@ -1,134 +1,45 @@
 @page "/resource-pools"
 @inject ResourcePoolApiService PoolApi
 @inject NavigationManager Nav
-@inject IJSRuntime JS
-@implements IAsyncDisposable
 
-<div class="cm-page-header">
-    <h1>Resource Pools</h1>
-    <p>Manage resource pool definitions, slot limits, and TTL settings.</p>
-</div>
-
-@if (_loading)
-{
-    <TableSkeleton />
-}
-else if (_error is not null)
-{
-    <div class="alert alert-danger">@_error</div>
-}
-else
-{
-    <div class="cm-list-page__table-card">
-        <div class="cm-list-page__header">
-            <RadzenTextBox Placeholder="Search pools..."
-                Value="@_search"
-                ValueChanged="@((string v) => { _search = v; StateHasChanged(); })"
-                @oninput="@(args => { _search = args.Value?.ToString(); StateHasChanged(); })"
-                Style="width: 280px;" />
-            <RadzenButton Text="Create Resource Pool" Icon="add" Click="@(() => Nav.NavigateTo("/resource-pools/new"))"
-                ButtonStyle="ButtonStyle.Primary" />
-        </div>
-
-        <RadzenDataGrid Data="@_filteredPools" TItem="ResourcePool"
-            AllowSorting="true" AllowPaging="true" PageSize="@_pageSize"
-            PagerHorizontalAlign="HorizontalAlign.Center">
-            <Columns>
-                <RadzenDataGridColumn TItem="ResourcePool" Property="Id" Title="ID" Width="200px" />
-                <RadzenDataGridColumn TItem="ResourcePool" Property="Name" Title="Name" />
-                <RadzenDataGridColumn TItem="ResourcePool" Property="MaxSlots" Title="Max Slots" Width="120px" />
-                <RadzenDataGridColumn TItem="ResourcePool" Title="Allocation TTL" Width="150px">
-                    <Template Context="pool">@FormatTtl(pool.AllocationTtl)</Template>
-                </RadzenDataGridColumn>
-                <RadzenDataGridColumn TItem="ResourcePool" Title="Actions" Width="160px" Sortable="false">
-                    <Template Context="pool">
-                        <RadzenButton Icon="edit" Size="ButtonSize.Small" Variant="Variant.Text"
-                            Click="@(() => Nav.NavigateTo($"/resource-pools/{pool.Id}"))" />
-                        <RadzenButton Icon="delete" Size="ButtonSize.Small" Variant="Variant.Text"
-                            ButtonStyle="ButtonStyle.Danger"
-                            Click="@(() => DeleteAsync(pool.Id))" />
-                    </Template>
-                </RadzenDataGridColumn>
-            </Columns>
-        </RadzenDataGrid>
-    </div>
-}
+<ListPageTemplate @ref="_list" TItem="ResourcePool"
+    Title="Resource Pools"
+    Description="Manage resource pool definitions, slot limits, and TTL settings."
+    SearchPlaceholder="Search pools..."
+    CreateButtonText="Create Resource Pool"
+    CreateUrl="/resource-pools/new"
+    LoadItemsAsync="LoadPoolsAsync"
+    SearchableValues="pool => [pool.Id, pool.Name]">
+    <Columns>
+        <RadzenDataGridColumn TItem="ResourcePool" Property="Id" Title="ID" Width="200px" />
+        <RadzenDataGridColumn TItem="ResourcePool" Property="Name" Title="Name" />
+        <RadzenDataGridColumn TItem="ResourcePool" Property="MaxSlots" Title="Max Slots" Width="120px" />
+        <RadzenDataGridColumn TItem="ResourcePool" Title="Allocation TTL" Width="150px">
+            <Template Context="pool">@TimeSpanFormatter.FormatCompact(pool.AllocationTtl)</Template>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn TItem="ResourcePool" Title="Actions" Width="160px" Sortable="false">
+            <Template Context="pool">
+                <RadzenButton Icon="edit" Size="ButtonSize.Small" Variant="Variant.Text"
+                    Click="@(() => Nav.NavigateTo($"/resource-pools/{pool.Id}"))" />
+                <RadzenButton Icon="delete" Size="ButtonSize.Small" Variant="Variant.Text"
+                    ButtonStyle="ButtonStyle.Danger"
+                    Click="@(() => DeleteAsync(pool.Id))" />
+            </Template>
+        </RadzenDataGridColumn>
+    </Columns>
+</ListPageTemplate>
 
 @code {
-    private bool _loading = true;
-    private string? _error;
-    private string? _search;
-    private List<ResourcePool> _pools = [];
-    private int _pageSize = 10;
-    private IJSObjectReference? _tableJs;
-    private DotNetObjectReference<ResourcePoolList>? _selfRef;
+    private ListPageTemplate<ResourcePool>? _list;
 
-    private IEnumerable<ResourcePool> _filteredPools =>
-        string.IsNullOrWhiteSpace(_search)
-            ? _pools
-            : _pools.Where(p =>
-                p.Id.Contains(_search, StringComparison.OrdinalIgnoreCase) ||
-                p.Name.Contains(_search, StringComparison.OrdinalIgnoreCase));
-
-    protected override async Task OnInitializedAsync() => await LoadAsync();
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
-            _tableJs = await JS.InvokeAsync<IJSObjectReference>("import", "./js/table.js");
-            _selfRef = DotNetObjectReference.Create(this);
-            await _tableJs.InvokeVoidAsync("register", _selfRef);
-            await RecalculatePageSizeAsync();
-        }
-    }
-
-    [JSInvokable]
-    public async Task OnWindowResize() => await RecalculatePageSizeAsync();
-
-    private async Task RecalculatePageSizeAsync()
-    {
-        _pageSize = await _tableJs!.InvokeAsync<int>("getPageSize", 45);
-        StateHasChanged();
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        if (_tableJs is not null)
-        {
-            await _tableJs.InvokeVoidAsync("unregister");
-            await _tableJs.DisposeAsync();
-        }
-        _selfRef?.Dispose();
-    }
-
-    private async Task LoadAsync()
-    {
-        try
-        {
-            _pools = await PoolApi.GetAllAsync();
-            _error = null;
-        }
-        catch (HttpRequestException ex)
-        {
-            _error = $"Unable to connect to the API: {ex.Message}";
-        }
-        finally
-        {
-            _loading = false;
-        }
-    }
+    private async Task<IReadOnlyList<ResourcePool>> LoadPoolsAsync() => await PoolApi.GetAllAsync();
 
     private async Task DeleteAsync(string id)
     {
         await PoolApi.DeleteAsync(id);
-        await LoadAsync();
-    }
-
-    private static string FormatTtl(TimeSpan ttl)
-    {
-        if (ttl.TotalHours >= 1) return $"{ttl.TotalHours:0.#}h";
-        if (ttl.TotalMinutes >= 1) return $"{ttl.TotalMinutes:0.#}m";
-        return $"{ttl.TotalSeconds:0.#}s";
+        if (_list is not null)
+        {
+            await _list.ReloadAsync();
+        }
     }
 }

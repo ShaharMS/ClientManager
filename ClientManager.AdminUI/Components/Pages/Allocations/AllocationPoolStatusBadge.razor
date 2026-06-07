@@ -1,0 +1,27 @@
+@using ClientManager.AdminUI.Models.Allocations
+
+@if (!IsAccessMetric && Row.RemainingValue == 0)
+{
+    <StatusBadge Text="At Capacity" Variant="StatusBadgeVariant.Danger" />
+}
+else if (IsAccessMetric && Row.DeniedLast5Min > 0 && Row.CapValue > 0 && Row.CurrentValue >= Row.CapValue * 0.9)
+{
+    <StatusBadge Text="Hitting Limit" Variant="StatusBadgeVariant.Danger" />
+}
+else if (IsAccessMetric && Row.DeniedLast5Min > 0)
+{
+    <StatusBadge Text="Denied" Variant="StatusBadgeVariant.Warning" />
+}
+else if (IsAccessMetric && Row.CapValue > 0 && Row.CurrentValue >= Row.CapValue * 0.9)
+{
+    <StatusBadge Text="Near Limit" Variant="StatusBadgeVariant.Warning" />
+}
+else
+{
+    <StatusBadge Text="Available" Variant="StatusBadgeVariant.Success" />
+}
+
+@code {
+    [Parameter, EditorRequired] public PoolSummaryRow Row { get; set; } = null!;
+    [Parameter] public bool IsAccessMetric { get; set; }
+}

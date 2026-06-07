@@ -14,17 +14,10 @@ namespace ClientManager.Api.Middlewares;
 /// and status code dimensions.
 /// </para>
 /// </summary>
-public class RequestTrackingMiddleware
+public class RequestTrackingMiddleware(
+    RequestDelegate next,
+    IAppLogger<RequestTrackingMiddleware> logger)
 {
-    private readonly RequestDelegate _next;
-    private readonly IAppLogger<RequestTrackingMiddleware> _logger;
-
-    public RequestTrackingMiddleware(RequestDelegate next, IAppLogger<RequestTrackingMiddleware> logger)
-    {
-        _next = next;
-        _logger = logger;
-    }
-
     public async Task InvokeAsync(HttpContext context, ClientManagerMetrics metrics)
     {
         var stopwatch = Stopwatch.StartNew();
@@ -34,41 +27,43 @@ public class RequestTrackingMiddleware
 
         using var _ = NLog.ScopeContext.PushProperty("CorrelationId", correlationId);
 
-        _logger.Debug("Request started", new { context.Request.Method, Path = context.Request.Path.Value, QueryString = context.Request.QueryString.Value });
+        logger.Debug("Request started", new { context.Request.Method, Path = context.Request.Path.Value, QueryString = context.Request.QueryString.Value });
 
         try
         {
-            await _next(context);
+            await next(context);
         }
         finally
         {
             stopwatch.Stop();
             var statusCode = context.Response.StatusCode;
+            var requestTags = CreateRequestTags(context, includeStatusCode: true);
 
-            metrics.RequestsTotal.Add(1, new TagList
-            {
-                { "method", context.Request.Method },
-                { "endpoint", context.Request.Path.Value },
-                { "statusCode", statusCode.ToString() }
-            });
-
-            metrics.RequestDuration.Record(stopwatch.Elapsed.TotalMilliseconds, new TagList
-            {
-                { "method", context.Request.Method },
-                { "endpoint", context.Request.Path.Value }
-            });
+            metrics.RequestsTotal.Add(1, requestTags);
+            metrics.RequestDuration.Record(stopwatch.Elapsed.TotalMilliseconds, CreateRequestTags(context));
 
             if (statusCode >= 400)
             {
-                metrics.RequestErrors.Add(1, new TagList
-                {
-                    { "method", context.Request.Method },
-                    { "endpoint", context.Request.Path.Value },
-                    { "statusCode", statusCode.ToString() }
-                });
+                metrics.RequestErrors.Add(1, requestTags);
             }
 
-            _logger.Info("Request completed", new { context.Request.Method, Path = context.Request.Path.Value, StatusCode = statusCode, DurationMs = stopwatch.Elapsed.TotalMilliseconds });
+            logger.Info("Request completed", new { context.Request.Method, Path = context.Request.Path.Value, StatusCode = statusCode, DurationMs = stopwatch.Elapsed.TotalMilliseconds });
         }
+    }
+
+    private static TagList CreateRequestTags(HttpContext context, bool includeStatusCode = false)
+    {
+        var tags = new TagList
+        {
+            { "method", context.Request.Method },
+            { "endpoint", context.Request.Path.Value }
+        };
+
+        if (includeStatusCode)
+        {
+            tags.Add("statusCode", context.Response.StatusCode.ToString());
+        }
+
+        return tags;
     }
 }

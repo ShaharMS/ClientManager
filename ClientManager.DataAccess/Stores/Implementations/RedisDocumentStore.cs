@@ -4,6 +4,7 @@ using System.Text.Json;
 using ClientManager.DataAccess.Stores.Implementations.Helpers;
 using ClientManager.DataAccess.Stores.Interfaces;
 using ClientManager.Shared.Models.Search;
+using static ClientManager.DataAccess.Stores.Implementations.Helpers.StoreSerialization;
 using NRedisStack;
 using NRedisStack.RedisStackCommands;
 using NRedisStack.Search;
@@ -26,11 +27,6 @@ public class RedisDocumentStore : IDocumentStore
     private readonly string _globalKeyPrefix;
     private readonly bool _hasRediSearch;
     private readonly ConcurrentDictionary<string, bool> _createdIndexes = new();
-
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true
-    };
 
     /// <summary>
     /// Initializes a new instance of <see cref="RedisDocumentStore"/>.

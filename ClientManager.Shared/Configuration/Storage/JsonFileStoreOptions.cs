@@ -9,7 +9,7 @@ namespace ClientManager.Shared.Configuration.Storage;
 /// per-role <see cref="StorageRoleBinding"/>.
 /// </para>
 /// </summary>
-public class JsonFileStoreOptions
+public record JsonFileStoreOptions
 {
     /// <summary>
     /// The directory path where JSON data files are stored.

@@ -1,0 +1,44 @@
+@using ClientManager.AdminUI.Models.Dashboard
+
+<div class="cm-dashboard__table-card">
+    <div class="cm-dashboard__chart-header">
+        <span class="cm-dashboard__chart-title">Client Overview</span>
+        <RadzenTextBox Placeholder="Search clients..." Value="@SearchText"
+            ValueChanged="@OnSearchTextChanged"
+            @oninput="OnSearchInput"
+            Style="width: 250px;" />
+    </div>
+
+    <RadzenDataGrid Data="@FilteredRows" TItem="ClientSummaryTableRow"
+        AllowSorting="true" AllowPaging="true" PageSize="10"
+        PagerHorizontalAlign="HorizontalAlign.Center">
+        <Columns>
+            <RadzenDataGridColumn TItem="ClientSummaryTableRow" Property="ClientId" Title="Client ID" Width="150px" />
+            <RadzenDataGridColumn TItem="ClientSummaryTableRow" Property="DisplayName" Title="Who Am I?" Width="150px" />
+            <RadzenDataGridColumn TItem="ClientSummaryTableRow" Property="AccessibleServices" Title="Services" Width="100px" />
+            <RadzenDataGridColumn TItem="ClientSummaryTableRow" Property="TotalRateLimitCap" Title="Rate Limit Cap" Width="140px" />
+            <RadzenDataGridColumn TItem="ClientSummaryTableRow" Property="AccessiblePools" Title="Pools" Width="100px" />
+            <RadzenDataGridColumn TItem="ClientSummaryTableRow" Property="SlotsDisplay" Title="Slots (Used/Total)" Width="160px" />
+        </Columns>
+    </RadzenDataGrid>
+</div>
+
+@code {
+    [Parameter] public List<ClientSummaryTableRow> AllRows { get; set; } = [];
+    [Parameter] public List<ClientSummaryTableRow> FilteredRows { get; set; } = [];
+    [Parameter] public string? SearchText { get; set; }
+    [Parameter] public EventCallback<string?> SearchTextChanged { get; set; }
+    [Parameter] public EventCallback OnSearchChanged { get; set; }
+
+    private async Task OnSearchTextChanged(string? value)
+    {
+        await SearchTextChanged.InvokeAsync(value);
+        await OnSearchChanged.InvokeAsync();
+    }
+
+    private async Task OnSearchInput(ChangeEventArgs args)
+    {
+        await SearchTextChanged.InvokeAsync(args.Value?.ToString());
+        await OnSearchChanged.InvokeAsync();
+    }
+}

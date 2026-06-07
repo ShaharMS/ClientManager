@@ -11,25 +11,21 @@ namespace ClientManager.Api.Middlewares;
 /// they are translated and logged at warning level through a single path. Any other exception is
 /// treated as an unexpected defect and surfaced as a 500 with an error-level log.
 /// </summary>
-public class ErrorHandlingMiddleware
+public class ErrorHandlingMiddleware(
+    RequestDelegate next,
+    IAppLogger<ErrorHandlingMiddleware> logger)
 {
-    private readonly RequestDelegate _next;
-    private readonly IAppLogger<ErrorHandlingMiddleware> _logger;
-
-    public ErrorHandlingMiddleware(RequestDelegate next, IAppLogger<ErrorHandlingMiddleware> logger)
-    {
-        _next = next;
-        _logger = logger;
-    }
-
     public async Task InvokeAsync(HttpContext context)
     {
         try
         {
-            await _next(context);
+            await next(context);
         }
         catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
         {
+            // This exception means the use r probably navigated away/terminated the connection
+            // We don't want to accidentally log this as an error, so we just rethrow it
+            // To let Kestrel handle it gracefully (Kestrel is the underlying web server of ASP.NET)
             throw;
         }
         catch (HttpProblemException exception)
@@ -38,20 +34,14 @@ public class ErrorHandlingMiddleware
         }
         catch (Exception exception)
         {
-            _logger.Error("Internal error occured while processing request", exception, new { Path = context.Request.Path.Value, context.Request.Method });
+            logger.Error("Internal error occured while processing request", new { Path = context.Request.Path.Value, context.Request.Method }, exception);
             await WriteProblemDetailsAsync(context, StatusCodes.Status500InternalServerError, "Internal Server Error", "An unexpected error occurred.");
         }
     }
 
-    /// <summary>
-    /// Writes the RFC 7807 response for an expected failure. Expected failures are logged at
-    /// warning level — never error level — because they are part of the public contract rather
-    /// than defects, and the <c>Retry-After</c> header is preserved for throttled or unavailable
-    /// responses that carry a retry hint.
-    /// </summary>
     private async Task HandleProblemAsync(HttpContext context, HttpProblemException exception)
     {
-        _logger.Info(
+        logger.Info(
             "User fault encountered while processing request",
             new
             {

@@ -126,8 +126,7 @@ public class ResourceAllocationDatabase : IResourceAllocationDatabase
                 continue;
 
             await _store.SetAsync(Collection, allocation.Id, allocation with { IsReleased = true }, cancellationToken);
-            AddCounterDelta(counterDecrements, PoolCounterKey(allocation.ResourcePoolId), 1);
-            AddCounterDelta(counterDecrements, ClientCounterKey(allocation.ResourcePoolId, allocation.ClientId), 1);
+            ForEachAllocationKey(allocation, key => AddCounterDelta(counterDecrements, key, 1));
             count++;
         }
 
@@ -149,11 +148,7 @@ public class ResourceAllocationDatabase : IResourceAllocationDatabase
             if (allocation.IsReleased || allocation.ExpiresAt <= now)
                 continue;
 
-            var poolKey = PoolCounterKey(allocation.ResourcePoolId);
-            AddCounterValue(counterValues, poolKey);
-
-            var clientKey = ClientCounterKey(allocation.ResourcePoolId, allocation.ClientId);
-            AddCounterValue(counterValues, clientKey);
+            ForEachAllocationKey(allocation, key => AddCounterValue(counterValues, key));
         }
 
         await _store.SetManyCountersAsync(counterValues, cancellationToken);
@@ -181,6 +176,12 @@ public class ResourceAllocationDatabase : IResourceAllocationDatabase
     {
         var current = counters.TryGetValue(key, out var value) ? value : 0;
         counters[key] = current + amount;
+    }
+
+    private static void ForEachAllocationKey(ResourceAllocation allocation, Action<string> apply)
+    {
+        apply(PoolCounterKey(allocation.ResourcePoolId));
+        apply(ClientCounterKey(allocation.ResourcePoolId, allocation.ClientId));
     }
 
     private static void AddCounterValue(IDictionary<string, (long value, TimeSpan window)> counters, string key)

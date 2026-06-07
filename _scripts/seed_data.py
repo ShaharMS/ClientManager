@@ -1,7 +1,7 @@
 """
 Seeds the public ClientManager API with realistic mock data.
 
-Before running this script, start ClientManager.StorageApi first and then ClientManager.Api.
+Before running this script, start ClientManager.Api.
 
 Creates:
     - 20 services
@@ -390,7 +390,7 @@ def seed_historical_usage(data_dir: Path, history_days: int, seed: int, replace_
     action = "replaced" if replace_history else "merged"
     print(f"  [{action}] {len(generated):,} usage snapshot documents")
     print(f"  [wrote] {bucket_count:,} historical buckets to {data_dir / (USAGE_SNAPSHOTS_COLLECTION + '.json')}")
-    print("  [note] Restart StorageApi after file-backed historical seeding so in-memory caches/providers reload it.")
+    print("  [note] Restart ClientManager.Api after file-backed historical seeding so in-memory caches/providers reload it.")
 
 
 def api(method: str, path: str, body=None):
@@ -426,7 +426,7 @@ def verify_public_api():
         raise RuntimeError(
             f"Expected the public ClientManager API at {BASE_URL}, but "
             f"GET {API_PREFIX}/statistics/overview returned HTTP {status}: {response}. "
-            "Start ClientManager.StorageApi first, then ClientManager.Api."
+            "Start ClientManager.Api."
         )
 
 
@@ -461,7 +461,7 @@ def main():
     global BASE_URL
 
     parser = argparse.ArgumentParser(description="Seed the public ClientManager API with mock data")
-    parser.add_argument("--base-url", default=BASE_URL, help="Public API base URL (start StorageApi first)")
+    parser.add_argument("--base-url", default=BASE_URL, help="Public API base URL")
     parser.add_argument(
         "--skip-history",
         action="store_true",

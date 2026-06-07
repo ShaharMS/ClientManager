@@ -1,0 +1,50 @@
+@using ClientManager.AdminUI.Models.Monitor
+
+<div class="cm-list-page__table-card" style="margin-top: var(--space-lg);">
+    <div class="cm-dashboard__chart-header">
+        <span class="cm-dashboard__chart-title">All Services</span>
+    </div>
+    <RadzenDataGrid @ref="_grid" Data="@Rows" TItem="ServiceSummaryRow"
+        AllowSorting="true" AllowPaging="true" PageSize="15"
+        PagerHorizontalAlign="HorizontalAlign.Center">
+        <Columns>
+            <RadzenDataGridColumn TItem="ServiceSummaryRow" Property="Name" Title="Service" />
+            <RadzenDataGridColumn TItem="ServiceSummaryRow" Property="CurrentUsage" Title="Current" Width="100px" />
+            <RadzenDataGridColumn TItem="ServiceSummaryRow" Property="Cap" Title="Cap" Width="100px" />
+            <RadzenDataGridColumn TItem="ServiceSummaryRow" Title="Utilization" Width="200px">
+                <Template Context="row">
+                    @{
+                        var pct = row.Cap > 0 ? (int)(row.CurrentUsage * 100.0 / row.Cap) : 0;
+                    }
+                    <RadzenProgressBar Value="@pct" Max="100" ShowValue="true"
+                        ProgressBarStyle="@UtilizationHelper.GetProgressBarStyle(pct)" Style="height: 20px;" />
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="ServiceSummaryRow" Title="Status" Width="110px" Sortable="false">
+                <Template Context="row">
+                    @if (row.Cap > 0 && row.CurrentUsage >= row.Cap)
+                    {
+                        <StatusBadge Text="At Capacity" Variant="StatusBadgeVariant.Danger" />
+                    }
+                    else
+                    {
+                        <StatusBadge Text="Available" Variant="StatusBadgeVariant.Success" />
+                    }
+                </Template>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
+</div>
+
+@code {
+    [Parameter] public List<ServiceSummaryRow> Rows { get; set; } = [];
+    private RadzenDataGrid<ServiceSummaryRow>? _grid;
+
+    public async Task ReloadAsync(Func<Func<Task>, Task> dispatchAsync)
+    {
+        if (_grid is not null)
+        {
+            await dispatchAsync(_grid.Reload);
+        }
+    }
+}

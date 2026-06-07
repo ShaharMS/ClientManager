@@ -19,17 +19,22 @@ public abstract class HttpProblemException : Exception
     /// <c>Retry-After</c> header. Null when the failure does not warrant a retry hint.
     /// </param>
     /// <param name="innerException">The underlying cause, when one exists.</param>
+    /// <param name="errorCode">
+    /// Optional machine-readable code for tracing and hot-path denial tagging. Not surfaced in HTTP responses.
+    /// </param>
     protected HttpProblemException(
         int statusCode,
         string title,
         string message,
         int? retryAfterSeconds = null,
-        Exception? innerException = null)
+        Exception? innerException = null,
+        string? errorCode = null)
         : base(message, innerException)
     {
         StatusCode = statusCode;
         Title = title;
         RetryAfterSeconds = retryAfterSeconds;
+        ErrorCode = errorCode;
     }
 
     /// <summary>
@@ -47,4 +52,9 @@ public abstract class HttpProblemException : Exception
     /// hint applies. Surfaced as a <c>Retry-After</c> header by the error-handling middleware.
     /// </summary>
     public int? RetryAfterSeconds { get; }
+
+    /// <summary>
+    /// Optional machine-readable code for tracing. Null when the failure does not define one.
+    /// </summary>
+    public string? ErrorCode { get; }
 }

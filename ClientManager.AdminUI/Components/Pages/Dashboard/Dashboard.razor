@@ -1,0 +1,58 @@
+@page "/"
+@using ClientManager.AdminUI.Models.Charts
+@using ClientManager.AdminUI.Models.Dashboard
+
+<div class="cm-page-header">
+    <h1>Welcome</h1>
+    <p>Your system's performance at a glance.</p>
+</div>
+
+@if (_loading)
+{
+    <StatCardsSkeleton Count="5" />
+    <div class="cm-dashboard__charts" style="margin-top: var(--space-xl);">
+        <ChartSkeleton />
+        <ChartSkeleton />
+    </div>
+    <TableSkeleton RowCount="6" />
+}
+else if (_error is not null)
+{
+    <RadzenAlert AlertStyle="AlertStyle.Danger" Shade="Shade.Light">@_error</RadzenAlert>
+}
+else
+{
+    <DashboardStatsCards
+        TotalClients="_overview?.TotalClients"
+        TotalServices="_overview?.TotalServices"
+        TotalResourcePools="_overview?.TotalResourcePools"
+        GlobalUsage="_globalUsage"
+        AcquisitionPct="_acquisitionPct" />
+
+    <div class="cm-dashboard__charts">
+        <DashboardChartsSection
+            SelectedFilterType="_selectedFilterType"
+            SelectedFilterTypeChanged="@(v => _selectedFilterType = v)"
+            SelectedTargetId="_selectedTargetId"
+            SelectedTargetIdChanged="@(v => _selectedTargetId = v)"
+            SelectedClientIds="_selectedClientIds"
+            SelectedClientIdsChanged="@(v => _selectedClientIds = v)"
+            FilterTypes="_filterTypes"
+            FilterTargets="_filterTargets"
+            Clients="_clients"
+            TargetCharts="_targetCharts"
+            PerClientUsage="_perClientUsage"
+            AxisScaleType="_axisScaleType"
+            OnFilterChanged="OnFilterChanged"
+            OnTimeRangeChanged="OnTimeRangeChanged"
+            OnPollingIntervalChanged="OnPollingIntervalChanged"
+            OnAxisScaleChanged="OnAxisScaleChanged" />
+    </div>
+
+    <DashboardClientTable
+        AllRows="_clientSummaries"
+        FilteredRows="_filteredClientSummaries"
+        SearchText="_tableSearch"
+        SearchTextChanged="v => _tableSearch = v"
+        OnSearchChanged="OnTableSearchChanged" />
+}

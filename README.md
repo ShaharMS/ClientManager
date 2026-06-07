@@ -2,7 +2,7 @@
 
 Layered .NET application for managing clients, service access, resource pools, allocations, rate limits, and usage statistics.
 
-### Public API, storage API, admin UI, and pluggable persistence backends.
+### Public API, admin UI, and pluggable persistence backends.
 
 - [Structure](#structure)
 - [Architecture](#architecture)
@@ -17,17 +17,16 @@ Layered .NET application for managing clients, service access, resource pools, a
 ClientManager is organized around separate hosts and a single persistence owner:
 
 - `ClientManager.AdminUI` - Blazor administrative interface
-- `ClientManager.Api` - public application API
-- `ClientManager.StorageApi` - storage-facing API host and persistence owner
+- `ClientManager.Api` - public application API and in-process persistence owner
 - `ClientManager.DataAccess` - repositories, databases, and document stores
 - `ClientManager.Shared` - shared models, configuration, logging, and helpers
 - `ClientManager.DataAccess.Tests` - data-access test coverage
 
-This split keeps persistence logic out of the public API and the UI while still allowing the system to swap storage providers.
+This split keeps persistence logic behind the public API while still allowing the system to swap storage providers.
 
 # Architecture
 
-ClientManager is a layered system. Operators and tooling interact with the public surfaces, while all persistence is funneled through the Storage API.
+ClientManager is a layered system. Operators and tooling interact with the public surfaces, while all persistence runs in-process inside the API.
 
 ```mermaid
 flowchart TD
@@ -41,8 +40,7 @@ flowchart TD
     ui --> api[ClientManager.Api<br/>:5062]
     seed --> api
     traffic --> api
-    api --> storage[ClientManager.StorageApi<br/>:5063]
-    storage --> da[ClientManager.DataAccess]
+    api --> da[ClientManager.DataAccess]
 
     da --> provider{Persistence provider per storage role}
     provider --> mongo[MongoDB]
@@ -54,9 +52,8 @@ flowchart TD
 Request flow:
 
 1. The Admin UI and helper scripts call `ClientManager.Api`.
-2. `ClientManager.Api` delegates persistence-facing work to `ClientManager.StorageApi`.
-3. `ClientManager.StorageApi` is the only host that talks to `ClientManager.DataAccess`.
-4. `ClientManager.DataAccess` routes each storage role to its configured backend.
+2. `ClientManager.Api` owns persistence in-process and talks directly to `ClientManager.DataAccess`.
+3. `ClientManager.DataAccess` routes each storage role to its configured backend.
 
 # Getting Started
 
@@ -76,9 +73,8 @@ dotnet build ClientManager.slnx
 
 Start the applications bottom-up:
 
-1. `ClientManager.StorageApi`
-2. `ClientManager.Api`
-3. `ClientManager.AdminUI`
+1. `ClientManager.Api`
+2. `ClientManager.AdminUI`
 
 Then optionally seed demo data:
 
@@ -92,7 +88,7 @@ To populate the dashboard with live traffic during testing:
 python _scripts/traffic_generator.py --base-url http://localhost:5062 --interval 2.0
 ```
 
-Stop the traffic generator before stopping the API hosts.
+Stop the traffic generator before stopping the API host.
 
 ## Container and image helpers
 
@@ -122,7 +118,7 @@ This means the system routes storage by **role**, not by individual entity type 
 
 ## Provider model
 
-The `Persistence` section in `ClientManager.StorageApi/appsettings.json` supports:
+The `Persistence` section in `ClientManager.Api/appsettings.json` supports:
 
 - one `DefaultProvider` for the whole system
 - optional per-role overrides under `Roles`
@@ -211,8 +207,7 @@ Using different Redis `DatabaseIndex` values for different roles is supported. F
 
 ```text
 ClientManager.AdminUI/       Administrative UI
-ClientManager.Api/           Public API host
-ClientManager.StorageApi/    Storage API host
+ClientManager.Api/           Public API host and in-process persistence owner
 ClientManager.DataAccess/    Persistence layer
 ClientManager.Shared/        Shared contracts and utilities
 ClientManager.DataAccess.Tests/ Data-access tests

@@ -1,0 +1,52 @@
+@using ClientManager.AdminUI.Models.Monitor
+
+<div class="cm-list-page__table-card" style="margin-top: var(--space-lg);">
+    <div class="cm-dashboard__chart-header">
+        <span class="cm-dashboard__chart-title">Client Breakdown</span>
+    </div>
+    <RadzenDataGrid @ref="_grid" Data="@Rows" TItem="MonitorClientRow"
+        AllowSorting="true" AllowPaging="true" PageSize="15"
+        PagerHorizontalAlign="HorizontalAlign.Center">
+        <Columns>
+            <RadzenDataGridColumn TItem="MonitorClientRow" Property="ClientName" Title="Client" />
+            <RadzenDataGridColumn TItem="MonitorClientRow" Property="ServiceName" Title="Service" Width="150px" />
+            <RadzenDataGridColumn TItem="MonitorClientRow" Property="GrantedLast5Min" Title="Req (5m)" Width="100px" />
+            <RadzenDataGridColumn TItem="MonitorClientRow" Property="DeniedLast5Min" Title="Denied (5m)" Width="110px" />
+            <RadzenDataGridColumn TItem="MonitorClientRow" Title="Cap (5m)" Width="90px">
+                <Template Context="row">@UtilizationHelper.FormatCapDisplay(row.RateLimitCap)</Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="MonitorClientRow" Title="Utilization" Width="180px">
+                <Template Context="row">
+                    @if (row.RateLimitCap > 0)
+                    {
+                        var pct = (int)(row.GrantedLast5Min * 100.0 / row.RateLimitCap);
+                        <RadzenProgressBar Value="@pct" Max="100" ShowValue="true"
+                            ProgressBarStyle="@UtilizationHelper.GetProgressBarStyle(pct)" Style="height: 18px;" />
+                    }
+                    else
+                    {
+                        <span>-</span>
+                    }
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="MonitorClientRow" Title="Status" Width="120px" Sortable="false">
+                <Template Context="row">
+                    <MonitorClientStatusBadge Row="row" />
+                </Template>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
+</div>
+
+@code {
+    [Parameter] public List<MonitorClientRow> Rows { get; set; } = [];
+    private RadzenDataGrid<MonitorClientRow>? _grid;
+
+    public async Task ReloadAsync(Func<Func<Task>, Task> dispatchAsync)
+    {
+        if (_grid is not null)
+        {
+            await dispatchAsync(_grid.Reload);
+        }
+    }
+}

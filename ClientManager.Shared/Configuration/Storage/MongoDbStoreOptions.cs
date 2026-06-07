@@ -8,7 +8,7 @@ namespace ClientManager.Shared.Configuration.Storage;
 /// per-role <see cref="StorageRoleBinding"/>.
 /// </para>
 /// </summary>
-public class MongoDbStoreOptions
+public record MongoDbStoreOptions
 {
     /// <summary>
     /// The MongoDB connection string (for example <c>mongodb://localhost:27017</c>).

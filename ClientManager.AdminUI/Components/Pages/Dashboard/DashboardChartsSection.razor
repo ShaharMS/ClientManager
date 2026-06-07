@@ -1,0 +1,85 @@
+@using ClientManager.AdminUI.Models.Charts
+@using ClientManager.AdminUI.Models.Dashboard
+@inject EntityColorService Colors
+
+<div class="cm-dashboard__chart-card">
+    <div class="cm-dashboard__chart-header">
+        <div class="cm-dashboard__filters">
+            <RadzenDropDown TValue="string" Value="@SelectedFilterType"
+                ValueChanged="@OnFilterTypeChanged"
+                Data="@FilterTypes" TextProperty="Label" ValueProperty="Value"
+                Placeholder="Filter by..." Style="width:160px;" />
+            <RadzenDropDown TValue="string" Value="@SelectedTargetId"
+                ValueChanged="@OnTargetChanged"
+                Data="@FilterTargets" TextProperty="Name" ValueProperty="Id"
+                Placeholder="Select target..." Style="width:180px;" />
+            <RadzenDropDown TValue="IEnumerable<string>" Value="@SelectedClientIds"
+                ValueChanged="@OnClientsChanged" Multiple="true"
+                Data="@Clients" TextProperty="Name" ValueProperty="Id"
+                Placeholder="All clients" Style="width:200px;" />
+        </div>
+        <ChartSettingsDropdown OnTimeRangeChanged="OnTimeRangeChanged"
+                               OnPollingIntervalChanged="OnPollingIntervalChanged"
+                               OnAxisScaleChanged="OnAxisScaleChanged" />
+    </div>
+    <span class="cm-dashboard__chart-title">Usage Over Time</span>
+    <CombinedStackedUsageChart Charts="@TargetCharts" AxisScale="@AxisScaleType" />
+</div>
+
+<div class="cm-dashboard__chart-card">
+    <div class="cm-dashboard__chart-header">
+        <span class="cm-dashboard__chart-title">Usage Per Client</span>
+    </div>
+    @if (PerClientUsage.Count > 0)
+    {
+        <RadzenChart Style="height: 300px;">
+            <RadzenDonutSeries Data="@PerClientUsage" CategoryProperty="ClientName"
+                ValueProperty="Value"
+                Fills="@PerClientUsage.Select(p => Colors.GetColor(p.ClientId)).ToArray()" />
+            <RadzenLegend Position="LegendPosition.Right" />
+        </RadzenChart>
+    }
+    else
+    {
+        <div style="height: 300px; display: flex; align-items: center; justify-content: center; color: var(--color-text-muted);">
+            No usage data available
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string SelectedFilterType { get; set; } = "Service";
+    [Parameter] public EventCallback<string> SelectedFilterTypeChanged { get; set; }
+    [Parameter] public string? SelectedTargetId { get; set; }
+    [Parameter] public EventCallback<string?> SelectedTargetIdChanged { get; set; }
+    [Parameter] public IEnumerable<string>? SelectedClientIds { get; set; }
+    [Parameter] public EventCallback<IEnumerable<string>?> SelectedClientIdsChanged { get; set; }
+    [Parameter] public List<FilterOption> FilterTypes { get; set; } = [];
+    [Parameter] public List<NamedItem> FilterTargets { get; set; } = [];
+    [Parameter] public List<NamedItem> Clients { get; set; } = [];
+    [Parameter] public List<TargetChartData> TargetCharts { get; set; } = [];
+    [Parameter] public List<ClientUsagePoint> PerClientUsage { get; set; } = [];
+    [Parameter] public AxisScaleType AxisScaleType { get; set; }
+    [Parameter] public EventCallback OnFilterChanged { get; set; }
+    [Parameter] public EventCallback<TimeRangePreset> OnTimeRangeChanged { get; set; }
+    [Parameter] public EventCallback<PollingIntervalPreset> OnPollingIntervalChanged { get; set; }
+    [Parameter] public EventCallback<AxisScaleType> OnAxisScaleChanged { get; set; }
+
+    private async Task OnFilterTypeChanged(string value)
+    {
+        await SelectedFilterTypeChanged.InvokeAsync(value);
+        await OnFilterChanged.InvokeAsync();
+    }
+
+    private async Task OnTargetChanged(string? value)
+    {
+        await SelectedTargetIdChanged.InvokeAsync(value);
+        await OnFilterChanged.InvokeAsync();
+    }
+
+    private async Task OnClientsChanged(IEnumerable<string>? value)
+    {
+        await SelectedClientIdsChanged.InvokeAsync(value);
+        await OnFilterChanged.InvokeAsync();
+    }
+}

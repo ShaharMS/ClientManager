@@ -1,0 +1,60 @@
+@using ClientManager.AdminUI.Models.Charts
+@inject EntityColorService Colors
+
+@if (Charts.Count > 0)
+{
+    @foreach (var targetChart in Charts)
+    {
+        @if (!string.IsNullOrEmpty(targetChart.TargetName))
+        {
+            <span class="cm-dashboard__chart-title">@FormatTitle(targetChart)</span>
+        }
+        <RadzenChart Style="@($"height: {HeightPx}px;")">
+            @foreach (var clientArea in ChartSeriesTransform.GetChartSeries(targetChart.ClientSeries, AxisScale))
+            {
+                <RadzenStackedAreaSeries Data="@clientArea.Points"
+                    CategoryProperty="Label" ValueProperty="Value"
+                    Title="@clientArea.ClientName"
+                    Fill="@Colors.GetColor(clientArea.ClientId)"
+                    Stroke="@Colors.GetColor(clientArea.ClientId)">
+                    <TooltipTemplate Context="point">
+                        <span>@clientArea.ClientName: @(point.OriginalValue.ToString("N0"))</span>
+                    </TooltipTemplate>
+                </RadzenStackedAreaSeries>
+            }
+            <RadzenLineSeries Data="@ChartSeriesTransform.TransformPoints(targetChart.CapSeries, AxisScale)"
+                CategoryProperty="Label" ValueProperty="Value"
+                Title="@CapLineTitle" LineType="LineType.Dashed"
+                Stroke="var(--color-text-secondary)">
+                <TooltipTemplate Context="point">
+                    <span>@CapLineTitle: @(point.OriginalValue.ToString("N0"))</span>
+                </TooltipTemplate>
+            </RadzenLineSeries>
+            <RadzenCategoryAxis />
+            <RadzenValueAxis Formatter="@(AxisScale == AxisScaleType.Logarithmic ? LogarithmicScaleHelper.FormatAxisLabel : LogarithmicScaleHelper.FormatLinearAxisLabel)" />
+            <RadzenLegend Position="LegendPosition.Right" />
+        </RadzenChart>
+    }
+}
+else if (Loading)
+{
+    <SkeletonBlock CssClass="cm-skeleton--heading" />
+    <SkeletonBlock CssClass="cm-skeleton--chart" />
+}
+else
+{
+    <div class="cm-chart-empty">@EmptyMessage</div>
+}
+
+@code {
+    [Parameter] public IReadOnlyList<TargetChartData> Charts { get; set; } = [];
+    [Parameter] public AxisScaleType AxisScale { get; set; }
+    [Parameter] public string CapLineTitle { get; set; } = "Cap";
+    [Parameter] public int HeightPx { get; set; } = 400;
+    [Parameter] public bool Loading { get; set; }
+    [Parameter] public string EmptyMessage { get; set; } = "No usage data available";
+    [Parameter] public string? TitleSuffix { get; set; }
+
+    private string FormatTitle(TargetChartData chart) =>
+        TitleSuffix is null ? chart.TargetName : $"{chart.TargetName} - {TitleSuffix}";
+}

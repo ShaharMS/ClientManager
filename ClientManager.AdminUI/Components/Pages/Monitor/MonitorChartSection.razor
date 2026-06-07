@@ -1,0 +1,50 @@
+@using ClientManager.AdminUI.Models.Charts
+@using ClientManager.AdminUI.Models.Monitor
+
+<div class="cm-monitor__chart-card">
+    <div class="cm-dashboard__chart-header">
+        <div class="cm-dashboard__filters">
+            <RadzenDropDown TValue="string" Value="@SelectedServiceId"
+                ValueChanged="@OnServiceChanged"
+                Data="@ServiceOptions" TextProperty="Name" ValueProperty="Id"
+                Placeholder="Select service..." Style="width: 220px;" />
+            <RadzenDropDown TValue="IEnumerable<string>" Value="@SelectedClientIds"
+                ValueChanged="@OnClientsChanged" Multiple="true"
+                Data="@ClientOptions" TextProperty="Name" ValueProperty="Id"
+                Placeholder="All clients" Style="width: 200px;" />
+        </div>
+        <ChartSettingsDropdown OnTimeRangeChanged="OnTimeRangeChanged"
+                               OnPollingIntervalChanged="OnPollingIntervalChanged"
+                               OnAxisScaleChanged="OnAxisScaleChanged" />
+    </div>
+    <StackedUsageChartList Charts="@TargetCharts" AxisScale="@AxisScaleType"
+        CapLineTitle="Cap" Loading="@Loading" />
+</div>
+
+@code {
+    [Parameter] public string SelectedServiceId { get; set; } = "";
+    [Parameter] public EventCallback<string> SelectedServiceIdChanged { get; set; }
+    [Parameter] public IEnumerable<string>? SelectedClientIds { get; set; }
+    [Parameter] public EventCallback<IEnumerable<string>?> SelectedClientIdsChanged { get; set; }
+    [Parameter] public List<NamedItem> ServiceOptions { get; set; } = [];
+    [Parameter] public List<ClientOption> ClientOptions { get; set; } = [];
+    [Parameter] public List<TargetChartData> TargetCharts { get; set; } = [];
+    [Parameter] public AxisScaleType AxisScaleType { get; set; }
+    [Parameter] public bool Loading { get; set; }
+    [Parameter] public EventCallback OnFilterChanged { get; set; }
+    [Parameter] public EventCallback<TimeRangePreset> OnTimeRangeChanged { get; set; }
+    [Parameter] public EventCallback<PollingIntervalPreset> OnPollingIntervalChanged { get; set; }
+    [Parameter] public EventCallback<AxisScaleType> OnAxisScaleChanged { get; set; }
+
+    private async Task OnServiceChanged(string value)
+    {
+        await SelectedServiceIdChanged.InvokeAsync(value);
+        await OnFilterChanged.InvokeAsync();
+    }
+
+    private async Task OnClientsChanged(IEnumerable<string>? value)
+    {
+        await SelectedClientIdsChanged.InvokeAsync(value);
+        await OnFilterChanged.InvokeAsync();
+    }
+}

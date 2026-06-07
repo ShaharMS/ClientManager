@@ -24,29 +24,17 @@ public class AppLogger<T> : IAppLogger<T>
         _nlogLogger = LogManager.GetLogger(typeof(T).FullName ?? typeof(T).Name);
     }
 
-    public void Trace(string message) => Log(LogLevel.Trace, message, null, null);
-    public void Trace(string message, object extraData) => Log(LogLevel.Trace, message, null, extraData);
-    public void Trace(string message, Exception exception, object? extraData = null) => Log(LogLevel.Trace, message, exception, extraData);
+    public void Trace(string message, object? extraData = null, Exception? exception = null) => Log(LogLevel.Trace, message, exception, extraData);
 
-    public void Debug(string message) => Log(LogLevel.Debug, message, null, null);
-    public void Debug(string message, object extraData) => Log(LogLevel.Debug, message, null, extraData);
-    public void Debug(string message, Exception exception, object? extraData = null) => Log(LogLevel.Debug, message, exception, extraData);
+    public void Debug(string message, object? extraData = null, Exception? exception = null) => Log(LogLevel.Debug, message, exception, extraData);
 
-    public void Info(string message) => Log(LogLevel.Info, message, null, null);
-    public void Info(string message, object extraData) => Log(LogLevel.Info, message, null, extraData);
-    public void Info(string message, Exception exception, object? extraData = null) => Log(LogLevel.Info, message, exception, extraData);
+    public void Info(string message, object? extraData = null, Exception? exception = null) => Log(LogLevel.Info, message, exception, extraData);
 
-    public void Warn(string message) => Log(LogLevel.Warn, message, null, null);
-    public void Warn(string message, object extraData) => Log(LogLevel.Warn, message, null, extraData);
-    public void Warn(string message, Exception exception, object? extraData = null) => Log(LogLevel.Warn, message, exception, extraData);
+    public void Warn(string message, object? extraData = null, Exception? exception = null) => Log(LogLevel.Warn, message, exception, extraData);
 
-    public void Error(string message) => Log(LogLevel.Error, message, null, null);
-    public void Error(string message, object extraData) => Log(LogLevel.Error, message, null, extraData);
-    public void Error(string message, Exception exception, object? extraData = null) => Log(LogLevel.Error, message, exception, extraData);
+    public void Error(string message, object? extraData = null, Exception? exception = null) => Log(LogLevel.Error, message, exception, extraData);
 
-    public void Fatal(string message) => Log(LogLevel.Fatal, message, null, null);
-    public void Fatal(string message, object extraData) => Log(LogLevel.Fatal, message, null, extraData);
-    public void Fatal(string message, Exception exception, object? extraData = null) => Log(LogLevel.Fatal, message, exception, extraData);
+    public void Fatal(string message, object? extraData = null, Exception? exception = null) => Log(LogLevel.Fatal, message, exception, extraData);
 
     private void Log(LogLevel level, string message, Exception? exception, object? extraData)
     {

@@ -40,4 +40,9 @@ public interface IResourceAllocationService
     /// <param name="cancellationToken">Cancels the release operation.</param>
     /// <returns>The release result.</returns>
     Task<ResourceReleaseResponse> ReleaseAsync(string allocationId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Cleans up expired allocations.
+    /// </summary>
+    Task CleanupExpiredAllocationsAsync(CancellationToken cancellationToken = default);
 }

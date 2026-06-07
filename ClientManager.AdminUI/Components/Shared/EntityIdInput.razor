@@ -1,32 +1,44 @@
 @namespace ClientManager.AdminUI.Components.Shared
 
-@* As-you-type ID input: autocompletes from existing IDs and lints the typed value
-   (duplicate detection in Unique mode, unknown-reference warning in Reference mode). *@
-<div class="cm-id-input">
-    <RadzenAutoComplete TValue="string"
+@* As-you-type ID input with notched-border validation:
+   Unique — new ID must not collide; Reference — value must be a known ID from the list. *@
+<ValidatedOutlinedField ValidationState="@_validationState"
+                        ValidationMessage="@_validationMessage"
+                        MessageElementId="@_messageElementId"
+                        Disabled="@Disabled">
+    @if (Mode == EntityIdInputMode.Reference)
+    {
+        <RadzenDropDown TValue="string"
                         Value="@Value"
                         Data="@Suggestions"
                         Disabled="@Disabled"
                         Style="@Style"
                         Placeholder="@Placeholder"
+                        AllowFiltering="true"
+                        OpenOnFocus="true"
                         FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
-                        MinLength="0"
-                        FilterDelay="150"
-                        Change="@OnChanged"
-                        aria-label="@AriaLabel"
-                        aria-invalid="@(_severity == Severity.Error ? "true" : "false")" />
-
-    @if (_message is not null)
-    {
-        <div class="cm-id-input__message cm-id-input__message--@(_severity == Severity.Error ? "error" : "warning")"
-             role="@(_severity == Severity.Error ? "alert" : "status")">
-            @_message
-        </div>
+                        Change="@OnReferenceChanged"
+                        InputAttributes="@_inputAttributes" />
     }
-</div>
+    else
+    {
+        <RadzenAutoComplete TValue="string"
+                            Value="@Value"
+                            Data="@Suggestions"
+                            Disabled="@Disabled"
+                            Style="@Style"
+                            Placeholder="@Placeholder"
+                            FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                            MinLength="0"
+                            FilterDelay="150"
+                            OpenOnFocus="true"
+                            Change="@OnUniqueChanged"
+                            InputAttributes="@_inputAttributes" />
+    }
+</ValidatedOutlinedField>
 
 @code {
-    private enum Severity { Warning, Error }
+    private static int _nextMessageId;
 
     /// <summary>The current ID value (two-way bound).</summary>
     [Parameter] public string? Value { get; set; }
@@ -34,13 +46,13 @@
     /// <summary>Raised as the user types so the bound value stays in sync.</summary>
     [Parameter] public EventCallback<string?> ValueChanged { get; set; }
 
-    /// <summary>Existing IDs used both as autocomplete suggestions and as the linting set.</summary>
+    /// <summary>Existing IDs used both as suggestions and as the validation set.</summary>
     [Parameter] public IEnumerable<string> Suggestions { get; set; } = [];
 
     /// <summary>Whether the typed value must be unique or must reference an existing entity.</summary>
     [Parameter] public EntityIdInputMode Mode { get; set; } = EntityIdInputMode.Reference;
 
-    /// <summary>Human-readable entity noun used in lint messages (for example "service" or "client").</summary>
+    /// <summary>Human-readable entity noun used in accessible labels (for example "service" or "client").</summary>
     [Parameter] public string EntityName { get; set; } = "item";
 
     /// <summary>Disables the input (for example when editing an existing entity's immutable ID).</summary>
@@ -55,54 +67,96 @@
     /// <summary>Accessible label for the input.</summary>
     [Parameter] public string? AriaLabel { get; set; }
 
-    private string? _message;
-    private Severity _severity = Severity.Warning;
+    /// <summary>Raised when validation state changes.</summary>
+    [Parameter] public EventCallback<InputValidationState> ValidationStateChanged { get; set; }
 
-    protected override void OnParametersSet() => Validate(Value);
+    /// <summary>Current validation state.</summary>
+    public InputValidationState ValidationState => _validationState;
 
-    private async Task OnChanged(object? value)
+    private readonly string _messageElementId = $"cm-entity-id-msg-{Interlocked.Increment(ref _nextMessageId)}";
+
+    private InputValidationState _validationState = InputValidationState.Neutral;
+    private string? _validationMessage;
+    private IReadOnlyDictionary<string, object>? _inputAttributes;
+
+    protected override void OnParametersSet()
     {
-        var text = value as string;
+        Validate(Value);
+        RefreshInputAttributes();
+    }
+
+    private async Task OnUniqueChanged(object? value) => await ApplyValueAsync(value as string);
+
+    private async Task OnReferenceChanged(object? value) => await ApplyValueAsync(value as string);
+
+    private async Task ApplyValueAsync(string? text)
+    {
         Value = text;
         await ValueChanged.InvokeAsync(text);
         Validate(text);
+        RefreshInputAttributes();
     }
 
     private void Validate(string? value)
     {
-        var trimmed = value?.Trim();
+        var previous = _validationState;
 
-        if (Disabled || string.IsNullOrEmpty(trimmed))
+        if (Disabled || string.IsNullOrWhiteSpace(value))
         {
-            _message = null;
-            return;
-        }
-
-        var exists = Suggestions.Any(s => string.Equals(s, trimmed, StringComparison.OrdinalIgnoreCase));
-
-        if (Mode == EntityIdInputMode.Unique)
-        {
-            if (exists)
-            {
-                _message = $"A {EntityName} with ID \u201c{trimmed}\u201d already exists. Choose a different ID.";
-                _severity = Severity.Error;
-            }
-            else
-            {
-                _message = null;
-            }
+            _validationState = InputValidationState.Neutral;
+            _validationMessage = null;
         }
         else
         {
-            if (!exists)
+            var trimmed = value.Trim();
+            var exists = Suggestions.Any(s => string.Equals(s, trimmed, StringComparison.OrdinalIgnoreCase));
+
+            if (Mode == EntityIdInputMode.Unique)
             {
-                _message = $"No {EntityName} with ID \u201c{trimmed}\u201d exists yet \u2014 check the spelling.";
-                _severity = Severity.Warning;
+                if (exists)
+                {
+                    _validationState = InputValidationState.Invalid;
+                    _validationMessage = "Already exists";
+                }
+                else
+                {
+                    _validationState = InputValidationState.Valid;
+                    _validationMessage = "Available";
+                }
+            }
+            else if (exists)
+            {
+                _validationState = InputValidationState.Valid;
+                _validationMessage = "Valid selection";
             }
             else
             {
-                _message = null;
+                _validationState = InputValidationState.Invalid;
+                _validationMessage = "Not found";
             }
         }
+
+        if (previous != _validationState)
+        {
+            _ = ValidationStateChanged.InvokeAsync(_validationState);
+        }
+    }
+
+    private void RefreshInputAttributes()
+    {
+        var label = AriaLabel ?? EntityName;
+        var attrs = new Dictionary<string, object>
+        {
+            ["aria-label"] = label,
+            ["aria-invalid"] = _validationState == InputValidationState.Invalid
+        };
+
+        if (_validationState is InputValidationState.Valid or InputValidationState.Invalid
+            && !string.IsNullOrWhiteSpace(_validationMessage))
+        {
+            attrs["aria-describedby"] = _messageElementId;
+        }
+
+        _inputAttributes = attrs;
     }
 }

@@ -9,8 +9,8 @@ namespace ClientManager.Api.Models.Exceptions;
 /// </summary>
 public class RateLimitedException : HttpProblemException
 {
-    public RateLimitedException(string message, int? retryAfterSeconds = null)
-        : base(StatusCodes.Status429TooManyRequests, "Too Many Requests", message, retryAfterSeconds)
+    public RateLimitedException(string message, int? retryAfterSeconds = null, string? errorCode = null)
+        : base(StatusCodes.Status429TooManyRequests, "Too Many Requests", message, retryAfterSeconds, errorCode: errorCode)
     {
     }
 }

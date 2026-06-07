@@ -4,6 +4,7 @@ using System.Text.Json;
 using ClientManager.DataAccess.Stores.Implementations.Helpers;
 using ClientManager.DataAccess.Stores.Interfaces;
 using ClientManager.Shared.Models.Search;
+using static ClientManager.DataAccess.Stores.Implementations.Helpers.StoreSerialization;
 using Lucene.Net.Analysis.Standard;
 using Lucene.Net.Documents;
 using Lucene.Net.Index;
@@ -38,11 +39,6 @@ public class LuceneDocumentStore : IDocumentStore, IDisposable
     private readonly SemaphoreSlim _writeLock = new(1, 1);
     private readonly SearcherManager _searcherManager;
     private bool _disposed;
-
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true
-    };
 
     /// <summary>
     /// Initializes a new instance of <see cref="LuceneDocumentStore"/>.

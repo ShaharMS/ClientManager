@@ -1,7 +1,7 @@
 """
 Generates semi-random live traffic against the public ClientManager API.
 
-Before running this script, start ClientManager.StorageApi first and then ClientManager.Api.
+Before running this script, start ClientManager.Api.
 
 Simulates realistic client behavior:
   - Access checks (most common)
@@ -230,7 +230,7 @@ def main():
     global BASE_URL, INTERVAL
 
     parser = argparse.ArgumentParser(description="Generate random traffic against the public ClientManager API")
-    parser.add_argument("--base-url", default=BASE_URL, help="Public API base URL (start StorageApi first)")
+    parser.add_argument("--base-url", default=BASE_URL, help="Public API base URL")
     parser.add_argument("--interval", type=float, default=INTERVAL, help="Average seconds between bursts")
     args = parser.parse_args()
 
