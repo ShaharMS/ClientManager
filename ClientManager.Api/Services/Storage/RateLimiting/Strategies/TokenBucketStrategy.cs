@@ -1,7 +1,10 @@
+using ClientManager.Api.Models.Configuration;
 using ClientManager.DataAccess.Databases.Interfaces;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Api.Services.Interfaces;
 using ClientManager.Api.Services.Storage.Instrumentation;
+using ClientManager.Api.Services.Storage.RateLimiting;
+using Microsoft.Extensions.Options;
 
 namespace ClientManager.Api.Services.Storage.RateLimiting.Strategies;
 
@@ -12,11 +15,16 @@ public class TokenBucketStrategy : IRateLimitStrategy
 {
     private readonly IRateLimitStateDatabase _stateDatabase;
     private readonly StorageMetrics _metrics;
+    private readonly TimeSpan? _windowAlignmentAnchor;
 
-    public TokenBucketStrategy(IRateLimitStateDatabase stateDatabase, StorageMetrics metrics)
+    public TokenBucketStrategy(
+        IRateLimitStateDatabase stateDatabase,
+        StorageMetrics metrics,
+        IOptions<RateLimitingSettings> settings)
     {
         _stateDatabase = stateDatabase;
         _metrics = metrics;
+        _windowAlignmentAnchor = settings.Value.WindowAlignmentAnchor;
     }
 
     /// <inheritdoc />
@@ -78,7 +86,7 @@ public class TokenBucketStrategy : IRateLimitStrategy
                     {
                         IsAllowed = false,
                         RemainingRequests = 0,
-                        RetryAfterSeconds = Math.Max(1, (int)(state.RefillIntervalSeconds / state.TokensPerRefill))
+                        RetryAfterSeconds = GetRetryAfterSeconds(state)
                     };
                 }
 
@@ -95,7 +103,11 @@ public class TokenBucketStrategy : IRateLimitStrategy
         CancellationToken cancellationToken)
     {
         var initialTokens = state.BucketCapacity - 1;
-        await PersistStateAsync(state, initialTokens, state.Now, cancellationToken);
+        var alignedRefill = RateLimitWindowAlignment.GetWindowStart(
+            state.Now,
+            state.RefillIntervalSeconds,
+            _windowAlignmentAnchor);
+        await PersistStateAsync(state, initialTokens, alignedRefill, cancellationToken);
 
         return new RateLimitResult
         {
@@ -115,7 +127,7 @@ public class TokenBucketStrategy : IRateLimitStrategy
         {
             IsAllowed = false,
             RemainingRequests = 0,
-            RetryAfterSeconds = Math.Max(1, (int)(state.RefillIntervalSeconds / state.TokensPerRefill))
+            RetryAfterSeconds = GetRetryAfterSeconds(state)
         };
     }
 
@@ -147,7 +159,7 @@ public class TokenBucketStrategy : IRateLimitStrategy
         }, cancellationToken);
     }
 
-    private static BucketComputation CalculateBucketState(
+    private BucketComputation CalculateBucketState(
         long storedTokens,
         long lastRefill,
         BucketStateContext state)
@@ -157,15 +169,27 @@ public class TokenBucketStrategy : IRateLimitStrategy
             return new BucketComputation(0, 0, 0);
         }
 
-        var elapsed = state.Now - lastRefill;
-        var tokensToAdd = (elapsed / state.RefillIntervalSeconds) * state.TokensPerRefill;
+        var alignedNow = RateLimitWindowAlignment.GetWindowStart(
+            state.Now,
+            state.RefillIntervalSeconds,
+            _windowAlignmentAnchor);
+        var alignedLast = RateLimitWindowAlignment.GetWindowStart(
+            lastRefill,
+            state.RefillIntervalSeconds,
+            _windowAlignmentAnchor);
+        var intervalsPassed = (alignedNow - alignedLast) / state.RefillIntervalSeconds;
+        var tokensToAdd = intervalsPassed * state.TokensPerRefill;
         var tokens = Math.Min(state.BucketCapacity, storedTokens + tokensToAdd);
-        var newLastRefill = tokensToAdd > 0
-            ? lastRefill + (tokensToAdd / state.TokensPerRefill) * state.RefillIntervalSeconds
-            : lastRefill;
+        var newLastRefill = intervalsPassed > 0 ? alignedNow : lastRefill;
 
         return new BucketComputation(tokens, lastRefill, newLastRefill);
     }
+
+    private int GetRetryAfterSeconds(BucketStateContext state) =>
+        RateLimitWindowAlignment.GetRetryAfterSeconds(
+            state.Now,
+            state.RefillIntervalSeconds,
+            _windowAlignmentAnchor);
 
     private static BucketStateContext CreateState(string key, ClientRateLimit rateLimit)
     {

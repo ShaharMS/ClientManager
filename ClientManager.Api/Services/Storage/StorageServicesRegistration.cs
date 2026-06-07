@@ -1,4 +1,6 @@
+using ClientManager.Api.Models.Configuration;
 using ClientManager.Api.Services.Interfaces;
+using Microsoft.Extensions.Options;
 using ClientManager.Api.Services.Storage.Exporters;
 using ClientManager.Api.Services.Storage.Extensions;
 using ClientManager.Api.Services.Storage.Instrumentation;
@@ -45,6 +47,10 @@ public static class StorageServicesRegistration
             .Validate(options => options.StatisticsTtl > TimeSpan.Zero, "StorageReadCache:StatisticsTtl must be positive.")
             .ValidateOnStart();
         services.AddSingleton<IStorageReadCache, StorageReadCache>();
+        services.AddSingleton<IValidateOptions<RateLimitingSettings>, RateLimitingSettingsValidator>();
+        services.AddOptions<RateLimitingSettings>()
+            .Bind(configuration.GetSection(RateLimitingSettings.SectionName))
+            .ValidateOnStart();
         RegisterRateLimiting(services);
         RegisterRuntimeServices(services);
         RegisterReadModelServices(services);

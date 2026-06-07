@@ -1,7 +1,10 @@
+using ClientManager.Api.Models.Configuration;
 using ClientManager.DataAccess.Databases.Interfaces;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Api.Services.Interfaces;
 using ClientManager.Api.Services.Storage.Instrumentation;
+using ClientManager.Api.Services.Storage.RateLimiting;
+using Microsoft.Extensions.Options;
 
 namespace ClientManager.Api.Services.Storage.RateLimiting.Strategies;
 
@@ -12,11 +15,16 @@ public class FixedWindowStrategy : IRateLimitStrategy
 {
     private readonly IRateLimitStateDatabase _stateDatabase;
     private readonly StorageMetrics _metrics;
+    private readonly TimeSpan? _windowAlignmentAnchor;
 
-    public FixedWindowStrategy(IRateLimitStateDatabase stateDatabase, StorageMetrics metrics)
+    public FixedWindowStrategy(
+        IRateLimitStateDatabase stateDatabase,
+        StorageMetrics metrics,
+        IOptions<RateLimitingSettings> settings)
     {
         _stateDatabase = stateDatabase;
         _metrics = metrics;
+        _windowAlignmentAnchor = settings.Value.WindowAlignmentAnchor;
     }
 
     /// <inheritdoc />
@@ -34,11 +42,11 @@ public class FixedWindowStrategy : IRateLimitStrategy
             {
                 var windowSeconds = (long)rateLimit.Window.TotalSeconds;
                 var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-                var windowNumber = now / windowSeconds;
-                var windowKey = $"fixed:{key}:{windowNumber}";
+                var windowStart = RateLimitWindowAlignment.GetWindowStart(now, windowSeconds, _windowAlignmentAnchor);
+                var windowKey = $"fixed:{key}:{windowStart}";
 
                 var count = await _stateDatabase.IncrementAsync(windowKey, rateLimit.Window, cancellationToken);
-                return CreateEvaluateResult(rateLimit.MaxRequests, count, windowNumber, windowSeconds, now);
+                return CreateEvaluateResult(rateLimit.MaxRequests, count, windowStart, windowSeconds, now);
             });
     }
 
@@ -57,18 +65,18 @@ public class FixedWindowStrategy : IRateLimitStrategy
             {
                 var windowSeconds = (long)rateLimit.Window.TotalSeconds;
                 var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-                var windowNumber = now / windowSeconds;
-                var windowKey = $"fixed:{key}:{windowNumber}";
+                var windowStart = RateLimitWindowAlignment.GetWindowStart(now, windowSeconds, _windowAlignmentAnchor);
+                var windowKey = $"fixed:{key}:{windowStart}";
 
                 var count = await _stateDatabase.GetCountAsync(windowKey, cancellationToken);
-                return CreatePeekResult(rateLimit.MaxRequests, count, windowNumber, windowSeconds, now);
+                return CreatePeekResult(rateLimit.MaxRequests, count, windowStart, windowSeconds, now);
             });
     }
 
-    private static RateLimitResult CreateEvaluateResult(
+    private RateLimitResult CreateEvaluateResult(
         int maxRequests,
         long count,
-        long windowNumber,
+        long windowStart,
         long windowSeconds,
         long now)
     {
@@ -81,13 +89,13 @@ public class FixedWindowStrategy : IRateLimitStrategy
             };
         }
 
-        return CreateDeniedResult(windowNumber, windowSeconds, now);
+        return CreateDeniedResult(windowSeconds, now);
     }
 
-    private static RateLimitResult CreatePeekResult(
+    private RateLimitResult CreatePeekResult(
         int maxRequests,
         long count,
-        long windowNumber,
+        long windowStart,
         long windowSeconds,
         long now)
     {
@@ -100,20 +108,18 @@ public class FixedWindowStrategy : IRateLimitStrategy
             };
         }
 
-        return CreateDeniedResult(windowNumber, windowSeconds, now);
+        return CreateDeniedResult(windowSeconds, now);
     }
 
-    private static RateLimitResult CreateDeniedResult(
-        long windowNumber,
+    private RateLimitResult CreateDeniedResult(
         long windowSeconds,
         long now)
     {
-        var retryAfter = (windowNumber + 1) * windowSeconds - now;
         return new RateLimitResult
         {
             IsAllowed = false,
             RemainingRequests = 0,
-            RetryAfterSeconds = (int)retryAfter
+            RetryAfterSeconds = RateLimitWindowAlignment.GetRetryAfterSeconds(now, windowSeconds, _windowAlignmentAnchor)
         };
     }
 }
