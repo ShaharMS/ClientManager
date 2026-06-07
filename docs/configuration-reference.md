@@ -150,7 +150,7 @@ Controls usage-buffer flush cadence and snapshot retention.
 | --- | --- | --- |
 | `OtlpEndpoint` | — | Absolute URI for OTLP trace export (e.g. `http://localhost:4317`). When empty, traces stay in-process only. |
 
-`appsettings.Development.json` sets `OtlpEndpoint` to `http://localhost:4317` for local Jaeger via `launch_observability_ui.py`.
+`appsettings.Development.json` sets `OtlpEndpoint` to `http://localhost:4317` for local Jaeger via `launch_observability_ui.py`. For Prometheus scrape jobs, metric names, and Grafana setup, see the [Metrics integration guide](metrics-integration-guide.md).
 
 ### `ApiVersioning`
 

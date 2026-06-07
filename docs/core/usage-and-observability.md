@@ -90,27 +90,19 @@ Hot-path configuration reads benefit from caching; usage writes go to the in-mem
 
 ## Metrics and tracing
 
-### OpenTelemetry / Prometheus
+ClientManager emits OpenTelemetry runtime metrics, usage/capacity gauges, and OTLP traces. The statistics API and Admin UI charts are separate from external monitoring.
 
-`StorageMetrics` and `ClientManagerMetrics` register counters and histograms for:
+**For Prometheus, Grafana, Jaeger, scrape configs, metric names, and example alerts**, see the dedicated [Metrics integration guide](../metrics-integration-guide.md).
 
-- Access check outcomes (granted / denied by reason)
-- Resource acquire / release outcomes
-- Rate-limit evaluations
-- Storage operation latency
+At a glance:
 
-Scrape Prometheus-format metrics from `/prometheus/otel` on the API host.
+| Path | Purpose |
+| --- | --- |
+| `/prometheus/otel` | Runtime counters and histograms (access, rate limits, HTTP, storage latency) |
+| `/api/v1/metrics/prometheus` | Usage and pool-capacity gauges from snapshots |
+| `Observability:OtlpEndpoint` | OTLP trace export to Jaeger, Tempo, etc. |
 
-Hot-path spans use the `StorageHotPathTrace` helper with operation names like `storage.access.check` and `storage.resource.acquire`. Tags include `client.id`, `service.id`, and `resource_pool.id`.
-
-### Export endpoints
-
-| Path | Format | Purpose |
-| --- | --- | --- |
-| `/api/v1/metrics/prometheus` | Prometheus text | External monitoring |
-| `/api/v1/metrics/grafana` | Grafana-oriented JSON | Dashboard import helpers |
-
-These complement — but do not replace — the statistics API for operator-facing charts in the Admin UI.
+Hot-path spans use operation names like `storage.access.check` and `storage.resource.acquire`, tagged with `client.id`, `service.id`, and `resource_pool.id`.
 
 ## Admin UI surfaces
 
@@ -151,6 +143,7 @@ Stop the traffic generator before shutting down the API so buffered usage events
 
 ## Related reading
 
+- [Metrics integration guide](../metrics-integration-guide.md) — Prometheus, Grafana, Jaeger, OTLP
 - [Request flow](request-flow.md) — when each event type is emitted
 - [Domain model](domain-model.md) — targets and limits that shape usage patterns
 - [Architecture overview](architecture.md) — background workers and observability endpoints

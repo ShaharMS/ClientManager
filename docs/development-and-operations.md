@@ -59,15 +59,9 @@ All scripts accept `--base-url` where relevant (default `http://localhost:5062`)
 python _scripts/launch_observability_ui.py
 ```
 
-Default UIs:
+Default UIs: Grafana http://localhost:3000, Prometheus http://localhost:9090, Jaeger http://localhost:16686.
 
-| Service | URL |
-| --- | --- |
-| Grafana | http://localhost:3000 |
-| Prometheus | http://localhost:9090 |
-| Jaeger | http://localhost:16686 |
-
-Set `Observability:OtlpEndpoint` to `http://localhost:4317` (already in `appsettings.Development.json`) so the API exports traces. Metrics are available at `/prometheus/otel` and `/api/v1/metrics/prometheus`.
+For scrape targets, metric catalogs, PromQL examples, production wiring, and security notes, see the [Metrics integration guide](metrics-integration-guide.md).
 
 ### Performance baseline
 
@@ -77,16 +71,15 @@ python _scripts/performance_baseline.py --base-url http://localhost:5062
 
 Reports latency percentiles and JsonFile storage sizes under `data/` for regression comparisons.
 
-## Testing
+## Validation
 
 | What | How |
 | --- | --- |
-| JsonFile storage verification | `dotnet run --project ClientManager.DataAccess.Tests` |
 | Solution build | `dotnet build ClientManager.slnx` |
-| Manual API testing | Swagger at `/docs`, or curl against gatekeeping endpoints |
+| Manual API checks | Swagger at `/docs`, or curl against gatekeeping endpoints |
 | Dashboard validation | `seed_data.py` + `traffic_generator.py` |
 
-There is no CI workflow in the repository today. Validate locally before merging.
+There is no automated test suite or CI workflow in the repository today. Validate locally before merging.
 
 ## Docker and Compose
 

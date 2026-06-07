@@ -20,7 +20,6 @@ ClientManager is organized around separate hosts and a single persistence owner:
 - `ClientManager.Api` - public application API and in-process persistence owner
 - `ClientManager.DataAccess` - repositories, databases, and document stores
 - `ClientManager.Shared` - shared models, configuration, logging, and helpers
-- `ClientManager.DataAccess.Tests` - data-access test coverage
 
 This split keeps persistence logic behind the public API while still allowing the system to swap storage providers.
 
@@ -210,7 +209,6 @@ ClientManager.AdminUI/       Administrative UI
 ClientManager.Api/           Public API host and in-process persistence owner
 ClientManager.DataAccess/    Persistence layer
 ClientManager.Shared/        Shared contracts and utilities
-ClientManager.DataAccess.Tests/ Data-access tests
 _scripts/                    Local development scripts
 data/                        Local development data files
 docs/                        Project documentation
@@ -245,6 +243,7 @@ mkdocs build    # output in site/
 - [Admin UI guide](docs/admin-ui-guide.md) — operator screens and workflows
 - [API overview](docs/api-overview.md) — catalog, statistics, and runtime endpoints
 - [Development and operations](docs/development-and-operations.md) — scripts, security, troubleshooting
+- [Metrics integration guide](docs/metrics-integration-guide.md) — Prometheus, Grafana, Jaeger, OTLP scrape setup
 - [Integration guide](docs/integration-guide.md) — nginx example, client identification, propagating denials
 - [Persistence guide](docs/persistence-guide.md)
 - [DataAccess notes](ClientManager.DataAccess/README.md)

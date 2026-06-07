@@ -56,6 +56,7 @@ nav:
     - Request flow: core/request-flow.md
     - Usage and observability: core/usage-and-observability.md
   - Integration guide: integration-guide.md
+  - Metrics integration guide: metrics-integration-guide.md
   - Persistence guide: persistence-guide.md
 
 extra:

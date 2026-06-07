@@ -92,14 +92,11 @@ Statistics endpoints are read-only and safe to poll for dashboards.
 
 | Method | Path | Format |
 | --- | --- | --- |
-| `GET` | `/api/v1/metrics/prometheus` | Prometheus text exposition |
+| `GET` | `/api/v1/metrics/prometheus` | Prometheus text — usage and pool gauges |
 | `GET` | `/api/v1/metrics/grafana` | Grafana-oriented JSON |
+| `GET` | `/prometheus/otel` | Prometheus text — OpenTelemetry runtime metrics |
 
-Additionally, OpenTelemetry metrics are scraped at:
-
-| Path | Format |
-| --- | --- |
-| `/prometheus/otel` | Prometheus (OTEL exporter) |
+See the [Metrics integration guide](metrics-integration-guide.md) for Prometheus scrape jobs, the full metric catalog, OTLP trace setup, and example alerts.
 
 ## Infrastructure endpoints
 

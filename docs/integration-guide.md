@@ -295,7 +295,7 @@ Always log ClientManager's `traceId` from error bodies when opening incidents �
 4. **Call `GET /api/v1/access/check`** before backend work (via nginx `auth_request`, app middleware, or API gateway).
 5. **Forward non-`200` responses** verbatim — status, `problem+json` body, and `Retry-After` when present.
 6. **Use resource pools** when you need concurrency caps in addition to request-rate limits; acquire/release from trusted application code.
-7. **Monitor** ClientManager metrics and the statistics API to validate limits in staging before enforcing them in production.
+7. **Monitor** via Prometheus (`/prometheus/otel`) or the statistics API — see the [Metrics integration guide](metrics-integration-guide.md). Do not poll access-check endpoints for monitoring; they consume quota.
 
 ## Alternative integration points
 

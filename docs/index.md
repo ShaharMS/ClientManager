@@ -14,7 +14,8 @@ These guides explain how ClientManager works internally, how to wire it into you
 | [Configuration reference](configuration-reference.md) | Every `appsettings` section, defaults, and environment-variable overrides |
 | [Admin UI guide](admin-ui-guide.md) | Operator screens, routes, and typical workflows |
 | [API overview](api-overview.md) | Catalog CRUD, statistics, metrics, and runtime endpoints |
-| [Development and operations](development-and-operations.md) | Scripts, observability stack, security model, deployment notes, troubleshooting |
+| [Development and operations](development-and-operations.md) | Scripts, security model, deployment notes, troubleshooting |
+| [Metrics integration guide](metrics-integration-guide.md) | Prometheus, Grafana, Jaeger, OTLP — scrape targets, metric catalog, alerts |
 
 ### Core concepts
 
@@ -30,6 +31,7 @@ These guides explain how ClientManager works internally, how to wire it into you
 | Guide | What you will learn |
 | --- | --- |
 | [Integration guide](integration-guide.md) | Put ClientManager in front of your services with nginx, identify callers, and surface denials (401, 403, 429, …) to end users |
+| [Metrics integration guide](metrics-integration-guide.md) | Plug into Prometheus, Grafana, or OTLP collectors for metrics and traces |
 | [Persistence guide](persistence-guide.md) | How storage roles map to MongoDB, Redis, and file-backed providers |
 
 ## Quick mental model

@@ -12,7 +12,6 @@ The repository is split into separate projects so persistence stays behind the A
 | `ClientManager.AdminUI` | Blazor Server admin dashboard; calls the API over HTTP only |
 | `ClientManager.DataAccess` | Document stores, databases, and repositories (referenced **only** by the API) |
 | `ClientManager.Shared` | Entities, DTOs, enums, configuration models, logging helpers |
-| `ClientManager.DataAccess.Tests` | Unit tests for the persistence layer |
 
 ```mermaid
 flowchart TD
@@ -108,11 +107,13 @@ Expired allocation cleanup **does not** emit a `Released` usage event. Integrato
 | Endpoint | Purpose |
 | --- | --- |
 | `/docs` | Swagger UI (development) |
-| `/prometheus/otel` | Prometheus-format metrics from OpenTelemetry |
+| `/prometheus/otel` | OpenTelemetry runtime metrics (Prometheus scrape) |
 | `/api/v1/statistics/*` | System overview, per-entity usage, catalog summaries |
-| `/api/v1/metrics/*` | Grafana/Prometheus export helpers |
+| `/api/v1/metrics/*` | Usage/capacity gauges for external monitoring |
 
 Hot-path operations (`storage.access.check`, `storage.resource.acquire`) emit trace spans tagged with `client.id`, `service.id`, or `resource_pool.id` for correlation with API logs and problem responses.
+
+For Prometheus, Grafana, Jaeger, and OTLP setup, see the [Metrics integration guide](../metrics-integration-guide.md).
 
 ## How this doc site maps to files
 

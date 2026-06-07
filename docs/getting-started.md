@@ -24,7 +24,6 @@ The active solution (`ClientManager.slnx`) contains:
 | `ClientManager.AdminUI` | Executable | Blazor Server admin dashboard; talks to the API over HTTP only |
 | `ClientManager.DataAccess` | Library | Document stores and repositories (referenced **only** by the API) |
 | `ClientManager.Shared` | Library | Entities, DTOs, enums, configuration models, logging |
-| `ClientManager.DataAccess.Tests` | Test harness | Console verification for JsonFile storage (not xUnit) |
 | `ClientManager.DependencyInventory` | Tooling | Dependency audit helper under `_Solution Items_/Bookkeeping` |
 
 ### Folders outside the solution
@@ -113,16 +112,6 @@ python _scripts/download_images.py --build-projects --build-version 1.0.1-alpha
 
 Use `--list` to preview without running Docker.
 
-## Verify persistence layer
-
-`ClientManager.DataAccess.Tests` is a **console program**, not a standard test project:
-
-```powershell
-dotnet run --project ClientManager.DataAccess.Tests
-```
-
-It verifies JsonFile counter and document round-trips. Expect `JsonFile storage verification passed.` on success.
-
 ## Documentation map
 
 Read in this order if you are new:
@@ -136,8 +125,9 @@ Read in this order if you are new:
 | 5 | [Configuration reference](configuration-reference.md) | Every `appsettings` section and default |
 | 6 | [Admin UI guide](admin-ui-guide.md) | Operator screens and typical workflows |
 | 7 | [API overview](api-overview.md) | Endpoint groups beyond the four gatekeeping calls |
-| 8 | [Development and operations](development-and-operations.md) | Scripts, observability, security, troubleshooting |
-| 9 | [Persistence guide](persistence-guide.md) | Storage roles and provider topologies |
+| 8 | [Metrics integration guide](metrics-integration-guide.md) | Prometheus, Grafana, Jaeger, OTLP |
+| 9 | [Development and operations](development-and-operations.md) | Scripts, security, troubleshooting |
+| 10 | [Persistence guide](persistence-guide.md) | Storage roles and provider topologies |
 
 The root [README.md](../README.md) duplicates quick-start commands and links back here.
 
