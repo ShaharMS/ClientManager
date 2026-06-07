@@ -113,6 +113,11 @@ body::-webkit-scrollbar {
     margin: 0;
 }
 
+/* FocusOnNavigate focuses the page title for screen readers; hide the focus ring */
+.cm-page-header h1:focus {
+    outline: none;
+}
+
 .cm-page-header p {
     font-size: var(--font-size-sm);
     color: var(--color-text-secondary);
