@@ -23,11 +23,11 @@ else if (_error is not null)
 else
 {
     <DashboardStatsCards
-        TotalClients="_overview?.TotalClients"
-        TotalServices="_overview?.TotalServices"
-        TotalResourcePools="_overview?.TotalResourcePools"
-        GlobalUsage="_globalUsage"
-        AcquisitionPct="_acquisitionPct" />
+        TotalClients="@_overview?.TotalClients"
+        TotalServices="@_overview?.TotalServices"
+        TotalResourcePools="@_overview?.TotalResourcePools"
+        GlobalUsage="@_globalUsage"
+        AcquisitionPct="@_acquisitionPct" />
 
     <div class="cm-dashboard__charts">
         <DashboardChartsSection
