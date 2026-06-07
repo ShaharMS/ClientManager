@@ -64,12 +64,6 @@ PRODUCTION_TARGETS = (
         image_repository="clientmanager/api",
         image_args=(("SDK_IMAGE", "sdk"), ("ASPNET_IMAGE", "aspnet")),
     ),
-    DockerfileTarget(
-        project_name="ClientManager.DataAccess.Tests",
-        dockerfile_path=REPO_ROOT / "ClientManager.DataAccess.Tests" / "Dockerfile",
-        image_repository="clientmanager/dataaccess-tests",
-        image_args=(("SDK_IMAGE", "sdk"), ("RUNTIME_IMAGE", "runtime")),
-    ),
 )
 
 
