@@ -24,8 +24,8 @@
         <RadzenNumeric TValue="uint" @bind-Value="_model.MaxSlots" Style="width: 100%;" />
     </div>
     <div class="cm-editor__field">
-        <label>Allocation TTL (seconds)</label>
-        <RadzenNumeric TValue="double" @bind-Value="_model.AllocationTtlSeconds" Style="width: 100%;" />
+        <label>Allocation TTL</label>
+        <DurationInput @bind-Value="_model.AllocationTtlSeconds" />
     </div>
 </EditorPageTemplate>
 

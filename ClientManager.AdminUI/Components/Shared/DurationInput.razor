@@ -1,0 +1,73 @@
+@namespace ClientManager.AdminUI.Components.Shared
+
+<div class="cm-duration-input" style="@Style">
+    <RadzenNumeric TValue="double"
+                   Value="_amount"
+                   Style="flex: 1; min-width: 0;"
+                   Change="@OnAmountChanged" />
+    <RadzenDropDown TValue="DurationUnit"
+                    Value="_unit"
+                    Data="@_units"
+                    TextProperty="Label"
+                    ValueProperty="Unit"
+                    Style="width: 7.5rem; flex-shrink: 0;"
+                    Change="@OnUnitChanged" />
+</div>
+
+@code {
+    private sealed record UnitOption(DurationUnit Unit, string Label);
+
+    private static readonly List<UnitOption> _units =
+    [
+        new(DurationUnit.Seconds, "Seconds"),
+        new(DurationUnit.Minutes, "Minutes"),
+        new(DurationUnit.Hours, "Hours"),
+    ];
+
+    [Parameter] public double Value { get; set; }
+    [Parameter] public EventCallback<double> ValueChanged { get; set; }
+    [Parameter] public string Style { get; set; } = "width: 100%;";
+
+    private double _amount = 60;
+    private DurationUnit _unit = DurationUnit.Seconds;
+    private double _lastSyncedValue = double.NaN;
+
+    protected override void OnParametersSet()
+    {
+        if (!NearlyEqual(Value, _lastSyncedValue))
+        {
+            (_amount, _unit) = DurationValues.FromTotalSeconds(Value);
+            _lastSyncedValue = Value;
+        }
+    }
+
+    private async Task OnAmountChanged(double value)
+    {
+        _amount = value;
+        await EmitValueAsync();
+    }
+
+    private async Task OnUnitChanged(object? value)
+    {
+        if (value is not DurationUnit newUnit)
+        {
+            return;
+        }
+
+        var totalSeconds = DurationValues.ToTotalSeconds(_amount, _unit);
+        _unit = newUnit;
+        _amount = DurationValues.ToAmount(totalSeconds, newUnit);
+        await EmitValueAsync();
+    }
+
+    private async Task EmitValueAsync()
+    {
+        var seconds = DurationValues.ToTotalSeconds(_amount, _unit);
+        _lastSyncedValue = seconds;
+        Value = seconds;
+        await ValueChanged.InvokeAsync(seconds);
+    }
+
+    private static bool NearlyEqual(double a, double b) =>
+        double.IsNaN(a) && double.IsNaN(b) || Math.Abs(a - b) < 0.0001;
+}

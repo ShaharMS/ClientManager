@@ -25,8 +25,8 @@
             <RadzenNumeric TValue="int" @bind-Value="RateLimit.MaxRequests" Style="width: 100%;" />
         </div>
         <div class="cm-editor__field">
-            <label>Window (seconds)</label>
-            <RadzenNumeric TValue="double" @bind-Value="WindowSeconds" Style="width: 100%;" />
+            <label>Window</label>
+            <DurationInput Value="WindowSeconds" ValueChanged="WindowSecondsChanged" />
         </div>
         @if (RateLimit.Strategy == RateLimitStrategy.TokenBucket)
         {

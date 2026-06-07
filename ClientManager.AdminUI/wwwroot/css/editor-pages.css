@@ -32,6 +32,13 @@
     margin-bottom: var(--space-xs);
 }
 
+.cm-duration-input {
+    display: flex;
+    align-items: stretch;
+    gap: var(--space-sm);
+    width: 100%;
+}
+
 .cm-editor__actions {
     display: flex;
     gap: var(--space-sm);
