@@ -2,9 +2,20 @@
 
 ClientManager is a layered .NET service for **client access control**, **rate limiting**, **resource pool allocation**, and **usage statistics**. Your applications call its HTTP API at request time; operators configure clients, services, and limits through the Admin UI or the catalog API.
 
-These guides explain how to wire ClientManager into your stack and how its persistence layer behaves.
+These guides explain how ClientManager works internally, how to wire it into your stack, and how its persistence layer behaves.
 
 ## Guides
+
+### Core concepts
+
+| Guide | What you will learn |
+| --- | --- |
+| [Architecture overview](core/architecture.md) | Solution structure, API vs Admin UI, internal layering, and how doc files map to site URLs |
+| [Domain model](core/domain-model.md) | Clients, services, resource pools, rate limits, allocations, and how settings override each other |
+| [Request flow](core/request-flow.md) | Ordered pipelines for access checks and resource acquisition, with HTTP status mapping |
+| [Usage and observability](core/usage-and-observability.md) | Usage recording, statistics API, metrics, and Admin UI dashboards |
+
+### Integration and operations
 
 | Guide | What you will learn |
 | --- | --- |
@@ -28,6 +39,16 @@ ClientManager is **not** a user directory. It answers operational questions for 
 - Can the client **acquire a slot** from a **resource pool**?
 
 Every denial is an HTTP error with an [RFC 7807](https://datatracker.ietf.org/doc/html/rfc7807) `application/problem+json` body. Your integration should forward that status (and ideally the body) to the caller instead of masking it as a generic 502.
+
+## How files become pages
+
+This site is built with [MkDocs](https://www.mkdocs.org/). A few rules govern what you see in the browser:
+
+- Markdown files live under `docs/`. A file at `docs/core/domain-model.md` is published at `/core/domain-model/` on the built site.
+- The **sidebar** order and section nesting come from the `nav` block in `mkdocs.yml` at the repository root — not from the folder tree alone.
+- A page can exist without a `nav` entry (it still builds), but it will only be reachable via direct URL or links from other pages.
+
+To add a new guide: create the `.md` file under `docs/`, add it to `nav` in `mkdocs.yml`, and link it from `index.md` if it should appear on the home page.
 
 ## Build this site locally
 

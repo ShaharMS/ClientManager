@@ -45,6 +45,11 @@ markdown_extensions:
 
 nav:
   - Home: index.md
+  - Core concepts:
+    - Architecture overview: core/architecture.md
+    - Domain model: core/domain-model.md
+    - Request flow: core/request-flow.md
+    - Usage and observability: core/usage-and-observability.md
   - Integration guide: integration-guide.md
   - Persistence guide: persistence-guide.md
 

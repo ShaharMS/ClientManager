@@ -1,4 +1,4 @@
-# Persistence Guide
+# Persistence guide
 
 ## What This Guide Explains
 
@@ -231,8 +231,10 @@ Think about persistence in this project like this:
 4. Treat MongoDB as the durable shared document backend.
 5. Treat NFS as a mounted location for file-backed providers, not as a provider of its own.
 
-## Related Reading
+## Related reading
 
+- [Architecture overview](core/architecture.md) — which host owns persistence and how storage roles fit in
+- [Domain model](core/domain-model.md) — what each role stores at the entity level
 - [Integration guide](integration-guide.md) — wire ClientManager in front of your services
 - Repository `README.md`
 - `ClientManager.DataAccess/README.md`
