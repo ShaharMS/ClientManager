@@ -6,8 +6,6 @@ namespace ClientManager.Api.Models.Exceptions;
 /// Thrown when a client has no access configuration for the requested service.
 /// Mapped to HTTP 401 by the error-handling middleware.
 /// </summary>
-public class UnauthorizedException : HttpProblemException
+public class UnauthorizedException(string message, string? errorCode = null) : HttpProblemException(StatusCodes.Status401Unauthorized, "Unauthorized", message, errorCode: errorCode)
 {
-    public UnauthorizedException(string message, string? errorCode = null)
-        : base(StatusCodes.Status401Unauthorized, "Unauthorized", message, errorCode: errorCode) { }
 }

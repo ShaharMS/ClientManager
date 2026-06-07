@@ -233,5 +233,6 @@ Think about persistence in this project like this:
 
 ## Related Reading
 
-- [README.md](c:/Users/Marcus/source/repos/ClientManager/README.md)
-- [ClientManager.DataAccess/README.md](c:/Users/Marcus/source/repos/ClientManager/ClientManager.DataAccess/README.md)
+- [Integration guide](integration-guide.md) — wire ClientManager in front of your services
+- Repository `README.md`
+- `ClientManager.DataAccess/README.md`

@@ -14,8 +14,12 @@
     <File Path=".gitignore" />
   </Folder>
   <Folder Name="/_Solution Items_/Bookkeeping/">
-    <File Path="Code Review - 1.0.0-alpha.md" />
     <Project Path="ClientManager.DependencyInventory.csproj" />
+  </Folder>
+  <Folder Name="/_Solution Items_/Documentation/">
+    <File Path="docs/index.md" />
+    <File Path="docs/integration-guide.md" />
+    <File Path="docs/persistence-guide.md" />
   </Folder>
   <Folder Name="/_Solution Items_/Quick Access/" />
   <Folder Name="/_Solution Items_/Quick Access/AdminUI/" />

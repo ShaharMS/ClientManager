@@ -7,10 +7,6 @@ namespace ClientManager.Api.Models.Exceptions;
 /// The middleware sets the <c>Retry-After</c> header when <see cref="HttpProblemException.RetryAfterSeconds"/> is present.
 /// Mapped to HTTP 429 by the error-handling middleware.
 /// </summary>
-public class RateLimitedException : HttpProblemException
+public class RateLimitedException(string message, int? retryAfterSeconds = null, string? errorCode = null) : HttpProblemException(StatusCodes.Status429TooManyRequests, "Too Many Requests", message, retryAfterSeconds, errorCode: errorCode)
 {
-    public RateLimitedException(string message, int? retryAfterSeconds = null, string? errorCode = null)
-        : base(StatusCodes.Status429TooManyRequests, "Too Many Requests", message, retryAfterSeconds, errorCode: errorCode)
-    {
-    }
 }

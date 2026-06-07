@@ -6,8 +6,6 @@ namespace ClientManager.Api.Models.Exceptions;
 /// Thrown when access is denied because the client, service, or policy forbids the request.
 /// Mapped to HTTP 403 by the error-handling middleware.
 /// </summary>
-public class ForbiddenException : HttpProblemException
+public class ForbiddenException(string message, string? errorCode = null) : HttpProblemException(StatusCodes.Status403Forbidden, "Forbidden", message, errorCode: errorCode)
 {
-    public ForbiddenException(string message, string? errorCode = null)
-        : base(StatusCodes.Status403Forbidden, "Forbidden", message, errorCode: errorCode) { }
 }

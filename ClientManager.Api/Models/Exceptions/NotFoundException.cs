@@ -6,8 +6,6 @@ namespace ClientManager.Api.Models.Exceptions;
 /// Thrown when a requested entity does not exist in the data store.
 /// Mapped to HTTP 404 by the error-handling middleware.
 /// </summary>
-public class NotFoundException : HttpProblemException
+public class NotFoundException(string message, string? errorCode = null) : HttpProblemException(StatusCodes.Status404NotFound, "Not Found", message, errorCode: errorCode)
 {
-    public NotFoundException(string message, string? errorCode = null)
-        : base(StatusCodes.Status404NotFound, "Not Found", message, errorCode: errorCode) { }
 }

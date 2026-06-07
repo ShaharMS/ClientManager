@@ -227,8 +227,20 @@ That split makes two things easier:
 
 If documentation is unclear or missing, open an issue or update the docs in this repository. The persistence guide was added specifically to make the storage split understandable without having to reverse-engineer the code.
 
+# Documentation site
+
+Guides live in [`docs/`](docs/) and can be built as a static site (Markdown, Mermaid diagrams, Material theme):
+
+```powershell
+pip install -r docs/requirements.txt
+mkdocs serve    # live preview at http://127.0.0.1:8000
+mkdocs build    # output in site/
+```
+
 # Additional Links
 
+- [Documentation home](docs/index.md) — build as a static site with `mkdocs serve`
+- [Integration guide](docs/integration-guide.md) — nginx example, client identification, propagating denials
 - [Persistence guide](docs/persistence-guide.md)
 - [DataAccess notes](ClientManager.DataAccess/README.md)
 - [License](LICENSE)
