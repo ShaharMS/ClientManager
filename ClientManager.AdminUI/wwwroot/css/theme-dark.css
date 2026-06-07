@@ -31,6 +31,16 @@ html[data-theme="dark"] {
     --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
 
     /* Radzen component variable overrides */
+    --rz-primary: var(--color-primary);
+    --rz-primary-light: var(--color-primary-light);
+    --rz-primary-lighter: color-mix(in srgb, var(--color-primary) 28%, transparent);
+    --rz-primary-dark: var(--color-primary-dark);
+    --rz-primary-darker: #4f46e5;
+    --rz-on-primary: #ffffff;
+    --rz-on-primary-light: #ffffff;
+    --rz-on-primary-lighter: var(--color-primary-light);
+    --rz-on-primary-dark: #ffffff;
+    --rz-on-primary-darker: #ffffff;
     --rz-base-background-color: #1e293b;
     --rz-body-background-color: #0f172a;
     --rz-text-color: #f1f5f9;
@@ -105,6 +115,46 @@ html[data-theme="dark"] .rz-multiselect-panel {
 html[data-theme="dark"] .rz-state-highlight {
     background: var(--color-primary);
     color: #ffffff;
+}
+
+html[data-theme="dark"] .rz-datepicker,
+html[data-theme="dark"] .rz-calendar,
+html[data-theme="dark"] .rz-datepicker-panel {
+    background: var(--color-bg-card);
+    color: var(--color-text-primary);
+    border-color: var(--color-border);
+}
+
+html[data-theme="dark"] .rz-calendar .rz-state-active,
+html[data-theme="dark"] .rz-calendar td .rz-state-active {
+    background: var(--color-primary) !important;
+    color: #ffffff !important;
+}
+
+html[data-theme="dark"] .rz-button.rz-primary,
+html[data-theme="dark"] .rz-datepicker .rz-button.rz-primary,
+html[data-theme="dark"] .rz-calendar .rz-button.rz-primary,
+html[data-theme="dark"] .rz-timepicker .rz-button.rz-primary {
+    background-color: var(--color-primary) !important;
+    color: #ffffff !important;
+    border-color: var(--color-primary) !important;
+}
+
+html[data-theme="dark"] .rz-button.rz-primary:hover,
+html[data-theme="dark"] .rz-datepicker .rz-button.rz-primary:hover,
+html[data-theme="dark"] .rz-calendar .rz-button.rz-primary:hover,
+html[data-theme="dark"] .rz-timepicker .rz-button.rz-primary:hover {
+    background-color: var(--color-primary-dark) !important;
+    border-color: var(--color-primary-dark) !important;
+}
+
+html[data-theme="dark"] .rz-spinner .rz-spinner-button {
+    color: var(--color-text-primary);
+}
+
+html[data-theme="dark"] .rz-spinner .rz-spinner-button:hover {
+    background: var(--color-border);
+    color: var(--color-primary-light);
 }
 
 /* Unchecked track: distinct from the card it sits on, with a visible border */

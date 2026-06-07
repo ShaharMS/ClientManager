@@ -54,4 +54,47 @@
     /* Sidebar */
     --sidebar-width: 250px;
     --sidebar-collapsed-width: 70px;
+
+    /* Radzen theme bridge — align Material palette with app accents */
+    --rz-primary: var(--color-primary);
+    --rz-primary-light: var(--color-primary-light);
+    --rz-primary-lighter: color-mix(in srgb, var(--color-primary) 14%, transparent);
+    --rz-primary-dark: var(--color-primary-dark);
+    --rz-primary-darker: #4338ca;
+    --rz-on-primary: #ffffff;
+    --rz-on-primary-light: #ffffff;
+    --rz-on-primary-lighter: var(--color-primary-dark);
+    --rz-on-primary-dark: #ffffff;
+    --rz-on-primary-darker: #ffffff;
+}
+
+/* Radzen calendar / datepicker */
+.rz-datepicker,
+.rz-calendar {
+    background: var(--color-bg-card);
+    color: var(--color-text-primary);
+    border-color: var(--color-border);
+}
+
+.rz-calendar .rz-state-active,
+.rz-calendar td .rz-state-active {
+    background: var(--color-primary) !important;
+    color: #ffffff !important;
+}
+
+.rz-button.rz-primary,
+.rz-datepicker .rz-button.rz-primary,
+.rz-calendar .rz-button.rz-primary,
+.rz-timepicker .rz-button.rz-primary {
+    background-color: var(--color-primary) !important;
+    color: #ffffff !important;
+    border-color: var(--color-primary) !important;
+}
+
+.rz-button.rz-primary:hover,
+.rz-datepicker .rz-button.rz-primary:hover,
+.rz-calendar .rz-button.rz-primary:hover,
+.rz-timepicker .rz-button.rz-primary:hover {
+    background-color: var(--color-primary-dark) !important;
+    border-color: var(--color-primary-dark) !important;
 }
