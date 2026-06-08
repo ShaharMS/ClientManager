@@ -31,6 +31,7 @@ else
                 ButtonStyle="ButtonStyle.Primary" />
         </div>
 
+        @* Note: RadzenDataGrid columns must be declared in the page, not via this template. *@
         <RadzenDataGrid Data="@FilteredItems" TItem="TItem"
             AllowSorting="true" AllowPaging="true" PageSize="@_pageSize"
             PagerHorizontalAlign="HorizontalAlign.Center">
@@ -85,6 +86,7 @@ else
     public async Task ReloadAsync()
     {
         _loading = true;
+        StateHasChanged();
         try
         {
             _items = (await LoadItemsAsync()).ToList();
@@ -97,6 +99,7 @@ else
         finally
         {
             _loading = false;
+            StateHasChanged();
         }
     }
 
