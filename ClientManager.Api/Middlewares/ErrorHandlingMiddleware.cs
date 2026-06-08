@@ -1,6 +1,7 @@
+using System.Text.Json;
 using ClientManager.Api.Models.Exceptions;
-using ClientManager.Shared.Models.Problems;
 using ClientManager.Shared.Logging;
+using ClientManager.Shared.Models.Problems;
 
 namespace ClientManager.Api.Middlewares;
 
@@ -15,6 +16,8 @@ public class ErrorHandlingMiddleware(
     RequestDelegate next,
     IAppLogger<ErrorHandlingMiddleware> logger)
 {
+    private static readonly JsonSerializerOptions ProblemJsonOptions = new(JsonSerializerDefaults.Web);
+
     public async Task InvokeAsync(HttpContext context)
     {
         try
@@ -74,6 +77,36 @@ public class ErrorHandlingMiddleware(
             TraceId = context.TraceIdentifier
         };
 
-        await context.Response.WriteAsJsonAsync(problemDetails);
+        var json = JsonSerializer.Serialize(problemDetails, ProblemJsonOptions);
+        WriteProblemHeaders(context.Response.Headers, problemDetails, json);
+
+        await context.Response.WriteAsync(json);
     }
+
+    private static void WriteProblemHeaders(
+        IHeaderDictionary headers,
+        ProblemResponse problem,
+        string json)
+    {
+        headers[ProblemResponseHeaders.Json] = json;
+
+        if (!string.IsNullOrEmpty(problem.Title))
+        {
+            headers[ProblemResponseHeaders.Title] = SanitizeHeaderValue(problem.Title);
+        }
+
+        if (!string.IsNullOrEmpty(problem.Detail))
+        {
+            headers[ProblemResponseHeaders.Detail] = SanitizeHeaderValue(problem.Detail);
+        }
+
+        if (!string.IsNullOrEmpty(problem.TraceId))
+        {
+            headers[ProblemResponseHeaders.TraceId] = problem.TraceId;
+        }
+    }
+
+    private static string SanitizeHeaderValue(string value) =>
+        value.Replace("\r", " ", StringComparison.Ordinal)
+            .Replace("\n", " ", StringComparison.Ordinal);
 }
