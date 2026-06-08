@@ -1,11 +1,12 @@
 /* Blazor-specific styles */
 
+/* Validation outlines are handled by ValidatedOutlinedField on ID/reference inputs only. */
 .valid.modified:not([type=checkbox]) {
-    outline: 1px solid var(--color-success);
+    outline: none;
 }
 
 .invalid {
-    outline: 1px solid var(--color-danger);
+    outline: none;
 }
 
 .validation-message {

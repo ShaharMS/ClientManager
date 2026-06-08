@@ -1,15 +1,15 @@
 @namespace ClientManager.AdminUI.Components.Shared
 
-@* Material-style outlined field with a notched legend for validation messages. *@
-<fieldset class="cm-outlined @StateClass" disabled="@Disabled">
-    @if (ShowNotch)
-    {
-        <legend id="@MessageElementId" class="cm-outlined__legend">@ValidationMessage</legend>
-    }
+@* Outlined field wrapper — borders are applied directly on inner inputs via CSS. *@
+<div class="cm-outlined @StateClass" aria-disabled="@Disabled">
     <div class="cm-outlined__inner">
         @ChildContent
     </div>
-</fieldset>
+    @if (ShowMessage)
+    {
+        <div id="@MessageElementId" class="cm-outlined__message" role="alert">@ValidationMessage</div>
+    }
+</div>
 
 @code {
     private static int _nextMessageId;
@@ -17,7 +17,7 @@
     /// <summary>Validation state controlling border and legend color.</summary>
     [Parameter] public InputValidationState ValidationState { get; set; } = InputValidationState.Neutral;
 
-    /// <summary>Short text shown in the notched border (for example "Available" or "Already exists").</summary>
+    /// <summary>Short text shown in the notched border for invalid states (for example "Already Taken").</summary>
     [Parameter] public string? ValidationMessage { get; set; }
 
     /// <summary>Disables the fieldset (mirrors the inner control's disabled state).</summary>
@@ -33,9 +33,9 @@
         MessageElementId ??= $"cm-outlined-msg-{Interlocked.Increment(ref _nextMessageId)}";
     }
 
-    private bool ShowNotch =>
+    private bool ShowMessage =>
         !Disabled
-        && ValidationState is InputValidationState.Valid or InputValidationState.Invalid
+        && ValidationState == InputValidationState.Invalid
         && !string.IsNullOrWhiteSpace(ValidationMessage);
 
     private string StateClass => ValidationState switch
