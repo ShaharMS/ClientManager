@@ -32,6 +32,23 @@
     margin-bottom: var(--space-xs);
 }
 
+/* Plain editor inputs (e.g. Name) — border on the control, no wrapper gap */
+.cm-editor__field > .rz-inputtext,
+.cm-editor__field > .rz-textbox,
+.cm-editor__field > .rz-dropdown {
+    width: 100%;
+}
+
+/* Switches are not full-width inputs — keep the track compact */
+.cm-editor__field .rz-switch,
+.cm-settings__option .rz-switch {
+    width: auto;
+    max-width: max-content;
+    display: inline-flex;
+    flex: 0 0 auto;
+    vertical-align: middle;
+}
+
 .cm-duration-input {
     display: flex;
     align-items: stretch;
