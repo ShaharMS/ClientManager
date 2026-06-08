@@ -5,11 +5,11 @@
 @inject NavigationManager Nav
 
 <EditorPageTemplate TModel="RateLimitFormModel"
-    Id="@Id" IsNew="_isNew"
+    Id="@Id" IsNew="@_isNew"
     BackPath="rate-limits" BackLinkText="← Back to Rate Limits"
     CreateTitle="Create Rate Limit" CreateDescription="Define a rate limit for a service endpoint."
     EditTitlePrefix="Edit Rate Limit: " EditDescription="Update rate limit configuration."
-    FormName="rateLimitForm" Model="_model" Loading="_loading" Error="_error"
+    FormName="rateLimitForm" Model="@_model" Loading="@_loading" Error="@_error"
     OnValidSubmit="SaveAsync">
     <div class="cm-editor__field">
         <label>Rate Limit ID</label>

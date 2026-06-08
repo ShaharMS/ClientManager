@@ -4,11 +4,11 @@
 @inject NavigationManager Nav
 
 <EditorPageTemplate TModel="ServiceFormModel"
-    Id="@Id" IsNew="_isNew"
+    Id="@Id" IsNew="@_isNew"
     BackPath="services" BackLinkText="← Back to Services"
     CreateTitle="Create Service" CreateDescription="Define a new service."
     EditTitlePrefix="Edit Service: " EditDescription="Update service configuration."
-    FormName="serviceForm" Model="_model" Loading="_loading" Error="_error"
+    FormName="serviceForm" Model="@_model" Loading="@_loading" Error="@_error"
     OnValidSubmit="SaveAsync">
     <div class="cm-editor__field">
         <label>Service ID</label>

@@ -4,11 +4,11 @@
 @inject NavigationManager Nav
 
 <EditorPageTemplate TModel="PoolFormModel"
-    Id="@Id" IsNew="_isNew"
+    Id="@Id" IsNew="@_isNew"
     BackPath="resource-pools" BackLinkText="← Back to Resource Pools"
     CreateTitle="Create Resource Pool" CreateDescription="Define a new resource pool."
     EditTitlePrefix="Edit Resource Pool: " EditDescription="Update resource pool configuration."
-    FormName="poolForm" Model="_model" Loading="_loading" Error="_error"
+    FormName="poolForm" Model="@_model" Loading="@_loading" Error="@_error"
     OnValidSubmit="SaveAsync">
     <div class="cm-editor__field">
         <label>Pool ID</label>

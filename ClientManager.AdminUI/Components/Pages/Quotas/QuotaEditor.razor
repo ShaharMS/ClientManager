@@ -5,11 +5,11 @@
 @inject NavigationManager Nav
 
 <EditorPageTemplate TModel="RateLimitFormModel"
-    Id="@Id" IsNew="_isNew"
+    Id="@Id" IsNew="@_isNew"
     BackPath="quotas" BackLinkText="← Back to Quotas"
     CreateTitle="Create Quota" CreateDescription="Define a request quota for a resource pool."
     EditTitlePrefix="Edit Quota: " EditDescription="Update quota configuration."
-    FormName="quotaForm" Model="_model" Loading="_loading" Error="_error"
+    FormName="quotaForm" Model="@_model" Loading="@_loading" Error="@_error"
     OnValidSubmit="SaveAsync">
     <div class="cm-editor__field">
         <label>Quota ID</label>
