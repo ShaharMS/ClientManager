@@ -97,7 +97,7 @@
     color: #ffffff !important;
 }
 
-.rz-button.rz-primary,
+.rz-button.rz-primary:not(.rz-variant-text),
 .rz-datepicker .rz-button.rz-primary,
 .rz-calendar .rz-button.rz-primary,
 .rz-timepicker .rz-button.rz-primary,
@@ -109,7 +109,7 @@
     border-color: var(--color-primary) !important;
 }
 
-.rz-button.rz-primary:hover,
+.rz-button.rz-primary:not(.rz-variant-text):hover,
 .rz-datepicker .rz-button.rz-primary:hover,
 .rz-calendar .rz-button.rz-primary:hover,
 .rz-timepicker .rz-button.rz-primary:hover,

@@ -70,6 +70,14 @@ html[data-theme="dark"] {
 
     /* Pager */
     --rz-pager-background-color: #1e293b;
+    --rz-pager-numeric-button-color: #f1f5f9;
+    --rz-pager-numeric-button-hover-background-color: #334155;
+    --rz-pager-numeric-button-hover-color: #f1f5f9;
+    --rz-pager-back-button-color: #f1f5f9;
+    --rz-pager-next-button-color: #f1f5f9;
+    --rz-pager-numeric-button-selected-background-color: var(--color-primary);
+    --rz-pager-numeric-button-selected-color: #ffffff;
+    --rz-pager-summary-color: #94a3b8;
 
     /* Inputs */
     --rz-input-background-color: #0f172a;
@@ -148,7 +156,7 @@ html[data-theme="dark"] .rz-calendar td .rz-state-active {
     color: #ffffff !important;
 }
 
-html[data-theme="dark"] .rz-button.rz-primary,
+html[data-theme="dark"] .rz-button.rz-primary:not(.rz-variant-text),
 html[data-theme="dark"] .rz-datepicker .rz-button.rz-primary,
 html[data-theme="dark"] .rz-calendar .rz-button.rz-primary,
 html[data-theme="dark"] .rz-timepicker .rz-button.rz-primary,
@@ -160,7 +168,7 @@ html[data-theme="dark"] .rz-timepicker > .rz-button {
     border-color: var(--color-primary) !important;
 }
 
-html[data-theme="dark"] .rz-button.rz-primary:hover,
+html[data-theme="dark"] .rz-button.rz-primary:not(.rz-variant-text):hover,
 html[data-theme="dark"] .rz-datepicker .rz-button.rz-primary:hover,
 html[data-theme="dark"] .rz-calendar .rz-button.rz-primary:hover,
 html[data-theme="dark"] .rz-timepicker .rz-button.rz-primary:hover,
@@ -206,6 +214,25 @@ html[data-theme="dark"] .rz-switch.rz-switch-checked .rz-switch-circle {
 
 html[data-theme="dark"] .rz-sortable-column:hover {
     background: var(--color-border);
+}
+
+/* Pager — override Radzen button hover gradient so text stays readable */
+html[data-theme="dark"] .rz-pager .rz-pager-element:hover,
+html[data-theme="dark"] .rz-pager .rz-pager-page:hover {
+    background-color: var(--color-border) !important;
+    background-image: none !important;
+    color: var(--color-text-primary) !important;
+    box-shadow: none !important;
+}
+
+html[data-theme="dark"] .rz-pager .rz-pager-element:not(.rz-state-disabled):not(:active):hover {
+    background-image: none !important;
+    box-shadow: none !important;
+}
+
+html[data-theme="dark"] .rz-pager .rz-pager-page.rz-state-active {
+    background-color: var(--color-primary) !important;
+    color: #ffffff !important;
 }
 
 /* Dropdown item hover - set both bg and text to avoid blacked-out items */
