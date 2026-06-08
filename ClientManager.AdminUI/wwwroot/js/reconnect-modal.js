@@ -20,6 +20,7 @@ function handleReconnectStateChanged(event) {
 
     if (event.detail.state === "show") {
         reconnectModal.showModal();
+        reconnectModal.blur();
     } else if (event.detail.state === "hide") {
         reconnectModal.close();
     } else if (event.detail.state === "failed") {
