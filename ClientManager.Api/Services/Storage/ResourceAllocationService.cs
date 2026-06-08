@@ -190,7 +190,7 @@ public class ResourceAllocationService : IResourceAllocationService
             });
 
         var configuration = await _clientConfigDatabase.GetByIdAsync(clientId, cancellationToken)
-            ?? throw DomainErrors.Client(clientId);
+            ?? throw DomainErrors.UnknownClient(clientId);
 
         activity?.SetTag("configuration.enabled", configuration.IsEnabled);
 

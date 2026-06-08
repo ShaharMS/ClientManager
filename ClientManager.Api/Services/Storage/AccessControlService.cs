@@ -137,7 +137,7 @@ public class AccessControlService : IAccessControlService
             act => act?.SetTag("client.id", clientId));
 
         var configuration = await _clientConfigDatabase.GetByIdAsync(clientId, cancellationToken)
-            ?? throw DomainErrors.Client(clientId);
+            ?? throw DomainErrors.UnknownClient(clientId);
 
         activity?.SetTag("configuration.enabled", configuration.IsEnabled);
         return configuration;

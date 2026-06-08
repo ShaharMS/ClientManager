@@ -36,12 +36,14 @@ public class AccessCheckController : ControllerBase
     /// <returns>The access check response with remaining request information.</returns>
     /// <response code="200">Access is granted.</response>
     /// <response code="401">No access configuration exists for the client-service relationship.</response>
+    /// <response code="400">Unknown client identifier.</response>
     /// <response code="403">Access is denied because the client is disabled, the service is disabled, or the client-service relationship exists but is disabled.</response>
-    /// <response code="404">Client or service not found.</response>
+    /// <response code="404">Service not found.</response>
     /// <response code="429">Rate limit exceeded.</response>
     /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpGet("check")]
     [ProducesResponseType(typeof(AccessCheckResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status404NotFound)]

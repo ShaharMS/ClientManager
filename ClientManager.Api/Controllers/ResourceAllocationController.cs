@@ -35,12 +35,14 @@ public class ResourceAllocationController : ControllerBase
     /// <param name="cancellationToken">Token used to abort the resource slot acquisition before it completes.</param>
     /// <returns>The allocation response with allocation ID and expiry time.</returns>
     /// <response code="200">The resource slot was acquired successfully.</response>
+    /// <response code="400">Unknown client identifier.</response>
     /// <response code="403">Client is disabled.</response>
-    /// <response code="404">Client or resource pool not found.</response>
+    /// <response code="404">Resource pool not found.</response>
     /// <response code="429">Slot limit or rate limit exceeded.</response>
     /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpGet("acquire")]
     [ProducesResponseType(typeof(ResourceAcquireResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status429TooManyRequests)]

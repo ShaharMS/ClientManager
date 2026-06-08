@@ -11,6 +11,9 @@ public static class DomainErrors
     public static NotFoundException Client(string clientId) =>
         new($"Client '{clientId}' not found", StorageErrorCodes.ClientNotFound);
 
+    public static BadRequestException UnknownClient(string clientId) =>
+        new($"Client '{clientId}' not found", StorageErrorCodes.ClientNotFound);
+
     public static NotFoundException Service(string serviceId) =>
         new($"Service '{serviceId}' not found", StorageErrorCodes.ServiceNotFound);
 
