@@ -2,6 +2,8 @@
 @page "/clients/{Id}"
 @using ClientManager.AdminUI.Models.Client
 
+<PageTitle>ClientManager · @(_isNew ? "Create Client" : $"Edit Client: {Id}")</PageTitle>
+
 <div style="margin-bottom: var(--space-md);">
     <RadzenLink Path="clients" Text="← Back to Clients" Style="font-size: var(--font-size-sm);" />
 </div>
