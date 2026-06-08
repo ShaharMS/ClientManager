@@ -3,6 +3,7 @@
 <div class="cm-duration-input" style="@Style">
     <RadzenNumeric TValue="double"
                    Value="_amount"
+                   Min="0"
                    Style="flex: 1; min-width: 0;"
                    Change="@OnAmountChanged" />
     <RadzenDropDown TValue="DurationUnit"
@@ -15,6 +16,8 @@
 </div>
 
 @code {
+    private const double MinTotalSeconds = 1;
+
     private sealed record UnitOption(DurationUnit Unit, string Label);
 
     private static readonly List<UnitOption> _units =
@@ -36,14 +39,21 @@
     {
         if (!NearlyEqual(Value, _lastSyncedValue))
         {
-            (_amount, _unit) = DurationValues.FromTotalSeconds(Value);
-            _lastSyncedValue = Value;
+            var effectiveSeconds = Value < MinTotalSeconds ? MinTotalSeconds : Value;
+            (_amount, _unit) = DurationValues.FromTotalSeconds(effectiveSeconds);
+            _lastSyncedValue = effectiveSeconds;
+
+            if (Value < MinTotalSeconds)
+            {
+                Value = effectiveSeconds;
+                _ = ValueChanged.InvokeAsync(effectiveSeconds);
+            }
         }
     }
 
     private async Task OnAmountChanged(double value)
     {
-        _amount = value;
+        _amount = Math.Max(0, value);
         await EmitValueAsync();
     }
 
@@ -63,6 +73,12 @@
     private async Task EmitValueAsync()
     {
         var seconds = DurationValues.ToTotalSeconds(_amount, _unit);
+        if (seconds < MinTotalSeconds)
+        {
+            seconds = MinTotalSeconds;
+            (_amount, _unit) = DurationValues.FromTotalSeconds(seconds);
+        }
+
         _lastSyncedValue = seconds;
         Value = seconds;
         await ValueChanged.InvokeAsync(seconds);
