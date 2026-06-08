@@ -40,3 +40,25 @@
     background: var(--color-border);
     color: var(--color-text-secondary);
 }
+
+/* List action buttons — edit icon dark blue; delete stays danger */
+.cm-list-page__table-card .rz-button.rz-variant-text.rz-primary.rz-button-icon-only {
+    background: transparent !important;
+    border-color: transparent !important;
+    color: var(--color-primary-dark) !important;
+    box-shadow: none !important;
+}
+
+.cm-list-page__table-card .rz-button.rz-variant-text.rz-primary.rz-button-icon-only:hover {
+    background: color-mix(in srgb, var(--color-primary) 12%, transparent) !important;
+    color: var(--color-primary-dark) !important;
+}
+
+.cm-list-page__table-card .rz-button.rz-variant-text.rz-danger.rz-button-icon-only {
+    color: var(--color-danger) !important;
+}
+
+.cm-list-page__table-card .rz-button.rz-variant-text.rz-danger.rz-button-icon-only:hover {
+    background: color-mix(in srgb, var(--color-danger) 12%, transparent) !important;
+    color: var(--color-danger) !important;
+}
