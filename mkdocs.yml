@@ -25,6 +25,9 @@ theme:
 
 plugins:
   - search
+  - privacy:
+      assets_exclude:
+        - unpkg.com/mermaid*
 
 markdown_extensions:
   - admonition
@@ -58,6 +61,9 @@ nav:
   - Integration guide: integration-guide.md
   - Metrics integration guide: metrics-integration-guide.md
   - Persistence guide: persistence-guide.md
+
+extra_javascript:
+  - javascripts/mermaid.min.js
 
 extra:
   generator: false
