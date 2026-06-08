@@ -11,7 +11,7 @@ This page walks through what ClientManager does on the hot path — the code pat
 | Acquire slot | `GET` | `/api/v1/resources/acquire` | Creates allocation; increments counters |
 | Release slot | `GET` | `/api/v1/resources/release` | Frees allocation; decrements counters |
 
-All failures return [RFC 7807](https://datatracker.ietf.org/doc/html/rfc7807) `application/problem+json` with a `traceId` you can correlate to API logs.
+All failures return [RFC 7807](https://datatracker.ietf.org/doc/html/rfc7807) `application/problem+json` with a `traceId` you can correlate to API logs. The same payload is echoed in `X-Problem-*` response headers for edge proxies — see the [Integration guide](../integration-guide.md).
 
 ## Service access check
 
@@ -61,9 +61,10 @@ flowchart TD
 
 | Status | Typical cause |
 | --- | --- |
+| `400` | Unknown `clientId` |
 | `401` | No `services[serviceId]` entry on the client configuration |
 | `403` | Client disabled, service disabled, or `isAllowed: false` |
-| `404` | Unknown `clientId` or `serviceId` |
+| `404` | Unknown `serviceId` |
 | `429` | Global service limit or client rate limit exceeded |
 | `503` | Storage backend unreachable |
 
@@ -169,8 +170,8 @@ sequenceDiagram
         Backend-->>Edge: response
         Edge-->>Caller: response
     else denied
-        CM-->>Edge: 4xx + problem+json
-        Edge-->>Caller: same status + body
+        CM-->>Edge: 4xx + problem headers
+        Edge-->>Caller: same status + problem+json
     end
 ```
 
@@ -198,9 +199,10 @@ Domain failures throw typed exceptions (`UnauthorizedException`, `RateLimitedExc
 
 - Rate limits attach `Retry-After` when computable
 - Every body includes `traceId` for log correlation
+- The same title, detail, trace id, and full JSON payload are echoed in `X-Problem-*` headers for edge proxies (`auth_request` cannot read subrequest bodies)
 - Unexpected exceptions become `500` with a generic title (details in server logs only)
 
-Integrators should **forward denial responses verbatim** rather than masking them as `502 Bad Gateway`.
+Integrators should **forward denial status and problem details** rather than masking them as `502 Bad Gateway`.
 
 ## Performance characteristics
 

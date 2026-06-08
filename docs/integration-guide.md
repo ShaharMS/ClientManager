@@ -8,8 +8,8 @@ ClientManager sits beside your services and answers gatekeeping questions over H
 
 | Question | Endpoint | Success | Typical denials |
 | --- | --- | --- | --- |
-| May this client use this service? | `GET /api/v1/access/check` | `200` | `401`, `403`, `404`, `429`, `503` |
-| May this client take a pool slot? | `GET /api/v1/resources/acquire` | `200` | `403`, `404`, `429`, `503` |
+| May this client use this service? | `GET /api/v1/access/check` | `200` | `400`, `401`, `403`, `404`, `429`, `503` |
+| May this client take a pool slot? | `GET /api/v1/resources/acquire` | `200` | `400`, `403`, `404`, `429`, `503` |
 | Release a slot | `GET /api/v1/resources/release` | `200` | `404`, `503` |
 
 All three endpoints accept parameters as **query strings** (not a JSON body), so reverse proxies, API gateways, and `auth_request` can call them without custom scripting.
@@ -52,7 +52,16 @@ On failure, the API returns `application/problem+json`:
 }
 ```
 
-Rate-limited responses also include a `Retry-After` header when the limit strategy can compute one.
+The same fields are also echoed as **response headers** so reverse proxies can read them from `auth_request` subrequests (nginx discards auth subrequest bodies; headers are still available):
+
+| Header | nginx variable (after `auth_request`) | Value |
+| --- | --- | --- |
+| `X-Problem-Title` | `$upstream_http_x_problem_title` | Problem title |
+| `X-Problem-Detail` | `$upstream_http_x_problem_detail` | Problem detail |
+| `X-Trace-Id` | `$upstream_http_x_trace_id` | Request trace id |
+| `X-Problem-Json` | `$upstream_http_x_problem_json` | Full compact JSON body |
+
+Rate-limited responses also include a `Retry-After` header when the limit strategy can compute one (`$upstream_http_retry_after` in nginx).
 
 !!! tip "Deny by default"
     A client must have an explicit `isAllowed: true` entry for a service in its configuration. Missing configuration is `401 Unauthorized`; disabled clients, disabled services, or disallowed relationships are `403 Forbidden`.
@@ -63,19 +72,19 @@ Rate-limited responses also include a `Retry-After` header when the limit strate
 sequenceDiagram
     participant User as Caller
     participant Nginx as nginx
-    participant CM as ClientManager API
-    participant App as Your backend
+    participant CM as ClientManager
+    participant App as Backend
 
     User->>Nginx: GET /render?clientId=mobile-app
-    Nginx->>CM: GET /api/v1/access/check?clientId=...&serviceId=...
+    Nginx->>CM: GET /api/v1/access/check
     alt access granted
         CM-->>Nginx: 200 OK
         Nginx->>App: proxy original request
-        App-->>Nginx: 200 + payload
-        Nginx-->>User: 200 + payload
+        App-->>Nginx: 200 response
+        Nginx-->>User: 200 response
     else access denied
-        CM-->>Nginx: 4xx/5xx + problem+json
-        Nginx-->>User: same status + body
+        CM-->>Nginx: error status + problem headers
+        Nginx-->>User: same status + reconstructed problem+json
     end
 ```
 
@@ -111,80 +120,109 @@ Because runtime endpoints are **GET with query parameters**, nginx's built-in `a
 
 `auth_request` issues a **GET** subrequest to an internal location. That location proxies to ClientManager with the caller's `clientId` and your fixed `serviceId` appended as query parameters.
 
-### 1. Upstreams
+!!! important "Auth subrequests discard the body"
+    `auth_request` only preserves the subrequest **status and headers**. It does **not** expose `$upstream_response_body`. ClientManager echoes problem fields in `X-Problem-*` headers (see table above) so nginx can reconstruct the denial for the caller.
+
+### 1. Shared pieces (`server` block)
+
+Put these once per `server { }` that protects routes. `upstream` blocks are optional — you can point `proxy_pass` directly at a hostname or OpenShift Route instead.
 
 ```nginx
-upstream clientmanager {
-    server clientmanager-api:5062;
-}
+http {
+    map $http_x_client_id $cm_client_id {
+        default $http_x_client_id;
+        ""      $arg_clientId;
+    }
 
-upstream pdf_backend {
-    server pdf-renderer:8080;
+    server {
+        listen 443 ssl;
+        server_name api.example.com;
+
+        location = /_cm_check {
+            internal;
+            proxy_pass_request_body off;
+            proxy_set_header Content-Length "";
+            proxy_pass https://clientmanager.apps.openshift.example.com/api/v1/access/check?clientId=$cm_client_id&serviceId=$cm_service_id;
+            proxy_ssl_server_name on;
+        }
+
+        location @clientmanager_error {
+            internal;
+            default_type application/problem+json;
+
+            if ($cm_retry != "") {
+                add_header Retry-After $cm_retry always;
+            }
+
+            if ($cm_status = 400) { return 400 $cm_json; }
+            if ($cm_status = 401) { return 401 $cm_json; }
+            if ($cm_status = 403) { return 403 $cm_json; }
+            if ($cm_status = 404) { return 404 $cm_json; }
+            if ($cm_status = 429) { return 429 $cm_json; }
+            if ($cm_status = 500) { return 500 $cm_json; }
+            if ($cm_status = 502) { return 502 $cm_json; }
+            if ($cm_status = 503) { return 503 $cm_json; }
+            if ($cm_status = 504) { return 504 $cm_json; }
+
+            return 502 $cm_json;
+        }
+
+        # protected locations go here (see below)
+    }
 }
 ```
 
-### 2. Internal auth location
+`$cm_json` comes from the `X-Problem-Json` header ClientManager sets on every error. The `if ($cm_status = …)` branches are required because stock nginx does not accept a **variable** as the numeric code in `return` (for example `return $cm_status $cm_json` fails config test).
+
+### 2. Protected location (one per backend route)
+
+When **service id is 1:1 with location**, set `$cm_service_id` in each block:
 
 ```nginx
-# Map each protected route to the correct ClientManager service id.
-map $uri $cm_service_id {
-    default                 "";
-    ~^/render               pdf-render;
-    ~^/ml/predict           ml-inference;
+location /render {
+    set $cm_service_id pdf-render;
+
+    auth_request /_cm_check;
+    auth_request_set $cm_status $upstream_status;
+    auth_request_set $cm_json   $upstream_http_x_problem_json;
+    auth_request_set $cm_retry  $upstream_http_retry_after;
+    error_page 400 401 403 404 429 500 502 503 504 = @clientmanager_error;
+
+    proxy_pass http://pdf-renderer:8080;
 }
+```
 
-location = /_clientmanager/access-check {
-    internal;
+Optional: capture individual fields for logging or custom responses:
 
-  # auth_request sends GET only — no request body.
-    proxy_pass_request_body off;
-    proxy_set_header Content-Length "";
+```nginx
+auth_request_set $cm_title    $upstream_http_x_problem_title;
+auth_request_set $cm_detail   $upstream_http_x_problem_detail;
+auth_request_set $cm_trace_id $upstream_http_x_trace_id;
+```
 
-  # Prefer a trusted header; fall back to query param for demos.
-    set $cm_client_id $http_x_client_id;
-    if ($cm_client_id = "") {
-        set $cm_client_id $arg_clientId;
-    }
+### 3. Per-route client id overrides
 
-    proxy_pass http://clientmanager/api/v1/access/check?clientId=$cm_client_id&serviceId=$cm_service_id;
+When a location uses a different caller convention, override `$cm_client_id` before `auth_request`:
+
+```nginx
+location /partner/api {
+    set $cm_service_id partner-api;
+    set $cm_client_id $http_x_tenant_id;
+
+    auth_request /_cm_check;
+    # ...
 }
 ```
 
 !!! note "Variable proxy_pass"
     When `proxy_pass` includes a URI with query parameters, nginx appends the subrequest query string. For auth subrequests that is usually empty, so the parameters above are passed through unchanged. If your nginx build behaves differently, use a `rewrite … break` before a parameter-free `proxy_pass` instead.
 
-### 3. Protected location
-
-```nginx
-location /render {
-    auth_request /_clientmanager/access-check;
-
-  # Capture status, body, and retry hint from the auth subrequest.
-    auth_request_set $cm_status $upstream_status;
-    auth_request_set $cm_body $upstream_response_body;
-    auth_request_set $cm_retry $upstream_http_retry_after;
-
-  # Any non-2xx/3xx auth result stops the request and is returned to the caller.
-    error_page 401 403 404 429 500 502 503 504 = @clientmanager_error;
-
-    proxy_pass http://pdf_backend;
-    proxy_set_header X-Client-Id $arg_clientId;
-}
-
-location @clientmanager_error {
-    internal;
-    add_header Retry-After $cm_retry always;
-    default_type application/problem+json;
-    return $cm_status $cm_body;
-}
-```
-
 !!! note "Status and body passthrough"
-    The `error_page … = @clientmanager_error` pattern forwards the auth subrequest's HTTP status and response body to the original caller. If your nginx build cannot use `return $cm_status $cm_body`, proxy the auth location externally or return a fixed JSON map keyed by `$cm_status` — the contract remains: **do not call your backend** when ClientManager denies access.
+    The `error_page … = @clientmanager_error` pattern forwards the auth subrequest's HTTP status and reconstructs the `problem+json` body from `X-Problem-Json`. **Do not call your backend** when ClientManager denies access.
 
 ### 4. Missing `clientId`
 
-ClientManager returns `404` for unknown clients, not `400` for a missing parameter. Validate at the edge when you want a explicit bad-request response:
+ClientManager returns `400` for unknown clients. Validate at the edge when you want an explicit bad-request response for a missing parameter:
 
 ```nginx
 location /render {
@@ -207,7 +245,7 @@ With ClientManager and your backend running:
 # Allowed client (configured in Admin UI / seed data)
 curl -i "https://api.example.com/render?clientId=mobile-app"
 
-# Unknown client → 404 from ClientManager, proxied to caller
+# Unknown client → 400 from ClientManager, proxied to caller
 curl -i "https://api.example.com/render?clientId=unknown-tenant"
 
 # Rate limited → 429 + Retry-After
@@ -221,7 +259,7 @@ curl -i "https://api.example.com/render?clientId=mobile-app"
 | **Access check** | nginx `auth_request` | Stateless HTTP APIs — allow or deny before proxying |
 | **Acquire + release** | Application / worker | Stateful work — hold a slot for the duration of a job |
 
-`auth_request` only inspects the **HTTP status** of the subrequest. It does not forward response bodies, so using `GET /resources/acquire` inside `auth_request` would consume a slot without giving your backend the `allocationId`. **Acquire and release belong in application code** (or a trusted worker), not in `auth_request`.
+`auth_request` only inspects the subrequest **status and headers** — not the response body. Using `GET /resources/acquire` inside `auth_request` would consume a slot without giving your backend the `allocationId`. **Acquire and release belong in application code** (or a trusted worker), not in `auth_request`.
 
 Typical worker flow:
 
@@ -229,7 +267,7 @@ Typical worker flow:
 flowchart TD
     start[Inbound work item] --> acquire[GET /resources/acquire]
     acquire -->|200| work[Run backend job]
-    acquire -->|429/403/404| deny[Return denial to caller]
+    acquire -->|denied| deny[Return denial to caller]
     work --> release[GET /resources/release]
     release --> done[Done]
     work -. crash .-> expire[Slot expires via cleanup service]
@@ -278,14 +316,14 @@ await next(context);
 | Status | Meaning | Typical cause |
 | --- | --- | --- |
 | `200` | Allowed / acquired / released | Request passed all gates |
-| `400` | Bad request | Your proxy did not supply required query parameters |
+| `400` | Bad request | Unknown `clientId`, or your proxy did not supply required query parameters |
 | `401` | Unauthorized | No access configuration for this client–service pair |
 | `403` | Forbidden | Client disabled, service disabled, or `isAllowed: false` |
-| `404` | Not found | Unknown `clientId`, `serviceId`, `resourcePoolId`, or `allocationId` |
+| `404` | Not found | Unknown `serviceId`, `resourcePoolId`, or `allocationId` |
 | `429` | Too many requests | Client, global service, or pool rate/slot limit exceeded |
 | `503` | Service unavailable | Storage backend unreachable |
 
-Always log ClientManager's `traceId` from error bodies when opening incidents — it matches API request logs.
+Always log ClientManager's `traceId` from error bodies or the `X-Trace-Id` header when opening incidents — it matches API request logs.
 
 ## Integration checklist
 
@@ -293,7 +331,7 @@ Always log ClientManager's `traceId` from error bodies when opening incidents �
 2. **Create a client configuration** per tenant/integration with explicit `isAllowed` entries and optional rate limits.
 3. **Choose a stable `clientId` source** (header or token mapping in production; query param for demos).
 4. **Call `GET /api/v1/access/check`** before backend work (via nginx `auth_request`, app middleware, or API gateway).
-5. **Forward non-`200` responses** verbatim — status, `problem+json` body, and `Retry-After` when present.
+5. **Forward non-`200` responses** — status, `problem+json` body (from `X-Problem-Json` at the edge), and `Retry-After` when present.
 6. **Use resource pools** when you need concurrency caps in addition to request-rate limits; acquire/release from trusted application code.
 7. **Monitor** via Prometheus (`/prometheus/otel`) or the statistics API — see the [Metrics integration guide](metrics-integration-guide.md). Do not poll access-check endpoints for monitoring; they consume quota.
 

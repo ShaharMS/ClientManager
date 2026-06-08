@@ -103,7 +103,7 @@ Dockerfiles:
 
 Both hosts use **NLog** (`nlog.config`). API request tracking flows through `RequestTrackingMiddleware`; domain errors through `ErrorHandlingMiddleware` as `problem+json`.
 
-Every error body includes `traceId` — match it to:
+Every error body includes `traceId` (also in the `X-Trace-Id` header) — match it to:
 
 - NLog request logs
 - OpenTelemetry spans (`storage.access.check`, `storage.resource.acquire`, …)

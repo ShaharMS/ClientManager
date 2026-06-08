@@ -50,7 +50,7 @@ ClientManager is **not** a user directory. It answers operational questions for 
 - Is the client under its **rate limit**?
 - Can the client **acquire a slot** from a **resource pool**?
 
-Every denial is an HTTP error with an [RFC 7807](https://datatracker.ietf.org/doc/html/rfc7807) `application/problem+json` body. Your integration should forward that status (and ideally the body) to the caller instead of masking it as a generic 502.
+Every denial is an HTTP error with an [RFC 7807](https://datatracker.ietf.org/doc/html/rfc7807) `application/problem+json` body. The same fields are echoed in `X-Problem-*` headers for nginx `auth_request`. Your integration should forward that status and problem details to the caller instead of masking it as a generic 502.
 
 ## How files become pages
 
@@ -78,6 +78,8 @@ mkdocs build
 ```
 
 The output lands in `site/` at the repository root.
+
+For airgapped or offline environments, Mermaid (`docs/javascripts/mermaid.min.js`) is vendored in the repository. The built-in `privacy` plugin also localizes Google Fonts during `mkdocs build`, so dark mode and typography work without CDN access in the served `site/` output.
 
 ## API surface (v1)
 

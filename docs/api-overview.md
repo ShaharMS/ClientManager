@@ -4,7 +4,7 @@ All routes use URL versioning: `/api/v1/...`. The default version is `1.0`.
 
 **Interactive reference:** [http://localhost:5062/docs](http://localhost:5062/docs) (Swagger UI) — always the most up-to-date catalog of request/response schemas.
 
-Errors return [RFC 7807](https://datatracker.ietf.org/doc/html/rfc7807) `application/problem+json` with a `traceId` for log correlation.
+Errors return [RFC 7807](https://datatracker.ietf.org/doc/html/rfc7807) `application/problem+json` with a `traceId` for log correlation. The same fields are echoed in `X-Problem-Title`, `X-Problem-Detail`, `X-Trace-Id`, and `X-Problem-Json` headers so nginx `auth_request` and similar proxies can forward denials without reading the subrequest body.
 
 ## Runtime gatekeeping
 
