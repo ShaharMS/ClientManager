@@ -15,6 +15,12 @@ body::-webkit-scrollbar {
     display: none; /* Chrome / Safari / Edge */
 }
 
+/* Radzen confirm dialogs add body.no-scroll with padding for scrollbar compensation;
+   scrollbars are hidden above, so suppress the layout shift/gap on the right. */
+body.no-scroll {
+    padding-inline-end: 0 !important;
+}
+
 /* Card base style - used throughout the app */
 .cm-card {
     background: var(--color-bg-card);
