@@ -1,4 +1,6 @@
 @namespace ClientManager.AdminUI.Components.Shared
+@using System.Linq.Expressions
+@implements IDisposable
 
 @* As-you-type ID input with notched-border validation:
    Unique — new ID must not collide; Reference — value must be a known ID from the list. *@
@@ -15,25 +17,19 @@
                         Style="@Style"
                         Placeholder="@Placeholder"
                         AllowFiltering="true"
-                        OpenOnFocus="true"
                         FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
                         Change="@OnReferenceChanged"
                         InputAttributes="@_inputAttributes" />
     }
     else
     {
-        <RadzenAutoComplete TValue="string"
-                            Value="@Value"
-                            Data="@Suggestions"
-                            Disabled="@Disabled"
-                            Style="@Style"
-                            Placeholder="@Placeholder"
-                            FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
-                            MinLength="0"
-                            FilterDelay="150"
-                            OpenOnFocus="true"
-                            Change="@OnUniqueChanged"
-                            InputAttributes="@_inputAttributes" />
+        <RadzenTextBox TValue="string"
+                       Value="@Value"
+                       Disabled="@Disabled"
+                       Style="@Style"
+                       Placeholder="@Placeholder"
+                       Change="@OnUniqueChanged"
+                       InputAttributes="@_inputAttributes" />
     }
 </ValidatedOutlinedField>
 
@@ -46,7 +42,10 @@
     /// <summary>Raised as the user types so the bound value stays in sync.</summary>
     [Parameter] public EventCallback<string?> ValueChanged { get; set; }
 
-    /// <summary>Existing IDs used both as suggestions and as the validation set.</summary>
+    /// <summary>Expression for the bound value; supplied automatically by <c>@bind-Value</c>.</summary>
+    [Parameter] public Expression<Func<string?>>? ValueExpression { get; set; }
+
+    /// <summary>Existing IDs used for validation (and as dropdown options in reference mode).</summary>
     [Parameter] public IEnumerable<string> Suggestions { get; set; } = [];
 
     /// <summary>Whether the typed value must be unique or must reference an existing entity.</summary>
@@ -73,16 +72,69 @@
     /// <summary>Current validation state.</summary>
     public InputValidationState ValidationState => _validationState;
 
+    [CascadingParameter] private EditContext? EditContext { get; set; }
+
     private readonly string _messageElementId = $"cm-entity-id-msg-{Interlocked.Increment(ref _nextMessageId)}";
 
     private InputValidationState _validationState = InputValidationState.Neutral;
     private string? _validationMessage;
     private IReadOnlyDictionary<string, object>? _inputAttributes;
+    private bool _submitValidationRequested;
+    private ValidationMessageStore? _messageStore;
+
+    protected override void OnInitialized()
+    {
+        if (EditContext is not null)
+        {
+            _messageStore = new ValidationMessageStore(EditContext);
+            EditContext.OnValidationRequested += OnValidationRequested;
+            EditContext.OnFieldChanged += OnFieldChanged;
+        }
+    }
 
     protected override void OnParametersSet()
     {
         Validate(Value);
         RefreshInputAttributes();
+    }
+
+    public void Dispose()
+    {
+        if (EditContext is not null)
+        {
+            EditContext.OnValidationRequested -= OnValidationRequested;
+            EditContext.OnFieldChanged -= OnFieldChanged;
+        }
+    }
+
+    private void OnValidationRequested(object? sender, ValidationRequestedEventArgs e)
+    {
+        _submitValidationRequested = true;
+        Validate(Value);
+        RefreshInputAttributes();
+        SyncEditContextValidation();
+    }
+
+    private void OnFieldChanged(object? sender, FieldChangedEventArgs e)
+    {
+        if (ValueExpression is null)
+        {
+            return;
+        }
+
+        var fieldIdentifier = FieldIdentifier.Create(ValueExpression);
+        if (!e.FieldIdentifier.Equals(fieldIdentifier))
+        {
+            return;
+        }
+
+        Validate(Value);
+        RefreshInputAttributes();
+
+        if (_submitValidationRequested)
+        {
+            SyncEditContextValidation();
+        }
     }
 
     private async Task OnUniqueChanged(object? value) => await ApplyValueAsync(value as string);
@@ -101,10 +153,23 @@
     {
         var previous = _validationState;
 
-        if (Disabled || string.IsNullOrWhiteSpace(value))
+        if (Disabled)
         {
             _validationState = InputValidationState.Neutral;
             _validationMessage = null;
+        }
+        else if (string.IsNullOrWhiteSpace(value))
+        {
+            if (_submitValidationRequested)
+            {
+                _validationState = InputValidationState.Invalid;
+                _validationMessage = "Missing Field";
+            }
+            else
+            {
+                _validationState = InputValidationState.Neutral;
+                _validationMessage = null;
+            }
         }
         else
         {
@@ -116,18 +181,18 @@
                 if (exists)
                 {
                     _validationState = InputValidationState.Invalid;
-                    _validationMessage = "Already exists";
+                    _validationMessage = "Already Taken";
                 }
                 else
                 {
-                    _validationState = InputValidationState.Valid;
-                    _validationMessage = "Available";
+                    _validationState = InputValidationState.Neutral;
+                    _validationMessage = null;
                 }
             }
             else if (exists)
             {
-                _validationState = InputValidationState.Valid;
-                _validationMessage = "Valid selection";
+                _validationState = InputValidationState.Neutral;
+                _validationMessage = null;
             }
             else
             {
@@ -140,6 +205,30 @@
         {
             _ = ValidationStateChanged.InvokeAsync(_validationState);
         }
+
+        if (_submitValidationRequested)
+        {
+            SyncEditContextValidation();
+        }
+    }
+
+    private void SyncEditContextValidation()
+    {
+        if (EditContext is null || _messageStore is null || ValueExpression is null)
+        {
+            return;
+        }
+
+        var fieldIdentifier = FieldIdentifier.Create(ValueExpression);
+        _messageStore.Clear(fieldIdentifier);
+
+        if (_validationState == InputValidationState.Invalid
+            && !string.IsNullOrWhiteSpace(_validationMessage))
+        {
+            _messageStore.Add(fieldIdentifier, _validationMessage);
+        }
+
+        EditContext.NotifyValidationStateChanged();
     }
 
     private void RefreshInputAttributes()
@@ -151,7 +240,7 @@
             ["aria-invalid"] = _validationState == InputValidationState.Invalid
         };
 
-        if (_validationState is InputValidationState.Valid or InputValidationState.Invalid
+        if (_validationState == InputValidationState.Invalid
             && !string.IsNullOrWhiteSpace(_validationMessage))
         {
             attrs["aria-describedby"] = _messageElementId;

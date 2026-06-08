@@ -12,8 +12,8 @@ public enum EntityIdInputMode
     Reference,
 
     /// <summary>
-    /// The value must be a new, unused ID. Existing IDs are offered as autocomplete hints;
-    /// a collision with an existing ID is invalid (red), an available ID is valid (green).
+    /// The value must be a new, unused ID. A collision with an existing ID is invalid (red),
+    /// an available ID is valid (green).
     /// </summary>
     Unique
 }
