@@ -1,78 +1,179 @@
 @page "/rate-limits"
-@using ClientManager.AdminUI.Utils
 @inject GlobalRateLimitApiService RateLimitApi
 @inject NavigationManager Nav
+@inject DialogService Dialog
+@inject IJSRuntime JS
+@implements IAsyncDisposable
 
-<ListPageTemplate @ref="_list" TItem="GlobalRateLimit"
-    Title="Rate Limits"
-    Description="Manage rate limits applied to service endpoints."
-    SearchPlaceholder="Search rate limits..."
-    CreateButtonText="Create Rate Limit"
-    CreateUrl="/rate-limits/new"
-    LoadItemsAsync="LoadLimitsAsync"
-    SearchableValues="limit => [limit.Id, limit.TargetId]">
-    <ToolbarExtra>
-        <RadzenDropDown TValue="TargetType?" Data="@TargetTypeOptions"
-            TextProperty="Label" ValueProperty="Value"
-            Value="@_targetTypeFilter"
-            ValueChanged="OnTargetTypeFilterChanged"
-            Placeholder="All target types" AllowClear="true"
-            Style="width: 180px;" />
-    </ToolbarExtra>
-    <Columns>
-        <RadzenDataGridColumn TItem="GlobalRateLimit" Property="Id" Title="ID" Width="150px" />
-        <RadzenDataGridColumn TItem="GlobalRateLimit" Property="TargetId" Title="Service" />
-        <RadzenDataGridColumn TItem="GlobalRateLimit" Title="Strategy" Width="130px">
-            <Template Context="limit">
-                <StatusBadge Text="@limit.Strategy.ToString()" Variant="StatusBadgeVariant.Success" />
-            </Template>
-        </RadzenDataGridColumn>
-        <RadzenDataGridColumn TItem="GlobalRateLimit" Property="MaxRequests" Title="Max Requests" Width="130px" />
-        <RadzenDataGridColumn TItem="GlobalRateLimit" Title="Window" Width="100px">
-            <Template Context="limit">@TimeSpanFormatter.FormatCompact(limit.Window)</Template>
-        </RadzenDataGridColumn>
-        <RadzenDataGridColumn TItem="GlobalRateLimit" Title="Actions" Width="160px" Sortable="false">
-            <Template Context="limit">
-                <RadzenButton Icon="edit" Size="ButtonSize.Small" Variant="Variant.Text"
-                    Click="@(() => Nav.NavigateTo($"/rate-limits/{limit.Id}"))" />
-                <RadzenButton Icon="delete" Size="ButtonSize.Small" Variant="Variant.Text"
-                    ButtonStyle="ButtonStyle.Danger"
-                    Click="@(() => DeleteAsync(limit.Id))" />
-            </Template>
-        </RadzenDataGridColumn>
-    </Columns>
-</ListPageTemplate>
+<div class="cm-page-header">
+    <h1>Rate Limits</h1>
+    <p>Manage rate limits applied to service endpoints.</p>
+</div>
+
+@if (_deleteError is not null)
+{
+    <div class="alert alert-danger">@_deleteError</div>
+}
+
+@if (_loading)
+{
+    <TableSkeleton />
+}
+else if (_error is not null)
+{
+    <div class="alert alert-danger">@_error</div>
+}
+else
+{
+    <div class="cm-list-page__table-card">
+        <div class="cm-list-page__header">
+            <div style="display: flex; gap: 12px; align-items: center;">
+                <RadzenTextBox Placeholder="Search rate limits..."
+                    Value="@_search"
+                    ValueChanged="@((string v) => { _search = v; StateHasChanged(); })"
+                    @oninput="@(args => { _search = args.Value?.ToString(); StateHasChanged(); })"
+                    Style="width: 280px;" />
+                <RadzenDropDown TValue="TargetType?" Data="@_targetTypeOptions"
+                    TextProperty="Label" ValueProperty="Value"
+                    Value="@_targetTypeFilter"
+                    ValueChanged="@((TargetType? v) => OnTargetTypeFilterChanged(v))"
+                    Placeholder="All target types" AllowClear="true"
+                    Style="width: 180px;" />
+            </div>
+            <RadzenButton Text="Create Rate Limit" Icon="add" Click="@(() => Nav.NavigateTo("/rate-limits/new"))"
+                ButtonStyle="ButtonStyle.Primary" />
+        </div>
+
+        <RadzenDataGrid Data="@_filteredLimits" TItem="GlobalRateLimit"
+            AllowSorting="true" AllowPaging="true" PageSize="@_pageSize"
+            PagerHorizontalAlign="HorizontalAlign.Center">
+            <Columns>
+                <RadzenDataGridColumn TItem="GlobalRateLimit" Property="Id" Title="ID" Width="150px" />
+                <RadzenDataGridColumn TItem="GlobalRateLimit" Property="TargetId" Title="Service" />
+                <RadzenDataGridColumn TItem="GlobalRateLimit" Title="Strategy" Width="130px">
+                    <Template Context="limit">
+                        <span class="cm-badge cm-badge--success">@limit.Strategy</span>
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="GlobalRateLimit" Property="MaxRequests" Title="Max Requests" Width="130px" />
+                <RadzenDataGridColumn TItem="GlobalRateLimit" Title="Window" Width="100px">
+                    <Template Context="limit">@FormatWindow(limit.Window)</Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="GlobalRateLimit" Title="Actions" Width="160px" Sortable="false">
+                    <Template Context="limit">
+                        <RadzenButton Icon="edit" Size="ButtonSize.Small" Variant="Variant.Text"
+                            Click="@(() => Nav.NavigateTo($"/rate-limits/{limit.Id}"))" />
+                        <RadzenButton Icon="delete" Size="ButtonSize.Small" Variant="Variant.Text"
+                            ButtonStyle="ButtonStyle.Danger"
+                            Click="@(async () => await DeleteAsync(limit.Id))" />
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    </div>
+}
 
 @code {
-    private ListPageTemplate<GlobalRateLimit>? _list;
+    private bool _loading = true;
+    private string? _error;
+    private string? _deleteError;
+    private string? _search;
     private TargetType? _targetTypeFilter;
+    private List<GlobalRateLimit> _limits = [];
+    private int _pageSize = 10;
+    private IJSObjectReference? _tableJs;
+    private DotNetObjectReference<RateLimitList>? _selfRef;
 
-    private static readonly List<object> TargetTypeOptions =
+    private static readonly List<object> _targetTypeOptions =
     [
         new { Label = "Service", Value = TargetType.Service },
         new { Label = "Resource Pool", Value = TargetType.ResourcePool }
     ];
 
-    private async Task<IReadOnlyList<GlobalRateLimit>> LoadLimitsAsync() =>
-        _targetTypeFilter.HasValue
-            ? await RateLimitApi.GetByTargetTypeAsync(_targetTypeFilter.Value)
-            : await RateLimitApi.GetAllAsync();
+    private IEnumerable<GlobalRateLimit> _filteredLimits =>
+        string.IsNullOrWhiteSpace(_search)
+            ? _limits
+            : _limits.Where(l =>
+                l.Id.Contains(_search, StringComparison.OrdinalIgnoreCase) ||
+                l.TargetId.Contains(_search, StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _tableJs = await JS.InvokeAsync<IJSObjectReference>("import", "./js/table.js");
+            _selfRef = DotNetObjectReference.Create(this);
+            await _tableJs.InvokeVoidAsync("register", _selfRef);
+            await RecalculatePageSizeAsync();
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnWindowResize() => await RecalculatePageSizeAsync();
+
+    private async Task RecalculatePageSizeAsync()
+    {
+        _pageSize = await _tableJs!.InvokeAsync<int>("getPageSize", 45);
+        StateHasChanged();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_tableJs is not null)
+        {
+            await _tableJs.InvokeVoidAsync("unregister");
+            await _tableJs.DisposeAsync();
+        }
+        _selfRef?.Dispose();
+    }
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            if (_targetTypeFilter.HasValue)
+            {
+                _limits = await RateLimitApi.GetByTargetTypeAsync(_targetTypeFilter.Value);
+            }
+            else
+            {
+                _limits = await RateLimitApi.GetAllAsync();
+            }
+            _error = null;
+        }
+        catch (HttpRequestException ex)
+        {
+            _error = $"Unable to connect to the API: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
 
     private async Task OnTargetTypeFilterChanged(TargetType? value)
     {
         _targetTypeFilter = value;
-        if (_list is not null)
-        {
-            await _list.ReloadAsync();
-        }
+        _loading = true;
+        await LoadAsync();
     }
 
-    private async Task DeleteAsync(string id)
+    private Task DeleteAsync(string id) =>
+        ListDeleteSupport.ExecuteAsync(
+            Dialog,
+            "rate limit",
+            id,
+            () => RateLimitApi.DeleteAsync(id),
+            LoadAsync,
+            message => _deleteError = message,
+            StateHasChanged);
+
+    private static string FormatWindow(TimeSpan window)
     {
-        await RateLimitApi.DeleteAsync(id);
-        if (_list is not null)
-        {
-            await _list.ReloadAsync();
-        }
+        if (window.TotalHours >= 1) return $"{window.TotalHours:0.#}h";
+        if (window.TotalMinutes >= 1) return $"{window.TotalMinutes:0.#}m";
+        return $"{window.TotalSeconds:0.#}s";
     }
 }
