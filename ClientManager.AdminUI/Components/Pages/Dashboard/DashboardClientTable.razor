@@ -14,11 +14,15 @@
         PagerHorizontalAlign="HorizontalAlign.Center">
         <Columns>
             <RadzenDataGridColumn TItem="ClientSummaryTableRow" Property="ClientId" Title="Client ID" Width="150px" />
-            <RadzenDataGridColumn TItem="ClientSummaryTableRow" Property="DisplayName" Title="Who Am I?" Width="150px" />
-            <RadzenDataGridColumn TItem="ClientSummaryTableRow" Property="AccessibleServices" Title="Services" Width="100px" />
-            <RadzenDataGridColumn TItem="ClientSummaryTableRow" Property="TotalRateLimitCap" Title="Rate Limit Cap" Width="140px" />
-            <RadzenDataGridColumn TItem="ClientSummaryTableRow" Property="AccessiblePools" Title="Pools" Width="100px" />
-            <RadzenDataGridColumn TItem="ClientSummaryTableRow" Property="SlotsDisplay" Title="Slots (Used/Total)" Width="160px" />
+            <RadzenDataGridColumn TItem="ClientSummaryTableRow" Property="DisplayName" Title="Who Am I?" MinWidth="220px" />
+            <RadzenDataGridColumn TItem="ClientSummaryTableRow" Property="AccessibleServices" Title="Services" Width="110px"
+                TextAlign="TextAlign.Center" CssClass="cm-list-page__col-center" />
+            <RadzenDataGridColumn TItem="ClientSummaryTableRow" Property="TotalRateLimitCap" Title="Rate Limit Cap" MinWidth="140px"
+                TextAlign="TextAlign.Center" CssClass="cm-list-page__col-center" />
+            <RadzenDataGridColumn TItem="ClientSummaryTableRow" Property="AccessiblePools" Title="Pools" Width="90px"
+                TextAlign="TextAlign.Center" CssClass="cm-list-page__col-center" />
+            <RadzenDataGridColumn TItem="ClientSummaryTableRow" Property="MaxSlots" Title="Max Slots" Width="110px"
+                TextAlign="TextAlign.Center" CssClass="cm-list-page__col-center" />
         </Columns>
     </RadzenDataGrid>
 </div>

@@ -46,7 +46,8 @@ public partial class Dashboard
                 FilterTargets = _filterTargets,
                 AllServices = _allServices,
                 AllPools = _allPools,
-                Clients = _clients
+                Clients = _clients,
+                BucketCount = _chartBucketCount
             };
 
             var (charts, donut) = await _chartLoader.LoadAsync(context);

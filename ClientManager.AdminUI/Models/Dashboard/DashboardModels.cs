@@ -10,4 +10,4 @@ public record ClientSummaryTableRow(
     int AccessibleServices,
     string TotalRateLimitCap,
     int AccessiblePools,
-    string SlotsDisplay);
+    int MaxSlots);

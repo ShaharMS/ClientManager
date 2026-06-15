@@ -3,26 +3,34 @@
 @inject EntityColorService Colors
 
 <div class="cm-dashboard__chart-card">
-    <div class="cm-dashboard__chart-header">
-        <div class="cm-dashboard__filters">
-            <RadzenDropDown TValue="string" Value="@SelectedFilterType"
-                ValueChanged="@OnFilterTypeChanged"
-                Data="@FilterTypes" TextProperty="Label" ValueProperty="Value"
-                Placeholder="Filter by..." Style="width:160px;" />
-            <RadzenDropDown TValue="string" Value="@SelectedTargetId"
-                ValueChanged="@OnTargetChanged"
-                Data="@FilterTargets" TextProperty="Name" ValueProperty="Id"
-                Placeholder="Select target..." Style="width:180px;" />
-            <RadzenDropDown TValue="IEnumerable<string>" Value="@SelectedClientIds"
-                ValueChanged="@OnClientsChanged" Multiple="true"
-                Data="@Clients" TextProperty="Name" ValueProperty="Id"
-                Placeholder="All clients" Style="width:200px;" />
+    <div class="cm-monitor__chart-toolbar cm-monitor__chart-toolbar--allocations">
+        <div class="cm-monitor__chart-filters cm-monitor__chart-filters--allocations">
+            <div class="cm-monitor__chart-filters-metric">
+                <RadzenDropDown TValue="string" Value="@SelectedFilterType"
+                    ValueChanged="@OnFilterTypeChanged"
+                    Data="@FilterTypes" TextProperty="Label" ValueProperty="Value"
+                    Placeholder="Filter by..." />
+            </div>
+            <div class="cm-monitor__chart-filters-pool">
+                <RadzenDropDown TValue="string" Value="@SelectedTargetId"
+                    ValueChanged="@OnTargetChanged"
+                    Data="@FilterTargets" TextProperty="Name" ValueProperty="Id"
+                    Placeholder="Select target..." />
+            </div>
+            <div class="cm-monitor__chart-filters-clients">
+                <RadzenDropDown TValue="IEnumerable<string>" Value="@SelectedClientIds"
+                    ValueChanged="@OnClientsChanged" Multiple="true"
+                    Data="@Clients" TextProperty="Name" ValueProperty="Id"
+                    Placeholder="All clients" />
+            </div>
         </div>
-        <ChartSettingsDropdown OnTimeRangeChanged="OnTimeRangeChanged"
-                               OnPollingIntervalChanged="OnPollingIntervalChanged"
-                               OnAxisScaleChanged="OnAxisScaleChanged" />
+        <span class="cm-dashboard__chart-title cm-monitor__chart-title">@ChartTitle</span>
+        <div class="cm-monitor__chart-settings">
+            <ChartSettingsDropdown OnTimeRangeChanged="OnTimeRangeChanged"
+                                   OnPollingIntervalChanged="OnPollingIntervalChanged"
+                                   OnAxisScaleChanged="OnAxisScaleChanged" />
+        </div>
     </div>
-    <span class="cm-dashboard__chart-title">Usage Over Time</span>
     <CombinedStackedUsageChart Charts="@TargetCharts" AxisScale="@AxisScaleType" />
 </div>
 
@@ -64,6 +72,14 @@
     [Parameter] public EventCallback<ChartTimeRange> OnTimeRangeChanged { get; set; }
     [Parameter] public EventCallback<PollingIntervalPreset> OnPollingIntervalChanged { get; set; }
     [Parameter] public EventCallback<AxisScaleType> OnAxisScaleChanged { get; set; }
+
+    private string ChartTitle => $"{SelectedTargetName} - Usage Over Time";
+
+    private string SelectedTargetName =>
+        SelectedTargetId == DashboardChartLoadContext.AllTargetsId
+            ? SelectedFilterType == "Service" ? "All Services" : "All Resource Pools"
+            : FilterTargets.FirstOrDefault(t => t.Id == SelectedTargetId)?.Name
+                ?? (SelectedFilterType == "Service" ? "All Services" : "All Resource Pools");
 
     private async Task OnFilterTypeChanged(string value)
     {
