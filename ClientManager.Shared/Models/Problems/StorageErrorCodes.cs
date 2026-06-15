@@ -10,6 +10,7 @@ public static class StorageErrorCodes
     public const string AccessDenied = "access_denied";
     public const string ClientDisabled = "client_disabled";
     public const string ServiceDisabled = "service_disabled";
+    public const string ResourcePoolDisabled = "resource_pool_disabled";
     public const string ClientRateLimitExceeded = "client_rate_limit_exceeded";
     public const string GlobalServiceRateLimitExceeded = "global_service_rate_limit_exceeded";
     public const string GlobalResourcePoolRateLimitExceeded = "global_resource_pool_rate_limit_exceeded";

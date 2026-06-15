@@ -158,7 +158,14 @@ public class ResourceAllocationService : IResourceAllocationService
             ?? throw DomainErrors.ResourcePool(resourcePoolId);
 
         activity?.SetTag("resource_pool.max_slots", pool.MaxSlots);
-        return pool;
+        activity?.SetTag("resource_pool.enabled", pool.IsEnabled);
+
+        if (pool.IsEnabled)
+        {
+            return pool;
+        }
+
+        throw DomainErrors.ResourcePoolDisabled(resourcePoolId);
     }
 
     private async Task<ResourceAllocation> ReadAllocationAsync(

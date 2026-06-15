@@ -56,6 +56,9 @@ public static class DomainErrors
     public static ForbiddenException ServiceDisabled(string serviceId) =>
         new($"Service '{serviceId}' is disabled", StorageErrorCodes.ServiceDisabled);
 
+    public static ForbiddenException ResourcePoolDisabled(string resourcePoolId) =>
+        new($"Resource pool '{resourcePoolId}' is disabled", StorageErrorCodes.ResourcePoolDisabled);
+
     public static RateLimitedException ClientRateLimitExceeded(int? retryAfterSeconds = null) =>
         new("Rate limit exceeded", retryAfterSeconds, StorageErrorCodes.ClientRateLimitExceeded);
 

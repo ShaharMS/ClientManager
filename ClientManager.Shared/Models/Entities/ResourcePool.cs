@@ -1,4 +1,5 @@
 using ClientManager.Shared.Models.Enums;
+using System.Net;
 
 
 namespace ClientManager.Shared.Models.Entities;
@@ -58,6 +59,12 @@ public record ResourcePool
     /// would permanently reduce the pool's usable capacity.
     /// </summary>
     public TimeSpan AllocationTtl { get; init; }
+
+    /// <summary>
+    /// Whether this resource pool is currently active. Disabled pools reject all acquisition
+    /// attempts with a <see cref="HttpStatusCode.Forbidden"/> response.
+    /// </summary>
+    public bool IsEnabled { get; init; } = true;
 
     /// <summary>
     /// UTC timestamp when this resource pool was registered in the system.
