@@ -19,26 +19,34 @@
 }
 
 <AllocationsChartSection
-    SelectedPoolId="_selectedPoolId"
+    SelectedPoolId="@_selectedPoolId"
     SelectedPoolIdChanged="@(v => _selectedPoolId = v)"
-    SelectedClientIds="_selectedClientIds"
+    SelectedClientIds="@_selectedClientIds"
     SelectedClientIdsChanged="@(v => _selectedClientIds = v)"
-    SelectedMetric="_selectedMetric"
+    SelectedMetric="@_selectedMetric"
     SelectedMetricChanged="@(v => _selectedMetric = v)"
-    PoolOptions="_poolOptions"
-    ClientOptions="_clientOptions"
-    MetricOptions="MetricOptions"
-    TargetCharts="_targetCharts"
-    AxisScaleType="_axisScaleType"
-    Loading="_loading"
+    PoolOptions="@_poolOptions"
+    ClientOptions="@_clientOptions"
+    MetricOptions="@MetricOptions"
+    ChartTitle="@ChartTitle"
+    TargetCharts="@_targetCharts"
+    AxisScaleType="@_axisScaleType"
+    Loading="@_loading"
     OnFilterChanged="OnFilterChanged"
     MetricSelectionChanged="OnMetricChanged"
     OnTimeRangeChanged="OnTimeRangeChanged"
     OnPollingIntervalChanged="OnPollingIntervalChanged"
     OnAxisScaleChanged="OnAxisScaleChanged" />
 
-<AllocationsClientDetailGrid @ref="_clientDetailGrid" Rows="_clientDetailRows" IsAccessMetric="IsAccessMetric" />
+<AllocationsClientDetailGrid @ref="_clientDetailGrid"
+    Title="@ClientDetailTitle"
+    ShowPoolColumn="@ShowPoolColumnInClientGrid"
+    Rows="@_clientDetailRows"
+    IsAccessMetric="@IsAccessMetric" />
 
 <hr class="cm-monitor__separator" />
 
-<AllocationsPoolSummaryGrid @ref="_allPoolsGrid" Rows="_poolSummaryRows" IsAccessMetric="IsAccessMetric" />
+<AllocationsPoolSummaryGrid @ref="_allPoolsGrid"
+    Title="All Resource Pools"
+    Rows="@_poolSummaryRows"
+    IsAccessMetric="@IsAccessMetric" />

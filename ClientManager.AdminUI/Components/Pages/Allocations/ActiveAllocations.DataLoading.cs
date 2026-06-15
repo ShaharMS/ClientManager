@@ -48,7 +48,8 @@ public partial class ActiveAllocations
                 SelectedClientIds = _selectedClientIds,
                 TimeRange = _timeRange,
                 IsAccessMetric = IsAccessMetric,
-                AllClients = _allClients
+                AllClients = _allClients,
+                BucketCount = _chartBucketCount
             };
 
             var result = await _dataLoader.LoadAsync(context);

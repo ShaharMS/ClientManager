@@ -2,27 +2,32 @@
 
 <div class="cm-list-page__table-card" style="margin-top: var(--space-lg);">
     <div class="cm-dashboard__chart-header">
-        <span class="cm-dashboard__chart-title">@(IsAccessMetric ? "Client Access Detail" : "Client Allocation Detail")</span>
+        <span class="cm-dashboard__chart-title">@Title</span>
     </div>
     <RadzenDataGrid @ref="_grid" Data="@Rows" TItem="AllocationClientRow"
         AllowSorting="true" AllowPaging="true" PageSize="15"
         PagerHorizontalAlign="HorizontalAlign.Center">
         <Columns>
             <RadzenDataGridColumn TItem="AllocationClientRow" Property="ClientName" Title="Client" />
-            <RadzenDataGridColumn TItem="AllocationClientRow" Property="PoolName" Title="Pool" />
-            <RadzenDataGridColumn TItem="AllocationClientRow" Title="@(IsAccessMetric ? "Requests" : "Active")" Width="90px">
+            @if (ShowPoolColumn)
+            {
+                <RadzenDataGridColumn TItem="AllocationClientRow" Property="PoolName" Title="Pool" Width="150px" />
+            }
+            <RadzenDataGridColumn TItem="AllocationClientRow" Title="@(IsAccessMetric ? "Requests" : "Active")" Width="90px"
+                TextAlign="TextAlign.Center" CssClass="cm-list-page__col-center">
                 <Template Context="row">@row.CurrentValue.ToString("N0")</Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn TItem="AllocationClientRow" Title="@(IsAccessMetric ? "Cap (5m)" : "Max")" Width="90px">
+            <RadzenDataGridColumn TItem="AllocationClientRow" Title="@(IsAccessMetric ? "Cap" : "Max")" Width="90px"
+                TextAlign="TextAlign.Center" CssClass="cm-list-page__col-center">
                 <Template Context="row">@(IsAccessMetric ? UtilizationHelper.FormatCap(row.CapValue) : row.CapValue.ToString("N0"))</Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn TItem="AllocationClientRow" Title="Utilization" Width="180px">
+            <RadzenDataGridColumn TItem="AllocationClientRow" Title="Utilization" Width="180px"
+                TextAlign="TextAlign.Center" CssClass="cm-list-page__col-center">
                 <Template Context="row">
                     @if (row.CapValue > 0 || !IsAccessMetric)
                     {
                         var pct = row.CapValue > 0 ? (int)(row.CurrentValue * 100.0 / row.CapValue) : 0;
-                        <RadzenProgressBar Value="@pct" Max="100" ShowValue="true"
-                            ProgressBarStyle="@UtilizationHelper.GetProgressBarStyle(pct)" Style="height: 18px;" />
+                        <UtilizationProgressBar Percent="@pct" HeightPx="18" />
                     }
                     else
                     {
@@ -30,10 +35,17 @@
                     }
                 </Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn TItem="AllocationClientRow" Property="DeniedLast5Min" Title="Denied (5m)" Width="110px" />
-            <RadzenDataGridColumn TItem="AllocationClientRow" Title="Status" Width="120px" Sortable="false">
+            @if (IsAccessMetric)
+            {
+                <RadzenDataGridColumn TItem="AllocationClientRow" Property="DeniedLast5Min" Title="Denied" Width="110px"
+                    TextAlign="TextAlign.Center" CssClass="cm-list-page__col-center" />
+            }
+            <RadzenDataGridColumn TItem="AllocationClientRow" Title="Status" Width="120px" Sortable="false"
+                TextAlign="TextAlign.Center" CssClass="cm-list-page__col-center cm-list-page__col-status">
                 <Template Context="row">
-                    <AllocationClientStatusBadge Row="row" IsAccessMetric="IsAccessMetric" />
+                    <div class="cm-list-page__actions-cell">
+                        <AllocationClientStatusBadge Row="row" IsAccessMetric="IsAccessMetric" />
+                    </div>
                 </Template>
             </RadzenDataGridColumn>
         </Columns>
@@ -41,6 +53,8 @@
 </div>
 
 @code {
+    [Parameter] public string Title { get; set; } = "Client Allocation Detail";
+    [Parameter] public bool ShowPoolColumn { get; set; } = true;
     [Parameter] public List<AllocationClientRow> Rows { get; set; } = [];
     [Parameter] public bool IsAccessMetric { get; set; }
     private RadzenDataGrid<AllocationClientRow>? _grid;

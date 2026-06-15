@@ -38,6 +38,9 @@ public partial class ActiveAllocations : ComponentBase, IAsyncDisposable
     private ChartTimeRange _timeRange = ChartTimeRange.FromPreset(TimeRangePreset.Default);
     private AxisScaleType _axisScaleType = AxisScaleType.Linear;
     private string _selectedMetric = AllocationsChartSection.ActiveAllocationsMetric;
+    private int _chartBucketCount = ChartBucketAggregator.DefaultBucketCount;
+    private IJSObjectReference? _chartJs;
+    private DotNetObjectReference<ActiveAllocations>? _chartSelfRef;
 
     private List<TargetChartData> _targetCharts = [];
     private List<AllocationClientRow> _clientDetailRows = [];
@@ -45,6 +48,21 @@ public partial class ActiveAllocations : ComponentBase, IAsyncDisposable
     private AllocationsPoolSummaryGrid? _allPoolsGrid;
 
     private bool IsAccessMetric => _selectedMetric == AllocationsChartSection.AccessRequestsMetric;
+
+    private bool ShowPoolColumnInClientGrid => _selectedPoolId == AllocationsLoadContext.AllPoolsId;
+
+    private string ClientDetailTitle =>
+        _selectedPoolId == AllocationsLoadContext.AllPoolsId
+            ? IsAccessMetric ? "Client Access Detail" : "Client Allocation Detail"
+            : $"{SelectedPoolName} - {(IsAccessMetric ? "Client Access Detail" : "Client Allocation Detail")}";
+
+    private string SelectedPoolName =>
+        _selectedPoolId == AllocationsLoadContext.AllPoolsId || string.IsNullOrEmpty(_selectedPoolId)
+            ? "All Pools"
+            : _poolOptions.FirstOrDefault(p => p.Id == _selectedPoolId)?.Name ?? "All Pools";
+
+    private string ChartTitle =>
+        $"{SelectedPoolName} - {(IsAccessMetric ? "Access Requests" : "Active Allocations")}";
 
     protected override async Task OnInitializedAsync()
     {
@@ -80,9 +98,42 @@ public partial class ActiveAllocations : ComponentBase, IAsyncDisposable
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (firstRender)
+        {
+            _chartJs = await JS.InvokeAsync<IJSObjectReference>("import", "./js/chart.js");
+            _chartSelfRef = DotNetObjectReference.Create(this);
+            await _chartJs.InvokeVoidAsync("register", _chartSelfRef);
+            await UpdateChartBucketCountAsync(reloadWhenChanged: true);
+        }
+
         if (firstRender && _polling is not null)
         {
             await _polling.RegisterVisibilityAsync();
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnChartResize() => await UpdateChartBucketCountAsync(reloadWhenChanged: true);
+
+    private async Task UpdateChartBucketCountAsync(bool reloadWhenChanged)
+    {
+        if (_chartJs is null)
+        {
+            return;
+        }
+
+        var chartWidth = await _chartJs.InvokeAsync<int>("getChartCardWidth");
+        var bucketCount = ChartBucketAggregator.GetBucketCountForWidth(chartWidth);
+        if (bucketCount == _chartBucketCount)
+        {
+            return;
+        }
+
+        _chartBucketCount = bucketCount;
+        if (reloadWhenChanged)
+        {
+            await LoadDataAsync();
+            StateHasChanged();
         }
     }
 
@@ -101,6 +152,14 @@ public partial class ActiveAllocations : ComponentBase, IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
+        if (_chartJs is not null)
+        {
+            await _chartJs.InvokeVoidAsync("unregister");
+            await _chartJs.DisposeAsync();
+        }
+
+        _chartSelfRef?.Dispose();
+
         if (_polling is not null)
         {
             await _polling.DisposeAsync();

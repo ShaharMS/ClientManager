@@ -2,33 +2,47 @@
 @using ClientManager.AdminUI.Models.Charts
 
 <div class="cm-monitor__chart-card">
-    <div class="cm-dashboard__chart-header">
-        <div class="cm-dashboard__filters">
-            <RadzenDropDown TValue="string" Value="@SelectedPoolId"
-                ValueChanged="@OnPoolChanged"
-                Data="@PoolOptions" TextProperty="Name" ValueProperty="Id"
-                Placeholder="Select pool..." Style="width: 220px;" />
-            <RadzenDropDown TValue="IEnumerable<string>" Value="@SelectedClientIds"
-                ValueChanged="@OnClientsChanged" Multiple="true"
-                Data="@ClientOptions" TextProperty="Name" ValueProperty="Id"
-                Placeholder="All clients" Style="width: 200px;" />
-            <RadzenDropDown TValue="string" Value="@SelectedMetric"
-                ValueChanged="@OnMetricChanged"
-                Data="@MetricOptions" TextProperty="Name" ValueProperty="Value"
-                Style="width: 220px;" />
+    <div class="cm-monitor__chart-toolbar cm-monitor__chart-toolbar--allocations">
+        <div class="cm-monitor__chart-filters cm-monitor__chart-filters--allocations">
+            <div class="cm-monitor__chart-filters-metric">
+                <RadzenDropDown TValue="MetricOption" Value="@SelectedMetricOption"
+                    ValueChanged="@OnMetricOptionChanged" AllowClear="false"
+                    Data="@MetricOptions" TextProperty="Name" />
+            </div>
+            <div class="cm-monitor__chart-filters-pool">
+                <RadzenDropDown TValue="string" Value="@SelectedPoolId"
+                    ValueChanged="@OnPoolChanged" AllowClear="false"
+                    Data="@PoolOptions" TextProperty="Name" ValueProperty="Id"
+                    Placeholder="Select pool..." />
+            </div>
+            <div class="cm-monitor__chart-filters-clients">
+                <RadzenDropDown TValue="IEnumerable<string>" Value="@SelectedClientIds"
+                    ValueChanged="@OnClientsChanged" Multiple="true"
+                    Data="@ClientOptions" TextProperty="Name" ValueProperty="Id"
+                    Placeholder="All clients" />
+            </div>
         </div>
-        <ChartSettingsDropdown OnTimeRangeChanged="OnTimeRangeChanged"
-                               OnPollingIntervalChanged="OnPollingIntervalChanged"
-                               OnAxisScaleChanged="OnAxisScaleChanged" />
+        <span class="cm-dashboard__chart-title cm-monitor__chart-title">@ChartTitle</span>
+        <div class="cm-monitor__chart-settings">
+            <ChartSettingsDropdown OnTimeRangeChanged="OnTimeRangeChanged"
+                                   OnPollingIntervalChanged="OnPollingIntervalChanged"
+                                   OnAxisScaleChanged="OnAxisScaleChanged" />
+        </div>
     </div>
     <StackedUsageChartList Charts="@TargetCharts" AxisScale="@AxisScaleType"
-        CapLineTitle="@CapLineTitle" TitleSuffix="@ChartTitleSuffix"
-        Loading="@Loading" EmptyMessage="No allocation data available" />
+        CapLineTitle="@CapLineTitle" Loading="@Loading" ShowTitles="false"
+        EmptyMessage="No allocation data available" />
 </div>
 
 @code {
     public const string ActiveAllocationsMetric = "ActiveAllocations";
     public const string AccessRequestsMetric = "AccessRequests";
+
+    private static readonly List<MetricOption> DefaultMetricOptions =
+    [
+        new(ActiveAllocationsMetric, "Active Allocations"),
+        new(AccessRequestsMetric, "Access Requests")
+    ];
 
     [Parameter] public string SelectedPoolId { get; set; } = "";
     [Parameter] public EventCallback<string> SelectedPoolIdChanged { get; set; }
@@ -38,7 +52,8 @@
     [Parameter] public EventCallback<string> SelectedMetricChanged { get; set; }
     [Parameter] public List<NamedItem> PoolOptions { get; set; } = [];
     [Parameter] public List<NamedItem> ClientOptions { get; set; } = [];
-    [Parameter] public List<MetricOption> MetricOptions { get; set; } = [];
+    [Parameter] public List<MetricOption> MetricOptions { get; set; } = DefaultMetricOptions;
+    [Parameter] public string ChartTitle { get; set; } = "All Pools - Active Allocations";
     [Parameter] public List<TargetChartData> TargetCharts { get; set; } = [];
     [Parameter] public AxisScaleType AxisScaleType { get; set; }
     [Parameter] public bool Loading { get; set; }
@@ -50,7 +65,10 @@
 
     private bool IsAccessMetric => SelectedMetric == AccessRequestsMetric;
     private string CapLineTitle => IsAccessMetric ? "Access Cap" : "Max Slots";
-    private string ChartTitleSuffix => IsAccessMetric ? "Access Requests" : "Active Allocations";
+
+    private MetricOption SelectedMetricOption =>
+        MetricOptions.FirstOrDefault(m => m.Value == SelectedMetric)
+        ?? DefaultMetricOptions[0];
 
     private async Task OnPoolChanged(string value)
     {
@@ -64,9 +82,10 @@
         await OnFilterChanged.InvokeAsync();
     }
 
-    private async Task OnMetricChanged(string value)
+    private async Task OnMetricOptionChanged(MetricOption? value)
     {
-        await SelectedMetricChanged.InvokeAsync(value);
+        var metric = value?.Value ?? ActiveAllocationsMetric;
+        await SelectedMetricChanged.InvokeAsync(metric);
         await MetricSelectionChanged.InvokeAsync();
     }
 }
