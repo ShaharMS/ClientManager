@@ -24,6 +24,12 @@ builder.Services.AddSingleton(typeof(IAppLogger<>), typeof(AppLogger<>));
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
+if (builder.Environment.IsDevelopment())
+{
+    builder.Services.Configure<Microsoft.AspNetCore.Components.Server.CircuitOptions>(
+        options => options.DetailedErrors = true);
+}
+
 builder.Services.AddHttpClient("ClientManagerApi", client =>
 {
     client.BaseAddress = new Uri(

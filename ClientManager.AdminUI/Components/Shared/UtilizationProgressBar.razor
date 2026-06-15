@@ -1,0 +1,9 @@
+<RadzenProgressBar Value="@Percent" Max="100" ShowValue="true"
+    ProgressBarStyle="@UtilizationHelper.GetProgressBarStyle(Percent)"
+    class="cm-list-page__utilization-bar"
+    Style="@($"height: {HeightPx}px;")" />
+
+@code {
+    [Parameter] public int Percent { get; set; }
+    [Parameter] public int HeightPx { get; set; } = 20;
+}

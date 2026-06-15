@@ -31,7 +31,10 @@ else
             </div>
 
             <div class="cm-editor__actions">
-                <RadzenButton Text="Save" ButtonType="ButtonType.Submit" ButtonStyle="ButtonStyle.Primary" />
+                <span title="@SubmitTitle">
+                    <RadzenButton Text="Save" ButtonType="ButtonType.Submit" ButtonStyle="ButtonStyle.Primary"
+                        Disabled="@SubmitDisabled" />
+                </span>
                 <RadzenButton Text="Cancel" Variant="Variant.Outlined" Click="@(() => Nav.NavigateTo(BackPath))" />
             </div>
         </EditForm>
@@ -46,14 +49,17 @@ else
     [Parameter, EditorRequired] public string CreateTitle { get; set; } = string.Empty;
     [Parameter, EditorRequired] public string CreateDescription { get; set; } = string.Empty;
     [Parameter, EditorRequired] public string EditTitlePrefix { get; set; } = string.Empty;
+    [Parameter] public string? EditTitle { get; set; }
     [Parameter, EditorRequired] public string EditDescription { get; set; } = string.Empty;
     [Parameter, EditorRequired] public string FormName { get; set; } = string.Empty;
     [Parameter, EditorRequired] public TModel Model { get; set; } = default!;
     [Parameter] public bool Loading { get; set; }
     [Parameter] public string? Error { get; set; }
+    [Parameter] public bool SubmitDisabled { get; set; }
+    [Parameter] public string? SubmitTitle { get; set; }
     [Parameter, EditorRequired] public EventCallback OnValidSubmit { get; set; }
     [Parameter, EditorRequired] public RenderFragment ChildContent { get; set; } = default!;
 
-    private string HeaderTitle => IsNew ? CreateTitle : $"{EditTitlePrefix}{Id}";
+    private string HeaderTitle => IsNew ? CreateTitle : (EditTitle ?? $"{EditTitlePrefix}{Id}");
     private string HeaderDescription => IsNew ? CreateDescription : EditDescription;
 }

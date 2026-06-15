@@ -24,6 +24,12 @@ public class GlobalRateLimitApiService(IHttpClientFactory httpClientFactory)
         return data;
     }
 
+    public async Task<GlobalRateLimit?> GetByTargetAsync(string targetId, TargetType targetType)
+    {
+        var limits = await GetByTargetTypeAsync(targetType);
+        return limits.FirstOrDefault(l => string.Equals(l.TargetId, targetId, StringComparison.Ordinal));
+    }
+
     public new async Task CreateAsync(GlobalRateLimit limit)
     {
         await base.CreateAsync(limit);

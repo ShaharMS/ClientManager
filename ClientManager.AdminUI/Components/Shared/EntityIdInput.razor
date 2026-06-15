@@ -8,7 +8,23 @@
                         ValidationMessage="@_validationMessage"
                         MessageElementId="@_messageElementId"
                         Disabled="@Disabled">
-    @if (Mode == EntityIdInputMode.Reference)
+    @if (Mode == EntityIdInputMode.Reference && _useDisabledOptions)
+    {
+        <RadzenDropDown TValue="string"
+                        Value="@Value"
+                        Data="@_referenceOptions"
+                        TextProperty="Value"
+                        ValueProperty="Value"
+                        DisabledProperty="Disabled"
+                        Disabled="@Disabled"
+                        Style="@Style"
+                        Placeholder="@Placeholder"
+                        AllowFiltering="true"
+                        FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                        Change="@OnReferenceChanged"
+                        InputAttributes="@_inputAttributes" />
+    }
+    else if (Mode == EntityIdInputMode.Reference)
     {
         <RadzenDropDown TValue="string"
                         Value="@Value"
@@ -54,6 +70,12 @@
     /// <summary>Human-readable entity noun used in accessible labels (for example "service" or "client").</summary>
     [Parameter] public string EntityName { get; set; } = "item";
 
+    /// <summary>Known IDs shown in the dropdown but not selectable (for example, already configured).</summary>
+    [Parameter] public IEnumerable<string> DisabledSuggestions { get; set; } = [];
+
+    /// <summary>Validation message when the user selects a disabled suggestion.</summary>
+    [Parameter] public string DisabledSuggestionMessage { get; set; } = "Unavailable";
+
     /// <summary>Disables the input (for example when editing an existing entity's immutable ID).</summary>
     [Parameter] public bool Disabled { get; set; }
 
@@ -81,6 +103,15 @@
     private IReadOnlyDictionary<string, object>? _inputAttributes;
     private bool _submitValidationRequested;
     private ValidationMessageStore? _messageStore;
+    private List<ReferenceOption> _referenceOptions = [];
+    private bool _useDisabledOptions;
+    private HashSet<string> _disabledSuggestions = new(StringComparer.OrdinalIgnoreCase);
+
+    private sealed class ReferenceOption(string value, bool disabled)
+    {
+        public string Value { get; } = value;
+        public bool Disabled { get; } = disabled;
+    }
 
     protected override void OnInitialized()
     {
@@ -94,6 +125,11 @@
 
     protected override void OnParametersSet()
     {
+        _disabledSuggestions = DisabledSuggestions.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        _useDisabledOptions = _disabledSuggestions.Count > 0;
+        _referenceOptions = Suggestions
+            .Select(s => new ReferenceOption(s, _disabledSuggestions.Contains(s)))
+            .ToList();
         Validate(Value);
         RefreshInputAttributes();
     }
@@ -188,6 +224,11 @@
                     _validationState = InputValidationState.Neutral;
                     _validationMessage = null;
                 }
+            }
+            else if (_disabledSuggestions.Contains(trimmed))
+            {
+                _validationState = InputValidationState.Invalid;
+                _validationMessage = DisabledSuggestionMessage;
             }
             else if (exists)
             {
