@@ -11,11 +11,10 @@
     EditTitlePrefix="Edit Quota: " EditDescription="Update quota configuration."
     FormName="quotaForm" Model="@_model" Loading="@_loading" Error="@_error"
     OnValidSubmit="SaveAsync">
-    <div class="cm-editor__field">
-        <label>Quota ID</label>
-        <EntityIdInput @bind-Value="_model.Id" Suggestions="_existingIds"
-            Mode="EntityIdInputMode.Unique" EntityName="quota" Disabled="@(!_isNew)" />
-    </div>
+    @if (_saveError is not null)
+    {
+        <div class="alert alert-danger" style="margin-bottom: var(--space-md);">@_saveError</div>
+    }
     <div class="cm-editor__field">
         <label>Resource Pool</label>
         <EntityIdInput @bind-Value="_model.TargetId" Suggestions="_poolIds"
@@ -49,15 +48,14 @@
     private bool _isNew => string.IsNullOrEmpty(Id) || Id == "new";
     private bool _loading = true;
     private string? _error;
+    private string? _saveError;
     private RateLimitFormModel _model = new() { TargetType = TargetType.ResourcePool };
-    private List<string> _existingIds = [];
     private List<string> _poolIds = [];
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
-            _existingIds = (await RateLimitApi.GetAllAsync()).Select(l => l.Id).ToList();
             _poolIds = (await PoolApi.GetAllAsync()).Select(p => p.Id).ToList();
 
             if (!_isNew)
@@ -95,7 +93,7 @@
     {
         var limit = new GlobalRateLimit
         {
-            Id = _model.Id,
+            Id = _isNew ? EntityIdGenerator.FromTarget(_model.TargetId) : _model.Id,
             TargetId = _model.TargetId,
             TargetType = TargetType.ResourcePool,
             Strategy = _model.Strategy,
@@ -107,20 +105,32 @@
 
         try
         {
+            _saveError = null;
+
             if (_isNew)
             {
-                await RateLimitApi.CreateAsync(limit);
+                var existing = await RateLimitApi.GetByTargetAsync(_model.TargetId, TargetType.ResourcePool);
+                if (existing is not null)
+                {
+                    await RateLimitApi.UpdateAsync(existing.Id, limit with { Id = existing.Id });
+                }
+                else
+                {
+                    await RateLimitApi.CreateAsync(limit);
+                }
             }
             else
             {
-                await RateLimitApi.UpdateAsync(Id!, limit);
+                await RateLimitApi.UpdateAsync(Id!, limit with { Id = _model.Id });
             }
-
-            Nav.NavigateTo("/quotas");
         }
         catch (HttpRequestException ex)
         {
-            _error = $"Save failed: {ex.Message}";
+            _saveError = $"Save failed: {ex.Message}";
+            StateHasChanged();
+            return;
         }
+
+        Nav.NavigateTo("/quotas");
     }
 }

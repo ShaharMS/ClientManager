@@ -20,6 +20,10 @@
         <RadzenTextBox @bind-Value="_model.Name" Style="width: 100%;" />
     </div>
     <div class="cm-editor__field">
+        <label>Enabled</label>
+        <RadzenSwitch @bind-Value="_model.IsEnabled" />
+    </div>
+    <div class="cm-editor__field">
         <label>Max Slots</label>
         <RadzenNumeric TValue="uint" @bind-Value="_model.MaxSlots" Style="width: 100%;" />
     </div>
@@ -57,7 +61,8 @@
                     Id = pool.Id,
                     Name = pool.Name,
                     MaxSlots = pool.MaxSlots,
-                    AllocationTtlSeconds = pool.AllocationTtl.TotalSeconds
+                    AllocationTtlSeconds = pool.AllocationTtl.TotalSeconds,
+                    IsEnabled = pool.IsEnabled
                 };
             }
         }
@@ -78,7 +83,8 @@
             Id = _model.Id,
             Name = _model.Name,
             MaxSlots = _model.MaxSlots,
-            AllocationTtl = TimeSpan.FromSeconds(_model.AllocationTtlSeconds)
+            AllocationTtl = TimeSpan.FromSeconds(_model.AllocationTtlSeconds),
+            IsEnabled = _model.IsEnabled
         };
 
         try
@@ -91,12 +97,13 @@
             {
                 await PoolApi.UpdateAsync(Id!, pool);
             }
-
-            Nav.NavigateTo("/resource-pools");
         }
         catch (HttpRequestException ex)
         {
             _error = $"Save failed: {ex.Message}";
+            return;
         }
+
+        Nav.NavigateTo("/resource-pools");
     }
 }

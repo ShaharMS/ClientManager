@@ -10,9 +10,9 @@
     <p>Manage client configurations and access control.</p>
 </div>
 
-@if (_deleteError is not null)
+@if (_actionError is not null)
 {
-    <div class="alert alert-danger">@_deleteError</div>
+    <div class="alert alert-danger">@_actionError</div>
 }
 
 @if (_loading)
@@ -26,31 +26,37 @@ else if (_error is not null)
 else
 {
     <div class="cm-list-page__table-card">
-        <div class="cm-list-page__header">
-            <div style="display: flex; gap: 12px; align-items: center;">
-                <RadzenTextBox Placeholder="Search clients..."
-                    Value="@_search"
-                    ValueChanged="@((string v) => { _search = v; StateHasChanged(); })"
-                    @oninput="@(args => { _search = args.Value?.ToString(); StateHasChanged(); })"
-                    Style="width: 280px;" />
+        <div class="cm-list-page__header cm-list-page__header--with-filter cm-list-page__header--clients">
+            <div class="cm-list-page__filter-field">
                 <RadzenDropDown TValue="bool?" Data="@_enabledOptions"
                     TextProperty="Label" ValueProperty="Value"
                     Value="@_enabledFilter"
                     ValueChanged="@((bool? v) => OnEnabledFilterChanged(v))"
-                    Placeholder="All statuses" AllowClear="true"
-                    Style="width: 160px;" />
+                    Placeholder="All statuses" AllowClear="true" />
             </div>
-            <RadzenButton Text="Create Client" Icon="add" Click="@(() => Nav.NavigateTo("/clients/new"))"
-                ButtonStyle="ButtonStyle.Primary" />
+            <div class="cm-list-page__header-actions">
+                <RadzenButton Text="Create Client" Icon="add"
+                    class="cm-list-page__create-btn"
+                    title="Create client"
+                    Click="@(() => Nav.NavigateTo("/clients/new"))"
+                    ButtonStyle="ButtonStyle.Primary" />
+            </div>
+            <div class="cm-list-page__search-field">
+                <RadzenTextBox Placeholder="Search clients..."
+                    Value="@_search"
+                    ValueChanged="@((string v) => { _search = v; StateHasChanged(); })"
+                    @oninput="@(args => { _search = args.Value?.ToString(); StateHasChanged(); })" />
+            </div>
         </div>
 
         <RadzenDataGrid Data="@_filteredClients" TItem="ClientConfiguration"
             AllowSorting="true" AllowPaging="true" PageSize="@_pageSize"
             PagerHorizontalAlign="HorizontalAlign.Center">
             <Columns>
-                <RadzenDataGridColumn TItem="ClientConfiguration" Property="Id" Title="ID" Width="150px" />
-                <RadzenDataGridColumn TItem="ClientConfiguration" Property="Name" Title="Name" />
-                <RadzenDataGridColumn TItem="ClientConfiguration" Title="Status" Width="100px">
+                <RadzenDataGridColumn TItem="ClientConfiguration" Property="Id" Title="ID" Width="130px" />
+                <RadzenDataGridColumn TItem="ClientConfiguration" Property="Name" Title="Name" MinWidth="220px" />
+                <RadzenDataGridColumn TItem="ClientConfiguration" Title="Status" Width="130px" TextAlign="TextAlign.Center"
+                    CssClass="cm-list-page__col-center cm-list-page__col-status">
                     <Template Context="client">
                         @if (client.IsEnabled)
                         {
@@ -62,19 +68,37 @@ else
                         }
                     </Template>
                 </RadzenDataGridColumn>
-                <RadzenDataGridColumn TItem="ClientConfiguration" Title="Services" Width="100px">
+                <RadzenDataGridColumn TItem="ClientConfiguration" Title="Services" Width="110px" TextAlign="TextAlign.Center"
+                    CssClass="cm-list-page__col-center">
                     <Template Context="client">@client.Services.Count</Template>
                 </RadzenDataGridColumn>
-                <RadzenDataGridColumn TItem="ClientConfiguration" Title="Pools" Width="100px">
+                <RadzenDataGridColumn TItem="ClientConfiguration" Title="Pools" Width="100px" TextAlign="TextAlign.Center"
+                    CssClass="cm-list-page__col-center">
                     <Template Context="client">@client.ResourcePools.Count</Template>
                 </RadzenDataGridColumn>
-                <RadzenDataGridColumn TItem="ClientConfiguration" Title="Actions" Width="160px" Sortable="false">
+                <RadzenDataGridColumn TItem="ClientConfiguration" Title="Actions" Width="120px" Sortable="false"
+                    TextAlign="TextAlign.Center" CssClass="cm-list-page__col-center cm-list-page__col-actions">
                     <Template Context="client">
+                        <div class="cm-list-page__actions-cell">
                         <RadzenButton Icon="edit" Size="ButtonSize.Small" Variant="Variant.Text"
+                            title="Edit client"
                             Click="@(() => Nav.NavigateTo($"/clients/{client.Id}"))" />
+                        @if (client.IsEnabled)
+                        {
+                            <RadzenButton Icon="block" Size="ButtonSize.Small" Variant="Variant.Text"
+                                ButtonStyle="ButtonStyle.Warning" title="Disable client"
+                                Click="@(async () => await ToggleEnabledAsync(client))" />
+                        }
+                        else
+                        {
+                            <RadzenButton Icon="lock_open" Size="ButtonSize.Small" Variant="Variant.Text"
+                                ButtonStyle="ButtonStyle.Success" title="Enable client"
+                                Click="@(async () => await ToggleEnabledAsync(client))" />
+                        }
                         <RadzenButton Icon="delete" Size="ButtonSize.Small" Variant="Variant.Text"
-                            ButtonStyle="ButtonStyle.Danger"
+                            ButtonStyle="ButtonStyle.Danger" title="Delete client"
                             Click="@(async () => await DeleteAsync(client.Id))" />
+                        </div>
                     </Template>
                 </RadzenDataGridColumn>
             </Columns>
@@ -85,7 +109,7 @@ else
 @code {
     private bool _loading = true;
     private string? _error;
-    private string? _deleteError;
+    private string? _actionError;
     private string? _search;
     private bool? _enabledFilter;
     private List<ClientConfiguration> _clients = [];
@@ -175,6 +199,21 @@ else
         await LoadAsync();
     }
 
+    private Task ToggleEnabledAsync(ClientConfiguration client) =>
+        ListToggleEnabledSupport.ExecuteAsync(
+            Dialog,
+            "client",
+            client.Id,
+            client.IsEnabled,
+            async () =>
+            {
+                var updated = client with { IsEnabled = !client.IsEnabled };
+                await ClientApi.UpdateAsync(client.Id, updated);
+            },
+            LoadAsync,
+            message => _actionError = message,
+            StateHasChanged);
+
     private Task DeleteAsync(string id) =>
         ListDeleteSupport.ExecuteAsync(
             Dialog,
@@ -182,6 +221,6 @@ else
             id,
             () => ClientApi.DeleteAsync(id),
             LoadAsync,
-            message => _deleteError = message,
+            message => _actionError = message,
             StateHasChanged);
 }

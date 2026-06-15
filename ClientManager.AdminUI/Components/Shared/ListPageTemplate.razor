@@ -20,15 +20,23 @@ else
 {
     <div class="cm-list-page__table-card">
         <div class="cm-list-page__header">
-            <div style="display: flex; gap: 12px; align-items: center;">
-                <RadzenTextBox Placeholder="@SearchPlaceholder"
-                    @bind-Value="_search"
-                    Style="width: 280px;" />
-                @ToolbarExtra
+            @if (ToolbarExtra is not null)
+            {
+                <div class="cm-list-page__filter-field">
+                    @ToolbarExtra
+                </div>
+            }
+            <div class="cm-list-page__header-actions">
+                <RadzenButton Text="@CreateButtonText" Icon="add"
+                    class="cm-list-page__create-btn"
+                    title="@CreateButtonText"
+                    Click="@(() => Nav.NavigateTo(CreateUrl))"
+                    ButtonStyle="ButtonStyle.Primary" />
             </div>
-            <RadzenButton Text="@CreateButtonText" Icon="add"
-                Click="@(() => Nav.NavigateTo(CreateUrl))"
-                ButtonStyle="ButtonStyle.Primary" />
+            <div class="cm-list-page__search-field">
+                <RadzenTextBox Placeholder="@SearchPlaceholder"
+                    @bind-Value="_search" />
+            </div>
         </div>
 
         @* Note: RadzenDataGrid columns must be declared in the page, not via this template. *@

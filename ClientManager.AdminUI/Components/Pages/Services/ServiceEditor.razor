@@ -85,12 +85,13 @@
             {
                 await ServiceApi.UpdateAsync(Id!, service);
             }
-
-            Nav.NavigateTo("/services");
         }
         catch (HttpRequestException ex)
         {
             _error = $"Save failed: {ex.Message}";
+            return;
         }
+
+        Nav.NavigateTo("/services");
     }
 }

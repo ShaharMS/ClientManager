@@ -7,19 +7,22 @@
 <EditorPageTemplate TModel="RateLimitFormModel"
     Id="@Id" IsNew="@_isNew"
     BackPath="rate-limits" BackLinkText="← Back to Rate Limits"
-    CreateTitle="Create Rate Limit" CreateDescription="Define a rate limit for a service endpoint."
-    EditTitlePrefix="Edit Rate Limit: " EditDescription="Update rate limit configuration."
+    CreateTitle="Create Rate Limit" CreateDescription="@_createDescription"
+    EditTitle="@_editTitle" EditTitlePrefix="Edit Rate Limit: " EditDescription="Update rate limit configuration."
     FormName="rateLimitForm" Model="@_model" Loading="@_loading" Error="@_error"
+    SubmitDisabled="@_submitDisabled" SubmitTitle="@_submitTitle"
     OnValidSubmit="SaveAsync">
-    <div class="cm-editor__field">
-        <label>Rate Limit ID</label>
-        <EntityIdInput @bind-Value="_model.Id" Suggestions="_existingIds"
-            Mode="EntityIdInputMode.Unique" EntityName="rate limit" Disabled="@(!_isNew)" />
-    </div>
+    @if (_saveError is not null)
+    {
+        <div class="alert alert-danger" style="margin-bottom: var(--space-md);">@_saveError</div>
+    }
     <div class="cm-editor__field">
         <label>Service</label>
         <EntityIdInput @bind-Value="_model.TargetId" Suggestions="_serviceIds"
-            Mode="EntityIdInputMode.Reference" EntityName="service" />
+            DisabledSuggestions="@_limitedServiceIds"
+            DisabledSuggestionMessage="Already has a rate limit"
+            Mode="EntityIdInputMode.Reference" EntityName="service"
+            Disabled="@(_isNew && !_canCreate)" />
     </div>
     <div class="cm-editor__field">
         <label>Strategy</label>
@@ -45,29 +48,44 @@
 </EditorPageTemplate>
 
 @code {
+    private const string AllServicesLimitedTooltip = "Every service already has a rate limit.";
+
     [Parameter] public string? Id { get; set; }
     private bool _isNew => string.IsNullOrEmpty(Id) || Id == "new";
     private bool _loading = true;
     private string? _error;
+    private string? _saveError;
+    private string _createDescription = "Define a rate limit for a service endpoint.";
+    private string? _editTitle;
     private RateLimitFormModel _model = new() { TargetType = TargetType.Service };
-    private List<string> _existingIds = [];
     private List<string> _serviceIds = [];
+    private List<string> _limitedServiceIds = [];
+    private bool _canCreate;
+    private bool _submitDisabled;
+    private string? _submitTitle;
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
-            _existingIds = (await RateLimitApi.GetAllAsync()).Select(l => l.Id).ToList();
             _serviceIds = (await ServiceApi.GetAllAsync()).Select(s => s.Id).ToList();
+            var existingLimits = await RateLimitApi.GetByTargetTypeAsync(TargetType.Service);
+            var limitedTargets = existingLimits
+                .Select(l => l.TargetId)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
             if (!_isNew)
             {
                 var limit = await RateLimitApi.GetByIdAsync(Id!);
                 if (limit is null)
                 {
-                    _error = $"Rate limit '{Id}' not found.";
+                    _error = "Rate limit not found.";
                     return;
                 }
+
+                _editTitle = $"Edit Rate Limit: {limit.TargetId}";
+
+                limitedTargets.Remove(limit.TargetId);
 
                 _model = new RateLimitFormModel
                 {
@@ -80,6 +98,16 @@
                     TokensPerRefill = limit.TokensPerRefill
                 };
             }
+
+            _limitedServiceIds = _serviceIds
+                .Where(id => limitedTargets.Contains(id))
+                .ToList();
+
+            if (_isNew)
+            {
+                _model.TargetId = _serviceIds.FirstOrDefault(id => !limitedTargets.Contains(id)) ?? string.Empty;
+                RefreshCreateState();
+            }
         }
         catch (HttpRequestException ex)
         {
@@ -91,11 +119,35 @@
         }
     }
 
+    private void RefreshCreateState()
+    {
+        if (!_isNew)
+        {
+            _submitDisabled = false;
+            _submitTitle = null;
+            return;
+        }
+
+        _canCreate = _serviceIds.Any(id => !_limitedServiceIds.Contains(id, StringComparer.OrdinalIgnoreCase));
+        _submitDisabled = !_canCreate;
+        _submitTitle = _canCreate ? null : AllServicesLimitedTooltip;
+        _createDescription = _canCreate
+            ? "Define a rate limit for a service endpoint."
+            : AllServicesLimitedTooltip;
+    }
+
     private async Task SaveAsync()
     {
+        if (_isNew && (!_canCreate || _limitedServiceIds.Any(id => string.Equals(id, _model.TargetId, StringComparison.OrdinalIgnoreCase))))
+        {
+            _saveError = AllServicesLimitedTooltip;
+            StateHasChanged();
+            return;
+        }
+
         var limit = new GlobalRateLimit
         {
-            Id = _model.Id,
+            Id = _isNew ? EntityIdGenerator.FromTarget(_model.TargetId) : _model.Id,
             TargetId = _model.TargetId,
             TargetType = TargetType.Service,
             Strategy = _model.Strategy,
@@ -107,20 +159,24 @@
 
         try
         {
+            _saveError = null;
+
             if (_isNew)
             {
                 await RateLimitApi.CreateAsync(limit);
             }
             else
             {
-                await RateLimitApi.UpdateAsync(Id!, limit);
+                await RateLimitApi.UpdateAsync(Id!, limit with { Id = _model.Id });
             }
-
-            Nav.NavigateTo("/rate-limits");
         }
         catch (HttpRequestException ex)
         {
-            _error = $"Save failed: {ex.Message}";
+            _saveError = $"Save failed: {ex.Message}";
+            StateHasChanged();
+            return;
         }
+
+        Nav.NavigateTo("/rate-limits");
     }
 }

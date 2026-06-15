@@ -33,6 +33,6 @@
     [Parameter, EditorRequired] public List<PoolEntryModel> Entries { get; set; } = null!;
     [Parameter] public List<string> PoolIds { get; set; } = [];
 
-    private void AddEntry() => Entries.Add(new PoolEntryModel());
+    private void AddEntry() => Entries.Insert(0, new PoolEntryModel());
     private void RemoveEntry(PoolEntryModel entry) => Entries.Remove(entry);
 }

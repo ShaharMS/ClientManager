@@ -26,38 +26,56 @@ else if (_error is not null)
 else
 {
     <div class="cm-list-page__table-card">
-        <div class="cm-list-page__header">
-            <RadzenTextBox Placeholder="Search quotas..."
-                Value="@_search"
-                ValueChanged="@((string v) => { _search = v; StateHasChanged(); })"
-                @oninput="@(args => { _search = args.Value?.ToString(); StateHasChanged(); })"
-                Style="width: 280px;" />
-            <RadzenButton Text="Create Quota" Icon="add" Click="@(() => Nav.NavigateTo("/quotas/new"))"
-                ButtonStyle="ButtonStyle.Primary" />
+        <div class="cm-list-page__header cm-list-page__header--quota">
+            <div class="cm-list-page__search-field">
+                <RadzenTextBox Placeholder="Search quotas..."
+                    Value="@_search"
+                    ValueChanged="@((string v) => { _search = v; StateHasChanged(); })"
+                    @oninput="@(args => { _search = args.Value?.ToString(); StateHasChanged(); })" />
+            </div>
+            <div class="cm-list-page__header-actions">
+                <RadzenButton Text="Create Quota" Icon="add"
+                    class="cm-list-page__create-btn"
+                    title="Create quota"
+                    Click="@(() => Nav.NavigateTo("/quotas/new"))"
+                    ButtonStyle="ButtonStyle.Primary" />
+            </div>
         </div>
 
         <RadzenDataGrid Data="@_filteredLimits" TItem="GlobalRateLimit"
             AllowSorting="true" AllowPaging="true" PageSize="@_pageSize"
             PagerHorizontalAlign="HorizontalAlign.Center">
             <Columns>
-                <RadzenDataGridColumn TItem="GlobalRateLimit" Property="Id" Title="ID" Width="150px" />
-                <RadzenDataGridColumn TItem="GlobalRateLimit" Property="TargetId" Title="Resource Pool" />
-                <RadzenDataGridColumn TItem="GlobalRateLimit" Title="Strategy" Width="130px">
+                <RadzenDataGridColumn TItem="GlobalRateLimit" Property="Id" Title="ID" Width="130px" />
+                <RadzenDataGridColumn TItem="GlobalRateLimit" Property="TargetId" Title="Resource Pool" MinWidth="140px" />
+                <RadzenDataGridColumn TItem="GlobalRateLimit" Property="Strategy" Title="Strategy"
+                    Width="215px" MinWidth="215px" TextAlign="TextAlign.Center"
+                    CssClass="cm-list-page__col-center cm-list-page__col-status">
                     <Template Context="limit">
-                        <span class="cm-badge cm-badge--success">@limit.Strategy</span>
+                        <span class="@RateLimitStrategyBadge.GetCssClass(limit.Strategy)">@limit.Strategy</span>
                     </Template>
                 </RadzenDataGridColumn>
-                <RadzenDataGridColumn TItem="GlobalRateLimit" Property="MaxRequests" Title="Max Requests" Width="130px" />
-                <RadzenDataGridColumn TItem="GlobalRateLimit" Title="Window" Width="100px">
+                <RadzenDataGridColumn TItem="GlobalRateLimit" Property="MaxRequests" Title="Max Requests"
+                    Width="140px" MinWidth="140px" TextAlign="TextAlign.Center"
+                    HeaderCssClass="cm-list-page__col-center cm-list-page__col-header"
+                    CssClass="cm-list-page__col-center cm-list-page__col-status" />
+                <RadzenDataGridColumn TItem="GlobalRateLimit" Title="Window" Width="88px" MinWidth="88px"
+                    TextAlign="TextAlign.Center" HeaderCssClass="cm-list-page__col-center cm-list-page__col-header"
+                    CssClass="cm-list-page__col-center cm-list-page__col-status">
                     <Template Context="limit">@FormatWindow(limit.Window)</Template>
                 </RadzenDataGridColumn>
-                <RadzenDataGridColumn TItem="GlobalRateLimit" Title="Actions" Width="160px" Sortable="false">
+                <RadzenDataGridColumn TItem="GlobalRateLimit" Title="Actions" Width="120px" MinWidth="120px"
+                    Sortable="false" TextAlign="TextAlign.Center"
+                    CssClass="cm-list-page__col-center cm-list-page__col-actions">
                     <Template Context="limit">
-                        <RadzenButton Icon="edit" Size="ButtonSize.Small" Variant="Variant.Text"
-                            Click="@(() => Nav.NavigateTo($"/quotas/{limit.Id}"))" />
-                        <RadzenButton Icon="delete" Size="ButtonSize.Small" Variant="Variant.Text"
-                            ButtonStyle="ButtonStyle.Danger"
-                            Click="@(async () => await DeleteAsync(limit.Id))" />
+                        <div class="cm-list-page__actions-cell">
+                            <RadzenButton Icon="edit" Size="ButtonSize.Small" Variant="Variant.Text"
+                                title="Edit quota"
+                                Click="@(() => Nav.NavigateTo($"/quotas/{limit.Id}"))" />
+                            <RadzenButton Icon="delete" Size="ButtonSize.Small" Variant="Variant.Text"
+                                ButtonStyle="ButtonStyle.Danger" title="Delete quota"
+                                Click="@(async () => await DeleteAsync(limit.Id))" />
+                        </div>
                     </Template>
                 </RadzenDataGridColumn>
             </Columns>

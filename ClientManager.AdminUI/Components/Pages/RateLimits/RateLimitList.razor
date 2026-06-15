@@ -1,5 +1,6 @@
 @page "/rate-limits"
 @inject GlobalRateLimitApiService RateLimitApi
+@inject ServiceApiService ServiceApi
 @inject NavigationManager Nav
 @inject DialogService Dialog
 @inject IJSRuntime JS
@@ -26,46 +27,57 @@ else if (_error is not null)
 else
 {
     <div class="cm-list-page__table-card">
-        <div class="cm-list-page__header">
-            <div style="display: flex; gap: 12px; align-items: center;">
+        <div class="cm-list-page__header cm-list-page__header--rate-limits">
+            <div class="cm-list-page__search-field">
                 <RadzenTextBox Placeholder="Search rate limits..."
                     Value="@_search"
                     ValueChanged="@((string v) => { _search = v; StateHasChanged(); })"
-                    @oninput="@(args => { _search = args.Value?.ToString(); StateHasChanged(); })"
-                    Style="width: 280px;" />
-                <RadzenDropDown TValue="TargetType?" Data="@_targetTypeOptions"
-                    TextProperty="Label" ValueProperty="Value"
-                    Value="@_targetTypeFilter"
-                    ValueChanged="@((TargetType? v) => OnTargetTypeFilterChanged(v))"
-                    Placeholder="All target types" AllowClear="true"
-                    Style="width: 180px;" />
+                    @oninput="@(args => { _search = args.Value?.ToString(); StateHasChanged(); })" />
             </div>
-            <RadzenButton Text="Create Rate Limit" Icon="add" Click="@(() => Nav.NavigateTo("/rate-limits/new"))"
-                ButtonStyle="ButtonStyle.Primary" />
+            <div class="cm-list-page__header-actions">
+                <span class="cm-list-page__create-btn-wrap @(_canCreateMore ? null : "cm-list-page__create-btn-wrap--disabled")"
+                      title="@(_canCreateMore ? "Create rate limit" : _createDisabledTooltip)">
+                    <RadzenButton Text="Create Rate Limit" Icon="add"
+                        class="cm-list-page__create-btn"
+                        Click="@(() => Nav.NavigateTo("/rate-limits/new"))"
+                        ButtonStyle="ButtonStyle.Primary" Disabled="@(!_canCreateMore)" />
+                </span>
+            </div>
         </div>
 
         <RadzenDataGrid Data="@_filteredLimits" TItem="GlobalRateLimit"
             AllowSorting="true" AllowPaging="true" PageSize="@_pageSize"
             PagerHorizontalAlign="HorizontalAlign.Center">
             <Columns>
-                <RadzenDataGridColumn TItem="GlobalRateLimit" Property="Id" Title="ID" Width="150px" />
-                <RadzenDataGridColumn TItem="GlobalRateLimit" Property="TargetId" Title="Service" />
-                <RadzenDataGridColumn TItem="GlobalRateLimit" Title="Strategy" Width="130px">
+                <RadzenDataGridColumn TItem="GlobalRateLimit" Property="TargetId" Title="Service" MinWidth="140px" />
+                <RadzenDataGridColumn TItem="GlobalRateLimit" Property="Strategy" Title="Strategy"
+                    Width="215px" MinWidth="215px" TextAlign="TextAlign.Center"
+                    CssClass="cm-list-page__col-center cm-list-page__col-status">
                     <Template Context="limit">
-                        <span class="cm-badge cm-badge--success">@limit.Strategy</span>
+                        <span class="@RateLimitStrategyBadge.GetCssClass(limit.Strategy)">@limit.Strategy</span>
                     </Template>
                 </RadzenDataGridColumn>
-                <RadzenDataGridColumn TItem="GlobalRateLimit" Property="MaxRequests" Title="Max Requests" Width="130px" />
-                <RadzenDataGridColumn TItem="GlobalRateLimit" Title="Window" Width="100px">
+                <RadzenDataGridColumn TItem="GlobalRateLimit" Property="MaxRequests" Title="Max Requests"
+                    Width="140px" MinWidth="140px" TextAlign="TextAlign.Center"
+                    HeaderCssClass="cm-list-page__col-center cm-list-page__col-header"
+                    CssClass="cm-list-page__col-center cm-list-page__col-status" />
+                <RadzenDataGridColumn TItem="GlobalRateLimit" Title="Window" Width="88px" MinWidth="88px"
+                    TextAlign="TextAlign.Center" HeaderCssClass="cm-list-page__col-center cm-list-page__col-header"
+                    CssClass="cm-list-page__col-center cm-list-page__col-status">
                     <Template Context="limit">@FormatWindow(limit.Window)</Template>
                 </RadzenDataGridColumn>
-                <RadzenDataGridColumn TItem="GlobalRateLimit" Title="Actions" Width="160px" Sortable="false">
+                <RadzenDataGridColumn TItem="GlobalRateLimit" Title="Actions" Width="120px" MinWidth="120px"
+                    Sortable="false" TextAlign="TextAlign.Center"
+                    CssClass="cm-list-page__col-center cm-list-page__col-actions">
                     <Template Context="limit">
-                        <RadzenButton Icon="edit" Size="ButtonSize.Small" Variant="Variant.Text"
-                            Click="@(() => Nav.NavigateTo($"/rate-limits/{limit.Id}"))" />
-                        <RadzenButton Icon="delete" Size="ButtonSize.Small" Variant="Variant.Text"
-                            ButtonStyle="ButtonStyle.Danger"
-                            Click="@(async () => await DeleteAsync(limit.Id))" />
+                        <div class="cm-list-page__actions-cell">
+                            <RadzenButton Icon="edit" Size="ButtonSize.Small" Variant="Variant.Text"
+                                title="Edit rate limit"
+                                Click="@(() => Nav.NavigateTo($"/rate-limits/{limit.Id}"))" />
+                            <RadzenButton Icon="delete" Size="ButtonSize.Small" Variant="Variant.Text"
+                                ButtonStyle="ButtonStyle.Danger" title="Delete rate limit"
+                                Click="@(async () => await DeleteAsync(limit))" />
+                        </div>
                     </Template>
                 </RadzenDataGridColumn>
             </Columns>
@@ -78,23 +90,17 @@ else
     private string? _error;
     private string? _deleteError;
     private string? _search;
-    private TargetType? _targetTypeFilter;
     private List<GlobalRateLimit> _limits = [];
     private int _pageSize = 10;
+    private bool _canCreateMore = true;
+    private string? _createDisabledTooltip;
     private IJSObjectReference? _tableJs;
     private DotNetObjectReference<RateLimitList>? _selfRef;
-
-    private static readonly List<object> _targetTypeOptions =
-    [
-        new { Label = "Service", Value = TargetType.Service },
-        new { Label = "Resource Pool", Value = TargetType.ResourcePool }
-    ];
 
     private IEnumerable<GlobalRateLimit> _filteredLimits =>
         string.IsNullOrWhiteSpace(_search)
             ? _limits
             : _limits.Where(l =>
-                l.Id.Contains(_search, StringComparison.OrdinalIgnoreCase) ||
                 l.TargetId.Contains(_search, StringComparison.OrdinalIgnoreCase));
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
@@ -133,14 +139,9 @@ else
     {
         try
         {
-            if (_targetTypeFilter.HasValue)
-            {
-                _limits = await RateLimitApi.GetByTargetTypeAsync(_targetTypeFilter.Value);
-            }
-            else
-            {
-                _limits = await RateLimitApi.GetAllAsync();
-            }
+            _limits = await RateLimitApi.GetByTargetTypeAsync(TargetType.Service);
+
+            await RefreshCreateAvailabilityAsync();
             _error = null;
         }
         catch (HttpRequestException ex)
@@ -153,19 +154,24 @@ else
         }
     }
 
-    private async Task OnTargetTypeFilterChanged(TargetType? value)
+    private async Task RefreshCreateAvailabilityAsync()
     {
-        _targetTypeFilter = value;
-        _loading = true;
-        await LoadAsync();
+        var services = await ServiceApi.GetAllAsync();
+        var serviceLimits = await RateLimitApi.GetByTargetTypeAsync(TargetType.Service);
+        var limitedTargets = serviceLimits
+            .Select(l => l.TargetId)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        _canCreateMore = services.Any(s => !limitedTargets.Contains(s.Id));
+        _createDisabledTooltip = _canCreateMore ? null : "Every service already has a rate limit.";
     }
 
-    private Task DeleteAsync(string id) =>
+    private Task DeleteAsync(GlobalRateLimit limit) =>
         ListDeleteSupport.ExecuteAsync(
             Dialog,
-            "rate limit",
-            id,
-            () => RateLimitApi.DeleteAsync(id),
+            "rate limit for service",
+            limit.TargetId,
+            () => RateLimitApi.DeleteAsync(limit.Id),
             LoadAsync,
             message => _deleteError = message,
             StateHasChanged);

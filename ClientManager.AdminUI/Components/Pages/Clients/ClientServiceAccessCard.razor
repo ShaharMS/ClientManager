@@ -61,6 +61,6 @@
     [Parameter, EditorRequired] public List<ServiceEntryModel> Entries { get; set; } = null!;
     [Parameter] public List<string> ServiceIds { get; set; } = [];
 
-    private void AddEntry() => Entries.Add(new ServiceEntryModel());
+    private void AddEntry() => Entries.Insert(0, new ServiceEntryModel());
     private void RemoveEntry(ServiceEntryModel entry) => Entries.Remove(entry);
 }
