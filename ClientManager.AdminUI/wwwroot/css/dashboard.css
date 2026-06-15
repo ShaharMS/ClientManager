@@ -46,6 +46,10 @@
     margin-bottom: var(--space-sm);
 }
 
+.cm-monitor__chart-toolbar .cm-dashboard__chart-title {
+    margin-bottom: 0;
+}
+
 .cm-dashboard__filters {
     display: flex;
     gap: var(--space-sm);

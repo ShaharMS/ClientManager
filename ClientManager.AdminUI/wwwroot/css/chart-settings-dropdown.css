@@ -62,7 +62,7 @@
 
 .cm-chart-settings-dropdown__relative {
     display: grid;
-    grid-template-columns: 1fr 7.5rem;
+    grid-template-columns: 1fr 8.5rem;
     gap: var(--space-sm);
     align-items: end;
 }
@@ -73,6 +73,16 @@
     flex-direction: column;
     gap: 4px;
     min-width: 0;
+}
+
+.cm-chart-settings-dropdown__relative .rz-dropdown,
+.cm-chart-settings-dropdown__relative .cm-duration-input {
+    width: 100%;
+}
+
+.cm-chart-settings-dropdown__relative .cm-duration-input .rz-dropdown {
+    width: 7.5rem;
+    flex-shrink: 0;
 }
 
 .cm-chart-settings-dropdown__field-label {
