@@ -12,10 +12,10 @@ internal static class MonitorAllServicesChartBuilder
         MonitorLoadContext context,
         List<Service> visibleServices,
         IReadOnlyList<TargetClientUsageBreakdownResponse> breakdowns,
-        IReadOnlyList<TargetClientUsageBreakdownResponse> recentBreakdowns,
         IReadOnlyList<HistoricalUsageResponse> allHistories,
         IReadOnlyDictionary<string, GlobalRateLimit> rateLimitLookup,
         TimeSpan chartBucketDuration,
+        TimeSpan rangeDuration,
         DateTime from,
         DateTime now,
         List<TargetChartData> charts,
@@ -31,25 +31,22 @@ internal static class MonitorAllServicesChartBuilder
 
             var breakdown = breakdowns.FirstOrDefault(b => b.TargetId == service.Id);
             var history = allHistories.FirstOrDefault(h => h.TargetId == service.Id);
-            var recentEntries = recentBreakdowns
-                .FirstOrDefault(b => b.TargetId == service.Id)?.Entries ?? [];
 
             rawPoints.AddRange((history?.Points ?? [])
                 .Select(point => new ChartBucketAggregator.RawPoint(point.Timestamp, point.GrantedCount)));
 
             foreach (var entry in breakdown?.Entries ?? [])
             {
-                var recentEntry = recentEntries.FirstOrDefault(e => e.ClientId == entry.ClientId);
                 rows.Add(new MonitorClientRow(
                     entry.ClientId, entry.ClientName, service.Name,
-                    recentEntry?.GrantedCount ?? 0,
-                    recentEntry?.DeniedCount ?? 0,
+                    entry.GrantedCount,
+                    entry.DeniedCount,
                     MonitorCapCalculator.GetEffectiveClientServiceCap(
-                        entry.ClientId, service.Id, context.AllClients, rateLimitLookup, MonitorLoadContext.RecentWindow)));
+                        entry.ClientId, service.Id, context.AllClients, rateLimitLookup, rangeDuration)));
             }
         }
 
-        var aggregation = ChartBucketAggregator.Aggregate(rawPoints, from, now);
+        var aggregation = ChartBucketAggregator.Aggregate(rawPoints, from, now, context.BucketCount);
         var sortedPoints = aggregation.Buckets
             .Select(bucket => new ChartPoint(bucket.Label, bucket.Value))
             .ToList();

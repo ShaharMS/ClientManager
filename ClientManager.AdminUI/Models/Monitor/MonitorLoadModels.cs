@@ -1,4 +1,5 @@
 using ClientManager.AdminUI.Models.Charts;
+using ClientManager.AdminUI.Services;
 using ClientManager.Shared.Models.Entities;
 
 namespace ClientManager.AdminUI.Models.Monitor;
@@ -13,6 +14,7 @@ public sealed class MonitorLoadContext
     public required ChartTimeRange TimeRange { get; init; }
     public required List<Service> AllServices { get; init; }
     public required List<ClientConfiguration> AllClients { get; init; }
+    public int BucketCount { get; init; } = ChartBucketAggregator.DefaultBucketCount;
 }
 
 public sealed record MonitorLoadResult(

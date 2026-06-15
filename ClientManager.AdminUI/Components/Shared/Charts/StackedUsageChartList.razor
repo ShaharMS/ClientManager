@@ -5,7 +5,7 @@
 {
     @foreach (var targetChart in Charts)
     {
-        @if (!string.IsNullOrEmpty(targetChart.TargetName))
+        @if (ShowTitles && !string.IsNullOrEmpty(targetChart.TargetName))
         {
             <span class="cm-dashboard__chart-title">@FormatTitle(targetChart)</span>
         }
@@ -52,6 +52,7 @@ else
     [Parameter] public string CapLineTitle { get; set; } = "Cap";
     [Parameter] public int HeightPx { get; set; } = 400;
     [Parameter] public bool Loading { get; set; }
+    [Parameter] public bool ShowTitles { get; set; } = true;
     [Parameter] public string EmptyMessage { get; set; } = "No usage data available";
     [Parameter] public string? TitleSuffix { get; set; }
 

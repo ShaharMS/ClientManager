@@ -29,7 +29,7 @@ internal sealed class DashboardAllTargetsChartLoader
         var from = context.TimeRange.GetFrom(now);
         var isRateBased = context.SelectedFilterType == "Service";
         var chartAggregationMode = ChartValueHelper.GetAggregationMode(isRateBased);
-        var emptyAggregation = ChartBucketAggregator.Aggregate([], from, now, mode: chartAggregationMode);
+        var emptyAggregation = ChartBucketAggregator.Aggregate([], from, now, context.BucketCount, chartAggregationMode);
 
         var targets = (context.SelectedFilterType == "Service"
             ? context.AllServices
@@ -73,7 +73,8 @@ internal sealed class DashboardAllTargetsChartLoader
                     ChartValueHelper.GetHistoricalPointValue(point, isRateBased))),
                 from,
                 now,
-                mode: chartAggregationMode))
+                context.BucketCount,
+                chartAggregationMode))
             .ToList();
 
         var referenceBuckets = targetAggregations.FirstOrDefault()?.Buckets

@@ -25,8 +25,8 @@ public sealed class MonitorDataLoader
     {
         var now = DateTime.UtcNow;
         var from = context.TimeRange.GetFrom(now);
-        var recentFrom = now.Subtract(MonitorLoadContext.RecentWindow);
-        var chartTemplate = ChartBucketAggregator.Aggregate([], from, now);
+        var rangeDuration = now - from;
+        var chartTemplate = ChartBucketAggregator.Aggregate([], from, now, context.BucketCount);
         var chartBucketDuration = chartTemplate.BucketDuration;
 
         var rateLimits = await _rateLimitApi.GetByTargetTypeAsync(TargetType.Service);
@@ -41,9 +41,6 @@ public sealed class MonitorDataLoader
         var breakdowns = await _statsService.GetClientUsageBreakdownAsync(
             "Service", visibleServiceIds, context.SelectedClientIds,
             from, now, context.TimeRange.Granularity);
-        var recentBreakdowns = await _statsService.GetClientUsageBreakdownAsync(
-            "Service", visibleServiceIds, context.SelectedClientIds,
-            recentFrom, now, "FiveMinute");
 
         var allClientIds = breakdowns
             .SelectMany(b => b.Entries.Select(e => e.ClientId))
@@ -61,14 +58,14 @@ public sealed class MonitorDataLoader
         if (context.SelectedServiceId == MonitorLoadContext.AllServicesId)
         {
             MonitorAllServicesChartBuilder.Build(
-                context, visibleServices, breakdowns, recentBreakdowns,
-                allHistories, rateLimitLookup, chartBucketDuration, from, now, charts, rows);
+                context, visibleServices, breakdowns,
+                allHistories, rateLimitLookup, chartBucketDuration, rangeDuration, from, now, charts, rows);
         }
         else
         {
             await _singleServiceLoader.LoadAsync(
-                context, visibleServices, breakdowns, recentBreakdowns,
-                rateLimitLookup, chartTemplate, chartBucketDuration, from, now, charts, rows);
+                context, visibleServices, breakdowns,
+                rateLimitLookup, chartTemplate, chartBucketDuration, rangeDuration, from, now, charts, rows);
         }
 
         var allServiceIds = context.AllServices.Select(s => s.Id).ToList();

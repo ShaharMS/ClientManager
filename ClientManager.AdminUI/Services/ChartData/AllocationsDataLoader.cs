@@ -35,7 +35,7 @@ public sealed class AllocationsDataLoader
         var chartAggregationMode = context.IsAccessMetric
             ? ChartBucketAggregator.AggregationMode.Sum
             : ChartBucketAggregator.AggregationMode.Latest;
-        var chartTemplate = ChartBucketAggregator.Aggregate([], from, now, mode: chartAggregationMode);
+        var chartTemplate = ChartBucketAggregator.Aggregate([], from, now, context.BucketCount, chartAggregationMode);
         var chartBucketDuration = chartTemplate.BucketDuration;
 
         IReadOnlyDictionary<string, GlobalRateLimit> rateLimitLookup = new Dictionary<string, GlobalRateLimit>();

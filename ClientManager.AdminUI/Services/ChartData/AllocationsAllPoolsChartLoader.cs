@@ -53,7 +53,8 @@ internal sealed class AllocationsAllPoolsChartLoader
 
             if (rawPoints.Count > 0)
             {
-                poolAggregations.Add(ChartBucketAggregator.Aggregate(rawPoints, from, now, mode: chartAggregationMode));
+                poolAggregations.Add(ChartBucketAggregator.Aggregate(
+                    rawPoints, from, now, context.BucketCount, chartAggregationMode));
             }
 
             foreach (var entry in breakdown?.Entries ?? [])

@@ -65,7 +65,7 @@ internal sealed class AllocationsSinglePoolChartLoader
                 }
 
                 clientAggregations[entry.ClientId] = ChartBucketAggregator.Aggregate(
-                    rawPoints, from, now, mode: chartAggregationMode);
+                    rawPoints, from, now, context.BucketCount, chartAggregationMode);
             }
 
             var referenceBuckets = clientAggregations.Values.FirstOrDefault()?.Buckets ?? chartTemplate.Buckets;

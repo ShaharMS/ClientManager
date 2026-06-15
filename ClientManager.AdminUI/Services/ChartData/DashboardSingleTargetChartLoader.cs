@@ -67,7 +67,7 @@ internal sealed class DashboardSingleTargetChartLoader
         var clientAggregations = new Dictionary<string, (NamedItem Client, ChartBucketAggregator.AggregationResult Result)>();
         var clientUsageValues = new Dictionary<string, double>();
 
-        var emptyAggregation = ChartBucketAggregator.Aggregate([], from, now, mode: chartAggregationMode);
+        var emptyAggregation = ChartBucketAggregator.Aggregate([], from, now, context.BucketCount, chartAggregationMode);
         var bucketDuration = emptyAggregation.BucketDuration;
 
         foreach (var client in clientsToQuery)
@@ -84,7 +84,8 @@ internal sealed class DashboardSingleTargetChartLoader
                 continue;
             }
 
-            var aggregation = ChartBucketAggregator.Aggregate(rawPoints, from, now, mode: chartAggregationMode);
+            var aggregation = ChartBucketAggregator.Aggregate(
+                rawPoints, from, now, context.BucketCount, chartAggregationMode);
             clientAggregations[client.Id] = (client, aggregation);
             clientUsageValues[client.Id] = ChartValueHelper.GetClientUsageValue(clientHistory?.Points ?? [], isRateBased);
         }

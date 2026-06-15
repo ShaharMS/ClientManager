@@ -18,10 +18,10 @@ internal sealed class MonitorSingleServiceChartLoader
         MonitorLoadContext context,
         List<Service> visibleServices,
         IReadOnlyList<TargetClientUsageBreakdownResponse> breakdowns,
-        IReadOnlyList<TargetClientUsageBreakdownResponse> recentBreakdowns,
         IReadOnlyDictionary<string, GlobalRateLimit> rateLimitLookup,
         ChartBucketAggregator.AggregationResult chartTemplate,
         TimeSpan chartBucketDuration,
+        TimeSpan rangeDuration,
         DateTime from,
         DateTime now,
         List<TargetChartData> charts,
@@ -33,8 +33,6 @@ internal sealed class MonitorSingleServiceChartLoader
                 service.Id, rateLimitLookup, chartBucketDuration);
 
             var breakdown = breakdowns.FirstOrDefault(b => b.TargetId == service.Id);
-            var recentEntries = recentBreakdowns
-                .FirstOrDefault(b => b.TargetId == service.Id)?.Entries ?? [];
             var entries = breakdown?.Entries ?? [];
 
             var historiesByClientId = (await _statsService.GetHistoricalUsageByClientAsync(
@@ -61,7 +59,8 @@ internal sealed class MonitorSingleServiceChartLoader
                     continue;
                 }
 
-                clientAggregations[entry.ClientId] = ChartBucketAggregator.Aggregate(rawPoints, from, now);
+                clientAggregations[entry.ClientId] = ChartBucketAggregator.Aggregate(
+                    rawPoints, from, now, context.BucketCount);
             }
 
             var referenceBuckets = clientAggregations.Values.FirstOrDefault()?.Buckets
@@ -80,13 +79,12 @@ internal sealed class MonitorSingleServiceChartLoader
 
                 clientAreas.Add(new ClientAreaSeries(entry.ClientId, entry.ClientName, points));
 
-                var recentEntry = recentEntries.FirstOrDefault(e => e.ClientId == entry.ClientId);
                 rows.Add(new MonitorClientRow(
                     entry.ClientId, entry.ClientName, service.Name,
-                    recentEntry?.GrantedCount ?? 0,
-                    recentEntry?.DeniedCount ?? 0,
+                    entry.GrantedCount,
+                    entry.DeniedCount,
                     MonitorCapCalculator.GetEffectiveClientServiceCap(
-                        entry.ClientId, service.Id, context.AllClients, rateLimitLookup, MonitorLoadContext.RecentWindow)));
+                        entry.ClientId, service.Id, context.AllClients, rateLimitLookup, rangeDuration)));
             }
 
             var chartCapPoints = referenceBuckets

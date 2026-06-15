@@ -7,6 +7,14 @@ namespace ClientManager.AdminUI.Services;
 public static class ChartBucketAggregator
 {
     public const int DefaultBucketCount = 12;
+    public const int NarrowBucketCount = 5;
+    public const int MediumBucketCount = 8;
+
+    /// <summary>Maps chart width to bucket count so x-axis labels stay readable.</summary>
+    public static int GetBucketCountForWidth(int chartWidthPx) =>
+        chartWidthPx <= 520 ? NarrowBucketCount
+        : chartWidthPx <= 720 ? MediumBucketCount
+        : DefaultBucketCount;
 
     public enum AggregationMode
     {

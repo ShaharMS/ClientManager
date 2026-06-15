@@ -1,4 +1,5 @@
 using ClientManager.AdminUI.Models.Charts;
+using ClientManager.AdminUI.Services;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Responses;
 
@@ -14,6 +15,7 @@ public sealed class AllocationsLoadContext
     public required ChartTimeRange TimeRange { get; init; }
     public required bool IsAccessMetric { get; init; }
     public required List<ClientConfiguration> AllClients { get; init; }
+    public int BucketCount { get; init; } = ChartBucketAggregator.DefaultBucketCount;
 }
 
 public sealed record AllocationsLoadResult(
