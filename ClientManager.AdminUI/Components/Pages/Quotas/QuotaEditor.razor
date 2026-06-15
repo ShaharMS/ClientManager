@@ -7,9 +7,10 @@
 <EditorPageTemplate TModel="RateLimitFormModel"
     Id="@Id" IsNew="@_isNew"
     BackPath="quotas" BackLinkText="← Back to Quotas"
-    CreateTitle="Create Quota" CreateDescription="Define a request quota for a resource pool."
-    EditTitlePrefix="Edit Quota: " EditDescription="Update quota configuration."
+    CreateTitle="Create Quota" CreateDescription="@_createDescription"
+    EditTitle="@_editTitle" EditTitlePrefix="Edit Quota: " EditDescription="Update quota configuration."
     FormName="quotaForm" Model="@_model" Loading="@_loading" Error="@_error"
+    SubmitDisabled="@_submitDisabled" SubmitTitle="@_submitTitle"
     OnValidSubmit="SaveAsync">
     @if (_saveError is not null)
     {
@@ -18,7 +19,10 @@
     <div class="cm-editor__field">
         <label>Resource Pool</label>
         <EntityIdInput @bind-Value="_model.TargetId" Suggestions="_poolIds"
-            Mode="EntityIdInputMode.Reference" EntityName="resource pool" />
+            DisabledSuggestions="@_limitedPoolIds"
+            DisabledSuggestionMessage="Already has a quota"
+            Mode="EntityIdInputMode.Reference" EntityName="resource pool"
+            Disabled="@(_isNew && !_canCreate)" />
     </div>
     <div class="cm-editor__field">
         <label>Strategy</label>
@@ -44,28 +48,47 @@
 </EditorPageTemplate>
 
 @code {
+    private const string AllPoolsLimitedTooltip = "Every resource pool already has a quota.";
+
     [Parameter] public string? Id { get; set; }
     private bool _isNew => string.IsNullOrEmpty(Id) || Id == "new";
     private bool _loading = true;
     private string? _error;
     private string? _saveError;
+    private string _createDescription = "Define a request quota for a resource pool.";
+    private string? _editTitle;
     private RateLimitFormModel _model = new() { TargetType = TargetType.ResourcePool };
     private List<string> _poolIds = [];
+    private Dictionary<string, string> _poolNames = new(StringComparer.OrdinalIgnoreCase);
+    private List<string> _limitedPoolIds = [];
+    private bool _canCreate;
+    private bool _submitDisabled;
+    private string? _submitTitle;
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
-            _poolIds = (await PoolApi.GetAllAsync()).Select(p => p.Id).ToList();
+            var pools = await PoolApi.GetAllAsync();
+            _poolIds = pools.Select(p => p.Id).ToList();
+            _poolNames = pools.ToDictionary(p => p.Id, p => p.Name, StringComparer.OrdinalIgnoreCase);
+            var existingLimits = await RateLimitApi.GetByTargetTypeAsync(TargetType.ResourcePool);
+            var limitedTargets = existingLimits
+                .Select(l => l.TargetId)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
             if (!_isNew)
             {
                 var limit = await RateLimitApi.GetByIdAsync(Id!);
                 if (limit is null)
                 {
-                    _error = $"Quota '{Id}' not found.";
+                    _error = "Quota not found.";
                     return;
                 }
+
+                _editTitle = $"Edit Quota: {GetPoolName(limit.TargetId)}";
+
+                limitedTargets.Remove(limit.TargetId);
 
                 _model = new RateLimitFormModel
                 {
@@ -78,6 +101,16 @@
                     TokensPerRefill = limit.TokensPerRefill
                 };
             }
+
+            _limitedPoolIds = _poolIds
+                .Where(id => limitedTargets.Contains(id))
+                .ToList();
+
+            if (_isNew)
+            {
+                _model.TargetId = _poolIds.FirstOrDefault(id => !limitedTargets.Contains(id)) ?? string.Empty;
+                RefreshCreateState();
+            }
         }
         catch (HttpRequestException ex)
         {
@@ -89,8 +122,32 @@
         }
     }
 
+    private void RefreshCreateState()
+    {
+        if (!_isNew)
+        {
+            _submitDisabled = false;
+            _submitTitle = null;
+            return;
+        }
+
+        _canCreate = _poolIds.Any(id => !_limitedPoolIds.Contains(id, StringComparer.OrdinalIgnoreCase));
+        _submitDisabled = !_canCreate;
+        _submitTitle = _canCreate ? null : AllPoolsLimitedTooltip;
+        _createDescription = _canCreate
+            ? "Define a request quota for a resource pool."
+            : AllPoolsLimitedTooltip;
+    }
+
     private async Task SaveAsync()
     {
+        if (_isNew && (!_canCreate || _limitedPoolIds.Any(id => string.Equals(id, _model.TargetId, StringComparison.OrdinalIgnoreCase))))
+        {
+            _saveError = AllPoolsLimitedTooltip;
+            StateHasChanged();
+            return;
+        }
+
         var limit = new GlobalRateLimit
         {
             Id = _isNew ? EntityIdGenerator.FromTarget(_model.TargetId) : _model.Id,
@@ -109,15 +166,7 @@
 
             if (_isNew)
             {
-                var existing = await RateLimitApi.GetByTargetAsync(_model.TargetId, TargetType.ResourcePool);
-                if (existing is not null)
-                {
-                    await RateLimitApi.UpdateAsync(existing.Id, limit with { Id = existing.Id });
-                }
-                else
-                {
-                    await RateLimitApi.CreateAsync(limit);
-                }
+                await RateLimitApi.CreateAsync(limit);
             }
             else
             {
@@ -133,4 +182,7 @@
 
         Nav.NavigateTo("/quotas");
     }
+
+    private string GetPoolName(string poolId) =>
+        _poolNames.GetValueOrDefault(poolId, poolId);
 }

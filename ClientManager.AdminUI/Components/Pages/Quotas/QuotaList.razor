@@ -1,5 +1,6 @@
 @page "/quotas"
 @inject GlobalRateLimitApiService RateLimitApi
+@inject ResourcePoolApiService PoolApi
 @inject NavigationManager Nav
 @inject DialogService Dialog
 @inject IJSRuntime JS
@@ -34,11 +35,13 @@ else
                     @oninput="@(args => { _search = args.Value?.ToString(); StateHasChanged(); })" />
             </div>
             <div class="cm-list-page__header-actions">
-                <RadzenButton Text="Create Quota" Icon="add"
-                    class="cm-list-page__create-btn"
-                    title="Create quota"
-                    Click="@(() => Nav.NavigateTo("/quotas/new"))"
-                    ButtonStyle="ButtonStyle.Primary" />
+                <span class="cm-list-page__create-btn-wrap @(_canCreateMore ? null : "cm-list-page__create-btn-wrap--disabled")"
+                      title="@(_canCreateMore ? "Create quota" : _createDisabledTooltip)">
+                    <RadzenButton Text="Create Quota" Icon="add"
+                        class="cm-list-page__create-btn"
+                        Click="@(() => Nav.NavigateTo("/quotas/new"))"
+                        ButtonStyle="ButtonStyle.Primary" Disabled="@(!_canCreateMore)" />
+                </span>
             </div>
         </div>
 
@@ -46,8 +49,12 @@ else
             AllowSorting="true" AllowPaging="true" PageSize="@_pageSize"
             PagerHorizontalAlign="HorizontalAlign.Center">
             <Columns>
-                <RadzenDataGridColumn TItem="GlobalRateLimit" Property="Id" Title="ID" Width="130px" />
-                <RadzenDataGridColumn TItem="GlobalRateLimit" Property="TargetId" Title="Resource Pool" MinWidth="140px" />
+                <RadzenDataGridColumn TItem="GlobalRateLimit" Title="Resource Pool" MinWidth="140px"
+                    Property="TargetId">
+                    <Template Context="limit">
+                        @GetPoolName(limit.TargetId)
+                    </Template>
+                </RadzenDataGridColumn>
                 <RadzenDataGridColumn TItem="GlobalRateLimit" Property="Strategy" Title="Strategy"
                     Width="215px" MinWidth="215px" TextAlign="TextAlign.Center"
                     CssClass="cm-list-page__col-center cm-list-page__col-status">
@@ -74,7 +81,7 @@ else
                                 Click="@(() => Nav.NavigateTo($"/quotas/{limit.Id}"))" />
                             <RadzenButton Icon="delete" Size="ButtonSize.Small" Variant="Variant.Text"
                                 ButtonStyle="ButtonStyle.Danger" title="Delete quota"
-                                Click="@(async () => await DeleteAsync(limit.Id))" />
+                                Click="@(async () => await DeleteAsync(limit))" />
                         </div>
                     </Template>
                 </RadzenDataGridColumn>
@@ -89,7 +96,10 @@ else
     private string? _deleteError;
     private string? _search;
     private List<GlobalRateLimit> _limits = [];
+    private Dictionary<string, string> _poolNames = new(StringComparer.OrdinalIgnoreCase);
     private int _pageSize = 10;
+    private bool _canCreateMore = true;
+    private string? _createDisabledTooltip;
     private IJSObjectReference? _tableJs;
     private DotNetObjectReference<QuotaList>? _selfRef;
 
@@ -97,8 +107,8 @@ else
         string.IsNullOrWhiteSpace(_search)
             ? _limits
             : _limits.Where(l =>
-                l.Id.Contains(_search, StringComparison.OrdinalIgnoreCase) ||
-                l.TargetId.Contains(_search, StringComparison.OrdinalIgnoreCase));
+                l.TargetId.Contains(_search, StringComparison.OrdinalIgnoreCase) ||
+                GetPoolName(l.TargetId).Contains(_search, StringComparison.OrdinalIgnoreCase));
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
 
@@ -137,6 +147,10 @@ else
         try
         {
             _limits = await RateLimitApi.GetByTargetTypeAsync(TargetType.ResourcePool);
+            var pools = await PoolApi.GetAllAsync();
+            _poolNames = pools.ToDictionary(p => p.Id, p => p.Name, StringComparer.OrdinalIgnoreCase);
+
+            await RefreshCreateAvailabilityAsync(pools);
             _error = null;
         }
         catch (HttpRequestException ex)
@@ -149,12 +163,26 @@ else
         }
     }
 
-    private Task DeleteAsync(string id) =>
+    private async Task RefreshCreateAvailabilityAsync(IReadOnlyList<ResourcePool>? pools = null)
+    {
+        pools ??= await PoolApi.GetAllAsync();
+        var limitedTargets = _limits
+            .Select(l => l.TargetId)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        _canCreateMore = pools.Any(p => !limitedTargets.Contains(p.Id));
+        _createDisabledTooltip = _canCreateMore ? null : "Every resource pool already has a quota.";
+    }
+
+    private string GetPoolName(string poolId) =>
+        _poolNames.GetValueOrDefault(poolId, poolId);
+
+    private Task DeleteAsync(GlobalRateLimit limit) =>
         ListDeleteSupport.ExecuteAsync(
             Dialog,
-            "quota",
-            id,
-            () => RateLimitApi.DeleteAsync(id),
+            "quota for resource pool",
+            GetPoolName(limit.TargetId),
+            () => RateLimitApi.DeleteAsync(limit.Id),
             LoadAsync,
             message => _deleteError = message,
             StateHasChanged);
