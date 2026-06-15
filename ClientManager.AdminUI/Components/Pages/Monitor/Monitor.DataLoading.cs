@@ -40,7 +40,8 @@ public partial class Monitor
                 SelectedClientIds = _selectedClientIds,
                 TimeRange = _timeRange,
                 AllServices = _allServices,
-                AllClients = _allClients
+                AllClients = _allClients,
+                BucketCount = _chartBucketCount
             };
 
             var result = await _dataLoader.LoadAsync(context);

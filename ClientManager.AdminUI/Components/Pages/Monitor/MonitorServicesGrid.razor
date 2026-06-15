@@ -9,27 +9,32 @@
         PagerHorizontalAlign="HorizontalAlign.Center">
         <Columns>
             <RadzenDataGridColumn TItem="ServiceSummaryRow" Property="Name" Title="Service" />
-            <RadzenDataGridColumn TItem="ServiceSummaryRow" Property="CurrentUsage" Title="Current" Width="100px" />
-            <RadzenDataGridColumn TItem="ServiceSummaryRow" Property="Cap" Title="Cap" Width="100px" />
-            <RadzenDataGridColumn TItem="ServiceSummaryRow" Title="Utilization" Width="200px">
+            <RadzenDataGridColumn TItem="ServiceSummaryRow" Property="CurrentUsage" Title="Usage" Width="100px"
+                TextAlign="TextAlign.Center" CssClass="cm-list-page__col-center" />
+            <RadzenDataGridColumn TItem="ServiceSummaryRow" Property="Cap" Title="Cap" Width="100px"
+                TextAlign="TextAlign.Center" CssClass="cm-list-page__col-center" />
+            <RadzenDataGridColumn TItem="ServiceSummaryRow" Title="Utilization" Width="200px"
+                TextAlign="TextAlign.Center" CssClass="cm-list-page__col-center">
                 <Template Context="row">
                     @{
                         var pct = row.Cap > 0 ? (int)(row.CurrentUsage * 100.0 / row.Cap) : 0;
                     }
-                    <RadzenProgressBar Value="@pct" Max="100" ShowValue="true"
-                        ProgressBarStyle="@UtilizationHelper.GetProgressBarStyle(pct)" Style="height: 20px;" />
+                    <UtilizationProgressBar Percent="@pct" />
                 </Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn TItem="ServiceSummaryRow" Title="Status" Width="110px" Sortable="false">
+            <RadzenDataGridColumn TItem="ServiceSummaryRow" Title="Status" Width="110px" Sortable="false"
+                TextAlign="TextAlign.Center" CssClass="cm-list-page__col-center cm-list-page__col-status">
                 <Template Context="row">
-                    @if (row.Cap > 0 && row.CurrentUsage >= row.Cap)
-                    {
-                        <StatusBadge Text="At Capacity" Variant="StatusBadgeVariant.Danger" />
-                    }
-                    else
-                    {
-                        <StatusBadge Text="Available" Variant="StatusBadgeVariant.Success" />
-                    }
+                    <div class="cm-list-page__actions-cell">
+                        @if (row.Cap > 0 && row.CurrentUsage >= row.Cap)
+                        {
+                            <StatusBadge Text="At Capacity" Variant="StatusBadgeVariant.Danger" />
+                        }
+                        else
+                        {
+                            <StatusBadge Text="Available" Variant="StatusBadgeVariant.Success" />
+                        }
+                    </div>
                 </Template>
             </RadzenDataGridColumn>
         </Columns>

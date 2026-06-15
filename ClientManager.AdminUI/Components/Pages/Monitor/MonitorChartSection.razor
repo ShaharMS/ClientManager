@@ -2,23 +2,30 @@
 @using ClientManager.AdminUI.Models.Monitor
 
 <div class="cm-monitor__chart-card">
-    <div class="cm-dashboard__chart-header">
-        <div class="cm-dashboard__filters">
-            <RadzenDropDown TValue="string" Value="@SelectedServiceId"
-                ValueChanged="@OnServiceChanged"
-                Data="@ServiceOptions" TextProperty="Name" ValueProperty="Id"
-                Placeholder="Select service..." Style="width: 220px;" />
-            <RadzenDropDown TValue="IEnumerable<string>" Value="@SelectedClientIds"
-                ValueChanged="@OnClientsChanged" Multiple="true"
-                Data="@ClientOptions" TextProperty="Name" ValueProperty="Id"
-                Placeholder="All clients" Style="width: 200px;" />
+    <div class="cm-monitor__chart-toolbar cm-monitor__chart-toolbar--monitor">
+        <div class="cm-dashboard__filters cm-monitor__chart-filters cm-monitor__chart-filters--monitor">
+            <div class="cm-monitor__chart-filters-service">
+                <RadzenDropDown TValue="string" Value="@SelectedServiceId"
+                    ValueChanged="@OnServiceChanged"
+                    Data="@ServiceOptions" TextProperty="Name" ValueProperty="Id"
+                    Placeholder="Select service..." />
+            </div>
+            <div class="cm-monitor__chart-filters-clients">
+                <RadzenDropDown TValue="IEnumerable<string>" Value="@SelectedClientIds"
+                    ValueChanged="@OnClientsChanged" Multiple="true"
+                    Data="@ClientOptions" TextProperty="Name" ValueProperty="Id"
+                    Placeholder="All clients" />
+            </div>
         </div>
-        <ChartSettingsDropdown OnTimeRangeChanged="OnTimeRangeChanged"
-                               OnPollingIntervalChanged="OnPollingIntervalChanged"
-                               OnAxisScaleChanged="OnAxisScaleChanged" />
+        <span class="cm-dashboard__chart-title cm-monitor__chart-title">@ChartTitle</span>
+        <div class="cm-monitor__chart-settings">
+            <ChartSettingsDropdown OnTimeRangeChanged="OnTimeRangeChanged"
+                                   OnPollingIntervalChanged="OnPollingIntervalChanged"
+                                   OnAxisScaleChanged="OnAxisScaleChanged" />
+        </div>
     </div>
     <StackedUsageChartList Charts="@TargetCharts" AxisScale="@AxisScaleType"
-        CapLineTitle="Cap" Loading="@Loading" />
+        CapLineTitle="Cap" Loading="@Loading" ShowTitles="false" />
 </div>
 
 @code {
@@ -35,6 +42,11 @@
     [Parameter] public EventCallback<ChartTimeRange> OnTimeRangeChanged { get; set; }
     [Parameter] public EventCallback<PollingIntervalPreset> OnPollingIntervalChanged { get; set; }
     [Parameter] public EventCallback<AxisScaleType> OnAxisScaleChanged { get; set; }
+
+    private string ChartTitle =>
+        SelectedServiceId == MonitorLoadContext.AllServicesId
+            ? "All Services"
+            : ServiceOptions.FirstOrDefault(s => s.Id == SelectedServiceId)?.Name ?? "All Services";
 
     private async Task OnServiceChanged(string value)
     {

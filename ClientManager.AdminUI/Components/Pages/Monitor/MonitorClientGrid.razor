@@ -10,18 +10,21 @@
         <Columns>
             <RadzenDataGridColumn TItem="MonitorClientRow" Property="ClientName" Title="Client" />
             <RadzenDataGridColumn TItem="MonitorClientRow" Property="ServiceName" Title="Service" Width="150px" />
-            <RadzenDataGridColumn TItem="MonitorClientRow" Property="GrantedLast5Min" Title="Req (5m)" Width="100px" />
-            <RadzenDataGridColumn TItem="MonitorClientRow" Property="DeniedLast5Min" Title="Denied (5m)" Width="110px" />
-            <RadzenDataGridColumn TItem="MonitorClientRow" Title="Cap (5m)" Width="90px">
+            <RadzenDataGridColumn TItem="MonitorClientRow" Property="GrantedLast5Min" Title="Requests" Width="120px"
+                TextAlign="TextAlign.Center" CssClass="cm-list-page__col-center" />
+            <RadzenDataGridColumn TItem="MonitorClientRow" Property="DeniedLast5Min" Title="Denied" Width="110px"
+                TextAlign="TextAlign.Center" CssClass="cm-list-page__col-center" />
+            <RadzenDataGridColumn TItem="MonitorClientRow" Title="Cap" Width="90px"
+                TextAlign="TextAlign.Center" CssClass="cm-list-page__col-center">
                 <Template Context="row">@UtilizationHelper.FormatCapDisplay(row.RateLimitCap)</Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn TItem="MonitorClientRow" Title="Utilization" Width="180px">
+            <RadzenDataGridColumn TItem="MonitorClientRow" Title="Utilization" Width="180px"
+                TextAlign="TextAlign.Center" CssClass="cm-list-page__col-center">
                 <Template Context="row">
                     @if (row.RateLimitCap > 0)
                     {
                         var pct = (int)(row.GrantedLast5Min * 100.0 / row.RateLimitCap);
-                        <RadzenProgressBar Value="@pct" Max="100" ShowValue="true"
-                            ProgressBarStyle="@UtilizationHelper.GetProgressBarStyle(pct)" Style="height: 18px;" />
+                        <UtilizationProgressBar Percent="@pct" HeightPx="18" />
                     }
                     else
                     {
@@ -29,9 +32,12 @@
                     }
                 </Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn TItem="MonitorClientRow" Title="Status" Width="120px" Sortable="false">
+            <RadzenDataGridColumn TItem="MonitorClientRow" Title="Status" Width="120px" Sortable="false"
+                TextAlign="TextAlign.Center" CssClass="cm-list-page__col-center cm-list-page__col-status">
                 <Template Context="row">
-                    <MonitorClientStatusBadge Row="row" />
+                    <div class="cm-list-page__actions-cell">
+                        <MonitorClientStatusBadge Row="row" />
+                    </div>
                 </Template>
             </RadzenDataGridColumn>
         </Columns>

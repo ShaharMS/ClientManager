@@ -19,22 +19,22 @@
 }
 
 <MonitorChartSection
-    SelectedServiceId="_selectedServiceId"
+    SelectedServiceId="@_selectedServiceId"
     SelectedServiceIdChanged="@(v => _selectedServiceId = v)"
-    SelectedClientIds="_selectedClientIds"
+    SelectedClientIds="@_selectedClientIds"
     SelectedClientIdsChanged="@(v => _selectedClientIds = v)"
-    ServiceOptions="_serviceOptions"
-    ClientOptions="_clientOptions"
-    TargetCharts="_targetCharts"
-    AxisScaleType="_axisScaleType"
-    Loading="_loading"
+    ServiceOptions="@_serviceOptions"
+    ClientOptions="@_clientOptions"
+    TargetCharts="@_targetCharts"
+    AxisScaleType="@_axisScaleType"
+    Loading="@_loading"
     OnFilterChanged="OnFilterChanged"
     OnTimeRangeChanged="OnTimeRangeChanged"
     OnPollingIntervalChanged="OnPollingIntervalChanged"
     OnAxisScaleChanged="OnAxisScaleChanged" />
 
-<MonitorClientGrid @ref="_clientGrid" Rows="_clientRows" />
+<MonitorClientGrid @ref="_clientGrid" Rows="@_clientRows" />
 
 <hr class="cm-monitor__separator" />
 
-<MonitorServicesGrid @ref="_servicesGrid" Rows="_allServiceStats" />
+<MonitorServicesGrid @ref="_servicesGrid" Rows="@_allServiceStats" />

@@ -36,6 +36,9 @@ public partial class Monitor : ComponentBase, IAsyncDisposable
 
     private ChartTimeRange _timeRange = ChartTimeRange.FromPreset(TimeRangePreset.Default);
     private AxisScaleType _axisScaleType = AxisScaleType.Linear;
+    private int _chartBucketCount = ChartBucketAggregator.DefaultBucketCount;
+    private IJSObjectReference? _chartJs;
+    private DotNetObjectReference<Monitor>? _chartSelfRef;
 
     protected override async Task OnInitializedAsync()
     {
@@ -70,9 +73,42 @@ public partial class Monitor : ComponentBase, IAsyncDisposable
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (firstRender)
+        {
+            _chartJs = await JS.InvokeAsync<IJSObjectReference>("import", "./js/chart.js");
+            _chartSelfRef = DotNetObjectReference.Create(this);
+            await _chartJs.InvokeVoidAsync("register", _chartSelfRef);
+            await UpdateChartBucketCountAsync(reloadWhenChanged: true);
+        }
+
         if (firstRender && _polling is not null)
         {
             await _polling.RegisterVisibilityAsync();
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnChartResize() => await UpdateChartBucketCountAsync(reloadWhenChanged: true);
+
+    private async Task UpdateChartBucketCountAsync(bool reloadWhenChanged)
+    {
+        if (_chartJs is null)
+        {
+            return;
+        }
+
+        var chartWidth = await _chartJs.InvokeAsync<int>("getChartCardWidth");
+        var bucketCount = ChartBucketAggregator.GetBucketCountForWidth(chartWidth);
+        if (bucketCount == _chartBucketCount)
+        {
+            return;
+        }
+
+        _chartBucketCount = bucketCount;
+        if (reloadWhenChanged)
+        {
+            await LoadDataAsync();
+            StateHasChanged();
         }
     }
 
@@ -91,6 +127,14 @@ public partial class Monitor : ComponentBase, IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
+        if (_chartJs is not null)
+        {
+            await _chartJs.InvokeVoidAsync("unregister");
+            await _chartJs.DisposeAsync();
+        }
+
+        _chartSelfRef?.Dispose();
+
         if (_polling is not null)
         {
             await _polling.DisposeAsync();
