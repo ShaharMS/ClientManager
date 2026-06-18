@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using ClientManager.DataAccess.Stores.Interfaces;
 using ClientManager.Shared.Models.Search;
+using ClientManager.DataAccess.Stores.Implementations.Helpers;
 using static ClientManager.DataAccess.Stores.Implementations.Helpers.StoreSerialization;
 using SearchDirection = ClientManager.Shared.Models.Search.SortDirection;
 using MongoDB.Bson;
@@ -90,6 +91,56 @@ public class MongoDBDocumentStore(IMongoDatabase database) : IDocumentStore
         var filter = Builders<BsonDocument>.Filter.Eq("_id", id);
         await GetCollection(collection).DeleteOneAsync(filter, cancellationToken);
     }
+
+    /// <inheritdoc />
+    public async Task<bool> SetIfFieldEqualsAsync<T>(
+        string collection,
+        string id,
+        T document,
+        string fieldName,
+        object? expectedValue,
+        CancellationToken cancellationToken = default) where T : class
+    {
+        var filter = Builders<BsonDocument>.Filter.And(
+            Builders<BsonDocument>.Filter.Eq("_id", id),
+            Builders<BsonDocument>.Filter.Eq(fieldName, BsonValue.Create(expectedValue)));
+        var bson = BsonDocument.Parse(JsonSerializer.Serialize(document, JsonOptions));
+        bson["_id"] = id;
+        var result = await GetCollection(collection).ReplaceOneAsync(filter, bson, cancellationToken: cancellationToken);
+        return result.ModifiedCount == 1;
+    }
+
+    /// <inheritdoc />
+    public Task<bool> TryIncrementWithinLimitsAsync(
+        IReadOnlyList<(string key, long max, TimeSpan window)> counters,
+        CancellationToken cancellationToken = default) =>
+        DocumentStoreConcurrencyDefaults.TryIncrementWithinLimitsAsync(
+            IncrementCounterAsync,
+            DecrementManyCountersAsync,
+            counters,
+            cancellationToken);
+
+    /// <inheritdoc />
+    public Task<(bool IsAllowed, long RemainingTokens, long RetryAfterSeconds)> TryConsumeTokenBucketAsync(
+        string tokensKey,
+        string lastRefillKey,
+        int bucketCapacity,
+        int tokensPerRefill,
+        long refillIntervalSeconds,
+        TimeSpan stateWindow,
+        long nowUnixSeconds,
+        CancellationToken cancellationToken = default) =>
+        DocumentStoreConcurrencyDefaults.TryConsumeTokenBucketAsync(
+            GetManyCountersAsync,
+            SetManyCountersAsync,
+            tokensKey,
+            lastRefillKey,
+            bucketCapacity,
+            tokensPerRefill,
+            refillIntervalSeconds,
+            stateWindow,
+            nowUnixSeconds,
+            cancellationToken);
 
     /// <inheritdoc />
     public async Task<long> IncrementCounterAsync(string key, TimeSpan window, CancellationToken cancellationToken = default)

@@ -115,10 +115,11 @@ Optional Elasticsearch sink: `Logging:Elasticsearch:Uri` in API configuration.
 
 | Concern | Guidance |
 | --- | --- |
-| Shared rate-limit state | `RateLimiting` and `Allocations` roles should use Redis or another shared backend |
+| Shared rate-limit state | `RateLimiting`, `Allocations`, and `Statistics` roles must use Redis or MongoDB in production (startup fails on JsonFile/Lucene for those roles) |
 | Configuration | MongoDB recommended; JsonFile on NFS is possible but not ideal |
-| Cache | Each API instance has its own in-memory `StorageReadCache`; TTL-bound staleness is possible |
-| Usage buffers | Each instance buffers usage in memory; snapshots merge in the `Statistics` role |
+| Cache | Each API instance has its own in-memory `StorageReadCache`; catalog writes publish Redis invalidation when Redis is configured |
+| Usage buffers | Each instance buffers usage in memory (~1s); counts flush to shared atomic counters before rollup into snapshots |
+| Background workers | Rollup and allocation cleanup run on a single leader pod when Redis is available |
 
 ## Troubleshooting
 

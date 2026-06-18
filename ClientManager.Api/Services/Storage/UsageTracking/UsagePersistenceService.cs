@@ -51,9 +51,10 @@ public partial class UsagePersistenceService : BackgroundService
             try
             {
                 using var scope = _scopeFactory.CreateScope();
+                var usageCounters = scope.ServiceProvider.GetRequiredService<IUsageCounterDatabase>();
                 var database = scope.ServiceProvider.GetRequiredService<IUsageSnapshotDatabase>();
                 var allocations = scope.ServiceProvider.GetRequiredService<IResourceAllocationDatabase>();
-                await FlushBufferAsync(database, allocations, stoppingToken);
+                await FlushBufferAsync(usageCounters, database, allocations, stoppingToken);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -75,12 +76,20 @@ public partial class UsagePersistenceService : BackgroundService
             try
             {
                 using var scope = _scopeFactory.CreateScope();
+                var leaderLock = scope.ServiceProvider.GetRequiredService<IDistributedLeaderLock>();
+                await using var lease = await leaderLock.TryAcquireAsync("usage-rollup", stoppingToken);
+                if (lease is null)
+                {
+                    continue;
+                }
+
                 var database = scope.ServiceProvider.GetRequiredService<IUsageSnapshotDatabase>();
+                var usageCounters = scope.ServiceProvider.GetRequiredService<IUsageCounterDatabase>();
                 var mutated = false;
 
-                mutated |= await RollUpAsync(database, BucketGranularity.Second, BucketGranularity.FiveMinute, TimeSpan.FromMinutes(5), stoppingToken);
-                mutated |= await RollUpAsync(database, BucketGranularity.FiveMinute, BucketGranularity.Hour, TimeSpan.FromHours(1), stoppingToken);
-                mutated |= await RollUpAsync(database, BucketGranularity.Hour, BucketGranularity.Day, TimeSpan.FromHours(24), stoppingToken);
+                mutated |= await RollUpAsync(database, usageCounters, BucketGranularity.Second, BucketGranularity.FiveMinute, TimeSpan.FromMinutes(5), stoppingToken);
+                mutated |= await RollUpAsync(database, usageCounters, BucketGranularity.FiveMinute, BucketGranularity.Hour, TimeSpan.FromHours(1), stoppingToken);
+                mutated |= await RollUpAsync(database, usageCounters, BucketGranularity.Hour, BucketGranularity.Day, TimeSpan.FromHours(24), stoppingToken);
                 mutated |= await PruneExpiredAsync(database, stoppingToken);
 
                 if (mutated)
@@ -100,6 +109,7 @@ public partial class UsagePersistenceService : BackgroundService
     }
 
     private async Task FlushBufferAsync(
+        IUsageCounterDatabase usageCounters,
         IUsageSnapshotDatabase database,
         IResourceAllocationDatabase allocationDatabase,
         CancellationToken cancellationToken)
@@ -111,27 +121,65 @@ public partial class UsagePersistenceService : BackgroundService
         }
 
         var bucketTimestamp = RoundDownToSecond(DateTime.UtcNow);
-        var groups = counts
-            .GroupBy(entry => (entry.Key.ClientId, entry.Key.TargetType, entry.Key.TargetId))
-            .ToList();
-        var snapshotIds = BuildSnapshotIds(groups, bucketTimestamp);
-        var existing = await LoadSnapshotsAsync(database, snapshotIds, cancellationToken);
-        var snapshots = new List<UsageSnapshot>(groups.Count);
+        var counterDeltas = new Dictionary<UsageCounterKey, long>();
 
-        foreach (var group in groups)
+        foreach (var entry in counts)
         {
-            snapshots.Add(await BuildUpdatedSnapshotAsync(
-                group.ToList(),
+            var key = entry.Key;
+            var counterKey = new UsageCounterKey(
+                key.ClientId,
+                key.TargetType,
+                key.TargetId,
+                BucketGranularity.Second,
                 bucketTimestamp,
-                existing,
-                allocationDatabase,
-                cancellationToken));
+                key.EventType);
+            counterDeltas[counterKey] = entry.Value;
         }
 
-        await database.UpsertManyAsync(snapshots, cancellationToken);
+        await usageCounters.IncrementBucketCountsAsync(counterDeltas, cancellationToken);
+
+        var poolGroups = counts
+            .Where(entry => entry.Key.TargetType == TargetType.ResourcePool)
+            .GroupBy(entry => (entry.Key.ClientId, entry.Key.TargetId))
+            .ToList();
+
+        if (poolGroups.Count > 0)
+        {
+            await FlushActiveCountsAsync(poolGroups, bucketTimestamp, database, allocationDatabase, cancellationToken);
+        }
 
         _cache.InvalidateStatistics();
         _logger.Debug("Flushed usage counter groups to storage", new { Count = counts.Count });
+    }
+
+    private static async Task FlushActiveCountsAsync(
+        List<IGrouping<(string ClientId, string TargetId), KeyValuePair<UsageBufferKey, long>>> poolGroups,
+        DateTime bucketTimestamp,
+        IUsageSnapshotDatabase database,
+        IResourceAllocationDatabase allocationDatabase,
+        CancellationToken cancellationToken)
+    {
+        var snapshotIds = poolGroups
+            .Select(group => BuildSnapshotId(group.Key.ClientId, TargetType.ResourcePool, group.Key.TargetId, bucketTimestamp))
+            .ToList();
+        var existing = await LoadSnapshotsAsync(database, snapshotIds, cancellationToken);
+        var snapshots = new List<UsageSnapshot>(poolGroups.Count);
+
+        foreach (var group in poolGroups)
+        {
+            var (clientId, targetId) = group.Key;
+            var snapshotId = BuildSnapshotId(clientId, TargetType.ResourcePool, targetId, bucketTimestamp);
+            var segmentStart = UsageSegmentHelper.GetSegmentStart(bucketTimestamp, BucketGranularity.Second);
+            var snapshot = existing.TryGetValue(snapshotId, out var current)
+                ? current
+                : CreateSnapshot(snapshotId, clientId, targetId, TargetType.ResourcePool, BucketGranularity.Second, segmentStart);
+
+            var activeCount = await allocationDatabase.GetActiveCountByClientAsync(targetId, clientId, cancellationToken);
+            var buckets = MergeActiveCountOnly(snapshot.Buckets, bucketTimestamp, activeCount);
+            snapshots.Add(snapshot with { Buckets = buckets.ToList() });
+        }
+
+        await database.UpsertManyAsync(snapshots, cancellationToken);
     }
 
     private static List<string> BuildSnapshotIds(
@@ -150,29 +198,8 @@ public partial class UsagePersistenceService : BackgroundService
         return snapshots.ToDictionary(snapshot => snapshot.Id, StringComparer.Ordinal);
     }
 
-    private async Task<UsageSnapshot> BuildUpdatedSnapshotAsync(
-        IReadOnlyList<KeyValuePair<UsageBufferKey, long>> entries,
-        DateTime bucketTimestamp,
-        IReadOnlyDictionary<string, UsageSnapshot> existing,
-        IResourceAllocationDatabase allocationDatabase,
-        CancellationToken cancellationToken)
-    {
-        var first = entries[0].Key;
-        var snapshotId = BuildSnapshotId(first, bucketTimestamp);
-        var segmentStart = UsageSegmentHelper.GetSegmentStart(bucketTimestamp, BucketGranularity.Second);
-        var snapshot = existing.TryGetValue(snapshotId, out var current)
-            ? current
-            : CreateSnapshot(snapshotId, first.ClientId, first.TargetId, first.TargetType, BucketGranularity.Second, segmentStart);
-
-        var totals = SumEntries(entries);
-        var activeCount = await GetActiveCountAsync(first, allocationDatabase, cancellationToken);
-        var buckets = MergeBucket(snapshot.Buckets, bucketTimestamp, totals, activeCount);
-
-        return snapshot with { Buckets = buckets.ToList() };
-    }
-
     private static string BuildSnapshotId(
-        UsageBufferKey key,
+        (string ClientId, TargetType TargetType, string TargetId) key,
         DateTime bucketTimestamp)
     {
         return UsageSegmentHelper.BuildSegmentId(
@@ -184,13 +211,15 @@ public partial class UsagePersistenceService : BackgroundService
     }
 
     private static string BuildSnapshotId(
-        (string ClientId, TargetType TargetType, string TargetId) key,
+        string clientId,
+        TargetType targetType,
+        string targetId,
         DateTime bucketTimestamp)
     {
         return UsageSegmentHelper.BuildSegmentId(
-            key.ClientId,
-            key.TargetType,
-            key.TargetId,
+            clientId,
+            targetType,
+            targetId,
             BucketGranularity.Second,
             UsageSegmentHelper.GetSegmentStart(bucketTimestamp, BucketGranularity.Second));
     }
@@ -215,20 +244,9 @@ public partial class UsagePersistenceService : BackgroundService
         };
     }
 
-    private static (long Granted, long Denied, long Released) SumEntries(
-        IReadOnlyList<KeyValuePair<UsageBufferKey, long>> entries)
-    {
-        var granted = entries.Where(entry => entry.Key.EventType == UsageEventType.Granted).Sum(entry => entry.Value);
-        var denied = entries.Where(entry => entry.Key.EventType == UsageEventType.Denied).Sum(entry => entry.Value);
-        var released = entries.Where(entry => entry.Key.EventType == UsageEventType.Released).Sum(entry => entry.Value);
-
-        return (granted, denied, released);
-    }
-
-    private static IReadOnlyList<UsageBucket> MergeBucket(
+    private static IReadOnlyList<UsageBucket> MergeActiveCountOnly(
         IReadOnlyList<UsageBucket> buckets,
         DateTime bucketTimestamp,
-        (long Granted, long Denied, long Released) totals,
         long activeCount)
     {
         var updated = buckets.ToList();
@@ -238,10 +256,7 @@ public partial class UsagePersistenceService : BackgroundService
         {
             updated[index] = updated[index] with
             {
-                GrantedCount = updated[index].GrantedCount + totals.Granted,
-                DeniedCount = updated[index].DeniedCount + totals.Denied,
-                ReleasedCount = updated[index].ReleasedCount + totals.Released,
-                ActiveCount = activeCount
+                ActiveCount = Math.Max(updated[index].ActiveCount, activeCount)
             };
 
             return updated;
@@ -250,30 +265,14 @@ public partial class UsagePersistenceService : BackgroundService
         updated.Add(new UsageBucket
         {
             Timestamp = bucketTimestamp,
-            GrantedCount = totals.Granted,
-            DeniedCount = totals.Denied,
-            ReleasedCount = totals.Released,
+            GrantedCount = 0,
+            DeniedCount = 0,
+            ReleasedCount = 0,
             ActiveCount = activeCount
         });
 
         updated.Sort((left, right) => left.Timestamp.CompareTo(right.Timestamp));
         return updated;
-    }
-
-    private static async Task<long> GetActiveCountAsync(
-        UsageBufferKey key,
-        IResourceAllocationDatabase allocationDatabase,
-        CancellationToken cancellationToken)
-    {
-        if (key.TargetType != TargetType.ResourcePool)
-        {
-            return 0;
-        }
-
-        return await allocationDatabase.GetActiveCountByClientAsync(
-            key.TargetId,
-            key.ClientId,
-            cancellationToken);
     }
 
     private static DateTime RoundDownToSecond(DateTime utc)

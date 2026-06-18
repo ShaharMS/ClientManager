@@ -33,6 +33,14 @@ public class AllocationCleanupService : BackgroundService
             try
             {
                 using var scope = _scopeFactory.CreateScope();
+                var leaderLock = scope.ServiceProvider.GetRequiredService<IDistributedLeaderLock>();
+                await using var lease = await leaderLock.TryAcquireAsync("allocation-cleanup", stoppingToken);
+                if (lease is null)
+                {
+                    await Task.Delay(_interval, stoppingToken);
+                    continue;
+                }
+
                 await ReconcileCountersAsync(scope.ServiceProvider, stoppingToken);
 
                 var service = scope.ServiceProvider.GetRequiredService<IResourceAllocationService>();

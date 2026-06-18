@@ -1,4 +1,5 @@
 using ClientManager.DataAccess.Stores.Interfaces;
+using ClientManager.Shared.Models.Responses;
 
 namespace ClientManager.DataAccess.Databases.Interfaces;
 
@@ -63,4 +64,17 @@ public interface IRateLimitStateDatabase
     /// <param name="entries">A dictionary mapping each key to its new value and expiry window.</param>
     /// <param name="cancellationToken">Cancels the batch write before all entries are persisted.</param>
     Task SetMultipleCountsAsync(IReadOnlyDictionary<string, (long value, TimeSpan window)> entries, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Atomically consumes one token from a token bucket when allowed.
+    /// </summary>
+    Task<TokenBucketConsumeResult> TryConsumeTokenBucketAsync(
+        string tokensKey,
+        string lastRefillKey,
+        int bucketCapacity,
+        int tokensPerRefill,
+        long refillIntervalSeconds,
+        TimeSpan stateWindow,
+        long nowUnixSeconds,
+        CancellationToken cancellationToken = default);
 }

@@ -39,6 +39,7 @@ public static class StorageServicesRegistration
 
         services.AddSingleton<StorageMetrics>();
         services.AddStorageProviders(persistenceOptions, environment);
+        services.AddDistributedCoordination(persistenceOptions);
         services.AddStorageRepositories();
         services.AddMemoryCache();
         services.AddOptions<StorageReadCacheOptions>()

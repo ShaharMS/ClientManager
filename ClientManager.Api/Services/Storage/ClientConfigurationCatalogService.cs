@@ -16,7 +16,8 @@ namespace ClientManager.Api.Services.Storage;
 /// </summary>
 public class ClientConfigurationCatalogService(
     IClientConfigurationDatabase database,
-    IStorageReadCache cache) : IClientConfigurationCatalogService
+    IStorageReadCache cache,
+    ICrossPodCacheInvalidator cacheInvalidator) : IClientConfigurationCatalogService
 {
     private const string CachePrefix = "clients";
 
@@ -43,7 +44,7 @@ public class ClientConfigurationCatalogService(
         _ = await GetByIdAsync(clientId, cancellationToken);
         var updated = configuration with { Id = clientId };
         await database.UpdateAsync(updated, cancellationToken);
-        cache.InvalidateCatalog();
+        cacheInvalidator.PublishCatalogInvalidation();
         return updated;
     }
 
@@ -153,7 +154,7 @@ public class ClientConfigurationCatalogService(
     {
         var config = await GetByIdAsync(clientId, cancellationToken);
         await database.UpdateAsync(config with { GlobalRateLimit = rateLimit }, cancellationToken);
-        cache.InvalidateCatalog();
+        cacheInvalidator.PublishCatalogInvalidation();
         return rateLimit;
     }
 
@@ -161,7 +162,7 @@ public class ClientConfigurationCatalogService(
     {
         var config = await GetByIdAsync(clientId, cancellationToken);
         await database.UpdateAsync(config with { GlobalRateLimit = null }, cancellationToken);
-        cache.InvalidateCatalog();
+        cacheInvalidator.PublishCatalogInvalidation();
     }
 
     private Task<ClientConfiguration?> TryGetByIdAsync(string clientId, CancellationToken cancellationToken) =>
@@ -220,6 +221,6 @@ public class ClientConfigurationCatalogService(
     private async Task InvalidateAfterAsync(Task operation)
     {
         await operation;
-        cache.InvalidateCatalog();
+        cacheInvalidator.PublishCatalogInvalidation();
     }
 }

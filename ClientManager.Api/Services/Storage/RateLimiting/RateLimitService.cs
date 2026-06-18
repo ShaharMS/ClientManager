@@ -21,22 +21,19 @@ public class RateLimitService : IRateLimitService
     private readonly IGlobalRateLimitDatabase _globalRateLimitDatabase;
     private readonly RateLimitStrategyResolver _strategyResolver;
     private readonly StorageMetrics _metrics;
-    private readonly IStorageReadCache _cache;
 
     public RateLimitService(
         IAppLogger<RateLimitService> logger,
         IClientConfigurationDatabase clientConfigDatabase,
         IGlobalRateLimitDatabase globalRateLimitDatabase,
         RateLimitStrategyResolver strategyResolver,
-        StorageMetrics metrics,
-        IStorageReadCache cache)
+        StorageMetrics metrics)
     {
         _logger = logger;
         _clientConfigDatabase = clientConfigDatabase;
         _globalRateLimitDatabase = globalRateLimitDatabase;
         _strategyResolver = strategyResolver;
         _metrics = metrics;
-        _cache = cache;
     }
 
     /// <inheritdoc />
@@ -221,7 +218,7 @@ public class RateLimitService : IRateLimitService
             },
             async () =>
             {
-                var globalLimit = await GetCachedGlobalLimitAsync(targetId, targetType, cancellationToken);
+                var globalLimit = await GetGlobalLimitAsync(targetId, targetType, cancellationToken);
                 if (globalLimit is null)
                 {
                     return Allowed();
@@ -313,7 +310,7 @@ public class RateLimitService : IRateLimitService
         return result;
     }
 
-    private async Task<GlobalRateLimit?> GetCachedGlobalLimitAsync(
+    private async Task<GlobalRateLimit?> GetGlobalLimitAsync(
         string targetId,
         TargetType targetType,
         CancellationToken cancellationToken)
@@ -326,10 +323,7 @@ public class RateLimitService : IRateLimitService
                 act?.SetTag("ratelimit.target_type", targetType.ToString());
             });
 
-        var globalLimit = await _cache.GetOrCreateCatalogAsync(
-            $"global-limit:{targetId}:{targetType}",
-            token => _globalRateLimitDatabase.GetByTargetAsync(targetId, targetType, token),
-            cancellationToken);
+        var globalLimit = await _globalRateLimitDatabase.GetByTargetAsync(targetId, targetType, cancellationToken);
         activity?.SetTag("ratelimit.global_limit_found", globalLimit is not null);
         return globalLimit;
     }

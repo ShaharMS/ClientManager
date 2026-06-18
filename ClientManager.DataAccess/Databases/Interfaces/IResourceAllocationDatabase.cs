@@ -1,4 +1,5 @@
 using ClientManager.Shared.Models.Entities;
+using ClientManager.Shared.Models.Responses;
 
 namespace ClientManager.DataAccess.Databases.Interfaces;
 
@@ -117,4 +118,29 @@ public interface IResourceAllocationDatabase
     /// </summary>
     /// <param name="cancellationToken">Cancels the reconciliation scan.</param>
     Task ReconcileCountersAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Atomically reserves pool and client allocation counters when capacity allows.
+    /// </summary>
+    Task<SlotReservationResult> TryReserveSlotAsync(
+        string resourcePoolId,
+        string clientId,
+        int poolMaxSlots,
+        int clientMaxSlots,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Releases a previously reserved slot when allocation creation fails.
+    /// </summary>
+    Task ReleaseReservedSlotAsync(
+        string resourcePoolId,
+        string clientId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Marks an expired allocation as released only when it is still active.
+    /// </summary>
+    Task<bool> TryMarkExpiredReleasedAsync(
+        ResourceAllocation allocation,
+        CancellationToken cancellationToken = default);
 }

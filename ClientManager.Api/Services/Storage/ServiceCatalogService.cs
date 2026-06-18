@@ -10,8 +10,9 @@ namespace ClientManager.Api.Services.Storage;
 /// </summary>
 public sealed class ServiceCatalogService(
     IEntityRepository<Service> repository,
-    IStorageReadCache cache)
-    : GenericEntityCatalogService<Service>(repository, cache, "services"),
+    IStorageReadCache cache,
+    ICrossPodCacheInvalidator cacheInvalidator)
+    : GenericEntityCatalogService<Service>(repository, cache, cacheInvalidator, "services"),
         IServiceCatalogService
 {
     protected override string GetEntityId(Service entity) => entity.Id;

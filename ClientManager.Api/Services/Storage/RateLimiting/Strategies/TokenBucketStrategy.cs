@@ -41,20 +41,22 @@ public class TokenBucketStrategy : IRateLimitStrategy
             async () =>
             {
                 var state = CreateState(key, rateLimit);
-                var counts = await _stateDatabase.GetMultipleCountsAsync([state.TokensKey, state.LastRefillKey], cancellationToken);
-                var bucketState = CalculateBucketState(counts[state.TokensKey], counts[state.LastRefillKey], state);
+                var consume = await _stateDatabase.TryConsumeTokenBucketAsync(
+                    state.TokensKey,
+                    state.LastRefillKey,
+                    state.BucketCapacity,
+                    state.TokensPerRefill,
+                    state.RefillIntervalSeconds,
+                    state.StateWindow,
+                    state.Now,
+                    cancellationToken);
 
-                if (bucketState.LastRefill == 0)
+                return new RateLimitResult
                 {
-                    return await InitializeBucketAsync(state, cancellationToken);
-                }
-
-                if (bucketState.Tokens <= 0)
-                {
-                    return await PersistDeniedAsync(state, bucketState.NewLastRefill, cancellationToken);
-                }
-
-                return await PersistAllowedAsync(state, bucketState.Tokens - 1, bucketState.NewLastRefill, cancellationToken);
+                    IsAllowed = consume.IsAllowed,
+                    RemainingRequests = consume.RemainingRequests,
+                    RetryAfterSeconds = consume.RetryAfterSeconds
+                };
             });
     }
 
@@ -96,67 +98,6 @@ public class TokenBucketStrategy : IRateLimitStrategy
                     RemainingRequests = (int)bucketState.Tokens
                 };
             });
-    }
-
-    private async Task<RateLimitResult> InitializeBucketAsync(
-        BucketStateContext state,
-        CancellationToken cancellationToken)
-    {
-        var initialTokens = state.BucketCapacity - 1;
-        var alignedRefill = RateLimitWindowAlignment.GetWindowStart(
-            state.Now,
-            state.RefillIntervalSeconds,
-            _windowAlignmentAnchor);
-        await PersistStateAsync(state, initialTokens, alignedRefill, cancellationToken);
-
-        return new RateLimitResult
-        {
-            IsAllowed = true,
-            RemainingRequests = (int)initialTokens
-        };
-    }
-
-    private async Task<RateLimitResult> PersistDeniedAsync(
-        BucketStateContext state,
-        long lastRefill,
-        CancellationToken cancellationToken)
-    {
-        await PersistStateAsync(state, 0, lastRefill, cancellationToken);
-
-        return new RateLimitResult
-        {
-            IsAllowed = false,
-            RemainingRequests = 0,
-            RetryAfterSeconds = GetRetryAfterSeconds(state)
-        };
-    }
-
-    private async Task<RateLimitResult> PersistAllowedAsync(
-        BucketStateContext state,
-        long tokens,
-        long lastRefill,
-        CancellationToken cancellationToken)
-    {
-        await PersistStateAsync(state, tokens, lastRefill, cancellationToken);
-
-        return new RateLimitResult
-        {
-            IsAllowed = true,
-            RemainingRequests = (int)tokens
-        };
-    }
-
-    private Task PersistStateAsync(
-        BucketStateContext state,
-        long tokens,
-        long lastRefill,
-        CancellationToken cancellationToken)
-    {
-        return _stateDatabase.SetMultipleCountsAsync(new Dictionary<string, (long value, TimeSpan window)>
-        {
-            [state.TokensKey] = (tokens, state.StateWindow),
-            [state.LastRefillKey] = (lastRefill, state.StateWindow)
-        }, cancellationToken);
     }
 
     private BucketComputation CalculateBucketState(

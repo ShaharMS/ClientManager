@@ -3,8 +3,10 @@ using ClientManager.DataAccess.Databases.Interfaces;
 using ClientManager.DataAccess.Repositories.Implementations;
 using ClientManager.DataAccess.Repositories.Interfaces;
 using ClientManager.DataAccess.Stores.Interfaces;
+using ClientManager.Shared.Configuration.Storage;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Enums;
+using Microsoft.Extensions.Options;
 
 namespace ClientManager.Api.Services.Storage.Extensions;
 
@@ -51,6 +53,11 @@ public static class StorageRepositoryRegistrationExtensions
             new UsageSnapshotDatabase(
                 sp.GetRequiredKeyedService<IDocumentStore>(StorageRole.Statistics),
                 sp.GetRequiredService<IClientConfigurationDatabase>()));
+
+        services.AddSingleton<IUsageCounterDatabase>(sp =>
+            new UsageCounterDatabase(
+                sp.GetRequiredKeyedService<IDocumentStore>(StorageRole.Statistics),
+                sp.GetRequiredService<IOptions<UsageTrackingOptions>>().Value));
 
         return services;
     }

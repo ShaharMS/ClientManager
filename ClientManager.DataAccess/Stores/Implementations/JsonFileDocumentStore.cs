@@ -165,6 +165,56 @@ public class JsonFileDocumentStore : IDocumentStore
     }
 
     /// <inheritdoc />
+    public Task<bool> SetIfFieldEqualsAsync<T>(
+        string collection,
+        string id,
+        T document,
+        string fieldName,
+        object? expectedValue,
+        CancellationToken cancellationToken = default) where T : class =>
+        DocumentStoreConcurrencyDefaults.SetIfFieldEqualsAsync(
+            GetAsync<T>,
+            SetAsync,
+            collection,
+            id,
+            document,
+            fieldName,
+            expectedValue,
+            cancellationToken);
+
+    /// <inheritdoc />
+    public Task<bool> TryIncrementWithinLimitsAsync(
+        IReadOnlyList<(string key, long max, TimeSpan window)> counters,
+        CancellationToken cancellationToken = default) =>
+        DocumentStoreConcurrencyDefaults.TryIncrementWithinLimitsAsync(
+            IncrementCounterAsync,
+            DecrementManyCountersAsync,
+            counters,
+            cancellationToken);
+
+    /// <inheritdoc />
+    public Task<(bool IsAllowed, long RemainingTokens, long RetryAfterSeconds)> TryConsumeTokenBucketAsync(
+        string tokensKey,
+        string lastRefillKey,
+        int bucketCapacity,
+        int tokensPerRefill,
+        long refillIntervalSeconds,
+        TimeSpan stateWindow,
+        long nowUnixSeconds,
+        CancellationToken cancellationToken = default) =>
+        DocumentStoreConcurrencyDefaults.TryConsumeTokenBucketAsync(
+            GetManyCountersAsync,
+            SetManyCountersAsync,
+            tokensKey,
+            lastRefillKey,
+            bucketCapacity,
+            tokensPerRefill,
+            refillIntervalSeconds,
+            stateWindow,
+            nowUnixSeconds,
+            cancellationToken);
+
+    /// <inheritdoc />
     public async Task<long> IncrementCounterAsync(string key, TimeSpan window, CancellationToken cancellationToken = default)
     {
         await WaitForWriteLockAsync(_state.CounterWriteLock, cancellationToken);

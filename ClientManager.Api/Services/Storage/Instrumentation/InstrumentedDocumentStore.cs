@@ -64,6 +64,31 @@ public sealed class InstrumentedDocumentStore : IDocumentStore
     public Task DeleteAsync(string collection, string id, CancellationToken cancellationToken = default) =>
         TraceAsync(collection, "delete", () => _inner.DeleteAsync(collection, id, cancellationToken), cancellationToken);
 
+    public Task<bool> SetIfFieldEqualsAsync<T>(
+        string collection,
+        string id,
+        T document,
+        string fieldName,
+        object? expectedValue,
+        CancellationToken cancellationToken = default) where T : class =>
+        TraceAsync(collection, "set_if", () => _inner.SetIfFieldEqualsAsync(collection, id, document, fieldName, expectedValue, cancellationToken), cancellationToken);
+
+    public Task<bool> TryIncrementWithinLimitsAsync(
+        IReadOnlyList<(string key, long max, TimeSpan window)> counters,
+        CancellationToken cancellationToken = default) =>
+        TraceAsync(CounterCollection, "counter_try_increment_within_limits", () => _inner.TryIncrementWithinLimitsAsync(counters, cancellationToken), cancellationToken);
+
+    public Task<(bool IsAllowed, long RemainingTokens, long RetryAfterSeconds)> TryConsumeTokenBucketAsync(
+        string tokensKey,
+        string lastRefillKey,
+        int bucketCapacity,
+        int tokensPerRefill,
+        long refillIntervalSeconds,
+        TimeSpan stateWindow,
+        long nowUnixSeconds,
+        CancellationToken cancellationToken = default) =>
+        TraceAsync(CounterCollection, "counter_try_consume_token_bucket", () => _inner.TryConsumeTokenBucketAsync(tokensKey, lastRefillKey, bucketCapacity, tokensPerRefill, refillIntervalSeconds, stateWindow, nowUnixSeconds, cancellationToken), cancellationToken);
+
     public Task<long> IncrementCounterAsync(string key, TimeSpan window, CancellationToken cancellationToken = default) =>
         TraceAsync(CounterCollection, "counter_increment", () => _inner.IncrementCounterAsync(key, window, cancellationToken), cancellationToken);
 

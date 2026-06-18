@@ -88,6 +88,8 @@ public partial class UsageStatisticsService
             }
         }
 
+        await OverlayUsageCountersByTargetAsync(states, targetType, selectedClientIds, from, to, cancellationToken);
+
         return states.ToDictionary(
             kvp => kvp.Key,
             kvp => (kvp.Value.Buckets, kvp.Value.ActualGranularity),
@@ -134,6 +136,8 @@ public partial class UsageStatisticsService
                 }
             }
         }
+
+        await OverlayUsageCountersByTargetClientAsync(states, targetType, selectedClientIds, from, to, cancellationToken);
 
         return states.ToDictionary(
             kvp => kvp.Key,

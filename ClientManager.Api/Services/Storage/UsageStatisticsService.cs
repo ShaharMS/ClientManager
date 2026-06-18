@@ -20,23 +20,7 @@ public partial class UsageStatisticsService : IUsageStatisticsService
     private readonly IUsageSnapshotDatabase _usageSnapshotDatabase;
     private readonly IStorageReadCache _cache;
 
-    public UsageStatisticsService(
-        IClientConfigurationDatabase clientConfigDatabase,
-        IEntityRepository<Service> serviceRepository,
-        IEntityRepository<ResourcePool> poolRepository,
-        IResourceAllocationDatabase allocationDatabase,
-        IGlobalRateLimitDatabase globalRateLimitDatabase,
-        IUsageSnapshotDatabase usageSnapshotDatabase,
-        IStorageReadCache cache)
-    {
-        _clientConfigDatabase = clientConfigDatabase;
-        _serviceRepository = serviceRepository;
-        _poolRepository = poolRepository;
-        _allocationDatabase = allocationDatabase;
-        _globalRateLimitDatabase = globalRateLimitDatabase;
-        _usageSnapshotDatabase = usageSnapshotDatabase;
-        _cache = cache;
-    }
+    // Constructor is defined in UsageStatisticsService.Counters.cs
 
     public async Task<GlobalUsageStatsResponse> GetGlobalUsageStatsAsync(
         CancellationToken cancellationToken = default)

@@ -11,11 +11,13 @@ namespace ClientManager.Api.Services.Storage;
 public abstract class GenericEntityCatalogService<TEntity>(
     IEntityRepository<TEntity> repository,
     IStorageReadCache cache,
+    ICrossPodCacheInvalidator cacheInvalidator,
     string catalogCachePrefix)
     where TEntity : class
 {
     protected IEntityRepository<TEntity> Repository { get; } = repository;
     protected IStorageReadCache Cache { get; } = cache;
+    protected ICrossPodCacheInvalidator CacheInvalidator { get; } = cacheInvalidator;
 
     protected abstract string GetEntityId(TEntity entity);
     protected abstract TEntity ApplyId(TEntity entity, string id);
@@ -39,7 +41,7 @@ public abstract class GenericEntityCatalogService<TEntity>(
         }
 
         await Repository.CreateAsync(entity, cancellationToken);
-        Cache.InvalidateCatalog();
+        CacheInvalidator.PublishCatalogInvalidation();
         return entity;
     }
 
@@ -52,7 +54,7 @@ public abstract class GenericEntityCatalogService<TEntity>(
 
         var updated = ApplyId(entity, id);
         await Repository.UpdateAsync(updated, cancellationToken);
-        Cache.InvalidateCatalog();
+        CacheInvalidator.PublishCatalogInvalidation();
         return updated;
     }
 
@@ -64,7 +66,7 @@ public abstract class GenericEntityCatalogService<TEntity>(
         }
 
         await Repository.DeleteAsync(id, cancellationToken);
-        Cache.InvalidateCatalog();
+        CacheInvalidator.PublishCatalogInvalidation();
     }
 
     private Task<TEntity?> TryGetByIdAsync(string id, CancellationToken cancellationToken) =>
