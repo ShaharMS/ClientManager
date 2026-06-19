@@ -235,7 +235,7 @@ mkdocs serve    # live preview at http://127.0.0.1:8000
 mkdocs build    # output in site/
 ```
 
-Mermaid and fonts are bundled for offline/airgapped doc serving (vendored `docs/javascripts/mermaid.min.js`, plus the MkDocs Material `privacy` plugin for Google Fonts). Run `mkdocs build` before serving the static `site/` folder without internet access.
+Mermaid and fonts are bundled for offline/airgapped doc serving (vendored `docs/javascripts/mermaid.min.js`). Run `mkdocs build` before serving the static `site/` folder without internet access.
 
 # Additional Links
 

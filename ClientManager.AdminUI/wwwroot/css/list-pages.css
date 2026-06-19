@@ -92,7 +92,7 @@
     }
 }
 
-@media (min-width: 820px) {
+@media (min-width: 870px) {
     .cm-list-page__header--with-filter.cm-list-page__header--services {
         display: flex;
         flex-wrap: wrap;
@@ -123,7 +123,9 @@
     .cm-list-page__header--with-filter.cm-list-page__header--services .cm-list-page__create-btn.rz-button {
         height: auto;
     }
+}
 
+@media (min-width: 820px) {
     .cm-list-page__header--quota {
         display: grid;
         grid-template-columns: minmax(0, 1fr) auto;
