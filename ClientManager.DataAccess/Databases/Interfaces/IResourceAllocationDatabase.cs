@@ -91,6 +91,24 @@ public interface IResourceAllocationDatabase
     Task CreateAsync(ResourceAllocation allocation, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Atomically reserves allocation counters before the allocation document is written.
+    /// </summary>
+    Task<SlotReservationResult> TryReserveSlotAsync(
+        string resourcePoolId,
+        string clientId,
+        int poolMaxSlots,
+        int clientMaxSlots,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Releases counters reserved by <see cref="TryReserveSlotAsync"/> when document creation fails.
+    /// </summary>
+    Task ReleaseReservedSlotAsync(
+        string resourcePoolId,
+        string clientId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Marks an allocation as released.
     /// </summary>
     /// <param name="allocationId">The unique identifier of the allocation to release.</param>
@@ -118,29 +136,4 @@ public interface IResourceAllocationDatabase
     /// </summary>
     /// <param name="cancellationToken">Cancels the reconciliation scan.</param>
     Task ReconcileCountersAsync(CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Atomically reserves pool and client allocation counters when capacity allows.
-    /// </summary>
-    Task<SlotReservationResult> TryReserveSlotAsync(
-        string resourcePoolId,
-        string clientId,
-        int poolMaxSlots,
-        int clientMaxSlots,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Releases a previously reserved slot when allocation creation fails.
-    /// </summary>
-    Task ReleaseReservedSlotAsync(
-        string resourcePoolId,
-        string clientId,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Marks an expired allocation as released only when it is still active.
-    /// </summary>
-    Task<bool> TryMarkExpiredReleasedAsync(
-        ResourceAllocation allocation,
-        CancellationToken cancellationToken = default);
 }

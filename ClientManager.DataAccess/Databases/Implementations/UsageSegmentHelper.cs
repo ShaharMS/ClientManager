@@ -3,8 +3,7 @@ using ClientManager.Shared.Models.Enums;
 namespace ClientManager.DataAccess.Databases.Implementations;
 
 /// <summary>
-/// Static helpers for splitting <see cref="Shared.Models.Entities.UsageSnapshot"/> documents
-/// into bounded time segments.
+/// Static helpers for splitting <see cref="Shared.Models.Entities.UsageSnapshot"/> documents/// into bounded time segments.
 ///
 /// <para><strong>Problem</strong></para>
 /// <para>
@@ -123,4 +122,86 @@ public static class UsageSegmentHelper
         var monday = timestamp.Date.AddDays(-daysFromMonday);
         return DateTime.SpecifyKind(monday, DateTimeKind.Utc);
     }
+
+    /// <summary>
+    /// Builds the storage counter key for a pending usage bucket delta.
+    /// </summary>
+    public static string BuildUsageCounterKey(
+        string clientId,
+        TargetType targetType,
+        string targetId,
+        DateTime bucketTimestamp,
+        UsageEventType eventType) =>
+        $"usage:{clientId}:{targetType}:{targetId}:{BucketGranularity.Second}:{bucketTimestamp:yyyyMMddHHmmss}:{eventType}";
+
+    /// <summary>
+    /// Enumerates storage counter keys for each second and event type in the inclusive range.
+    /// </summary>
+    public static IEnumerable<string> EnumerateUsageCounterKeys(
+        string clientId,
+        TargetType targetType,
+        string targetId,
+        DateTime from,
+        DateTime to)
+    {
+        var cursor = RoundDownToSecond(from);
+        var end = RoundDownToSecond(to);
+
+        while (cursor <= end)
+        {
+            foreach (UsageEventType eventType in Enum.GetValues<UsageEventType>())
+            {
+                yield return BuildUsageCounterKey(clientId, targetType, targetId, cursor, eventType);
+            }
+
+            cursor = cursor.AddSeconds(1);
+        }
+    }
+
+    /// <summary>
+    /// Parses a usage counter key produced by <see cref="BuildUsageCounterKey"/>.
+    /// </summary>
+    public static bool TryParseUsageCounterKey(
+        string key,
+        out string clientId,
+        out TargetType targetType,
+        out string targetId,
+        out DateTime bucketTimestamp,
+        out UsageEventType eventType)
+    {
+        clientId = string.Empty;
+        targetId = string.Empty;
+        targetType = default;
+        bucketTimestamp = default;
+        eventType = default;
+
+        if (!key.StartsWith("usage:", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        var parts = key.Split(':', 7);
+        if (parts.Length != 7 ||
+            !Enum.TryParse(parts[2], out targetType) ||
+            !Enum.TryParse(parts[6], out eventType) ||
+            !DateTime.TryParseExact(
+                parts[5],
+                "yyyyMMddHHmmss",
+                System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.AssumeUniversal | System.Globalization.DateTimeStyles.AdjustToUniversal,
+                out bucketTimestamp))
+        {
+            return false;
+        }
+
+        clientId = parts[1];
+        targetId = parts[3];
+        return true;
+    }
+
+    /// <summary>
+    /// Rounds a UTC timestamp down to the nearest second.
+    /// </summary>
+    public static DateTime RoundDownToSecond(DateTime utc) =>
+        new(utc.Year, utc.Month, utc.Day, utc.Hour, utc.Minute, utc.Second, DateTimeKind.Utc);
 }

@@ -165,34 +165,6 @@ public class JsonFileDocumentStore : IDocumentStore
     }
 
     /// <inheritdoc />
-    public Task<bool> SetIfFieldEqualsAsync<T>(
-        string collection,
-        string id,
-        T document,
-        string fieldName,
-        object? expectedValue,
-        CancellationToken cancellationToken = default) where T : class =>
-        DocumentStoreConcurrencyDefaults.SetIfFieldEqualsAsync(
-            GetAsync<T>,
-            SetAsync,
-            collection,
-            id,
-            document,
-            fieldName,
-            expectedValue,
-            cancellationToken);
-
-    /// <inheritdoc />
-    public Task<bool> TryIncrementWithinLimitsAsync(
-        IReadOnlyList<(string key, long max, TimeSpan window)> counters,
-        CancellationToken cancellationToken = default) =>
-        DocumentStoreConcurrencyDefaults.TryIncrementWithinLimitsAsync(
-            IncrementCounterAsync,
-            DecrementManyCountersAsync,
-            counters,
-            cancellationToken);
-
-    /// <inheritdoc />
     public Task<(bool IsAllowed, long RemainingTokens, long RetryAfterSeconds)> TryConsumeTokenBucketAsync(
         string tokensKey,
         string lastRefillKey,
@@ -202,7 +174,7 @@ public class JsonFileDocumentStore : IDocumentStore
         TimeSpan stateWindow,
         long nowUnixSeconds,
         CancellationToken cancellationToken = default) =>
-        DocumentStoreConcurrencyDefaults.TryConsumeTokenBucketAsync(
+        TokenBucketConsumeDefaults.TryConsumeTokenBucketAsync(
             GetManyCountersAsync,
             SetManyCountersAsync,
             tokensKey,
@@ -212,43 +184,6 @@ public class JsonFileDocumentStore : IDocumentStore
             refillIntervalSeconds,
             stateWindow,
             nowUnixSeconds,
-            cancellationToken);
-
-    /// <inheritdoc />
-    public Task<bool> TryAcquireLeaseAsync(
-        string key,
-        string ownerId,
-        TimeSpan duration,
-        CancellationToken cancellationToken = default) =>
-        DocumentStoreLeaseDefaults.TryAcquireLeaseAsync(
-            GetAsync<LeaseRecord>,
-            SetAsync,
-            key,
-            ownerId,
-            duration,
-            cancellationToken);
-
-    /// <inheritdoc />
-    public Task<bool> RenewLeaseAsync(
-        string key,
-        string ownerId,
-        TimeSpan duration,
-        CancellationToken cancellationToken = default) =>
-        DocumentStoreLeaseDefaults.RenewLeaseAsync(
-            GetAsync<LeaseRecord>,
-            SetAsync,
-            key,
-            ownerId,
-            duration,
-            cancellationToken);
-
-    /// <inheritdoc />
-    public Task ReleaseLeaseAsync(string key, string ownerId, CancellationToken cancellationToken = default) =>
-        DocumentStoreLeaseDefaults.ReleaseLeaseAsync(
-            GetAsync<LeaseRecord>,
-            DeleteAsync,
-            key,
-            ownerId,
             cancellationToken);
 
     /// <inheritdoc />

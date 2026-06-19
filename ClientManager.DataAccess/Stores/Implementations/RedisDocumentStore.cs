@@ -45,7 +45,6 @@ public class RedisDocumentStore : IDocumentStore
     private IDatabase Database => _redis.GetDatabase(_databaseIndex);
 
     private const string CounterPrefix = "counter:";
-    private const string LeasePrefix = "lease:";
     private const string JsonRootPath = "$";
     private const string DecrementCounterScript = """
 local ttl = redis.call('PTTL', KEYS[1])
@@ -66,29 +65,6 @@ if ttl > 0 then
     redis.call('PEXPIRE', KEYS[1], ttl)
 end
 return next
-""";
-
-    private const string TryIncrementWithinLimitsScript = """
-local function incrWithTtl(key, ttlMs)
-  local value = redis.call('INCR', key)
-  if value == 1 and ttlMs > 0 then
-    redis.call('PEXPIRE', key, ttlMs)
-  end
-  return value
-end
-
-local pool = incrWithTtl(KEYS[1], tonumber(ARGV[3]))
-if pool > tonumber(ARGV[1]) then
-  redis.call('DECR', KEYS[1])
-  return 0
-end
-local client = incrWithTtl(KEYS[2], tonumber(ARGV[3]))
-if client > tonumber(ARGV[2]) then
-  redis.call('DECR', KEYS[1])
-  redis.call('DECR', KEYS[2])
-  return 0
-end
-return 1
 """;
 
     private const string TryConsumeTokenBucketScript = """
@@ -146,8 +122,6 @@ return {1, remaining, 0}
     private string IndexName(string collection) => PrefixKey($"idx:{collection}");
 
     private RedisKey CounterKey(string key) => PrefixKey($"{CounterPrefix}{key}");
-
-    private RedisKey LeaseKey(string key) => PrefixKey($"{LeasePrefix}{key}");
 
     private string PrefixKey(string key) => string.IsNullOrEmpty(_globalKeyPrefix)
         ? key
@@ -304,58 +278,6 @@ return {1, remaining, 0}
     }
 
     /// <inheritdoc />
-    public Task<bool> SetIfFieldEqualsAsync<T>(
-        string collection,
-        string id,
-        T document,
-        string fieldName,
-        object? expectedValue,
-        CancellationToken cancellationToken = default) where T : class =>
-        Helpers.DocumentStoreConcurrencyDefaults.SetIfFieldEqualsAsync(
-            GetAsync<T>,
-            SetAsync,
-            collection,
-            id,
-            document,
-            fieldName,
-            expectedValue,
-            cancellationToken);
-
-    /// <inheritdoc />
-    public async Task<bool> TryIncrementWithinLimitsAsync(
-        IReadOnlyList<(string key, long max, TimeSpan window)> counters,
-        CancellationToken cancellationToken = default)
-    {
-        if (counters.Count == 0)
-        {
-            return true;
-        }
-
-        if (counters.Count != 2)
-        {
-            return await Helpers.DocumentStoreConcurrencyDefaults.TryIncrementWithinLimitsAsync(
-                IncrementCounterAsync,
-                DecrementManyCountersAsync,
-                counters,
-                cancellationToken);
-        }
-
-        return await ExecuteWithRedisContextAsync(
-            "counter_try_increment_within_limits",
-            async () =>
-            {
-                var ttlMs = (long)counters[0].window.TotalMilliseconds;
-                var result = await Database.ScriptEvaluateAsync(
-                    TryIncrementWithinLimitsScript,
-                    new RedisKey[] { CounterKey(counters[0].key), CounterKey(counters[1].key) },
-                    new RedisValue[] { counters[0].max, counters[1].max, ttlMs });
-
-                return (long)result == 1;
-            },
-            DescribeCounterBatchContext(counters.Select(counter => counter.key)));
-    }
-
-    /// <inheritdoc />
     public async Task<(bool IsAllowed, long RemainingTokens, long RetryAfterSeconds)> TryConsumeTokenBucketAsync(
         string tokensKey,
         string lastRefillKey,
@@ -385,76 +307,6 @@ return {1, remaining, 0}
                 return ((long)result[0] == 1, (long)result[1], (long)result[2]);
             },
             DescribeCounterBatchContext([tokensKey, lastRefillKey]));
-    }
-
-    /// <inheritdoc />
-    public async Task<bool> TryAcquireLeaseAsync(
-        string key,
-        string ownerId,
-        TimeSpan duration,
-        CancellationToken cancellationToken = default)
-    {
-        return await ExecuteWithRedisContextAsync(
-            "lease_acquire",
-            async () =>
-            {
-                var redisKey = LeaseKey(key);
-                var acquired = await Database.StringSetAsync(redisKey, ownerId, duration, When.NotExists);
-                if (acquired)
-                {
-                    return true;
-                }
-
-                var current = await Database.StringGetAsync(redisKey);
-                if (current == ownerId)
-                {
-                    await Database.KeyExpireAsync(redisKey, duration);
-                    return true;
-                }
-
-                return false;
-            },
-            DescribeLeaseContext(key, duration));
-    }
-
-    /// <inheritdoc />
-    public async Task<bool> RenewLeaseAsync(
-        string key,
-        string ownerId,
-        TimeSpan duration,
-        CancellationToken cancellationToken = default)
-    {
-        return await ExecuteWithRedisContextAsync(
-            "lease_renew",
-            async () =>
-            {
-                var redisKey = LeaseKey(key);
-                var current = await Database.StringGetAsync(redisKey);
-                if (current != ownerId)
-                {
-                    return false;
-                }
-
-                return await Database.KeyExpireAsync(redisKey, duration);
-            },
-            DescribeLeaseContext(key, duration));
-    }
-
-    /// <inheritdoc />
-    public async Task ReleaseLeaseAsync(string key, string ownerId, CancellationToken cancellationToken = default)
-    {
-        await ExecuteWithRedisContextAsync(
-            "lease_release",
-            async () =>
-            {
-                var redisKey = LeaseKey(key);
-                var current = await Database.StringGetAsync(redisKey);
-                if (current == ownerId)
-                {
-                    await Database.KeyDeleteAsync(redisKey);
-                }
-            },
-            DescribeLeaseContext(key, TimeSpan.Zero));
     }
 
     /// <inheritdoc />
@@ -868,16 +720,6 @@ return {1, remaining, 0}
             ("RedisCounterWindow", window?.ToString()),
             ("RedisCounterValue", value),
             ("RedisCounterAmount", amount)
-        ];
-    }
-
-    private (string Name, object? Value)[] DescribeLeaseContext(string key, TimeSpan duration)
-    {
-        return
-        [
-            ("RedisLeaseName", key),
-            ("RedisLeaseKey", LeaseKey(key).ToString()),
-            ("RedisLeaseDuration", duration.ToString())
         ];
     }
 

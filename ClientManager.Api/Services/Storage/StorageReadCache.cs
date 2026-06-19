@@ -26,8 +26,9 @@ public sealed class StorageReadCache : IStorageReadCache, IDisposable
     public Task<T> GetOrCreateCatalogAsync<T>(
         string key,
         Func<CancellationToken, Task<T>> factory,
-        CancellationToken cancellationToken) =>
-        GetOrCreateAsync($"catalog:{key}", _options.CatalogTtl, _catalogInvalidation.Token, factory, cancellationToken);
+        CancellationToken cancellationToken,
+        TimeSpan? ttl = null) =>
+        GetOrCreateAsync($"catalog:{key}", ttl ?? _options.CatalogTtl, _catalogInvalidation.Token, factory, cancellationToken);
 
     public Task<T> GetOrCreateStatisticsAsync<T>(
         string key,

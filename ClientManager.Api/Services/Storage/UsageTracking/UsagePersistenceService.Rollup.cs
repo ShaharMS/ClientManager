@@ -12,7 +12,6 @@ public partial class UsagePersistenceService
 {
     private async Task<bool> RollUpAsync(
         IUsageSnapshotDatabase database,
-        IUsageCounterDatabase usageCounters,
         BucketGranularity sourceGranularity,
         BucketGranularity targetGranularity,
         TimeSpan ageThreshold,
@@ -24,7 +23,7 @@ public partial class UsagePersistenceService
 
         foreach (var snapshot in snapshots)
         {
-            mutated |= await RollUpSnapshotAsync(snapshot, cutoff, targetGranularity, database, usageCounters, cancellationToken);
+            mutated |= await RollUpSnapshotAsync(snapshot, cutoff, targetGranularity, database, cancellationToken);
         }
 
         return mutated;
@@ -35,7 +34,6 @@ public partial class UsagePersistenceService
         DateTime cutoff,
         BucketGranularity targetGranularity,
         IUsageSnapshotDatabase database,
-        IUsageCounterDatabase usageCounters,
         CancellationToken cancellationToken)
     {
         var bucketsToRollUp = source.Buckets.Where(bucket => bucket.Timestamp < cutoff).ToList();
@@ -46,14 +44,10 @@ public partial class UsagePersistenceService
 
         foreach (var group in bucketsToRollUp.GroupBy(bucket => RoundDownToGranularity(bucket.Timestamp, targetGranularity)))
         {
-            var rolledUpBuckets = new List<UsageBucket>(group);
-            if (sourceGranularityIsSecond(source))
+            var rolledUpBuckets = group.ToList();
+            if (source.Granularity == BucketGranularity.Second)
             {
-                rolledUpBuckets = await MergePendingCountersIntoBucketsAsync(
-                    source,
-                    group.ToList(),
-                    usageCounters,
-                    cancellationToken);
+                rolledUpBuckets = await MergePendingCountersIntoBucketsAsync(source, rolledUpBuckets, database, cancellationToken);
             }
 
             await UpsertRolledUpSnapshotAsync(
@@ -76,31 +70,29 @@ public partial class UsagePersistenceService
         return true;
     }
 
-    private static bool sourceGranularityIsSecond(UsageSnapshot source) =>
-        source.Granularity == BucketGranularity.Second;
-
     private async Task<List<UsageBucket>> MergePendingCountersIntoBucketsAsync(
         UsageSnapshot source,
         IReadOnlyList<UsageBucket> buckets,
-        IUsageCounterDatabase usageCounters,
+        IUsageSnapshotDatabase database,
         CancellationToken cancellationToken)
     {
-        var counterKeys = new List<UsageCounterKey>();
-        foreach (var bucket in buckets)
-        {
-            counterKeys.Add(new UsageCounterKey(source.ClientId, source.TargetType, source.TargetId, BucketGranularity.Second, bucket.Timestamp, UsageEventType.Granted));
-            counterKeys.Add(new UsageCounterKey(source.ClientId, source.TargetType, source.TargetId, BucketGranularity.Second, bucket.Timestamp, UsageEventType.Denied));
-            counterKeys.Add(new UsageCounterKey(source.ClientId, source.TargetType, source.TargetId, BucketGranularity.Second, bucket.Timestamp, UsageEventType.Released));
-        }
+        var counterKeys = buckets
+            .SelectMany(bucket => new[]
+            {
+                UsageSegmentHelper.BuildUsageCounterKey(source.ClientId, source.TargetType, source.TargetId, bucket.Timestamp, UsageEventType.Granted),
+                UsageSegmentHelper.BuildUsageCounterKey(source.ClientId, source.TargetType, source.TargetId, bucket.Timestamp, UsageEventType.Denied),
+                UsageSegmentHelper.BuildUsageCounterKey(source.ClientId, source.TargetType, source.TargetId, bucket.Timestamp, UsageEventType.Released)
+            })
+            .ToList();
 
-        var counterValues = await usageCounters.GetBucketCountsAsync(counterKeys, cancellationToken);
-        var keysToReset = new List<UsageCounterKey>();
+        var counterValues = await database.GetPendingCounterValuesAsync(counterKeys, cancellationToken);
+        var keysToReset = new List<string>();
 
         var merged = buckets.Select(bucket =>
         {
-            var grantedKey = new UsageCounterKey(source.ClientId, source.TargetType, source.TargetId, BucketGranularity.Second, bucket.Timestamp, UsageEventType.Granted);
-            var deniedKey = grantedKey with { EventType = UsageEventType.Denied };
-            var releasedKey = grantedKey with { EventType = UsageEventType.Released };
+            var grantedKey = UsageSegmentHelper.BuildUsageCounterKey(source.ClientId, source.TargetType, source.TargetId, bucket.Timestamp, UsageEventType.Granted);
+            var deniedKey = UsageSegmentHelper.BuildUsageCounterKey(source.ClientId, source.TargetType, source.TargetId, bucket.Timestamp, UsageEventType.Denied);
+            var releasedKey = UsageSegmentHelper.BuildUsageCounterKey(source.ClientId, source.TargetType, source.TargetId, bucket.Timestamp, UsageEventType.Released);
 
             var grantedDelta = counterValues.GetValueOrDefault(grantedKey);
             var deniedDelta = counterValues.GetValueOrDefault(deniedKey);
@@ -131,7 +123,7 @@ public partial class UsagePersistenceService
 
         if (keysToReset.Count > 0)
         {
-            await usageCounters.ResetBucketCountsAsync(keysToReset, cancellationToken);
+            await database.ResetPendingCountersAsync(keysToReset, cancellationToken);
         }
 
         return merged;

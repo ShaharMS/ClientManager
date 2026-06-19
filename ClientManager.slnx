@@ -7,9 +7,6 @@
     <Project Path="ClientManager.DataAccess/ClientManager.DataAccess.csproj" />
     <Project Path="ClientManager.Shared/ClientManager.Shared.csproj" />
   </Folder>
-  <Folder Name="/Tests/">
-    <Project Path="ClientManager.IntegrationTests/ClientManager.IntegrationTests.csproj" />
-  </Folder>
   <Folder Name="/_Solution Items_/">
     <File Path=".gitignore" />
   </Folder>
@@ -57,7 +54,6 @@
     <File Path="_scripts/configuration.py" />
     <File Path="_scripts/download_images.py" />
     <File Path="_scripts/launch_observability_ui.py" />
-    <File Path="_scripts/multi_pod_smoke.py" />
     <File Path="_scripts/performance_baseline.py" />
     <File Path="_scripts/seed_data.py" />
     <File Path="_scripts/traffic_generator.py" />

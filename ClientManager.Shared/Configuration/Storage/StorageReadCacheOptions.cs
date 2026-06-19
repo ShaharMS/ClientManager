@@ -16,6 +16,11 @@ public sealed class StorageReadCacheOptions
     public TimeSpan CatalogTtl { get; init; } = TimeSpan.FromSeconds(30);
 
     /// <summary>
+    /// Cache lifetime for global-limit rule lookups on the access-check hot path.
+    /// </summary>
+    public TimeSpan HotPathCatalogTtl { get; init; } = TimeSpan.FromSeconds(1);
+
+    /// <summary>
     /// Cache lifetime for statistics and exporter reads.
     /// </summary>
     public TimeSpan StatisticsTtl { get; init; } = TimeSpan.FromSeconds(5);

@@ -97,21 +97,29 @@ public class ResourceAllocationDatabase : IResourceAllocationDatabase
         int clientMaxSlots,
         CancellationToken cancellationToken = default)
     {
-        var counters = new List<(string key, long max, TimeSpan window)>
-        {
-            (PoolCounterKey(resourcePoolId), poolMaxSlots, CounterTtl),
-            (ClientCounterKey(resourcePoolId, clientId), clientMaxSlots, CounterTtl)
-        };
+        var poolKey = PoolCounterKey(resourcePoolId);
+        var clientKey = ClientCounterKey(resourcePoolId, clientId);
+        var incremented = new Dictionary<string, long>(2, StringComparer.Ordinal);
 
-        var reserved = await _store.TryIncrementWithinLimitsAsync(counters, cancellationToken);
-        if (!reserved)
+        var poolCount = await _store.IncrementCounterAsync(poolKey, CounterTtl, cancellationToken);
+        incremented[poolKey] = 1;
+        if (poolCount > poolMaxSlots)
         {
+            await _store.DecrementManyCountersAsync(incremented, cancellationToken);
             var counts = await GetActiveCountsAsync(resourcePoolId, clientId, cancellationToken);
             return new SlotReservationResult(false, counts.PoolCount, counts.ClientCount);
         }
 
-        var updatedCounts = await GetActiveCountsAsync(resourcePoolId, clientId, cancellationToken);
-        return new SlotReservationResult(true, updatedCounts.PoolCount, updatedCounts.ClientCount);
+        var clientCount = await _store.IncrementCounterAsync(clientKey, CounterTtl, cancellationToken);
+        incremented[clientKey] = 1;
+        if (clientCount > clientMaxSlots)
+        {
+            await _store.DecrementManyCountersAsync(incremented, cancellationToken);
+            var counts = await GetActiveCountsAsync(resourcePoolId, clientId, cancellationToken);
+            return new SlotReservationResult(false, counts.PoolCount, counts.ClientCount);
+        }
+
+        return new SlotReservationResult(true, (int)poolCount, (int)clientCount);
     }
 
     /// <inheritdoc />
@@ -131,34 +139,6 @@ public class ResourceAllocationDatabase : IResourceAllocationDatabase
             cancellationToken);
 
     /// <inheritdoc />
-    public async Task<bool> TryMarkExpiredReleasedAsync(
-        ResourceAllocation allocation,
-        CancellationToken cancellationToken = default)
-    {
-        if (allocation.IsReleased || allocation.ExpiresAt > DateTime.UtcNow)
-        {
-            return false;
-        }
-
-        var updated = allocation with { IsReleased = true };
-        var applied = await _store.SetIfFieldEqualsAsync(
-            Collection,
-            allocation.Id,
-            updated,
-            nameof(ResourceAllocation.IsReleased),
-            false,
-            cancellationToken);
-
-        if (!applied)
-        {
-            return false;
-        }
-
-        await DecrementAllocationCountersAsync(allocation, cancellationToken);
-        return true;
-    }
-
-    /// <inheritdoc />
     public async Task MarkReleasedAsync(string allocationId, CancellationToken cancellationToken = default)
     {
         var allocation = await GetByIdAsync(allocationId, cancellationToken);
@@ -174,20 +154,7 @@ public class ResourceAllocationDatabase : IResourceAllocationDatabase
         if (allocation.IsReleased)
             return;
 
-        var updated = allocation with { IsReleased = true };
-        var applied = await _store.SetIfFieldEqualsAsync(
-            Collection,
-            allocation.Id,
-            updated,
-            nameof(ResourceAllocation.IsReleased),
-            false,
-            cancellationToken);
-
-        if (!applied)
-        {
-            return;
-        }
-
+        await _store.SetAsync(Collection, allocation.Id, allocation with { IsReleased = true }, cancellationToken);
         await DecrementAllocationCountersAsync(allocation, cancellationToken);
     }
 
@@ -198,15 +165,25 @@ public class ResourceAllocationDatabase : IResourceAllocationDatabase
             .Where(nameof(ResourceAllocation.IsReleased), FilterOperator.Equals, false);
 
         var result = await _store.SearchAsync<ResourceAllocation>(Collection, query, cancellationToken);
+        var now = DateTime.UtcNow;
+        var counterDecrements = new Dictionary<string, long>(StringComparer.Ordinal);
         var count = 0;
 
         foreach (var allocation in result.Items)
         {
-            if (await TryMarkExpiredReleasedAsync(allocation, cancellationToken))
-            {
-                count++;
-            }
+            if (allocation.ExpiresAt > now)
+                continue;
+
+            var marker = await _store.IncrementCounterAsync(CleanupMarkerKey(allocation.Id), CounterTtl, cancellationToken);
+            if (marker != 1)
+                continue;
+
+            await _store.SetAsync(Collection, allocation.Id, allocation with { IsReleased = true }, cancellationToken);
+            ForEachAllocationKey(allocation, key => AddCounterDelta(counterDecrements, key, 1));
+            count++;
         }
+
+        await _store.DecrementManyCountersAsync(counterDecrements, cancellationToken);
 
         return count;
     }
@@ -230,6 +207,15 @@ public class ResourceAllocationDatabase : IResourceAllocationDatabase
         await _store.SetManyCountersAsync(counterValues, cancellationToken);
     }
 
+    private Task IncrementAllocationCountersAsync(ResourceAllocation allocation, CancellationToken cancellationToken)
+    {
+        return _store.IncrementManyCountersAsync(new Dictionary<string, (long amount, TimeSpan window)>
+        {
+            [PoolCounterKey(allocation.ResourcePoolId)] = (1, CounterTtl),
+            [ClientCounterKey(allocation.ResourcePoolId, allocation.ClientId)] = (1, CounterTtl)
+        }, cancellationToken);
+    }
+
     private Task DecrementAllocationCountersAsync(ResourceAllocation allocation, CancellationToken cancellationToken)
     {
         return _store.DecrementManyCountersAsync(new Dictionary<string, long>
@@ -237,6 +223,12 @@ public class ResourceAllocationDatabase : IResourceAllocationDatabase
             [PoolCounterKey(allocation.ResourcePoolId)] = 1,
             [ClientCounterKey(allocation.ResourcePoolId, allocation.ClientId)] = 1
         }, cancellationToken);
+    }
+
+    private static void AddCounterDelta(IDictionary<string, long> counters, string key, long amount)
+    {
+        var current = counters.TryGetValue(key, out var value) ? value : 0;
+        counters[key] = current + amount;
     }
 
     private static void ForEachAllocationKey(ResourceAllocation allocation, Action<string> apply)
@@ -260,4 +252,5 @@ public class ResourceAllocationDatabase : IResourceAllocationDatabase
 
     private static string PoolCounterKey(string poolId) => $"alloc-count:pool:{poolId}";
     private static string ClientCounterKey(string poolId, string clientId) => $"alloc-count:client:{poolId}:{clientId}";
+    private static string CleanupMarkerKey(string allocationId) => $"alloc-cleanup:{allocationId}";
 }

@@ -10,9 +10,8 @@ namespace ClientManager.Api.Services.Storage;
 /// </summary>
 public sealed class GlobalRateLimitCatalogService(
     IGlobalRateLimitDatabase database,
-    IStorageReadCache cache,
-    ICrossPodCacheInvalidator cacheInvalidator)
-    : GenericEntityCatalogService<GlobalRateLimit>(database, cache, cacheInvalidator, "global-rate-limits"),
+    IStorageReadCache cache)
+    : GenericEntityCatalogService<GlobalRateLimit>(database, cache, "global-rate-limits"),
         IGlobalRateLimitCatalogService
 {
     private readonly IGlobalRateLimitDatabase _database = database;
@@ -34,7 +33,7 @@ public sealed class GlobalRateLimitCatalogService(
         }
 
         await Repository.CreateAsync(limit, cancellationToken);
-        CacheInvalidator.PublishCatalogInvalidation();
+        Cache.InvalidateCatalog();
         return limit;
     }
 }

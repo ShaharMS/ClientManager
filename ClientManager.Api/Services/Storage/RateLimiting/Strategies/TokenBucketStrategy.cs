@@ -100,6 +100,67 @@ public class TokenBucketStrategy : IRateLimitStrategy
             });
     }
 
+    private async Task<RateLimitResult> InitializeBucketAsync(
+        BucketStateContext state,
+        CancellationToken cancellationToken)
+    {
+        var initialTokens = state.BucketCapacity - 1;
+        var alignedRefill = RateLimitWindowAlignment.GetWindowStart(
+            state.Now,
+            state.RefillIntervalSeconds,
+            _windowAlignmentAnchor);
+        await PersistStateAsync(state, initialTokens, alignedRefill, cancellationToken);
+
+        return new RateLimitResult
+        {
+            IsAllowed = true,
+            RemainingRequests = (int)initialTokens
+        };
+    }
+
+    private async Task<RateLimitResult> PersistDeniedAsync(
+        BucketStateContext state,
+        long lastRefill,
+        CancellationToken cancellationToken)
+    {
+        await PersistStateAsync(state, 0, lastRefill, cancellationToken);
+
+        return new RateLimitResult
+        {
+            IsAllowed = false,
+            RemainingRequests = 0,
+            RetryAfterSeconds = GetRetryAfterSeconds(state)
+        };
+    }
+
+    private async Task<RateLimitResult> PersistAllowedAsync(
+        BucketStateContext state,
+        long tokens,
+        long lastRefill,
+        CancellationToken cancellationToken)
+    {
+        await PersistStateAsync(state, tokens, lastRefill, cancellationToken);
+
+        return new RateLimitResult
+        {
+            IsAllowed = true,
+            RemainingRequests = (int)tokens
+        };
+    }
+
+    private Task PersistStateAsync(
+        BucketStateContext state,
+        long tokens,
+        long lastRefill,
+        CancellationToken cancellationToken)
+    {
+        return _stateDatabase.SetMultipleCountsAsync(new Dictionary<string, (long value, TimeSpan window)>
+        {
+            [state.TokensKey] = (tokens, state.StateWindow),
+            [state.LastRefillKey] = (lastRefill, state.StateWindow)
+        }, cancellationToken);
+    }
+
     private BucketComputation CalculateBucketState(
         long storedTokens,
         long lastRefill,

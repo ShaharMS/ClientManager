@@ -66,7 +66,7 @@ public interface IRateLimitStateDatabase
     Task SetMultipleCountsAsync(IReadOnlyDictionary<string, (long value, TimeSpan window)> entries, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Atomically consumes one token from a token bucket when allowed.
+    /// Atomically evaluates and consumes one token from a token bucket.
     /// </summary>
     Task<TokenBucketConsumeResult> TryConsumeTokenBucketAsync(
         string tokensKey,

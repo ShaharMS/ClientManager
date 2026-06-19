@@ -204,4 +204,25 @@ public interface IUsageSnapshotDatabase
         string clientId, string targetId, TargetType targetType,
         BucketGranularity granularity, DateTime segmentStart,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Atomically increments pending usage counters before rollup folds them into snapshots.
+    /// </summary>
+    Task IncrementPendingCountersAsync(
+        IReadOnlyDictionary<string, (long amount, TimeSpan window)> entries,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Reads pending usage counter values for overlay and rollup.
+    /// </summary>
+    Task<IReadOnlyDictionary<string, long>> GetPendingCounterValuesAsync(
+        IEnumerable<string> keys,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Clears pending usage counters after their values were folded into snapshots.
+    /// </summary>
+    Task ResetPendingCountersAsync(
+        IEnumerable<string> keys,
+        CancellationToken cancellationToken = default);
 }

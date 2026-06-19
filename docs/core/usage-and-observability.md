@@ -32,7 +32,7 @@ flowchart LR
     stats --> api[Statistics API + Admin UI]
 ```
 
-The fast flush loop writes granted/denied/released counts to **atomic TTL-backed counters** (safe across multiple API pods). A leader-elected slow loop rolls counters into snapshot documents and prunes expired buckets.
+The fast flush loop writes granted/denied/released counts to **atomic TTL-backed counters** (safe across multiple API pods). The slow rollup loop folds counters into snapshot documents and prunes expired buckets on every instance.
 
 Snapshots store time-bucketed counts at multiple **granularities**:
 

@@ -1,11 +1,13 @@
 using System.Diagnostics;
 using ClientManager.DataAccess.Databases.Interfaces;
+using ClientManager.Shared.Configuration.Storage;
 using ClientManager.Shared.Logging;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Enums;
 using ClientManager.Api.Services.Interfaces;
 using ClientManager.Api.Services.Storage.Extensions;
 using ClientManager.Api.Services.Storage.Instrumentation;
+using Microsoft.Extensions.Options;
 
 namespace ClientManager.Api.Services.Storage.RateLimiting;
 
@@ -21,19 +23,25 @@ public class RateLimitService : IRateLimitService
     private readonly IGlobalRateLimitDatabase _globalRateLimitDatabase;
     private readonly RateLimitStrategyResolver _strategyResolver;
     private readonly StorageMetrics _metrics;
+    private readonly IStorageReadCache _cache;
+    private readonly StorageReadCacheOptions _cacheOptions;
 
     public RateLimitService(
         IAppLogger<RateLimitService> logger,
         IClientConfigurationDatabase clientConfigDatabase,
         IGlobalRateLimitDatabase globalRateLimitDatabase,
         RateLimitStrategyResolver strategyResolver,
-        StorageMetrics metrics)
+        StorageMetrics metrics,
+        IStorageReadCache cache,
+        IOptions<StorageReadCacheOptions> cacheOptions)
     {
         _logger = logger;
         _clientConfigDatabase = clientConfigDatabase;
         _globalRateLimitDatabase = globalRateLimitDatabase;
         _strategyResolver = strategyResolver;
         _metrics = metrics;
+        _cache = cache;
+        _cacheOptions = cacheOptions.Value;
     }
 
     /// <inheritdoc />
@@ -323,7 +331,11 @@ public class RateLimitService : IRateLimitService
                 act?.SetTag("ratelimit.target_type", targetType.ToString());
             });
 
-        var globalLimit = await _globalRateLimitDatabase.GetByTargetAsync(targetId, targetType, cancellationToken);
+        var globalLimit = await _cache.GetOrCreateCatalogAsync(
+            $"global-limit:{targetId}:{targetType}",
+            token => _globalRateLimitDatabase.GetByTargetAsync(targetId, targetType, token),
+            cancellationToken,
+            _cacheOptions.HotPathCatalogTtl);
         activity?.SetTag("ratelimit.global_limit_found", globalLimit is not null);
         return globalLimit;
     }

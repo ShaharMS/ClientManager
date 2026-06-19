@@ -112,25 +112,6 @@ public interface IDocumentStore
     Task DeleteAsync(string collection, string id, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Replaces a document only when the named field equals the expected value.
-    /// </summary>
-    Task<bool> SetIfFieldEqualsAsync<T>(
-        string collection,
-        string id,
-        T document,
-        string fieldName,
-        object? expectedValue,
-        CancellationToken cancellationToken = default) where T : class;
-
-    /// <summary>
-    /// Atomically increments counters only when each result would remain within its max.
-    /// Rolls back all increments when any limit would be exceeded.
-    /// </summary>
-    Task<bool> TryIncrementWithinLimitsAsync(
-        IReadOnlyList<(string key, long max, TimeSpan window)> counters,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Atomically evaluates and consumes one token from a token bucket.
     /// </summary>
     Task<(bool IsAllowed, long RemainingTokens, long RetryAfterSeconds)> TryConsumeTokenBucketAsync(
@@ -142,29 +123,6 @@ public interface IDocumentStore
         TimeSpan stateWindow,
         long nowUnixSeconds,
         CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Attempts to acquire an exclusive lease. Succeeds when no valid lease exists or the caller already holds it.
-    /// </summary>
-    Task<bool> TryAcquireLeaseAsync(
-        string key,
-        string ownerId,
-        TimeSpan duration,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Extends a lease held by the given owner. Returns false when the lease was lost or expired.
-    /// </summary>
-    Task<bool> RenewLeaseAsync(
-        string key,
-        string ownerId,
-        TimeSpan duration,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Releases a lease when the caller is still the owner.
-    /// </summary>
-    Task ReleaseLeaseAsync(string key, string ownerId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Atomically increments a counter identified by key. Resets the counter if the window has expired.
