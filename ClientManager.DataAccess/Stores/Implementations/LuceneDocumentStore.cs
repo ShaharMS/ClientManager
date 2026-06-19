@@ -270,6 +270,43 @@ public class LuceneDocumentStore : IDocumentStore, IDisposable
             cancellationToken);
 
     /// <inheritdoc />
+    public Task<bool> TryAcquireLeaseAsync(
+        string key,
+        string ownerId,
+        TimeSpan duration,
+        CancellationToken cancellationToken = default) =>
+        DocumentStoreLeaseDefaults.TryAcquireLeaseAsync(
+            GetAsync<LeaseRecord>,
+            SetAsync,
+            key,
+            ownerId,
+            duration,
+            cancellationToken);
+
+    /// <inheritdoc />
+    public Task<bool> RenewLeaseAsync(
+        string key,
+        string ownerId,
+        TimeSpan duration,
+        CancellationToken cancellationToken = default) =>
+        DocumentStoreLeaseDefaults.RenewLeaseAsync(
+            GetAsync<LeaseRecord>,
+            SetAsync,
+            key,
+            ownerId,
+            duration,
+            cancellationToken);
+
+    /// <inheritdoc />
+    public Task ReleaseLeaseAsync(string key, string ownerId, CancellationToken cancellationToken = default) =>
+        DocumentStoreLeaseDefaults.ReleaseLeaseAsync(
+            GetAsync<LeaseRecord>,
+            DeleteAsync,
+            key,
+            ownerId,
+            cancellationToken);
+
+    /// <inheritdoc />
     public async Task<SearchResult<T>> SearchAsync<T>(
         string collection, DocumentQuery query,
         CancellationToken cancellationToken = default) where T : class

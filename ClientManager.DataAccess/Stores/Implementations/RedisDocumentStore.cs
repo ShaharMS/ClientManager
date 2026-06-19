@@ -45,6 +45,7 @@ public class RedisDocumentStore : IDocumentStore
     private IDatabase Database => _redis.GetDatabase(_databaseIndex);
 
     private const string CounterPrefix = "counter:";
+    private const string LeasePrefix = "lease:";
     private const string JsonRootPath = "$";
     private const string DecrementCounterScript = """
 local ttl = redis.call('PTTL', KEYS[1])
@@ -145,6 +146,8 @@ return {1, remaining, 0}
     private string IndexName(string collection) => PrefixKey($"idx:{collection}");
 
     private RedisKey CounterKey(string key) => PrefixKey($"{CounterPrefix}{key}");
+
+    private RedisKey LeaseKey(string key) => PrefixKey($"{LeasePrefix}{key}");
 
     private string PrefixKey(string key) => string.IsNullOrEmpty(_globalKeyPrefix)
         ? key
@@ -382,6 +385,76 @@ return {1, remaining, 0}
                 return ((long)result[0] == 1, (long)result[1], (long)result[2]);
             },
             DescribeCounterBatchContext([tokensKey, lastRefillKey]));
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> TryAcquireLeaseAsync(
+        string key,
+        string ownerId,
+        TimeSpan duration,
+        CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithRedisContextAsync(
+            "lease_acquire",
+            async () =>
+            {
+                var redisKey = LeaseKey(key);
+                var acquired = await Database.StringSetAsync(redisKey, ownerId, duration, When.NotExists);
+                if (acquired)
+                {
+                    return true;
+                }
+
+                var current = await Database.StringGetAsync(redisKey);
+                if (current == ownerId)
+                {
+                    await Database.KeyExpireAsync(redisKey, duration);
+                    return true;
+                }
+
+                return false;
+            },
+            DescribeLeaseContext(key, duration));
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> RenewLeaseAsync(
+        string key,
+        string ownerId,
+        TimeSpan duration,
+        CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithRedisContextAsync(
+            "lease_renew",
+            async () =>
+            {
+                var redisKey = LeaseKey(key);
+                var current = await Database.StringGetAsync(redisKey);
+                if (current != ownerId)
+                {
+                    return false;
+                }
+
+                return await Database.KeyExpireAsync(redisKey, duration);
+            },
+            DescribeLeaseContext(key, duration));
+    }
+
+    /// <inheritdoc />
+    public async Task ReleaseLeaseAsync(string key, string ownerId, CancellationToken cancellationToken = default)
+    {
+        await ExecuteWithRedisContextAsync(
+            "lease_release",
+            async () =>
+            {
+                var redisKey = LeaseKey(key);
+                var current = await Database.StringGetAsync(redisKey);
+                if (current == ownerId)
+                {
+                    await Database.KeyDeleteAsync(redisKey);
+                }
+            },
+            DescribeLeaseContext(key, TimeSpan.Zero));
     }
 
     /// <inheritdoc />
@@ -795,6 +868,16 @@ return {1, remaining, 0}
             ("RedisCounterWindow", window?.ToString()),
             ("RedisCounterValue", value),
             ("RedisCounterAmount", amount)
+        ];
+    }
+
+    private (string Name, object? Value)[] DescribeLeaseContext(string key, TimeSpan duration)
+    {
+        return
+        [
+            ("RedisLeaseName", key),
+            ("RedisLeaseKey", LeaseKey(key).ToString()),
+            ("RedisLeaseDuration", duration.ToString())
         ];
     }
 

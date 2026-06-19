@@ -144,6 +144,29 @@ public interface IDocumentStore
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Attempts to acquire an exclusive lease. Succeeds when no valid lease exists or the caller already holds it.
+    /// </summary>
+    Task<bool> TryAcquireLeaseAsync(
+        string key,
+        string ownerId,
+        TimeSpan duration,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Extends a lease held by the given owner. Returns false when the lease was lost or expired.
+    /// </summary>
+    Task<bool> RenewLeaseAsync(
+        string key,
+        string ownerId,
+        TimeSpan duration,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Releases a lease when the caller is still the owner.
+    /// </summary>
+    Task ReleaseLeaseAsync(string key, string ownerId, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Atomically increments a counter identified by key. Resets the counter if the window has expired.
     /// </summary>
     /// <param name="key">The counter key.</param>

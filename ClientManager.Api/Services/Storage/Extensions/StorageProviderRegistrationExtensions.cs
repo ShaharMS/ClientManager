@@ -53,21 +53,8 @@ public static class StorageProviderRegistrationExtensions
         }
 
         LogStorageConfiguration(options, environment);
-        RegisterSharedRedisMultiplexer(services, redisMultiplexers);
         EnforceMultiInstanceStoragePolicy(options, environment);
         return services;
-    }
-
-    private static void RegisterSharedRedisMultiplexer(
-        IServiceCollection services,
-        Dictionary<string, IConnectionMultiplexer> redisMultiplexers)
-    {
-        if (redisMultiplexers.Count == 0)
-        {
-            return;
-        }
-
-        services.AddSingleton(redisMultiplexers.Values.First());
     }
 
     private static void EnforceMultiInstanceStoragePolicy(PersistenceOptions options, IHostEnvironment environment)

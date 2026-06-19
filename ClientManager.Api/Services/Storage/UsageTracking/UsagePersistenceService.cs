@@ -18,6 +18,7 @@ public partial class UsagePersistenceService : BackgroundService
     private readonly UsageBuffer _buffer;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly UsageTrackingOptions _options;
+    private readonly BackgroundWorkersOptions _workerOptions;
     private readonly IStorageReadCache _cache;
 
     public UsagePersistenceService(
@@ -25,13 +26,15 @@ public partial class UsagePersistenceService : BackgroundService
         UsageBuffer buffer,
         IServiceScopeFactory scopeFactory,
         IStorageReadCache cache,
-        IOptions<UsageTrackingOptions> options)
+        IOptions<UsageTrackingOptions> options,
+        IOptions<BackgroundWorkersOptions> workerOptions)
     {
         _logger = logger;
         _buffer = buffer;
         _scopeFactory = scopeFactory;
         _cache = cache;
         _options = options.Value;
+        _workerOptions = workerOptions.Value;
     }
 
     /// <inheritdoc />
@@ -78,7 +81,7 @@ public partial class UsagePersistenceService : BackgroundService
                 using var scope = _scopeFactory.CreateScope();
                 var leaderLock = scope.ServiceProvider.GetRequiredService<IDistributedLeaderLock>();
                 await using var lease = await leaderLock.TryAcquireAsync("usage-rollup", stoppingToken);
-                if (lease is null)
+                if (lease is null && _workerOptions.RequireLeaderLock)
                 {
                     continue;
                 }

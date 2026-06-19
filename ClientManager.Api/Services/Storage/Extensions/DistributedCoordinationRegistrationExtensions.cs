@@ -1,6 +1,11 @@
 using ClientManager.Api.Services.Interfaces;
+using ClientManager.Api.Services.Storage;
+using ClientManager.DataAccess.Stores.Interfaces;
 using ClientManager.Shared.Configuration.Storage;
+using ClientManager.Shared.Logging;
 using ClientManager.Shared.Models.Enums;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace ClientManager.Api.Services.Storage.Extensions;
 
@@ -10,7 +15,7 @@ namespace ClientManager.Api.Services.Storage.Extensions;
 public static class DistributedCoordinationRegistrationExtensions
 {
     /// <summary>
-    /// Adds leader-lock and optional Redis pub/sub cache invalidation.
+    /// Adds leader-lock coordination and local catalog cache invalidation.
     /// </summary>
     public static IServiceCollection AddDistributedCoordination(
         this IServiceCollection services,
@@ -19,23 +24,27 @@ public static class DistributedCoordinationRegistrationExtensions
         services.AddOptions<BackgroundWorkersOptions>()
             .BindConfiguration(BackgroundWorkersOptions.SectionName);
 
-        if (services.Any(descriptor => descriptor.ServiceType == typeof(IConnectionMultiplexer)))
+        if (UsesSharedPersistence(persistenceOptions))
         {
-            services.AddSingleton<IDistributedLeaderLock, RedisDistributedLeaderLock>();
-            services.AddHostedService<RedisCacheInvalidationSubscriber>();
-            services.AddSingleton<ICrossPodCacheInvalidator, RedisCacheInvalidationPublisher>();
+            services.AddSingleton<IDistributedLeaderLock>(serviceProvider => new StorageBackedLeaderLock(
+                serviceProvider.GetRequiredKeyedService<IDocumentStore>(StorageRole.RateLimiting),
+                serviceProvider.GetRequiredService<IOptions<BackgroundWorkersOptions>>(),
+                serviceProvider.GetRequiredService<IAppLogger<StorageBackedLeaderLock>>()));
         }
         else
         {
             services.AddSingleton<IDistributedLeaderLock, LocalDistributedLeaderLock>();
-            services.AddSingleton<ICrossPodCacheInvalidator, LocalCacheInvalidationPublisher>();
         }
 
+        services.AddSingleton<ICrossPodCacheInvalidator, CatalogCacheInvalidator>();
         return services;
     }
 
-    internal static bool RoleUsesRedis(PersistenceOptions options, StorageRole role) =>
-        ResolveBinding(options, role).Provider == PersistenceProvider.Redis;
+    private static bool UsesSharedPersistence(PersistenceOptions options) =>
+        !IsSingleHostOnly(ResolveBinding(options, StorageRole.RateLimiting).Provider);
+
+    private static bool IsSingleHostOnly(PersistenceProvider provider) =>
+        provider is PersistenceProvider.JsonFile or PersistenceProvider.Lucene;
 
     private static StorageRoleBinding ResolveBinding(PersistenceOptions options, StorageRole role)
     {

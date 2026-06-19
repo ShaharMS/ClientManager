@@ -1,27 +1,27 @@
 using ClientManager.Api.Services.Interfaces;
+using ClientManager.DataAccess.Stores.Interfaces;
 using ClientManager.Shared.Configuration.Storage;
 using ClientManager.Shared.Logging;
 using Microsoft.Extensions.Options;
-using StackExchange.Redis;
 
 namespace ClientManager.Api.Services.Storage;
 
 /// <summary>
-/// Redis-backed leader election using SET NX with lease renewal.
+/// Leader election backed by the shared <see cref="IDocumentStore"/> lease API.
 /// </summary>
-public sealed class RedisDistributedLeaderLock : IDistributedLeaderLock
+public sealed class StorageBackedLeaderLock : IDistributedLeaderLock
 {
-    private readonly IConnectionMultiplexer _multiplexer;
+    private readonly IDocumentStore _store;
     private readonly BackgroundWorkersOptions _options;
-    private readonly IAppLogger<RedisDistributedLeaderLock> _logger;
+    private readonly IAppLogger<StorageBackedLeaderLock> _logger;
     private readonly string _instanceId = $"{Environment.MachineName}:{Environment.ProcessId}:{Guid.NewGuid():N}";
 
-    public RedisDistributedLeaderLock(
-        IConnectionMultiplexer multiplexer,
+    public StorageBackedLeaderLock(
+        IDocumentStore store,
         IOptions<BackgroundWorkersOptions> options,
-        IAppLogger<RedisDistributedLeaderLock> logger)
+        IAppLogger<StorageBackedLeaderLock> logger)
     {
-        _multiplexer = multiplexer;
+        _store = store;
         _options = options.Value;
         _logger = logger;
     }
@@ -30,39 +30,34 @@ public sealed class RedisDistributedLeaderLock : IDistributedLeaderLock
     public async Task<IDistributedLeaderLease?> TryAcquireAsync(string workerName, CancellationToken cancellationToken = default)
     {
         var key = LeaderKey(workerName);
-        var acquired = await _multiplexer.GetDatabase().StringSetAsync(
-            key,
-            _instanceId,
-            _options.LeaderLeaseDuration,
-            When.NotExists);
-
+        var acquired = await _store.TryAcquireLeaseAsync(key, _instanceId, _options.LeaderLeaseDuration, cancellationToken);
         if (!acquired)
         {
             return null;
         }
 
-        return new RedisLeaderLease(_multiplexer, key, _instanceId, _options, _logger);
+        return new StorageLeaderLease(_store, key, _instanceId, _options, _logger);
     }
 
-    private static string LeaderKey(string workerName) => $"clientmanager:leader:{workerName}";
+    private static string LeaderKey(string workerName) => $"leader:{workerName}";
 
-    private sealed class RedisLeaderLease : IDistributedLeaderLease
+    private sealed class StorageLeaderLease : IDistributedLeaderLease
     {
-        private readonly IConnectionMultiplexer _multiplexer;
+        private readonly IDocumentStore _store;
         private readonly string _key;
         private readonly string _instanceId;
         private readonly BackgroundWorkersOptions _options;
-        private readonly IAppLogger<RedisDistributedLeaderLock> _logger;
+        private readonly IAppLogger<StorageBackedLeaderLock> _logger;
         private bool _released;
 
-        public RedisLeaderLease(
-            IConnectionMultiplexer multiplexer,
+        public StorageLeaderLease(
+            IDocumentStore store,
             string key,
             string instanceId,
             BackgroundWorkersOptions options,
-            IAppLogger<RedisDistributedLeaderLock> logger)
+            IAppLogger<StorageBackedLeaderLock> logger)
         {
-            _multiplexer = multiplexer;
+            _store = store;
             _key = key;
             _instanceId = instanceId;
             _options = options;
@@ -76,15 +71,11 @@ public sealed class RedisDistributedLeaderLock : IDistributedLeaderLock
                 return;
             }
 
-            var database = _multiplexer.GetDatabase();
-            var current = await database.StringGetAsync(_key);
-            if (current != _instanceId)
+            var renewed = await _store.RenewLeaseAsync(_key, _instanceId, _options.LeaderLeaseDuration, cancellationToken);
+            if (!renewed)
             {
                 _released = true;
-                return;
             }
-
-            await database.KeyExpireAsync(_key, _options.LeaderLeaseDuration);
         }
 
         public async ValueTask DisposeAsync()
@@ -97,12 +88,7 @@ public sealed class RedisDistributedLeaderLock : IDistributedLeaderLock
             _released = true;
             try
             {
-                var database = _multiplexer.GetDatabase();
-                var current = await database.StringGetAsync(_key);
-                if (current == _instanceId)
-                {
-                    await database.KeyDeleteAsync(_key);
-                }
+                await _store.ReleaseLeaseAsync(_key, _instanceId, CancellationToken.None);
             }
             catch (Exception exception)
             {

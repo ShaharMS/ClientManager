@@ -15,6 +15,7 @@ public sealed class InstrumentedDocumentStore : IDocumentStore
 {
     private const double SlowOperationThresholdMs = 250;
     private const string CounterCollection = "_counters";
+    private const string LeaseCollection = "_leases";
 
     private readonly IDocumentStore _inner;
     private readonly StorageRole _role;
@@ -88,6 +89,23 @@ public sealed class InstrumentedDocumentStore : IDocumentStore
         long nowUnixSeconds,
         CancellationToken cancellationToken = default) =>
         TraceAsync(CounterCollection, "counter_try_consume_token_bucket", () => _inner.TryConsumeTokenBucketAsync(tokensKey, lastRefillKey, bucketCapacity, tokensPerRefill, refillIntervalSeconds, stateWindow, nowUnixSeconds, cancellationToken), cancellationToken);
+
+    public Task<bool> TryAcquireLeaseAsync(
+        string key,
+        string ownerId,
+        TimeSpan duration,
+        CancellationToken cancellationToken = default) =>
+        TraceAsync(LeaseCollection, "lease_acquire", () => _inner.TryAcquireLeaseAsync(key, ownerId, duration, cancellationToken), cancellationToken);
+
+    public Task<bool> RenewLeaseAsync(
+        string key,
+        string ownerId,
+        TimeSpan duration,
+        CancellationToken cancellationToken = default) =>
+        TraceAsync(LeaseCollection, "lease_renew", () => _inner.RenewLeaseAsync(key, ownerId, duration, cancellationToken), cancellationToken);
+
+    public Task ReleaseLeaseAsync(string key, string ownerId, CancellationToken cancellationToken = default) =>
+        TraceAsync(LeaseCollection, "lease_release", () => _inner.ReleaseLeaseAsync(key, ownerId, cancellationToken), cancellationToken);
 
     public Task<long> IncrementCounterAsync(string key, TimeSpan window, CancellationToken cancellationToken = default) =>
         TraceAsync(CounterCollection, "counter_increment", () => _inner.IncrementCounterAsync(key, window, cancellationToken), cancellationToken);

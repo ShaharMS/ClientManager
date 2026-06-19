@@ -126,10 +126,17 @@ Alternative to `Seed` config: run `python _scripts/seed_data.py` after startup.
 
 | Property | Default | Description |
 | --- | --- | --- |
-| `CatalogTtl` | `00:00:30` | Cache lifetime for client/service/pool/global-limit reads on the hot path |
+| `CatalogTtl` | `00:00:30` | Cache lifetime for client/service/pool/global-limit reads on the hot path; also bounds cross-pod catalog staleness |
 | `StatisticsTtl` | `00:00:05` | Cache lifetime for statistics and exporter reads |
 
-Catalog writes from the Admin UI invalidate affected cache entries. Statistics cache entries expire by TTL only.
+Catalog writes invalidate the local pod's cache immediately. Other pods refresh on the next read after `CatalogTtl`.
+
+### `BackgroundWorkers`
+
+| Property | Default | Description |
+| --- | --- | --- |
+| `RequireLeaderLock` | `true` | When true, rollup and allocation cleanup skip a cycle if the storage-backed leader lease cannot be acquired |
+| `LeaderLeaseDuration` | `00:00:30` | Lease TTL for leader election on the shared `RateLimiting` storage role |
 
 ### `UsageTracking`
 

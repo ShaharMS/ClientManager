@@ -215,6 +215,43 @@ public class JsonFileDocumentStore : IDocumentStore
             cancellationToken);
 
     /// <inheritdoc />
+    public Task<bool> TryAcquireLeaseAsync(
+        string key,
+        string ownerId,
+        TimeSpan duration,
+        CancellationToken cancellationToken = default) =>
+        DocumentStoreLeaseDefaults.TryAcquireLeaseAsync(
+            GetAsync<LeaseRecord>,
+            SetAsync,
+            key,
+            ownerId,
+            duration,
+            cancellationToken);
+
+    /// <inheritdoc />
+    public Task<bool> RenewLeaseAsync(
+        string key,
+        string ownerId,
+        TimeSpan duration,
+        CancellationToken cancellationToken = default) =>
+        DocumentStoreLeaseDefaults.RenewLeaseAsync(
+            GetAsync<LeaseRecord>,
+            SetAsync,
+            key,
+            ownerId,
+            duration,
+            cancellationToken);
+
+    /// <inheritdoc />
+    public Task ReleaseLeaseAsync(string key, string ownerId, CancellationToken cancellationToken = default) =>
+        DocumentStoreLeaseDefaults.ReleaseLeaseAsync(
+            GetAsync<LeaseRecord>,
+            DeleteAsync,
+            key,
+            ownerId,
+            cancellationToken);
+
+    /// <inheritdoc />
     public async Task<long> IncrementCounterAsync(string key, TimeSpan window, CancellationToken cancellationToken = default)
     {
         await WaitForWriteLockAsync(_state.CounterWriteLock, cancellationToken);

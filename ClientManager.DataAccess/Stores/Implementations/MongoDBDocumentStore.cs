@@ -143,6 +143,83 @@ public class MongoDBDocumentStore(IMongoDatabase database) : IDocumentStore
             cancellationToken);
 
     /// <inheritdoc />
+    public async Task<bool> TryAcquireLeaseAsync(
+        string key,
+        string ownerId,
+        TimeSpan duration,
+        CancellationToken cancellationToken = default)
+    {
+        var now = DateTime.UtcNow;
+        var expiresAt = now.Add(duration);
+        var collection = GetCollection("_leases");
+
+        var filter = Builders<BsonDocument>.Filter.And(
+            Builders<BsonDocument>.Filter.Eq("_id", key),
+            Builders<BsonDocument>.Filter.Or(
+                Builders<BsonDocument>.Filter.Lt("ExpiresAtUtc", now),
+                Builders<BsonDocument>.Filter.Eq("OwnerId", ownerId)));
+
+        var update = Builders<BsonDocument>.Update
+            .Set("OwnerId", ownerId)
+            .Set("ExpiresAtUtc", expiresAt);
+
+        var result = await collection.FindOneAndUpdateAsync(
+            filter,
+            update,
+            new FindOneAndUpdateOptions<BsonDocument> { ReturnDocument = ReturnDocument.After },
+            cancellationToken);
+
+        if (result is not null)
+        {
+            return true;
+        }
+
+        try
+        {
+            await collection.InsertOneAsync(new BsonDocument
+            {
+                ["_id"] = key,
+                ["OwnerId"] = ownerId,
+                ["ExpiresAtUtc"] = expiresAt
+            }, cancellationToken: cancellationToken);
+
+            return true;
+        }
+        catch (MongoWriteException exception) when (exception.WriteError.Category == ServerErrorCategory.DuplicateKey)
+        {
+            return false;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> RenewLeaseAsync(
+        string key,
+        string ownerId,
+        TimeSpan duration,
+        CancellationToken cancellationToken = default)
+    {
+        var now = DateTime.UtcNow;
+        var filter = Builders<BsonDocument>.Filter.And(
+            Builders<BsonDocument>.Filter.Eq("_id", key),
+            Builders<BsonDocument>.Filter.Eq("OwnerId", ownerId),
+            Builders<BsonDocument>.Filter.Gt("ExpiresAtUtc", now));
+
+        var update = Builders<BsonDocument>.Update.Set("ExpiresAtUtc", now.Add(duration));
+        var result = await GetCollection("_leases").UpdateOneAsync(filter, update, cancellationToken: cancellationToken);
+        return result.ModifiedCount == 1;
+    }
+
+    /// <inheritdoc />
+    public async Task ReleaseLeaseAsync(string key, string ownerId, CancellationToken cancellationToken = default)
+    {
+        var filter = Builders<BsonDocument>.Filter.And(
+            Builders<BsonDocument>.Filter.Eq("_id", key),
+            Builders<BsonDocument>.Filter.Eq("OwnerId", ownerId));
+
+        await GetCollection("_leases").DeleteOneAsync(filter, cancellationToken);
+    }
+
+    /// <inheritdoc />
     public async Task<long> IncrementCounterAsync(string key, TimeSpan window, CancellationToken cancellationToken = default)
     {
         return await IncrementCounterByAsync(key, 1, window, cancellationToken);

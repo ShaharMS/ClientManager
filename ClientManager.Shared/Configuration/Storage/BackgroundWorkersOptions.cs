@@ -17,9 +17,4 @@ public class BackgroundWorkersOptions
     /// How long a leader lease remains valid before renewal is required.
     /// </summary>
     public TimeSpan LeaderLeaseDuration { get; set; } = TimeSpan.FromSeconds(30);
-
-    /// <summary>
-    /// Redis pub/sub channel used to broadcast catalog cache invalidation.
-    /// </summary>
-    public string CacheInvalidationChannel { get; set; } = "clientmanager:cache:invalidate";
 }

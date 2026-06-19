@@ -1,7 +1,9 @@
 using System.Diagnostics;
 using ClientManager.DataAccess.Databases.Interfaces;
+using ClientManager.Shared.Configuration.Storage;
 using ClientManager.Shared.Logging;
 using ClientManager.Api.Services.Interfaces;
+using Microsoft.Extensions.Options;
 
 namespace ClientManager.Api.Services.Storage;
 
@@ -12,15 +14,18 @@ public class AllocationCleanupService : BackgroundService
 {
     private readonly IAppLogger<AllocationCleanupService> _logger;
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly BackgroundWorkersOptions _workerOptions;
     private readonly TimeSpan _interval = TimeSpan.FromSeconds(30);
     private bool _hasReconciled;
 
     public AllocationCleanupService(
         IAppLogger<AllocationCleanupService> logger,
-        IServiceScopeFactory scopeFactory)
+        IServiceScopeFactory scopeFactory,
+        IOptions<BackgroundWorkersOptions> workerOptions)
     {
         _logger = logger;
         _scopeFactory = scopeFactory;
+        _workerOptions = workerOptions.Value;
     }
 
     /// <inheritdoc />
@@ -35,7 +40,7 @@ public class AllocationCleanupService : BackgroundService
                 using var scope = _scopeFactory.CreateScope();
                 var leaderLock = scope.ServiceProvider.GetRequiredService<IDistributedLeaderLock>();
                 await using var lease = await leaderLock.TryAcquireAsync("allocation-cleanup", stoppingToken);
-                if (lease is null)
+                if (lease is null && _workerOptions.RequireLeaderLock)
                 {
                     await Task.Delay(_interval, stoppingToken);
                     continue;
