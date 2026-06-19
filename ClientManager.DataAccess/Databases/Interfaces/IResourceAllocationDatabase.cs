@@ -1,4 +1,5 @@
 using ClientManager.Shared.Models.Entities;
+using ClientManager.Shared.Models.Responses;
 
 namespace ClientManager.DataAccess.Databases.Interfaces;
 
@@ -88,6 +89,24 @@ public interface IResourceAllocationDatabase
     /// <param name="allocation">The allocation to create.</param>
     /// <param name="cancellationToken">Cancels the write before the allocation is persisted.</param>
     Task CreateAsync(ResourceAllocation allocation, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Atomically reserves allocation counters before the allocation document is written.
+    /// </summary>
+    Task<SlotReservationResult> TryReserveSlotAsync(
+        string resourcePoolId,
+        string clientId,
+        int poolMaxSlots,
+        int clientMaxSlots,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Releases counters reserved by <see cref="TryReserveSlotAsync"/> when document creation fails.
+    /// </summary>
+    Task ReleaseReservedSlotAsync(
+        string resourcePoolId,
+        string clientId,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Marks an allocation as released.

@@ -220,6 +220,28 @@ public class LuceneDocumentStore : IDocumentStore, IDisposable
     }
 
     /// <inheritdoc />
+    public Task<(bool IsAllowed, long RemainingTokens, long RetryAfterSeconds)> TryConsumeTokenBucketAsync(
+        string tokensKey,
+        string lastRefillKey,
+        int bucketCapacity,
+        int tokensPerRefill,
+        long refillIntervalSeconds,
+        TimeSpan stateWindow,
+        long nowUnixSeconds,
+        CancellationToken cancellationToken = default) =>
+        TokenBucketConsumeDefaults.TryConsumeTokenBucketAsync(
+            GetManyCountersAsync,
+            SetManyCountersAsync,
+            tokensKey,
+            lastRefillKey,
+            bucketCapacity,
+            tokensPerRefill,
+            refillIntervalSeconds,
+            stateWindow,
+            nowUnixSeconds,
+            cancellationToken);
+
+    /// <inheritdoc />
     public async Task<SearchResult<T>> SearchAsync<T>(
         string collection, DocumentQuery query,
         CancellationToken cancellationToken = default) where T : class

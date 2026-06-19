@@ -41,20 +41,22 @@ public class TokenBucketStrategy : IRateLimitStrategy
             async () =>
             {
                 var state = CreateState(key, rateLimit);
-                var counts = await _stateDatabase.GetMultipleCountsAsync([state.TokensKey, state.LastRefillKey], cancellationToken);
-                var bucketState = CalculateBucketState(counts[state.TokensKey], counts[state.LastRefillKey], state);
+                var consume = await _stateDatabase.TryConsumeTokenBucketAsync(
+                    state.TokensKey,
+                    state.LastRefillKey,
+                    state.BucketCapacity,
+                    state.TokensPerRefill,
+                    state.RefillIntervalSeconds,
+                    state.StateWindow,
+                    state.Now,
+                    cancellationToken);
 
-                if (bucketState.LastRefill == 0)
+                return new RateLimitResult
                 {
-                    return await InitializeBucketAsync(state, cancellationToken);
-                }
-
-                if (bucketState.Tokens <= 0)
-                {
-                    return await PersistDeniedAsync(state, bucketState.NewLastRefill, cancellationToken);
-                }
-
-                return await PersistAllowedAsync(state, bucketState.Tokens - 1, bucketState.NewLastRefill, cancellationToken);
+                    IsAllowed = consume.IsAllowed,
+                    RemainingRequests = consume.RemainingRequests,
+                    RetryAfterSeconds = consume.RetryAfterSeconds
+                };
             });
     }
 

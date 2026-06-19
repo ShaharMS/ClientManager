@@ -24,17 +24,15 @@ Usage recording is deliberately decoupled from persistence so access checks stay
 ```mermaid
 flowchart LR
     hot[AccessControlService<br/>ResourceAllocationService] --> rec[UsageRecorder]
-    rec --> buf[UsageBuffer<br/>in-memory]
+    rec --> buf[UsageBuffer<br/>in-memory per pod]
     buf --> persist[UsagePersistenceService<br/>background worker]
-    persist --> snap[(UsageSnapshot documents<br/>Statistics role)]
+    persist --> counters[(Atomic usage counters<br/>Statistics role)]
+    counters --> snap[(UsageSnapshot documents)]
     snap --> stats[UsageStatisticsService]
     stats --> api[Statistics API + Admin UI]
 ```
 
-`UsagePersistenceService` runs two flush loops:
-
-- A **fast** loop batches recent increments for near-real-time dashboards
-- A **slow** loop consolidates and rolls up data for longer retention
+The fast flush loop writes granted/denied/released counts to **atomic TTL-backed counters** (safe across multiple API pods). The slow rollup loop folds counters into snapshot documents and prunes expired buckets on every instance.
 
 Snapshots store time-bucketed counts at multiple **granularities**:
 

@@ -2,6 +2,7 @@ using ClientManager.DataAccess.Stores.Interfaces;
 using ClientManager.Shared.Models.Search;
 using ClientManager.DataAccess.Databases.Interfaces;
 using ClientManager.Shared.Models.Entities;
+using ClientManager.Shared.Models.Responses;
 
 namespace ClientManager.DataAccess.Databases.Implementations;
 
@@ -86,8 +87,56 @@ public class ResourceAllocationDatabase : IResourceAllocationDatabase
     public async Task CreateAsync(ResourceAllocation allocation, CancellationToken cancellationToken = default)
     {
         await _store.SetAsync(Collection, allocation.Id, allocation, cancellationToken);
-        await IncrementAllocationCountersAsync(allocation, cancellationToken);
     }
+
+    /// <inheritdoc />
+    public async Task<SlotReservationResult> TryReserveSlotAsync(
+        string resourcePoolId,
+        string clientId,
+        int poolMaxSlots,
+        int clientMaxSlots,
+        CancellationToken cancellationToken = default)
+    {
+        var poolKey = PoolCounterKey(resourcePoolId);
+        var clientKey = ClientCounterKey(resourcePoolId, clientId);
+        var incremented = new Dictionary<string, long>(2, StringComparer.Ordinal);
+
+        var poolCount = await _store.IncrementCounterAsync(poolKey, CounterTtl, cancellationToken);
+        incremented[poolKey] = 1;
+        if (poolCount > poolMaxSlots)
+        {
+            await _store.DecrementManyCountersAsync(incremented, cancellationToken);
+            var counts = await GetActiveCountsAsync(resourcePoolId, clientId, cancellationToken);
+            return new SlotReservationResult(false, counts.PoolCount, counts.ClientCount);
+        }
+
+        var clientCount = await _store.IncrementCounterAsync(clientKey, CounterTtl, cancellationToken);
+        incremented[clientKey] = 1;
+        if (clientCount > clientMaxSlots)
+        {
+            await _store.DecrementManyCountersAsync(incremented, cancellationToken);
+            var counts = await GetActiveCountsAsync(resourcePoolId, clientId, cancellationToken);
+            return new SlotReservationResult(false, counts.PoolCount, counts.ClientCount);
+        }
+
+        return new SlotReservationResult(true, (int)poolCount, (int)clientCount);
+    }
+
+    /// <inheritdoc />
+    public Task ReleaseReservedSlotAsync(
+        string resourcePoolId,
+        string clientId,
+        CancellationToken cancellationToken = default) =>
+        DecrementAllocationCountersAsync(
+            new ResourceAllocation
+            {
+                Id = string.Empty,
+                ClientId = clientId,
+                ResourcePoolId = resourcePoolId,
+                ExpiresAt = DateTime.UtcNow,
+                IsReleased = false
+            },
+            cancellationToken);
 
     /// <inheritdoc />
     public async Task MarkReleasedAsync(string allocationId, CancellationToken cancellationToken = default)
@@ -123,6 +172,10 @@ public class ResourceAllocationDatabase : IResourceAllocationDatabase
         foreach (var allocation in result.Items)
         {
             if (allocation.ExpiresAt > now)
+                continue;
+
+            var marker = await _store.IncrementCounterAsync(CleanupMarkerKey(allocation.Id), CounterTtl, cancellationToken);
+            if (marker != 1)
                 continue;
 
             await _store.SetAsync(Collection, allocation.Id, allocation with { IsReleased = true }, cancellationToken);
@@ -199,4 +252,5 @@ public class ResourceAllocationDatabase : IResourceAllocationDatabase
 
     private static string PoolCounterKey(string poolId) => $"alloc-count:pool:{poolId}";
     private static string ClientCounterKey(string poolId, string clientId) => $"alloc-count:client:{poolId}:{clientId}";
+    private static string CleanupMarkerKey(string allocationId) => $"alloc-cleanup:{allocationId}";
 }

@@ -88,6 +88,8 @@ public partial class UsageStatisticsService
             }
         }
 
+        await OverlayUsageCountersByTargetAsync(states, targetType, selectedClientIds, from, to, cancellationToken);
+
         return states.ToDictionary(
             kvp => kvp.Key,
             kvp => (kvp.Value.Buckets, kvp.Value.ActualGranularity),
@@ -134,6 +136,8 @@ public partial class UsageStatisticsService
                 }
             }
         }
+
+        await OverlayUsageCountersByTargetClientAsync(states, targetType, selectedClientIds, from, to, cancellationToken);
 
         return states.ToDictionary(
             kvp => kvp.Key,
@@ -345,4 +349,138 @@ public partial class UsageStatisticsService
             _ => int.MaxValue
         };
     }
+
+    private async Task OverlayUsageCountersByTargetAsync(
+        IReadOnlyDictionary<string, ContinuousBucketState> states,
+        TargetType targetType,
+        IReadOnlyList<string> clientIds,
+        DateTime from,
+        DateTime to,
+        CancellationToken cancellationToken)
+    {
+        var overlayFrom = MaxDateTime(from, DateTime.UtcNow - _usageTrackingOptions.SecondRetention);
+        if (overlayFrom > to)
+        {
+            return;
+        }
+
+        var counterKeys = new List<string>();
+        foreach (var targetId in states.Keys)
+        {
+            foreach (var clientId in clientIds)
+            {
+                counterKeys.AddRange(UsageSegmentHelper.EnumerateUsageCounterKeys(clientId, targetType, targetId, overlayFrom, to));
+            }
+        }
+
+        if (counterKeys.Count == 0)
+        {
+            return;
+        }
+
+        var counterValues = await _usageSnapshotDatabase.GetPendingCounterValuesAsync(counterKeys, cancellationToken);
+        foreach (var (storageKey, value) in counterValues)
+        {
+            if (value <= 0 ||
+                !UsageSegmentHelper.TryParseUsageCounterKey(storageKey, out _, out _, out var targetId, out var secondTimestamp, out var eventType) ||
+                !states.TryGetValue(targetId, out var state))
+            {
+                continue;
+            }
+
+            var bucketTimestamp = MapCounterTimestamp(secondTimestamp, state.ActualGranularity);
+            if (bucketTimestamp < from || bucketTimestamp > to)
+            {
+                continue;
+            }
+
+            if (!state.Buckets.TryGetValue(bucketTimestamp, out var totals))
+            {
+                totals = new AggregatedBucketTotals(0, 0, 0, 0);
+            }
+
+            state.Buckets[bucketTimestamp] = eventType switch
+            {
+                UsageEventType.Granted => totals with { Granted = totals.Granted + value },
+                UsageEventType.Denied => totals with { Denied = totals.Denied + value },
+                UsageEventType.Released => totals with { Released = totals.Released + value },
+                _ => totals
+            };
+            state.FoundAny = true;
+        }
+    }
+
+    private async Task OverlayUsageCountersByTargetClientAsync(
+        IReadOnlyDictionary<(string TargetId, string ClientId), ContinuousBucketState> states,
+        TargetType targetType,
+        IReadOnlyList<string> clientIds,
+        DateTime from,
+        DateTime to,
+        CancellationToken cancellationToken)
+    {
+        var overlayFrom = MaxDateTime(from, DateTime.UtcNow - _usageTrackingOptions.SecondRetention);
+        if (overlayFrom > to)
+        {
+            return;
+        }
+
+        var counterKeys = new List<string>();
+        foreach (var (targetId, clientId) in states.Keys)
+        {
+            counterKeys.AddRange(UsageSegmentHelper.EnumerateUsageCounterKeys(clientId, targetType, targetId, overlayFrom, to));
+        }
+
+        if (counterKeys.Count == 0)
+        {
+            return;
+        }
+
+        var counterValues = await _usageSnapshotDatabase.GetPendingCounterValuesAsync(counterKeys, cancellationToken);
+        foreach (var (storageKey, value) in counterValues)
+        {
+            if (value <= 0 ||
+                !UsageSegmentHelper.TryParseUsageCounterKey(storageKey, out var clientId, out _, out var targetId, out var secondTimestamp, out var eventType) ||
+                !states.TryGetValue((targetId, clientId), out var state))
+            {
+                continue;
+            }
+
+            var bucketTimestamp = MapCounterTimestamp(secondTimestamp, state.ActualGranularity);
+            if (bucketTimestamp < from || bucketTimestamp > to)
+            {
+                continue;
+            }
+
+            if (!state.Buckets.TryGetValue(bucketTimestamp, out var totals))
+            {
+                totals = new AggregatedBucketTotals(0, 0, 0, 0);
+            }
+
+            state.Buckets[bucketTimestamp] = eventType switch
+            {
+                UsageEventType.Granted => totals with { Granted = totals.Granted + value },
+                UsageEventType.Denied => totals with { Denied = totals.Denied + value },
+                UsageEventType.Released => totals with { Released = totals.Released + value },
+                _ => totals
+            };
+            state.FoundAny = true;
+        }
+    }
+
+    private static DateTime MapCounterTimestamp(DateTime secondTimestamp, BucketGranularity granularity)
+    {
+        return granularity switch
+        {
+            BucketGranularity.Second => UsageSegmentHelper.RoundDownToSecond(secondTimestamp),
+            BucketGranularity.FiveMinute => RoundDownToFiveMinutes(secondTimestamp),
+            BucketGranularity.Hour => new DateTime(secondTimestamp.Year, secondTimestamp.Month, secondTimestamp.Day, secondTimestamp.Hour, 0, 0, DateTimeKind.Utc),
+            BucketGranularity.Day => new DateTime(secondTimestamp.Year, secondTimestamp.Month, secondTimestamp.Day, 0, 0, 0, DateTimeKind.Utc),
+            _ => RoundDownToFiveMinutes(secondTimestamp)
+        };
+    }
+
+    private static DateTime MaxDateTime(DateTime left, DateTime right) => left > right ? left : right;
+
+    private static DateTime RoundDownToFiveMinutes(DateTime utc) =>
+        new(utc.Year, utc.Month, utc.Day, utc.Hour, utc.Minute / 5 * 5, 0, DateTimeKind.Utc);
 }

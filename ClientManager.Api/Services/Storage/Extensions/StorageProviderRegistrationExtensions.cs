@@ -53,7 +53,26 @@ public static class StorageProviderRegistrationExtensions
         }
 
         LogStorageConfiguration(options, environment);
+        EnforceMultiInstanceStoragePolicy(options, environment);
         return services;
+    }
+
+    private static void EnforceMultiInstanceStoragePolicy(PersistenceOptions options, IHostEnvironment environment)
+    {
+        if (environment.IsDevelopment())
+        {
+            return;
+        }
+
+        foreach (var role in new[] { StorageRole.Statistics, StorageRole.RateLimiting, StorageRole.Allocations })
+        {
+            var binding = ResolveBinding(options, role);
+            if (binding.Provider is PersistenceProvider.JsonFile or PersistenceProvider.Lucene)
+            {
+                throw new InvalidOperationException(
+                    $"Storage role '{role}' uses {binding.Provider}, which is not safe for multi-instance production deployment. Configure Redis or MongoDB for Statistics, RateLimiting, and Allocations roles.");
+            }
+        }
     }
 
     private static void ValidateStorageConfiguration(PersistenceOptions options)

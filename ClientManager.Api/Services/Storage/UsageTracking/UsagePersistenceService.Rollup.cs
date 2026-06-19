@@ -44,10 +44,16 @@ public partial class UsagePersistenceService
 
         foreach (var group in bucketsToRollUp.GroupBy(bucket => RoundDownToGranularity(bucket.Timestamp, targetGranularity)))
         {
+            var rolledUpBuckets = group.ToList();
+            if (source.Granularity == BucketGranularity.Second)
+            {
+                rolledUpBuckets = await MergePendingCountersIntoBucketsAsync(source, rolledUpBuckets, database, cancellationToken);
+            }
+
             await UpsertRolledUpSnapshotAsync(
                 source,
                 group.Key,
-                group.ToList(),
+                rolledUpBuckets,
                 targetGranularity,
                 database,
                 cancellationToken);
@@ -62,6 +68,65 @@ public partial class UsagePersistenceService
 
         await database.UpsertAsync(source with { Buckets = remaining }, cancellationToken);
         return true;
+    }
+
+    private async Task<List<UsageBucket>> MergePendingCountersIntoBucketsAsync(
+        UsageSnapshot source,
+        IReadOnlyList<UsageBucket> buckets,
+        IUsageSnapshotDatabase database,
+        CancellationToken cancellationToken)
+    {
+        var counterKeys = buckets
+            .SelectMany(bucket => new[]
+            {
+                UsageSegmentHelper.BuildUsageCounterKey(source.ClientId, source.TargetType, source.TargetId, bucket.Timestamp, UsageEventType.Granted),
+                UsageSegmentHelper.BuildUsageCounterKey(source.ClientId, source.TargetType, source.TargetId, bucket.Timestamp, UsageEventType.Denied),
+                UsageSegmentHelper.BuildUsageCounterKey(source.ClientId, source.TargetType, source.TargetId, bucket.Timestamp, UsageEventType.Released)
+            })
+            .ToList();
+
+        var counterValues = await database.GetPendingCounterValuesAsync(counterKeys, cancellationToken);
+        var keysToReset = new List<string>();
+
+        var merged = buckets.Select(bucket =>
+        {
+            var grantedKey = UsageSegmentHelper.BuildUsageCounterKey(source.ClientId, source.TargetType, source.TargetId, bucket.Timestamp, UsageEventType.Granted);
+            var deniedKey = UsageSegmentHelper.BuildUsageCounterKey(source.ClientId, source.TargetType, source.TargetId, bucket.Timestamp, UsageEventType.Denied);
+            var releasedKey = UsageSegmentHelper.BuildUsageCounterKey(source.ClientId, source.TargetType, source.TargetId, bucket.Timestamp, UsageEventType.Released);
+
+            var grantedDelta = counterValues.GetValueOrDefault(grantedKey);
+            var deniedDelta = counterValues.GetValueOrDefault(deniedKey);
+            var releasedDelta = counterValues.GetValueOrDefault(releasedKey);
+
+            if (grantedDelta > 0)
+            {
+                keysToReset.Add(grantedKey);
+            }
+
+            if (deniedDelta > 0)
+            {
+                keysToReset.Add(deniedKey);
+            }
+
+            if (releasedDelta > 0)
+            {
+                keysToReset.Add(releasedKey);
+            }
+
+            return bucket with
+            {
+                GrantedCount = bucket.GrantedCount + grantedDelta,
+                DeniedCount = bucket.DeniedCount + deniedDelta,
+                ReleasedCount = bucket.ReleasedCount + releasedDelta
+            };
+        }).ToList();
+
+        if (keysToReset.Count > 0)
+        {
+            await database.ResetPendingCountersAsync(keysToReset, cancellationToken);
+        }
+
+        return merged;
     }
 
     private async Task UpsertRolledUpSnapshotAsync(

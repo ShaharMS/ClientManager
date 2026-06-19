@@ -8,7 +8,8 @@ public interface IStorageReadCache
     Task<T> GetOrCreateCatalogAsync<T>(
         string key,
         Func<CancellationToken, Task<T>> factory,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken,
+        TimeSpan? ttl = null);
 
     Task<T> GetOrCreateStatisticsAsync<T>(
         string key,

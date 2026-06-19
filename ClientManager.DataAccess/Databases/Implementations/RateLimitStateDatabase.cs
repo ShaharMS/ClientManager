@@ -1,5 +1,6 @@
 using ClientManager.DataAccess.Stores.Interfaces;
 using ClientManager.DataAccess.Databases.Interfaces;
+using ClientManager.Shared.Models.Responses;
 
 namespace ClientManager.DataAccess.Databases.Implementations;
 
@@ -36,4 +37,31 @@ public class RateLimitStateDatabase(IDocumentStore store) : IRateLimitStateDatab
         IReadOnlyDictionary<string, (long value, TimeSpan window)> entries,
         CancellationToken cancellationToken = default) =>
         store.SetManyCountersAsync(entries, cancellationToken);
+
+    /// <inheritdoc />
+    public async Task<TokenBucketConsumeResult> TryConsumeTokenBucketAsync(
+        string tokensKey,
+        string lastRefillKey,
+        int bucketCapacity,
+        int tokensPerRefill,
+        long refillIntervalSeconds,
+        TimeSpan stateWindow,
+        long nowUnixSeconds,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await store.TryConsumeTokenBucketAsync(
+            tokensKey,
+            lastRefillKey,
+            bucketCapacity,
+            tokensPerRefill,
+            refillIntervalSeconds,
+            stateWindow,
+            nowUnixSeconds,
+            cancellationToken);
+
+        return new TokenBucketConsumeResult(
+            result.IsAllowed,
+            (int)Math.Max(0, result.RemainingTokens),
+            (int)Math.Max(0, result.RetryAfterSeconds));
+    }
 }

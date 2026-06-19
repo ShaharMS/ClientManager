@@ -66,14 +66,35 @@ public class ResourceAllocationService : IResourceAllocationService
 
                 var pool = await poolTask;
                 var configuration = await configurationTask;
-                var activeCounts = await ReadActiveCountsAsync(clientId, resourcePoolId, ct);
-
-                EnsureClientCapacity(configuration, clientId, resourcePoolId, activeCounts.ClientCount);
                 await EnsureGlobalLimitAsync(configuration, clientId, resourcePoolId, ct);
-                EnsurePoolCapacity(pool, clientId, resourcePoolId, activeCounts.PoolCount);
+
+                var clientMaxSlots = configuration.ResourcePools.TryGetValue(resourcePoolId, out var poolSettings)
+                    ? (int)poolSettings.MaxSlots
+                    : int.MaxValue;
+                var reservation = await _allocationDatabase.TryReserveSlotAsync(
+                    resourcePoolId,
+                    clientId,
+                    (int)pool.MaxSlots,
+                    clientMaxSlots,
+                    ct);
+
+                if (!reservation.Succeeded)
+                {
+                    EnsurePoolCapacity(pool, clientId, resourcePoolId, reservation.PoolCount);
+                    EnsureClientCapacity(configuration, clientId, resourcePoolId, reservation.ClientCount);
+                    throw new InvalidOperationException("Slot reservation failed without a capacity denial.");
+                }
 
                 var allocation = CreateAllocation(clientId, resourcePoolId, pool.AllocationTtl);
-                await WriteAllocationAsync(allocation, ct);
+                try
+                {
+                    await WriteAllocationAsync(allocation, ct);
+                }
+                catch
+                {
+                    await _allocationDatabase.ReleaseReservedSlotAsync(resourcePoolId, clientId, ct);
+                    throw;
+                }
 
                 _logger.Info("Resource acquired", new
                 {

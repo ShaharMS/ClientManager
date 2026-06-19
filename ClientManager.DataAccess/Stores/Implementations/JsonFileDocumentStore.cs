@@ -165,6 +165,28 @@ public class JsonFileDocumentStore : IDocumentStore
     }
 
     /// <inheritdoc />
+    public Task<(bool IsAllowed, long RemainingTokens, long RetryAfterSeconds)> TryConsumeTokenBucketAsync(
+        string tokensKey,
+        string lastRefillKey,
+        int bucketCapacity,
+        int tokensPerRefill,
+        long refillIntervalSeconds,
+        TimeSpan stateWindow,
+        long nowUnixSeconds,
+        CancellationToken cancellationToken = default) =>
+        TokenBucketConsumeDefaults.TryConsumeTokenBucketAsync(
+            GetManyCountersAsync,
+            SetManyCountersAsync,
+            tokensKey,
+            lastRefillKey,
+            bucketCapacity,
+            tokensPerRefill,
+            refillIntervalSeconds,
+            stateWindow,
+            nowUnixSeconds,
+            cancellationToken);
+
+    /// <inheritdoc />
     public async Task<long> IncrementCounterAsync(string key, TimeSpan window, CancellationToken cancellationToken = default)
     {
         await WaitForWriteLockAsync(_state.CounterWriteLock, cancellationToken);

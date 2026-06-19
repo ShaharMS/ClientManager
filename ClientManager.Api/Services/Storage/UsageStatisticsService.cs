@@ -4,7 +4,10 @@ using ClientManager.DataAccess.Repositories.Interfaces;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Enums;
 using ClientManager.Shared.Models.Responses;
+using ClientManager.Shared.Configuration.Storage;
 using ClientManager.Api.Services.Interfaces;
+using Microsoft.Extensions.Options;
+
 namespace ClientManager.Api.Services.Storage;
 
 /// <summary>
@@ -19,6 +22,7 @@ public partial class UsageStatisticsService : IUsageStatisticsService
     private readonly IGlobalRateLimitDatabase _globalRateLimitDatabase;
     private readonly IUsageSnapshotDatabase _usageSnapshotDatabase;
     private readonly IStorageReadCache _cache;
+    private readonly UsageTrackingOptions _usageTrackingOptions;
 
     public UsageStatisticsService(
         IClientConfigurationDatabase clientConfigDatabase,
@@ -27,7 +31,8 @@ public partial class UsageStatisticsService : IUsageStatisticsService
         IResourceAllocationDatabase allocationDatabase,
         IGlobalRateLimitDatabase globalRateLimitDatabase,
         IUsageSnapshotDatabase usageSnapshotDatabase,
-        IStorageReadCache cache)
+        IStorageReadCache cache,
+        IOptions<UsageTrackingOptions> usageTrackingOptions)
     {
         _clientConfigDatabase = clientConfigDatabase;
         _serviceRepository = serviceRepository;
@@ -36,6 +41,7 @@ public partial class UsageStatisticsService : IUsageStatisticsService
         _globalRateLimitDatabase = globalRateLimitDatabase;
         _usageSnapshotDatabase = usageSnapshotDatabase;
         _cache = cache;
+        _usageTrackingOptions = usageTrackingOptions.Value;
     }
 
     public async Task<GlobalUsageStatsResponse> GetGlobalUsageStatsAsync(

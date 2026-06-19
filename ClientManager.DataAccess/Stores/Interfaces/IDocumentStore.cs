@@ -112,6 +112,19 @@ public interface IDocumentStore
     Task DeleteAsync(string collection, string id, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Atomically evaluates and consumes one token from a token bucket.
+    /// </summary>
+    Task<(bool IsAllowed, long RemainingTokens, long RetryAfterSeconds)> TryConsumeTokenBucketAsync(
+        string tokensKey,
+        string lastRefillKey,
+        int bucketCapacity,
+        int tokensPerRefill,
+        long refillIntervalSeconds,
+        TimeSpan stateWindow,
+        long nowUnixSeconds,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Atomically increments a counter identified by key. Resets the counter if the window has expired.
     /// </summary>
     /// <param name="key">The counter key.</param>

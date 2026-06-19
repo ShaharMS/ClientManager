@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using ClientManager.DataAccess.Stores.Implementations.Helpers;
 using ClientManager.DataAccess.Stores.Interfaces;
 using ClientManager.Shared.Models.Search;
 using static ClientManager.DataAccess.Stores.Implementations.Helpers.StoreSerialization;
@@ -90,6 +91,28 @@ public class MongoDBDocumentStore(IMongoDatabase database) : IDocumentStore
         var filter = Builders<BsonDocument>.Filter.Eq("_id", id);
         await GetCollection(collection).DeleteOneAsync(filter, cancellationToken);
     }
+
+    /// <inheritdoc />
+    public Task<(bool IsAllowed, long RemainingTokens, long RetryAfterSeconds)> TryConsumeTokenBucketAsync(
+        string tokensKey,
+        string lastRefillKey,
+        int bucketCapacity,
+        int tokensPerRefill,
+        long refillIntervalSeconds,
+        TimeSpan stateWindow,
+        long nowUnixSeconds,
+        CancellationToken cancellationToken = default) =>
+        TokenBucketConsumeDefaults.TryConsumeTokenBucketAsync(
+            GetManyCountersAsync,
+            SetManyCountersAsync,
+            tokensKey,
+            lastRefillKey,
+            bucketCapacity,
+            tokensPerRefill,
+            refillIntervalSeconds,
+            stateWindow,
+            nowUnixSeconds,
+            cancellationToken);
 
     /// <inheritdoc />
     public async Task<long> IncrementCounterAsync(string key, TimeSpan window, CancellationToken cancellationToken = default)

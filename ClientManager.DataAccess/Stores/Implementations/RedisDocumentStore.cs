@@ -67,6 +67,54 @@ end
 return next
 """;
 
+    private const string TryConsumeTokenBucketScript = """
+local function getCounter(key)
+  local value = redis.call('GET', key)
+  if not value then return 0 end
+  return tonumber(value)
+end
+
+local function setCounter(key, value, ttlMs)
+  redis.call('SET', key, value)
+  if ttlMs > 0 then redis.call('PEXPIRE', key, ttlMs) end
+end
+
+local bucketCapacity = tonumber(ARGV[1])
+local tokensPerRefill = tonumber(ARGV[2])
+local refillInterval = tonumber(ARGV[3])
+local ttlMs = tonumber(ARGV[4])
+local now = tonumber(ARGV[5])
+
+local storedTokens = getCounter(KEYS[1])
+local lastRefill = getCounter(KEYS[2])
+
+if lastRefill == 0 then
+  local initial = bucketCapacity - 1
+  setCounter(KEYS[1], initial, ttlMs)
+  setCounter(KEYS[2], now, ttlMs)
+  return {1, initial, 0}
+end
+
+local alignedNow = math.floor(now / refillInterval) * refillInterval
+local alignedLast = math.floor(lastRefill / refillInterval) * refillInterval
+local intervals = math.floor((alignedNow - alignedLast) / refillInterval)
+local tokensToAdd = intervals * tokensPerRefill
+local tokens = math.min(bucketCapacity, storedTokens + tokensToAdd)
+local newLastRefill = intervals > 0 and alignedNow or lastRefill
+
+if tokens <= 0 then
+  setCounter(KEYS[1], 0, ttlMs)
+  setCounter(KEYS[2], newLastRefill, ttlMs)
+  local retry = math.max(1, refillInterval - (now - alignedNow))
+  return {0, 0, retry}
+end
+
+local remaining = tokens - 1
+setCounter(KEYS[1], remaining, ttlMs)
+setCounter(KEYS[2], newLastRefill, ttlMs)
+return {1, remaining, 0}
+""";
+
     private string HashKey(string collection) => PrefixKey($"collection:{collection}");
 
     private string DocKey(string collection, string id) => PrefixKey($"doc:{collection}:{id}");
@@ -227,6 +275,38 @@ return next
                 }
             },
             DescribeCollectionContext(collection, id));
+    }
+
+    /// <inheritdoc />
+    public async Task<(bool IsAllowed, long RemainingTokens, long RetryAfterSeconds)> TryConsumeTokenBucketAsync(
+        string tokensKey,
+        string lastRefillKey,
+        int bucketCapacity,
+        int tokensPerRefill,
+        long refillIntervalSeconds,
+        TimeSpan stateWindow,
+        long nowUnixSeconds,
+        CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithRedisContextAsync(
+            "counter_try_consume_token_bucket",
+            async () =>
+            {
+                var result = (RedisResult[])(await Database.ScriptEvaluateAsync(
+                    TryConsumeTokenBucketScript,
+                    new RedisKey[] { CounterKey(tokensKey), CounterKey(lastRefillKey) },
+                    new RedisValue[]
+                    {
+                        bucketCapacity,
+                        tokensPerRefill,
+                        refillIntervalSeconds,
+                        (long)stateWindow.TotalMilliseconds,
+                        nowUnixSeconds
+                    }))!;
+
+                return ((long)result[0] == 1, (long)result[1], (long)result[2]);
+            },
+            DescribeCounterBatchContext([tokensKey, lastRefillKey]));
     }
 
     /// <inheritdoc />

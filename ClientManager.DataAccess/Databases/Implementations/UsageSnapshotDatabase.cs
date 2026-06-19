@@ -203,4 +203,27 @@ public class UsageSnapshotDatabase : IUsageSnapshotDatabase
         var id = UsageSegmentHelper.BuildSegmentId(clientId, targetType, targetId, granularity, segmentStart);
         return await _store.GetAsync<UsageSnapshot>(Collection, id, cancellationToken);
     }
+
+    /// <inheritdoc />
+    public Task IncrementPendingCountersAsync(
+        IReadOnlyDictionary<string, (long amount, TimeSpan window)> entries,
+        CancellationToken cancellationToken = default) =>
+        _store.IncrementManyCountersAsync(entries, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<IReadOnlyDictionary<string, long>> GetPendingCounterValuesAsync(
+        IEnumerable<string> keys,
+        CancellationToken cancellationToken = default) =>
+        _store.GetManyCountersAsync(keys, cancellationToken);
+
+    /// <inheritdoc />
+    public async Task ResetPendingCountersAsync(
+        IEnumerable<string> keys,
+        CancellationToken cancellationToken = default)
+    {
+        foreach (var key in keys.Distinct(StringComparer.Ordinal))
+        {
+            await _store.ResetCounterAsync(key, cancellationToken);
+        }
+    }
 }

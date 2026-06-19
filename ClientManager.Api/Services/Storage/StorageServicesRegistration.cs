@@ -44,6 +44,7 @@ public static class StorageServicesRegistration
         services.AddOptions<StorageReadCacheOptions>()
             .Bind(configuration.GetSection(StorageReadCacheOptions.SectionName))
             .Validate(options => options.CatalogTtl > TimeSpan.Zero, "StorageReadCache:CatalogTtl must be positive.")
+            .Validate(options => options.HotPathCatalogTtl > TimeSpan.Zero, "StorageReadCache:HotPathCatalogTtl must be positive.")
             .Validate(options => options.StatisticsTtl > TimeSpan.Zero, "StorageReadCache:StatisticsTtl must be positive.")
             .ValidateOnStart();
         services.AddSingleton<IStorageReadCache, StorageReadCache>();

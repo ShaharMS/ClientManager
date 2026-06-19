@@ -1,7 +1,6 @@
 using ClientManager.DataAccess.Databases.Implementations;
 using ClientManager.DataAccess.Databases.Interfaces;
 using ClientManager.Shared.Logging;
-using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Enums;
 using ClientManager.Shared.Configuration.Storage;
 using ClientManager.Api.Services.Interfaces;
@@ -52,8 +51,7 @@ public partial class UsagePersistenceService : BackgroundService
             {
                 using var scope = _scopeFactory.CreateScope();
                 var database = scope.ServiceProvider.GetRequiredService<IUsageSnapshotDatabase>();
-                var allocations = scope.ServiceProvider.GetRequiredService<IResourceAllocationDatabase>();
-                await FlushBufferAsync(database, allocations, stoppingToken);
+                await FlushBufferAsync(database, stoppingToken);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -101,7 +99,6 @@ public partial class UsagePersistenceService : BackgroundService
 
     private async Task FlushBufferAsync(
         IUsageSnapshotDatabase database,
-        IResourceAllocationDatabase allocationDatabase,
         CancellationToken cancellationToken)
     {
         var counts = _buffer.Drain();
@@ -110,89 +107,32 @@ public partial class UsagePersistenceService : BackgroundService
             return;
         }
 
-        var bucketTimestamp = RoundDownToSecond(DateTime.UtcNow);
-        var groups = counts
-            .GroupBy(entry => (entry.Key.ClientId, entry.Key.TargetType, entry.Key.TargetId))
-            .ToList();
-        var snapshotIds = BuildSnapshotIds(groups, bucketTimestamp);
-        var existing = await LoadSnapshotsAsync(database, snapshotIds, cancellationToken);
-        var snapshots = new List<UsageSnapshot>(groups.Count);
+        var bucketTimestamp = UsageSegmentHelper.RoundDownToSecond(DateTime.UtcNow);
+        var entries = new Dictionary<string, (long amount, TimeSpan window)>(counts.Count, StringComparer.Ordinal);
 
-        foreach (var group in groups)
+        foreach (var entry in counts)
         {
-            snapshots.Add(await BuildUpdatedSnapshotAsync(
-                group.ToList(),
+            var storageKey = UsageSegmentHelper.BuildUsageCounterKey(
+                entry.Key.ClientId,
+                entry.Key.TargetType,
+                entry.Key.TargetId,
                 bucketTimestamp,
-                existing,
-                allocationDatabase,
-                cancellationToken));
+                entry.Key.EventType);
+
+            if (entries.TryGetValue(storageKey, out var existing))
+            {
+                entries[storageKey] = (existing.amount + entry.Value, _options.SecondRetention);
+            }
+            else
+            {
+                entries[storageKey] = (entry.Value, _options.SecondRetention);
+            }
         }
 
-        await database.UpsertManyAsync(snapshots, cancellationToken);
+        await database.IncrementPendingCountersAsync(entries, cancellationToken);
 
         _cache.InvalidateStatistics();
         _logger.Debug("Flushed usage counter groups to storage", new { Count = counts.Count });
-    }
-
-    private static List<string> BuildSnapshotIds(
-        IEnumerable<IGrouping<(string ClientId, TargetType TargetType, string TargetId), KeyValuePair<UsageBufferKey, long>>> groups,
-        DateTime bucketTimestamp)
-    {
-        return groups.Select(group => BuildSnapshotId(group.Key, bucketTimestamp)).ToList();
-    }
-
-    private static async Task<Dictionary<string, UsageSnapshot>> LoadSnapshotsAsync(
-        IUsageSnapshotDatabase database,
-        IReadOnlyCollection<string> snapshotIds,
-        CancellationToken cancellationToken)
-    {
-        var snapshots = await database.GetByIdsAsync(snapshotIds, cancellationToken);
-        return snapshots.ToDictionary(snapshot => snapshot.Id, StringComparer.Ordinal);
-    }
-
-    private async Task<UsageSnapshot> BuildUpdatedSnapshotAsync(
-        IReadOnlyList<KeyValuePair<UsageBufferKey, long>> entries,
-        DateTime bucketTimestamp,
-        IReadOnlyDictionary<string, UsageSnapshot> existing,
-        IResourceAllocationDatabase allocationDatabase,
-        CancellationToken cancellationToken)
-    {
-        var first = entries[0].Key;
-        var snapshotId = BuildSnapshotId(first, bucketTimestamp);
-        var segmentStart = UsageSegmentHelper.GetSegmentStart(bucketTimestamp, BucketGranularity.Second);
-        var snapshot = existing.TryGetValue(snapshotId, out var current)
-            ? current
-            : CreateSnapshot(snapshotId, first.ClientId, first.TargetId, first.TargetType, BucketGranularity.Second, segmentStart);
-
-        var totals = SumEntries(entries);
-        var activeCount = await GetActiveCountAsync(first, allocationDatabase, cancellationToken);
-        var buckets = MergeBucket(snapshot.Buckets, bucketTimestamp, totals, activeCount);
-
-        return snapshot with { Buckets = buckets.ToList() };
-    }
-
-    private static string BuildSnapshotId(
-        UsageBufferKey key,
-        DateTime bucketTimestamp)
-    {
-        return UsageSegmentHelper.BuildSegmentId(
-            key.ClientId,
-            key.TargetType,
-            key.TargetId,
-            BucketGranularity.Second,
-            UsageSegmentHelper.GetSegmentStart(bucketTimestamp, BucketGranularity.Second));
-    }
-
-    private static string BuildSnapshotId(
-        (string ClientId, TargetType TargetType, string TargetId) key,
-        DateTime bucketTimestamp)
-    {
-        return UsageSegmentHelper.BuildSegmentId(
-            key.ClientId,
-            key.TargetType,
-            key.TargetId,
-            BucketGranularity.Second,
-            UsageSegmentHelper.GetSegmentStart(bucketTimestamp, BucketGranularity.Second));
     }
 
     private static UsageSnapshot CreateSnapshot(
@@ -215,69 +155,5 @@ public partial class UsagePersistenceService : BackgroundService
         };
     }
 
-    private static (long Granted, long Denied, long Released) SumEntries(
-        IReadOnlyList<KeyValuePair<UsageBufferKey, long>> entries)
-    {
-        var granted = entries.Where(entry => entry.Key.EventType == UsageEventType.Granted).Sum(entry => entry.Value);
-        var denied = entries.Where(entry => entry.Key.EventType == UsageEventType.Denied).Sum(entry => entry.Value);
-        var released = entries.Where(entry => entry.Key.EventType == UsageEventType.Released).Sum(entry => entry.Value);
-
-        return (granted, denied, released);
-    }
-
-    private static IReadOnlyList<UsageBucket> MergeBucket(
-        IReadOnlyList<UsageBucket> buckets,
-        DateTime bucketTimestamp,
-        (long Granted, long Denied, long Released) totals,
-        long activeCount)
-    {
-        var updated = buckets.ToList();
-        var index = updated.FindIndex(bucket => bucket.Timestamp == bucketTimestamp);
-
-        if (index >= 0)
-        {
-            updated[index] = updated[index] with
-            {
-                GrantedCount = updated[index].GrantedCount + totals.Granted,
-                DeniedCount = updated[index].DeniedCount + totals.Denied,
-                ReleasedCount = updated[index].ReleasedCount + totals.Released,
-                ActiveCount = activeCount
-            };
-
-            return updated;
-        }
-
-        updated.Add(new UsageBucket
-        {
-            Timestamp = bucketTimestamp,
-            GrantedCount = totals.Granted,
-            DeniedCount = totals.Denied,
-            ReleasedCount = totals.Released,
-            ActiveCount = activeCount
-        });
-
-        updated.Sort((left, right) => left.Timestamp.CompareTo(right.Timestamp));
-        return updated;
-    }
-
-    private static async Task<long> GetActiveCountAsync(
-        UsageBufferKey key,
-        IResourceAllocationDatabase allocationDatabase,
-        CancellationToken cancellationToken)
-    {
-        if (key.TargetType != TargetType.ResourcePool)
-        {
-            return 0;
-        }
-
-        return await allocationDatabase.GetActiveCountByClientAsync(
-            key.TargetId,
-            key.ClientId,
-            cancellationToken);
-    }
-
-    private static DateTime RoundDownToSecond(DateTime utc)
-    {
-        return new DateTime(utc.Year, utc.Month, utc.Day, utc.Hour, utc.Minute, utc.Second, DateTimeKind.Utc);
-    }
+    private static DateTime RoundDownToSecond(DateTime utc) => UsageSegmentHelper.RoundDownToSecond(utc);
 }

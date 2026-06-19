@@ -298,9 +298,15 @@ For read-only accessibility reports that do not consume quota, use `GET /api/v1/
 
 ## Multi-instance deployments
 
-Each API instance exposes its own `/prometheus/otel` metrics. Prometheus aggregates across targets automatically when you list every replica in `static_configs` or use Kubernetes service discovery.
+Each API instance exposes its own `/prometheus/otel` metrics. Prometheus aggregates across targets automatically when you list every replica in `static_configs` or use Kubernetes service discovery. Use `sum()` or `rate()` across the `instance` or `pod` label — scraping a single replica undercounts cluster traffic.
 
-Usage gauges on `/api/v1/metrics/prometheus` reflect cluster-wide snapshot data when all instances share the `Statistics` storage role (MongoDB/Redis). With isolated JsonFile per instance, usage gauges only represent that instance's buffered view until snapshots merge.
+Example PromQL for HTTP requests (OTel):
+
+```promql
+sum(rate(http_server_request_duration_seconds_count{job="clientmanager-api"}[1m]))
+```
+
+Usage gauges on `/api/v1/metrics/prometheus` (including `clientmanager_requests_per_minute`) reflect cluster-wide usage when all instances share the `Statistics` storage role (MongoDB/Redis). Counts are written via atomic per-bucket counters with a brief (~1s) per-pod buffer lag. With isolated JsonFile per instance, usage gauges are not cluster-accurate.
 
 ## Related reading
 
