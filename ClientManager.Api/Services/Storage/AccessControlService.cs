@@ -348,15 +348,11 @@ public class AccessControlService : IAccessControlService
             });
         }
 
-        using var usageActivity = _metrics.ActivitySource.StartInternalActivity(
-            "storage.access.usage_record",
-            act =>
-            {
-                act?.SetTag("client.id", clientId);
-                act?.SetTag("service.id", serviceId);
-                act?.SetTag("usage.event_type", UsageEventType.Denied.ToString());
-            });
-        _usageRecorder.RecordServiceRequest(clientId, serviceId, UsageEventType.Denied);
+        _usageRecorder.RecordDenied(
+            clientId,
+            TargetType.Service,
+            serviceId,
+            DenialCategoryMapper.FromServiceReason(reason));
     }
 
     private void RecordAccessCheckCompletion(

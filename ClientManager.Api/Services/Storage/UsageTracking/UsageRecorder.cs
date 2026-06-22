@@ -1,5 +1,5 @@
-using ClientManager.Shared.Models.Enums;
 using ClientManager.Shared.Models.Entities;
+using ClientManager.Shared.Models.Enums;
 using ClientManager.Api.Services.Interfaces;
 
 namespace ClientManager.Api.Services.Storage.UsageTracking;
@@ -26,5 +26,11 @@ public class UsageRecorder : IUsageRecorder
     public void RecordAllocationEvent(string clientId, string resourcePoolId, UsageEventType eventType)
     {
         _buffer.Increment(new UsageBufferKey(clientId, TargetType.ResourcePool, resourcePoolId, eventType));
+    }
+
+    /// <inheritdoc />
+    public void RecordDenied(string clientId, TargetType targetType, string targetId, UsageDenialCategory category)
+    {
+        _buffer.Increment(new UsageBufferKey(clientId, targetType, targetId, UsageEventType.Denied, category));
     }
 }

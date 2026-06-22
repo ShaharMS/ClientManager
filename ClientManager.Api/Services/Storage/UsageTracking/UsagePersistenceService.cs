@@ -1,6 +1,7 @@
 using ClientManager.DataAccess.Databases.Implementations;
 using ClientManager.DataAccess.Databases.Interfaces;
 using ClientManager.Shared.Logging;
+using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Enums;
 using ClientManager.Shared.Configuration.Storage;
 using ClientManager.Api.Services.Interfaces;
@@ -112,12 +113,20 @@ public partial class UsagePersistenceService : BackgroundService
 
         foreach (var entry in counts)
         {
-            var storageKey = UsageSegmentHelper.BuildUsageCounterKey(
-                entry.Key.ClientId,
-                entry.Key.TargetType,
-                entry.Key.TargetId,
-                bucketTimestamp,
-                entry.Key.EventType);
+            var storageKey = entry.Key.EventType == UsageEventType.Denied
+                ? UsageSegmentHelper.BuildUsageCounterKey(
+                    entry.Key.ClientId,
+                    entry.Key.TargetType,
+                    entry.Key.TargetId,
+                    bucketTimestamp,
+                    UsageEventType.Denied,
+                    entry.Key.DenialCategory ?? UsageDenialCategory.Blocked)
+                : UsageSegmentHelper.BuildUsageCounterKey(
+                    entry.Key.ClientId,
+                    entry.Key.TargetType,
+                    entry.Key.TargetId,
+                    bucketTimestamp,
+                    entry.Key.EventType);
 
             if (entries.TryGetValue(storageKey, out var existing))
             {
