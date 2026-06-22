@@ -216,6 +216,54 @@ public class UsageSnapshotDatabase : IUsageSnapshotDatabase
         CancellationToken cancellationToken = default) =>
         _store.GetManyCountersAsync(keys, cancellationToken);
 
+    public async Task<IReadOnlyDictionary<string, long>> GetPendingCountersInRangeAsync(
+        string clientId,
+        TargetType targetType,
+        string targetId,
+        DateTime from,
+        DateTime to,
+        CancellationToken cancellationToken = default)
+    {
+        if (_store is Stores.Implementations.JsonFileDocumentStore jsonStore)
+        {
+            var prefix = UsageSegmentHelper.BuildUsageCounterScanPrefix(clientId, targetType, targetId);
+            var counters = await jsonStore.GetCountersByPrefixAsync(prefix, cancellationToken);
+            return FilterCountersInSecondRange(counters, from, to);
+        }
+
+        var keys = UsageSegmentHelper.EnumerateUsageCounterKeys(clientId, targetType, targetId, from, to);
+        return await GetPendingCounterValuesAsync(keys, cancellationToken);
+    }
+
+    private static IReadOnlyDictionary<string, long> FilterCountersInSecondRange(
+        IReadOnlyDictionary<string, long> counters,
+        DateTime from,
+        DateTime to)
+    {
+        var start = UsageSegmentHelper.RoundDownToSecond(from);
+        var end = UsageSegmentHelper.RoundDownToSecond(to);
+        var result = new Dictionary<string, long>(StringComparer.Ordinal);
+
+        foreach (var (key, value) in counters)
+        {
+            if (value <= 0 ||
+                !UsageSegmentHelper.TryParseUsageCounterKey(
+                    key, out _, out _, out _, out var secondTimestamp, out _, out _))
+            {
+                continue;
+            }
+
+            if (secondTimestamp < start || secondTimestamp > end)
+            {
+                continue;
+            }
+
+            result[key] = value;
+        }
+
+        return result;
+    }
+
     /// <inheritdoc />
     public async Task ResetPendingCountersAsync(
         IEnumerable<string> keys,

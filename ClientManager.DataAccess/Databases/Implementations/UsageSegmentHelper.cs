@@ -123,16 +123,34 @@ public static class UsageSegmentHelper
         return DateTime.SpecifyKind(monday, DateTimeKind.Utc);
     }
 
-    /// <summary>
-    /// Builds the storage counter key for a pending usage bucket delta.
-    /// </summary>
     public static string BuildUsageCounterKey(
         string clientId,
         TargetType targetType,
         string targetId,
         DateTime bucketTimestamp,
-        UsageEventType eventType) =>
-        $"usage:{clientId}:{targetType}:{targetId}:{BucketGranularity.Second}:{bucketTimestamp:yyyyMMddHHmmss}:{eventType}";
+        UsageEventType eventType,
+        UsageDenialCategory? denialCategory = null)
+    {
+        if (eventType == UsageEventType.Denied && denialCategory is not null)
+        {
+            return $"usage:{clientId}:{targetType}:{targetId}:{BucketGranularity.Second}:{bucketTimestamp:yyyyMMddHHmmss}:{eventType}:{denialCategory}";
+        }
+
+        return $"usage:{clientId}:{targetType}:{targetId}:{BucketGranularity.Second}:{bucketTimestamp:yyyyMMddHHmmss}:{eventType}";
+    }
+
+    /// <summary>Prefix for scanning pending counters for one client/target at second granularity.</summary>
+    public static string BuildUsageCounterScanPrefix(string clientId, TargetType targetType, string targetId) =>
+        $"usage:{clientId}:{targetType}:{targetId}:{BucketGranularity.Second}:";
+
+    public static IEnumerable<string> EnumerateDeniedCounterKeys(
+        string clientId,
+        TargetType targetType,
+        string targetId,
+        DateTime bucketTimestamp) =>
+        Enum.GetValues<UsageDenialCategory>()
+            .Select(category => BuildUsageCounterKey(
+                clientId, targetType, targetId, bucketTimestamp, UsageEventType.Denied, category));
 
     /// <summary>
     /// Enumerates storage counter keys for each second and event type in the inclusive range.
@@ -149,10 +167,13 @@ public static class UsageSegmentHelper
 
         while (cursor <= end)
         {
-            foreach (UsageEventType eventType in Enum.GetValues<UsageEventType>())
+            yield return BuildUsageCounterKey(clientId, targetType, targetId, cursor, UsageEventType.Granted);
+            foreach (var deniedKey in EnumerateDeniedCounterKeys(clientId, targetType, targetId, cursor))
             {
-                yield return BuildUsageCounterKey(clientId, targetType, targetId, cursor, eventType);
+                yield return deniedKey;
             }
+
+            yield return BuildUsageCounterKey(clientId, targetType, targetId, cursor, UsageEventType.Released);
 
             cursor = cursor.AddSeconds(1);
         }
@@ -167,21 +188,23 @@ public static class UsageSegmentHelper
         out TargetType targetType,
         out string targetId,
         out DateTime bucketTimestamp,
-        out UsageEventType eventType)
+        out UsageEventType eventType,
+        out UsageDenialCategory? denialCategory)
     {
         clientId = string.Empty;
         targetId = string.Empty;
         targetType = default;
         bucketTimestamp = default;
         eventType = default;
+        denialCategory = null;
 
         if (!key.StartsWith("usage:", StringComparison.Ordinal))
         {
             return false;
         }
 
-        var parts = key.Split(':', 7);
-        if (parts.Length != 7 ||
+        var parts = key.Split(':');
+        if (parts.Length is not (7 or 8) ||
             !Enum.TryParse(parts[2], out targetType) ||
             !Enum.TryParse(parts[6], out eventType) ||
             !DateTime.TryParseExact(
@@ -196,8 +219,24 @@ public static class UsageSegmentHelper
 
         clientId = parts[1];
         targetId = parts[3];
+
+        if (eventType == UsageEventType.Denied && parts.Length == 8 &&
+            Enum.TryParse(parts[7], out UsageDenialCategory category))
+        {
+            denialCategory = category;
+        }
+
         return true;
     }
+
+    public static bool TryParseUsageCounterKey(
+        string key,
+        out string clientId,
+        out TargetType targetType,
+        out string targetId,
+        out DateTime bucketTimestamp,
+        out UsageEventType eventType) =>
+        TryParseUsageCounterKey(key, out clientId, out targetType, out targetId, out bucketTimestamp, out eventType, out _);
 
     /// <summary>
     /// Rounds a UTC timestamp down to the nearest second.

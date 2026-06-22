@@ -245,6 +245,26 @@ public class JsonFileDocumentStore : IDocumentStore
         return Task.FromResult<IReadOnlyDictionary<string, long>>(result);
     }
 
+    /// <summary>Returns counters with non-zero values whose keys start with <paramref name="keyPrefix"/>.</summary>
+    public Task<IReadOnlyDictionary<string, long>> GetCountersByPrefixAsync(
+        string keyPrefix,
+        CancellationToken cancellationToken = default)
+    {
+        var counters = GetOrLoadCounters();
+        var result = new Dictionary<string, long>(StringComparer.Ordinal);
+
+        foreach (var (key, entry) in counters)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (entry.Count > 0 && key.StartsWith(keyPrefix, StringComparison.Ordinal))
+            {
+                result[key] = entry.Count;
+            }
+        }
+
+        return Task.FromResult<IReadOnlyDictionary<string, long>>(result);
+    }
+
     /// <inheritdoc />
     public async Task<long> DecrementCounterAsync(string key, CancellationToken cancellationToken = default)
     {
