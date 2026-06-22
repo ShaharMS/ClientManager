@@ -12,9 +12,24 @@ public partial class UsageStatisticsService
 {
     private readonly record struct AggregatedBucketTotals(
         long Granted,
-        long Denied,
+        long DeniedUnauthenticated,
+        long DeniedBlocked,
+        long DeniedRateLimited,
+        long DeniedCapacityLimited,
         long Released,
-        long Active);
+        long Active)
+    {
+        public long Denied => DeniedUnauthenticated + DeniedBlocked + DeniedRateLimited + DeniedCapacityLimited;
+
+        public AggregatedBucketTotals AddDenied(UsageDenialCategory? category, long value) => category switch
+        {
+            UsageDenialCategory.Unauthenticated => this with { DeniedUnauthenticated = DeniedUnauthenticated + value },
+            UsageDenialCategory.Blocked => this with { DeniedBlocked = DeniedBlocked + value },
+            UsageDenialCategory.RateLimited => this with { DeniedRateLimited = DeniedRateLimited + value },
+            UsageDenialCategory.CapacityLimited => this with { DeniedCapacityLimited = DeniedCapacityLimited + value },
+            _ => this with { DeniedBlocked = DeniedBlocked + value }
+        };
+    }
 
     private sealed class ContinuousBucketState(BucketGranularity requested)
     {
@@ -247,17 +262,25 @@ public partial class UsageStatisticsService
 
             if (aggregated.TryGetValue(bucket.Timestamp, out var existing))
             {
+                var denied = bucket.GetDeniedBreakdown();
                 aggregated[bucket.Timestamp] = new AggregatedBucketTotals(
                     existing.Granted + bucket.GrantedCount,
-                    existing.Denied + bucket.DeniedCount,
+                    existing.DeniedUnauthenticated + denied.Unauth,
+                    existing.DeniedBlocked + denied.Blocked,
+                    existing.DeniedRateLimited + denied.RateLimited,
+                    existing.DeniedCapacityLimited + denied.Capacity,
                     existing.Released + bucket.ReleasedCount,
                     existing.Active + bucket.ActiveCount);
                 continue;
             }
 
+            var breakdown = bucket.GetDeniedBreakdown();
             aggregated[bucket.Timestamp] = new AggregatedBucketTotals(
                 bucket.GrantedCount,
-                bucket.DeniedCount,
+                breakdown.Unauth,
+                breakdown.Blocked,
+                breakdown.RateLimited,
+                breakdown.Capacity,
                 bucket.ReleasedCount,
                 bucket.ActiveCount);
         }
@@ -280,7 +303,8 @@ public partial class UsageStatisticsService
             state.FoundAny = true;
         }
 
-        foreach (var entry in FilterContinuityWindow(aggregated, requested, candidate, state.EarliestTimestamp, state.LatestTimestamp))
+        foreach (var entry in FilterContinuityWindow(
+            aggregated, requested, candidate, state.ActualGranularity, state.EarliestTimestamp, state.LatestTimestamp))
         {
             if (state.Buckets.ContainsKey(entry.Key))
             {
@@ -300,20 +324,54 @@ public partial class UsageStatisticsService
     private static List<HistoricalUsagePoint> ToHistoricalUsagePoints(
         SortedDictionary<DateTime, AggregatedBucketTotals> buckets)
     {
+        var runningActive = 0L;
         return buckets
-            .Select(kvp => new HistoricalUsagePoint(
-                kvp.Key,
-                kvp.Value.Granted,
-                kvp.Value.Denied,
-                kvp.Value.Released,
-                kvp.Value.Active))
+            .OrderBy(kvp => kvp.Key)
+            .Select(kvp =>
+            {
+                runningActive = Math.Max(0, runningActive + kvp.Value.Granted - kvp.Value.Released);
+                var active = kvp.Value.Active > 0 ? kvp.Value.Active : runningActive;
+                return new HistoricalUsagePoint(
+                    kvp.Key,
+                    kvp.Value.Granted,
+                    kvp.Value.Denied,
+                    kvp.Value.DeniedUnauthenticated,
+                    kvp.Value.DeniedBlocked,
+                    kvp.Value.DeniedRateLimited,
+                    kvp.Value.DeniedCapacityLimited,
+                    kvp.Value.Released,
+                    active);
+            })
             .ToList();
+    }
+
+    private static long ComputeRunningActive(
+        SortedDictionary<DateTime, AggregatedBucketTotals> buckets,
+        DateTime upTo)
+    {
+        var runningActive = 0L;
+        foreach (var (timestamp, totals) in buckets.OrderBy(kvp => kvp.Key))
+        {
+            if (timestamp > upTo)
+            {
+                break;
+            }
+
+            runningActive = Math.Max(0, runningActive + totals.Granted - totals.Released);
+            if (totals.Active > 0)
+            {
+                runningActive = totals.Active;
+            }
+        }
+
+        return runningActive;
     }
 
     private static IEnumerable<KeyValuePair<DateTime, AggregatedBucketTotals>> FilterContinuityWindow(
         SortedDictionary<DateTime, AggregatedBucketTotals> aggregated,
         BucketGranularity requested,
         BucketGranularity candidate,
+        BucketGranularity establishedGranularity,
         DateTime? earliestTimestamp,
         DateTime? latestTimestamp)
     {
@@ -327,15 +385,54 @@ public partial class UsageStatisticsService
 
         if (candidateRank < requestedRank)
         {
-            return aggregated.Where(entry => entry.Key > latestTimestamp.Value);
+            var exclusiveAfter = latestTimestamp.Value + GetBucketDuration(establishedGranularity);
+            return aggregated.Where(entry => entry.Key >= exclusiveAfter);
         }
 
         if (candidateRank > requestedRank)
         {
-            return aggregated.Where(entry => entry.Key < earliestTimestamp.Value);
+            return aggregated.Where(entry => entry.Key + GetBucketDuration(candidate) <= earliestTimestamp.Value);
         }
 
         return aggregated;
+    }
+
+    private static TimeSpan GetBucketDuration(BucketGranularity granularity) => granularity switch
+    {
+        BucketGranularity.Second => TimeSpan.FromSeconds(1),
+        BucketGranularity.FiveMinute => TimeSpan.FromMinutes(5),
+        BucketGranularity.Hour => TimeSpan.FromHours(1),
+        BucketGranularity.Day => TimeSpan.FromDays(1),
+        _ => TimeSpan.FromMinutes(5)
+    };
+
+    private static long SumGrantedInRange(
+        SortedDictionary<DateTime, AggregatedBucketTotals> buckets,
+        DateTime from,
+        DateTime to) =>
+        buckets.Where(kvp => kvp.Key >= from && kvp.Key <= to).Sum(kvp => kvp.Value.Granted);
+
+    private static long SumDeniedInRange(
+        SortedDictionary<DateTime, AggregatedBucketTotals> buckets,
+        DateTime from,
+        DateTime to) =>
+        buckets.Where(kvp => kvp.Key >= from && kvp.Key <= to).Sum(kvp => kvp.Value.Denied);
+
+    private static (long Unauth, long Blocked, long RateLimited, long Capacity) SumDeniedBreakdownInRange(
+        SortedDictionary<DateTime, AggregatedBucketTotals> buckets,
+        DateTime from,
+        DateTime to)
+    {
+        long unauth = 0, blocked = 0, rateLimited = 0, capacity = 0;
+        foreach (var kvp in buckets.Where(kvp => kvp.Key >= from && kvp.Key <= to))
+        {
+            unauth += kvp.Value.DeniedUnauthenticated;
+            blocked += kvp.Value.DeniedBlocked;
+            rateLimited += kvp.Value.DeniedRateLimited;
+            capacity += kvp.Value.DeniedCapacityLimited;
+        }
+
+        return (unauth, blocked, rateLimited, capacity);
     }
 
     private static int GetGranularityRank(BucketGranularity granularity)
@@ -364,49 +461,14 @@ public partial class UsageStatisticsService
             return;
         }
 
-        var counterKeys = new List<string>();
         foreach (var targetId in states.Keys)
         {
             foreach (var clientId in clientIds)
             {
-                counterKeys.AddRange(UsageSegmentHelper.EnumerateUsageCounterKeys(clientId, targetType, targetId, overlayFrom, to));
+                var counterValues = await _usageSnapshotDatabase.GetPendingCountersInRangeAsync(
+                    clientId, targetType, targetId, overlayFrom, to, cancellationToken);
+                ApplyOverlayCounterValues(counterValues, states[targetId], from, to);
             }
-        }
-
-        if (counterKeys.Count == 0)
-        {
-            return;
-        }
-
-        var counterValues = await _usageSnapshotDatabase.GetPendingCounterValuesAsync(counterKeys, cancellationToken);
-        foreach (var (storageKey, value) in counterValues)
-        {
-            if (value <= 0 ||
-                !UsageSegmentHelper.TryParseUsageCounterKey(storageKey, out _, out _, out var targetId, out var secondTimestamp, out var eventType) ||
-                !states.TryGetValue(targetId, out var state))
-            {
-                continue;
-            }
-
-            var bucketTimestamp = MapCounterTimestamp(secondTimestamp, state.ActualGranularity);
-            if (bucketTimestamp < from || bucketTimestamp > to)
-            {
-                continue;
-            }
-
-            if (!state.Buckets.TryGetValue(bucketTimestamp, out var totals))
-            {
-                totals = new AggregatedBucketTotals(0, 0, 0, 0);
-            }
-
-            state.Buckets[bucketTimestamp] = eventType switch
-            {
-                UsageEventType.Granted => totals with { Granted = totals.Granted + value },
-                UsageEventType.Denied => totals with { Denied = totals.Denied + value },
-                UsageEventType.Released => totals with { Released = totals.Released + value },
-                _ => totals
-            };
-            state.FoundAny = true;
         }
     }
 
@@ -424,23 +486,30 @@ public partial class UsageStatisticsService
             return;
         }
 
-        var counterKeys = new List<string>();
         foreach (var (targetId, clientId) in states.Keys)
         {
-            counterKeys.AddRange(UsageSegmentHelper.EnumerateUsageCounterKeys(clientId, targetType, targetId, overlayFrom, to));
-        }
+            var counterValues = await _usageSnapshotDatabase.GetPendingCountersInRangeAsync(
+                clientId, targetType, targetId, overlayFrom, to, cancellationToken);
+            if (!states.TryGetValue((targetId, clientId), out var state))
+            {
+                continue;
+            }
 
-        if (counterKeys.Count == 0)
-        {
-            return;
+            ApplyOverlayCounterValues(counterValues, state, from, to);
         }
+    }
 
-        var counterValues = await _usageSnapshotDatabase.GetPendingCounterValuesAsync(counterKeys, cancellationToken);
+    private void ApplyOverlayCounterValues(
+        IReadOnlyDictionary<string, long> counterValues,
+        ContinuousBucketState state,
+        DateTime from,
+        DateTime to)
+    {
         foreach (var (storageKey, value) in counterValues)
         {
             if (value <= 0 ||
-                !UsageSegmentHelper.TryParseUsageCounterKey(storageKey, out var clientId, out _, out var targetId, out var secondTimestamp, out var eventType) ||
-                !states.TryGetValue((targetId, clientId), out var state))
+                !UsageSegmentHelper.TryParseUsageCounterKey(
+                    storageKey, out _, out _, out _, out var secondTimestamp, out var eventType, out var denialCategory))
             {
                 continue;
             }
@@ -453,14 +522,22 @@ public partial class UsageStatisticsService
 
             if (!state.Buckets.TryGetValue(bucketTimestamp, out var totals))
             {
-                totals = new AggregatedBucketTotals(0, 0, 0, 0);
+                totals = new AggregatedBucketTotals(0, 0, 0, 0, 0, 0, 0);
             }
 
             state.Buckets[bucketTimestamp] = eventType switch
             {
-                UsageEventType.Granted => totals with { Granted = totals.Granted + value },
-                UsageEventType.Denied => totals with { Denied = totals.Denied + value },
-                UsageEventType.Released => totals with { Released = totals.Released + value },
+                UsageEventType.Granted => totals with
+                {
+                    Granted = totals.Granted + value,
+                    Active = totals.Active + value
+                },
+                UsageEventType.Denied => totals.AddDenied(denialCategory, value),
+                UsageEventType.Released => totals with
+                {
+                    Released = totals.Released + value,
+                    Active = Math.Max(0, totals.Active - value)
+                },
                 _ => totals
             };
             state.FoundAny = true;
