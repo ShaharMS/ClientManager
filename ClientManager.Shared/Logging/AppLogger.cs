@@ -51,6 +51,9 @@ public class AppLogger<T> : IAppLogger<T>
             foreach (var property in extraData.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance))
             {
                 var value = property.GetValue(extraData);
+                if (value is null)
+                    continue;
+
                 logEvent.Properties[$"ExtraData.{property.Name}"] = value;
             }
         }

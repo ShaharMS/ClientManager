@@ -452,10 +452,4 @@ public partial class UsageStatisticsService : IUsageStatisticsService
             _ => [requested]
         };
     }
-
-
-    private static DateTime RoundDownToFiveMinutes(DateTime utc)
-    {
-        return new DateTime(utc.Year, utc.Month, utc.Day, utc.Hour, utc.Minute / 5 * 5, 0, DateTimeKind.Utc);
-    }
 }

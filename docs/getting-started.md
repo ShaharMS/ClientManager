@@ -139,6 +139,6 @@ mkdocs serve    # http://127.0.0.1:8000
 mkdocs build    # output in site/
 ```
 
-Mermaid diagrams and fonts are bundled for offline use (vendored Mermaid under `docs/javascripts/`, plus the `privacy` plugin for fonts). Run `mkdocs build` before serving the static `site/` folder in airgapped environments.
+Mermaid is vendored under `docs/javascripts/` for offline use. Run `mkdocs build` before serving the static `site/` folder in airgapped environments.
 
 To add a page: create `docs/your-page.md`, add it to `nav` in `mkdocs.yml`, and link it from [index.md](index.md) if it should appear on the home page.

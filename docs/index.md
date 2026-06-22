@@ -79,7 +79,7 @@ mkdocs build
 
 The output lands in `site/` at the repository root.
 
-For airgapped or offline environments, Mermaid (`docs/javascripts/mermaid.min.js`) is vendored in the repository. The built-in `privacy` plugin also localizes Google Fonts during `mkdocs build`, so dark mode and typography work without CDN access in the served `site/` output.
+Mermaid (`docs/javascripts/mermaid.min.js`) is vendored for offline use.
 
 ## API surface (v1)
 
