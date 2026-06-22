@@ -231,3 +231,15 @@ public enum UsageEventType
     /// </summary>
     Released
 }
+
+/// <summary>
+/// Persisted denial reason bucket for usage statistics.
+/// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum UsageDenialCategory
+{
+    Unauthenticated,
+    Blocked,
+    RateLimited,
+    CapacityLimited
+}

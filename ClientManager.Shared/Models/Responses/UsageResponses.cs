@@ -34,12 +34,20 @@ public record ClientUsageBreakdownResponse(
 /// <param name="ClientName">Human-readable display name of the client.</param>
 /// <param name="GrantedCount">Total granted requests across the requested window.</param>
 /// <param name="DeniedCount">Total denied requests across the requested window.</param>
+/// <param name="DeniedUnauthenticatedCount">Denied due to missing access configuration.</param>
+/// <param name="DeniedBlockedCount">Denied due to policy or disabled state.</param>
+/// <param name="DeniedRateLimitedCount">Denied due to rate or frequency limits.</param>
+/// <param name="DeniedCapacityLimitedCount">Denied due to slot or capacity limits (pools only).</param>
 /// <param name="ActiveCount">Latest active allocation count within the requested window.</param>
 public record ClientUsageEntry(
     string ClientId,
     string ClientName,
     long GrantedCount,
     long DeniedCount,
+    long DeniedUnauthenticatedCount,
+    long DeniedBlockedCount,
+    long DeniedRateLimitedCount,
+    long DeniedCapacityLimitedCount,
     long ActiveCount);
 
 /// <summary>
@@ -68,6 +76,10 @@ public record HistoricalUsagePoint(
     DateTime Timestamp,
     long GrantedCount,
     long DeniedCount,
+    long DeniedUnauthenticatedCount,
+    long DeniedBlockedCount,
+    long DeniedRateLimitedCount,
+    long DeniedCapacityLimitedCount,
     long ReleasedCount,
     long ActiveCount);
 

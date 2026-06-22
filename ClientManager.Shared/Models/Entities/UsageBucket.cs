@@ -25,9 +25,16 @@ public record UsageBucket
     /// </summary>
     public long GrantedCount { get; init; }
 
+    public long DeniedUnauthenticatedCount { get; init; }
+
+    public long DeniedBlockedCount { get; init; }
+
+    public long DeniedRateLimitedCount { get; init; }
+
+    public long DeniedCapacityLimitedCount { get; init; }
+
     /// <summary>
-    /// Number of <see cref="UsageEventType.Denied"/> events in this window - rejected
-    /// requests or acquisition attempts (any denial reason).
+    /// Total denied events in this window (sum of category counters).
     /// </summary>
     public long DeniedCount { get; init; }
 
@@ -49,4 +56,37 @@ public record UsageBucket
     /// </para>
     /// </summary>
     public long ActiveCount { get; init; }
+
+    public UsageBucket WithDeniedDelta(UsageDenialCategory category, long delta)
+    {
+        var unauth = DeniedUnauthenticatedCount;
+        var blocked = DeniedBlockedCount;
+        var rateLimited = DeniedRateLimitedCount;
+        var capacity = DeniedCapacityLimitedCount;
+
+        switch (category)
+        {
+            case UsageDenialCategory.Unauthenticated:
+                unauth += delta;
+                break;
+            case UsageDenialCategory.Blocked:
+                blocked += delta;
+                break;
+            case UsageDenialCategory.RateLimited:
+                rateLimited += delta;
+                break;
+            case UsageDenialCategory.CapacityLimited:
+                capacity += delta;
+                break;
+        }
+
+        return this with
+        {
+            DeniedUnauthenticatedCount = unauth,
+            DeniedBlockedCount = blocked,
+            DeniedRateLimitedCount = rateLimited,
+            DeniedCapacityLimitedCount = capacity,
+            DeniedCount = unauth + blocked + rateLimited + capacity
+        };
+    }
 }
