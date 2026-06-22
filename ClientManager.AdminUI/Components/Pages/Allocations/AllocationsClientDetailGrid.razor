@@ -1,4 +1,6 @@
+@using ClientManager.AdminUI.Models
 @using ClientManager.AdminUI.Models.Allocations
+@using ClientManager.AdminUI.Utils
 
 <div class="cm-list-page__table-card" style="margin-top: var(--space-lg);">
     <div class="cm-dashboard__chart-header">
@@ -21,6 +23,18 @@
                 TextAlign="TextAlign.Center" CssClass="cm-list-page__col-center">
                 <Template Context="row">@(IsAccessMetric ? UtilizationHelper.FormatCap(row.CapValue) : row.CapValue.ToString("N0"))</Template>
             </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="AllocationClientRow" Title="Denied" Width="110px"
+                TextAlign="TextAlign.Center" CssClass="cm-list-page__col-center">
+                <Template Context="row">
+                    <DeniedBreakdownCell Total="@row.DeniedLast5Min"
+                        Unauthenticated="@row.DeniedUnauthenticatedCount"
+                        Blocked="@row.DeniedBlockedCount"
+                        RateLimited="@row.DeniedRateLimitedCount"
+                        CapacityLimited="@row.DeniedCapacityLimitedCount"
+                        ViewMode="@DeniedViewMode"
+                        ShowBreakdown="@ShowDeniedBreakdown" />
+                </Template>
+            </RadzenDataGridColumn>
             <RadzenDataGridColumn TItem="AllocationClientRow" Title="Utilization" Width="180px"
                 TextAlign="TextAlign.Center" CssClass="cm-list-page__col-center">
                 <Template Context="row">
@@ -35,11 +49,6 @@
                     }
                 </Template>
             </RadzenDataGridColumn>
-            @if (IsAccessMetric)
-            {
-                <RadzenDataGridColumn TItem="AllocationClientRow" Property="DeniedLast5Min" Title="Denied" Width="110px"
-                    TextAlign="TextAlign.Center" CssClass="cm-list-page__col-center" />
-            }
             <RadzenDataGridColumn TItem="AllocationClientRow" Title="Status" Width="120px" Sortable="false"
                 TextAlign="TextAlign.Center" CssClass="cm-list-page__col-center cm-list-page__col-status">
                 <Template Context="row">
@@ -57,6 +66,8 @@
     [Parameter] public bool ShowPoolColumn { get; set; } = true;
     [Parameter] public List<AllocationClientRow> Rows { get; set; } = [];
     [Parameter] public bool IsAccessMetric { get; set; }
+    [Parameter] public bool ShowDeniedBreakdown { get; set; }
+    [Parameter] public DeniedViewMode DeniedViewMode { get; set; }
     private RadzenDataGrid<AllocationClientRow>? _grid;
 
     public async Task ReloadAsync(Func<Func<Task>, Task> dispatchAsync)

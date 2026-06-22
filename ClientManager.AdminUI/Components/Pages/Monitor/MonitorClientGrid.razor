@@ -1,3 +1,4 @@
+@using ClientManager.AdminUI.Models
 @using ClientManager.AdminUI.Models.Monitor
 
 <div class="cm-list-page__table-card" style="margin-top: var(--space-lg);">
@@ -12,8 +13,18 @@
             <RadzenDataGridColumn TItem="MonitorClientRow" Property="ServiceName" Title="Service" Width="150px" />
             <RadzenDataGridColumn TItem="MonitorClientRow" Property="GrantedLast5Min" Title="Requests" Width="120px"
                 TextAlign="TextAlign.Center" CssClass="cm-list-page__col-center" />
-            <RadzenDataGridColumn TItem="MonitorClientRow" Property="DeniedLast5Min" Title="Denied" Width="110px"
-                TextAlign="TextAlign.Center" CssClass="cm-list-page__col-center" />
+            <RadzenDataGridColumn TItem="MonitorClientRow" Title="Denied" Width="110px"
+                TextAlign="TextAlign.Center" CssClass="cm-list-page__col-center">
+                <Template Context="row">
+                    <DeniedBreakdownCell Total="@row.DeniedLast5Min"
+                        Unauthenticated="@row.DeniedUnauthenticatedCount"
+                        Blocked="@row.DeniedBlockedCount"
+                        RateLimited="@row.DeniedRateLimitedCount"
+                        CapacityLimited="@row.DeniedCapacityLimitedCount"
+                        ViewMode="DeniedViewMode.RateLimitDenied"
+                        ShowBreakdown="@ShowDeniedBreakdown" />
+                </Template>
+            </RadzenDataGridColumn>
             <RadzenDataGridColumn TItem="MonitorClientRow" Title="Cap" Width="90px"
                 TextAlign="TextAlign.Center" CssClass="cm-list-page__col-center">
                 <Template Context="row">@UtilizationHelper.FormatCapDisplay(row.RateLimitCap)</Template>
@@ -46,6 +57,7 @@
 
 @code {
     [Parameter] public List<MonitorClientRow> Rows { get; set; } = [];
+    [Parameter] public bool ShowDeniedBreakdown { get; set; }
     private RadzenDataGrid<MonitorClientRow>? _grid;
 
     public async Task ReloadAsync(Func<Func<Task>, Task> dispatchAsync)

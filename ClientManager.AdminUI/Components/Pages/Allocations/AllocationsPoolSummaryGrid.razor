@@ -1,4 +1,6 @@
+@using ClientManager.AdminUI.Models
 @using ClientManager.AdminUI.Models.Allocations
+@using ClientManager.AdminUI.Utils
 
 <div class="cm-list-page__table-card" style="margin-top: var(--space-lg);">
     <div class="cm-dashboard__chart-header">
@@ -20,6 +22,18 @@
             <RadzenDataGridColumn TItem="PoolSummaryRow" Title="@(IsAccessMetric ? "Remaining" : "Available")" Width="110px"
                 TextAlign="TextAlign.Center" CssClass="cm-list-page__col-center">
                 <Template Context="pool">@(IsAccessMetric ? UtilizationHelper.FormatRemaining(pool.RemainingValue) : (pool.RemainingValue ?? 0).ToString("N0"))</Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="PoolSummaryRow" Title="Denied" Width="110px"
+                TextAlign="TextAlign.Center" CssClass="cm-list-page__col-center">
+                <Template Context="pool">
+                    <DeniedBreakdownCell Total="@pool.DeniedLast5Min"
+                        Unauthenticated="@pool.DeniedUnauthenticatedCount"
+                        Blocked="@pool.DeniedBlockedCount"
+                        RateLimited="@pool.DeniedRateLimitedCount"
+                        CapacityLimited="@pool.DeniedCapacityLimitedCount"
+                        ViewMode="@DeniedViewMode"
+                        ShowBreakdown="@ShowDeniedBreakdown" />
+                </Template>
             </RadzenDataGridColumn>
             <RadzenDataGridColumn TItem="PoolSummaryRow" Title="Utilization" Width="200px"
                 TextAlign="TextAlign.Center" CssClass="cm-list-page__col-center">
@@ -51,6 +65,8 @@
     [Parameter] public string Title { get; set; } = "All Resource Pools";
     [Parameter] public List<PoolSummaryRow> Rows { get; set; } = [];
     [Parameter] public bool IsAccessMetric { get; set; }
+    [Parameter] public bool ShowDeniedBreakdown { get; set; }
+    [Parameter] public DeniedViewMode DeniedViewMode { get; set; }
     private RadzenDataGrid<PoolSummaryRow>? _grid;
 
     public async Task ReloadAsync(Func<Func<Task>, Task> dispatchAsync)

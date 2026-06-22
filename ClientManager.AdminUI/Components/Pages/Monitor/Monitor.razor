@@ -13,11 +13,6 @@
     <RadzenAlert AlertStyle="AlertStyle.Danger" Shade="Shade.Light">@_error</RadzenAlert>
 }
 
-@if (_loading)
-{
-    <SkeletonBlock CssClass="cm-skeleton--text" Style="height: 3px; margin-bottom: var(--space-sm);" />
-}
-
 <MonitorChartSection
     SelectedServiceId="@_selectedServiceId"
     SelectedServiceIdChanged="@(v => _selectedServiceId = v)"
@@ -27,14 +22,14 @@
     ClientOptions="@_clientOptions"
     TargetCharts="@_targetCharts"
     AxisScaleType="@_axisScaleType"
-    Loading="@_loading"
+    Loading="@_chartLoading"
     OnFilterChanged="OnFilterChanged"
     OnTimeRangeChanged="OnTimeRangeChanged"
     OnPollingIntervalChanged="OnPollingIntervalChanged"
     OnAxisScaleChanged="OnAxisScaleChanged" />
 
-<MonitorClientGrid @ref="_clientGrid" Rows="@_clientRows" />
+<MonitorClientGrid @ref="_clientGrid" Rows="@_clientRows" ShowDeniedBreakdown="@ShowDeniedBreakdown" />
 
 <hr class="cm-monitor__separator" />
 
-<MonitorServicesGrid @ref="_servicesGrid" Rows="@_allServiceStats" />
+<MonitorServicesGrid @ref="_servicesGrid" Rows="@_allServiceStats" ShowDeniedBreakdown="@ShowDeniedBreakdown" />

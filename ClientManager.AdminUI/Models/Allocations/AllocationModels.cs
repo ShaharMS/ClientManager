@@ -8,7 +8,11 @@ public record AllocationClientRow(
     string PoolName,
     long CurrentValue,
     int CapValue,
-    long DeniedLast5Min);
+    long DeniedLast5Min,
+    long DeniedUnauthenticatedCount,
+    long DeniedBlockedCount,
+    long DeniedRateLimitedCount,
+    long DeniedCapacityLimitedCount);
 
 public record PoolSummaryRow(
     string PoolId,
@@ -16,4 +20,8 @@ public record PoolSummaryRow(
     long CurrentValue,
     int CapValue,
     long? RemainingValue,
-    long DeniedLast5Min);
+    long DeniedLast5Min,
+    long DeniedUnauthenticatedCount,
+    long DeniedBlockedCount,
+    long DeniedRateLimitedCount,
+    long DeniedCapacityLimitedCount);

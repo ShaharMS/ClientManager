@@ -8,10 +8,19 @@ public record MonitorClientRow(
     string ServiceName,
     long GrantedLast5Min,
     long DeniedLast5Min,
+    long DeniedUnauthenticatedCount,
+    long DeniedBlockedCount,
+    long DeniedRateLimitedCount,
+    long DeniedCapacityLimitedCount,
     int RateLimitCap);
 
 public record ServiceSummaryRow(
     string Id,
     string Name,
     long CurrentUsage,
-    int Cap);
+    int Cap,
+    long DeniedLast5Min,
+    long DeniedUnauthenticatedCount,
+    long DeniedBlockedCount,
+    long DeniedRateLimitedCount,
+    long DeniedCapacityLimitedCount);

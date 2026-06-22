@@ -326,6 +326,11 @@
     width: 100%;
 }
 
+.cm-denied-breakdown__value {
+    cursor: help;
+    border-bottom: 1px dotted var(--color-text-secondary);
+}
+
 /* List action buttons — edit icon dark blue; delete stays danger */
 .cm-list-page__table-card .rz-button.rz-variant-text.rz-primary.rz-button-icon-only {
     background: transparent !important;
