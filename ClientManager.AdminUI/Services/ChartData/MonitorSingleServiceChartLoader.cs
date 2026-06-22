@@ -1,7 +1,7 @@
 using ClientManager.AdminUI.Models;
+using ClientManager.AdminUI.Models;
 using ClientManager.AdminUI.Models.Charts;
-using ClientManager.AdminUI.Models.Monitor;
-using ClientManager.AdminUI.Services;
+using ClientManager.AdminUI.Models.Monitor;using ClientManager.AdminUI.Services;
 using ClientManager.AdminUI.Utils;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Responses;
@@ -83,6 +83,10 @@ internal sealed class MonitorSingleServiceChartLoader
                     entry.ClientId, entry.ClientName, service.Name,
                     entry.GrantedCount,
                     entry.DeniedCount,
+                    entry.DeniedUnauthenticatedCount,
+                    entry.DeniedBlockedCount,
+                    entry.DeniedRateLimitedCount,
+                    entry.DeniedCapacityLimitedCount,
                     MonitorCapCalculator.GetEffectiveClientServiceCap(
                         entry.ClientId, service.Id, context.AllClients, rateLimitLookup, rangeDuration)));
             }
@@ -101,6 +105,19 @@ internal sealed class MonitorSingleServiceChartLoader
                 a.Id, a.Name,
                 a.Points.Select(p => new ChartPoint(p.Label, p.Value)).ToList()
             )).ToList();
+
+            var serviceHistory = (await _statsService.GetHistoricalUsageAsync(
+                "Service", new[] { service.Id }, null, from, now, context.TimeRange.Granularity))
+                .FirstOrDefault();
+            DeniedChartSeriesBuilder.AppendTripletSeries(
+                clientAreas,
+                service.Id,
+                service.Name,
+                serviceHistory?.Points ?? [],
+                DeniedViewMode.RateLimitDenied,
+                from,
+                now,
+                context.BucketCount);
 
             charts.Add(new TargetChartData(service.Name, clientAreas, chartCapPoints));
         }

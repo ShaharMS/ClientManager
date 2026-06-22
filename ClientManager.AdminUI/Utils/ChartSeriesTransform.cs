@@ -47,7 +47,8 @@ public static class ChartSeriesTransform
 
                 var logTotal = LogarithmicScaleHelper.Transform(total);
                 return p with { Value = (p.Value / total) * logTotal, OriginalValue = p.Value };
-            }).ToList()
+            }).ToList(),
+            s.Hidden
         )).ToList();
     }
 }

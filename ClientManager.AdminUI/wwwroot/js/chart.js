@@ -1,7 +1,7 @@
 let _dotNetRef = null;
 let _resizeTimer = null;
 
-const CHART_CARD_SELECTORS = ['.cm-monitor__chart-card', '.cm-dashboard__chart-card'];
+const CHART_CARD_SELECTORS = ['.cm-chart-card'];
 
 export function getChartCardWidth(selector) {
     const selectors = selector ? [selector] : CHART_CARD_SELECTORS;

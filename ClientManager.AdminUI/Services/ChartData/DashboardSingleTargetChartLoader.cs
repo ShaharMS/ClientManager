@@ -1,4 +1,5 @@
 using ClientManager.AdminUI.Models;
+using ClientManager.AdminUI.Models;
 using ClientManager.AdminUI.Models.Charts;
 using ClientManager.AdminUI.Models.Dashboard;
 using ClientManager.AdminUI.Services;
@@ -114,6 +115,8 @@ internal sealed class DashboardSingleTargetChartLoader
             .Select(label => new ChartPoint(label, scaledCap))
             .ToList();
 
+        var targetName = context.FilterTargets.FirstOrDefault(t => t.Id == context.SelectedTargetId)?.Name ?? "";
+
         var donutData = new List<ClientUsagePoint>();
         foreach (var (clientId, (client, _)) in clientAggregations)
         {
@@ -135,7 +138,24 @@ internal sealed class DashboardSingleTargetChartLoader
             a.Points.Select(p => new ChartPoint(p.Label, p.Value)).ToList()
         )).ToList();
 
-        var targetName = context.FilterTargets.FirstOrDefault(t => t.Id == context.SelectedTargetId)?.Name ?? "";
+        var targetHistory = (await _statsService.GetHistoricalUsageAsync(
+            context.SelectedFilterType,
+            new[] { context.SelectedTargetId! },
+            null,
+            from,
+            now,
+            context.TimeRange.Granularity))
+            .FirstOrDefault();
+        DeniedChartSeriesBuilder.AppendTripletSeries(
+            clientAreas,
+            context.SelectedTargetId!,
+            targetName,
+            targetHistory?.Points ?? [],
+            isRateBased ? DeniedViewMode.RateLimitDenied : DeniedViewMode.CapacityDenied,
+            from,
+            now,
+            context.BucketCount);
+
         charts.Add(new TargetChartData(targetName, clientAreas, capPoints));
 
         return donutData;

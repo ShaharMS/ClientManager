@@ -26,9 +26,43 @@ public class EntityColorService
         if (entityId == ChartAggregator.OthersId)
             return "#94a3b8";
 
+        if (entityId == ChartAggregator.AggregateSeriesId)
+            return "#8b5cf6";
+
         var hash = GetStableHash(entityId);
         var index = (int)(hash % (uint)Palette.Length);
         return Palette[index];
+    }
+
+    public string GetSeriesColor(string seriesId)
+    {
+        if (seriesId.EndsWith(ChartAggregator.DeniedUnauthSuffix, StringComparison.Ordinal))
+        {
+            return "rgba(239, 68, 68, 0.45)";
+        }
+
+        if (seriesId.EndsWith(ChartAggregator.DeniedBlockedSuffix, StringComparison.Ordinal))
+        {
+            return "rgba(107, 114, 128, 0.45)";
+        }
+
+        if (seriesId.EndsWith(ChartAggregator.DeniedRateLimitedSuffix, StringComparison.Ordinal))
+        {
+            return "rgba(234, 179, 8, 0.45)";
+        }
+
+        if (seriesId.EndsWith(ChartAggregator.DeniedCapacitySuffix, StringComparison.Ordinal))
+        {
+            return "rgba(249, 115, 22, 0.45)";
+        }
+
+        if (seriesId.EndsWith(ChartAggregator.DeniedSeriesIdSuffix, StringComparison.Ordinal))
+        {
+            var baseId = seriesId[..^ChartAggregator.DeniedSeriesIdSuffix.Length];
+            return ToTransparent(GetColor(baseId), 0.45);
+        }
+
+        return GetColor(seriesId);
     }
 
     /// <summary>
@@ -64,5 +98,19 @@ public class EntityColorService
     {
         var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(input));
         return BitConverter.ToUInt32(bytes, 0);
+    }
+
+    private static string ToTransparent(string hex, double alpha)
+    {
+        hex = hex.TrimStart('#');
+        if (hex.Length != 6)
+        {
+            return hex;
+        }
+
+        var r = Convert.ToInt32(hex[..2], 16);
+        var g = Convert.ToInt32(hex[2..4], 16);
+        var b = Convert.ToInt32(hex[4..6], 16);
+        return $"rgba({r}, {g}, {b}, {alpha.ToString(System.Globalization.CultureInfo.InvariantCulture)})";
     }
 }

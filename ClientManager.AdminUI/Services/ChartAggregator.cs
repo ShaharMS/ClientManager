@@ -9,6 +9,12 @@ public static class ChartAggregator
     public const int DefaultTopN = 10;
     public const string OthersId = "__others__";
     public const string OthersLabel = "Others";
+    public const string AggregateSeriesId = "__aggregate__";
+    public const string DeniedSeriesIdSuffix = "|denied";
+    public const string DeniedUnauthSuffix = "|denied|unauth";
+    public const string DeniedBlockedSuffix = "|denied|blocked";
+    public const string DeniedRateLimitedSuffix = "|denied|ratelimited";
+    public const string DeniedCapacitySuffix = "|denied|capacity";
 
     public record AggregatedPoint(string Label, double Value);
     public record AggregatedSeries(string Id, string Name, List<AggregatedPoint> Points);

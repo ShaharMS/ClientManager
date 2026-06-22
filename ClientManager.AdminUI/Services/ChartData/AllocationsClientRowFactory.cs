@@ -24,6 +24,15 @@ internal static class AllocationsClientRowFactory
                 clientId, pool.ResourcePoolId, pool.MaxSlots, context.AllClients);
 
         return new AllocationClientRow(
-            clientId, clientName, pool.Name, currentValue, capValue, recentEntry?.DeniedCount ?? 0);
+            clientId,
+            clientName,
+            pool.Name,
+            currentValue,
+            capValue,
+            recentEntry?.DeniedCount ?? 0,
+            recentEntry?.DeniedUnauthenticatedCount ?? 0,
+            recentEntry?.DeniedBlockedCount ?? 0,
+            recentEntry?.DeniedRateLimitedCount ?? 0,
+            recentEntry?.DeniedCapacityLimitedCount ?? 0);
     }
 }
