@@ -21,6 +21,11 @@ body.no-scroll {
     padding-inline-end: 0 !important;
 }
 
+/* Radzen numeric inputs use rz-text-align-left; logical start follows dir=rtl. */
+.rz-numeric-input.rz-text-align-left {
+    text-align: start;
+}
+
 /* Card base style - used throughout the app */
 .cm-card {
     background: var(--color-bg-card);
@@ -76,7 +81,7 @@ body.no-scroll {
 .cm-stat-card__arrow {
     position: absolute;
     top: var(--space-sm);
-    right: var(--space-sm);
+    inset-inline-end: var(--space-sm);
     width: 28px;
     height: 28px;
     border-radius: 50%;
