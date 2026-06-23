@@ -1,0 +1,1060 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="Api.DeleteFailed" xml:space="preserve">
+    <value>המחיקה נכשלה: {0}</value>
+  </data>
+  <data name="Api.SaveFailed" xml:space="preserve">
+    <value>השמירה נכשלה: {0}</value>
+  </data>
+  <data name="Api.ServiceUnavailable.RetryIn" xml:space="preserve">
+    <value>השירות אינו זמין זמנית. נסה שוב בעוד {0} שניות.</value>
+  </data>
+  <data name="Api.ServiceUnavailable.Shortly" xml:space="preserve">
+    <value>השירות אינו זמין זמנית. נסה שוב בקרוב.</value>
+  </data>
+  <data name="Api.UnableToConnect" xml:space="preserve">
+    <value>לא ניתן להתחבר ל-API: {0}</value>
+  </data>
+  <data name="Api.UnableToLoadData" xml:space="preserve">
+    <value>לא ניתן לטעון נתונים: {0}</value>
+  </data>
+  <data name="Charts.AccessCap" xml:space="preserve">
+    <value>תקרת גישה</value>
+  </data>
+  <data name="Charts.MaxSlots" xml:space="preserve">
+    <value>מקסימום משבצות</value>
+  </data>
+  <data name="Charts.NoUsageData" xml:space="preserve">
+    <value>אין נתוני שימוש זמינים</value>
+  </data>
+  <data name="Charts.Settings.AxisType" xml:space="preserve">
+    <value>סוג ציר</value>
+  </data>
+  <data name="Charts.Settings.From" xml:space="preserve">
+    <value>מ-</value>
+  </data>
+  <data name="Charts.Settings.Last" xml:space="preserve">
+    <value>אחרון</value>
+  </data>
+  <data name="Charts.Settings.Or" xml:space="preserve">
+    <value>או</value>
+  </data>
+  <data name="Charts.Settings.Refresh" xml:space="preserve">
+    <value>רענון</value>
+  </data>
+  <data name="Charts.Settings.To" xml:space="preserve">
+    <value>עד</value>
+  </data>
+  <data name="Columns.Actions" xml:space="preserve">
+    <value>פעולות</value>
+  </data>
+  <data name="Columns.Active" xml:space="preserve">
+    <value>פעיל</value>
+  </data>
+  <data name="Columns.AllocationTtl" xml:space="preserve">
+    <value>תוקף הקצאה</value>
+  </data>
+  <data name="Columns.Available" xml:space="preserve">
+    <value>זמין</value>
+  </data>
+  <data name="Columns.Cap" xml:space="preserve">
+    <value>תקרה</value>
+  </data>
+  <data name="Columns.Client" xml:space="preserve">
+    <value>לקוח</value>
+  </data>
+  <data name="Columns.ClientId" xml:space="preserve">
+    <value>מזהה לקוח</value>
+  </data>
+  <data name="Columns.Denied" xml:space="preserve">
+    <value>נדחו</value>
+  </data>
+  <data name="Columns.Id" xml:space="preserve">
+    <value>מזהה</value>
+  </data>
+  <data name="Columns.Max" xml:space="preserve">
+    <value>מקסימום</value>
+  </data>
+  <data name="Columns.MaxRequests" xml:space="preserve">
+    <value>מקסימום בקשות</value>
+  </data>
+  <data name="Columns.MaxSlots" xml:space="preserve">
+    <value>מקסימום משבצות</value>
+  </data>
+  <data name="Columns.Name" xml:space="preserve">
+    <value>שם</value>
+  </data>
+  <data name="Columns.Pool" xml:space="preserve">
+    <value>מאגר</value>
+  </data>
+  <data name="Columns.Pools" xml:space="preserve">
+    <value>מאגרים</value>
+  </data>
+  <data name="Columns.RateLimitCap" xml:space="preserve">
+    <value>תקרת הגבלת קצב</value>
+  </data>
+  <data name="Columns.Remaining" xml:space="preserve">
+    <value>נותר</value>
+  </data>
+  <data name="Columns.Requests" xml:space="preserve">
+    <value>בקשות</value>
+  </data>
+  <data name="Columns.ResourcePool" xml:space="preserve">
+    <value>מאגר משאבים</value>
+  </data>
+  <data name="Columns.Service" xml:space="preserve">
+    <value>שירות</value>
+  </data>
+  <data name="Columns.Services" xml:space="preserve">
+    <value>שירותים</value>
+  </data>
+  <data name="Columns.Status" xml:space="preserve">
+    <value>סטטוס</value>
+  </data>
+  <data name="Columns.Strategy" xml:space="preserve">
+    <value>אסטרטגיה</value>
+  </data>
+  <data name="RateLimitStrategy.ApproximateSlidingWindow" xml:space="preserve">
+    <value>חלון מחליק (משוער)</value>
+  </data>
+  <data name="RateLimitStrategy.FixedWindow" xml:space="preserve">
+    <value>חלון קבוע</value>
+  </data>
+  <data name="RateLimitStrategy.TokenBucket" xml:space="preserve">
+    <value>דלי אסימונים</value>
+  </data>
+  <data name="Columns.Usage" xml:space="preserve">
+    <value>שימוש</value>
+  </data>
+  <data name="Columns.Utilization" xml:space="preserve">
+    <value>ניצול</value>
+  </data>
+  <data name="Columns.Window" xml:space="preserve">
+    <value>חלון זמן</value>
+  </data>
+  <data name="Common.Add" xml:space="preserve">
+    <value>הוספה</value>
+  </data>
+  <data name="Common.AppName" xml:space="preserve">
+    <value>ClientManager</value>
+  </data>
+  <data name="Common.Back" xml:space="preserve">
+    <value>→ חזרה</value>
+  </data>
+  <data name="Common.Cancel" xml:space="preserve">
+    <value>ביטול</value>
+  </data>
+  <data name="Common.Cap" xml:space="preserve">
+    <value>תקרה</value>
+  </data>
+  <data name="Common.Disabled" xml:space="preserve">
+    <value>מושבת</value>
+  </data>
+  <data name="Common.Enabled" xml:space="preserve">
+    <value>מופעל</value>
+  </data>
+  <data name="Common.Linear" xml:space="preserve">
+    <value>ליניארי</value>
+  </data>
+  <data name="Common.Logarithmic" xml:space="preserve">
+    <value>לוגריתמי</value>
+  </data>
+  <data name="Common.Others" xml:space="preserve">
+    <value>אחרים</value>
+  </data>
+  <data name="Common.PageTitleSuffix" xml:space="preserve">
+    <value>ClientManager · {0}</value>
+  </data>
+  <data name="Common.Remove" xml:space="preserve">
+    <value>הסרה</value>
+  </data>
+  <data name="Common.Save" xml:space="preserve">
+    <value>שמירה</value>
+  </data>
+  <data name="Common.Search" xml:space="preserve">
+    <value>חיפוש...</value>
+  </data>
+  <data name="Dialog.ConfirmDelete.Cancel" xml:space="preserve">
+    <value>ביטול</value>
+  </data>
+  <data name="Dialog.ConfirmDelete.Failed" xml:space="preserve">
+    <value>המחיקה נכשלה: {0}</value>
+  </data>
+  <data name="Dialog.ConfirmDelete.Message" xml:space="preserve">
+    <value>האם למחוק את {0} &quot;{1}&quot;? פעולה זו אינה ניתנת לביטול.</value>
+  </data>
+  <data name="Dialog.ConfirmDelete.Ok" xml:space="preserve">
+    <value>מחיקה</value>
+  </data>
+  <data name="Dialog.ConfirmDelete.Title" xml:space="preserve">
+    <value>אישור מחיקה</value>
+  </data>
+  <data name="Dialog.ConfirmDisable.DefaultMessage" xml:space="preserve">
+    <value>להשבית את {0} &quot;{1}&quot;? בקשות מלקוח זה יידחו עד להפעלה מחדש.</value>
+  </data>
+  <data name="Dialog.ConfirmDisable.Ok" xml:space="preserve">
+    <value>השבתה</value>
+  </data>
+  <data name="Dialog.ConfirmDisable.ResourcePool" xml:space="preserve">
+    <value>להשבית את מאגר המשאבים &quot;{0}&quot;? רכישת משבצות תידחה עד להפעלה מחדש.</value>
+  </data>
+  <data name="Dialog.ConfirmDisable.Service" xml:space="preserve">
+    <value>להשבית את השירות &quot;{0}&quot;? בקשות לשירות זה יידחו עד להפעלה מחדש.</value>
+  </data>
+  <data name="Dialog.ConfirmDisable.Title" xml:space="preserve">
+    <value>אישור השבתה</value>
+  </data>
+  <data name="Dialog.ConfirmEnable.DefaultMessage" xml:space="preserve">
+    <value>להפעיל את {0} &quot;{1}&quot;? בקשות יותרו שוב, בכפוף לכללי הגישה.</value>
+  </data>
+  <data name="Dialog.ConfirmEnable.Ok" xml:space="preserve">
+    <value>הפעלה</value>
+  </data>
+  <data name="Dialog.ConfirmEnable.ResourcePool" xml:space="preserve">
+    <value>להפעיל את מאגר המשאבים &quot;{0}&quot;? רכישת משבצות תותר שוב.</value>
+  </data>
+  <data name="Dialog.ConfirmEnable.Service" xml:space="preserve">
+    <value>להפעיל את השירות &quot;{0}&quot;? בקשות יותרו שוב, בכפוף לכללי הגישה.</value>
+  </data>
+  <data name="Dialog.ConfirmEnable.Title" xml:space="preserve">
+    <value>אישור הפעלה</value>
+  </data>
+  <data name="Dialog.ConfirmToggle.Cancel" xml:space="preserve">
+    <value>ביטול</value>
+  </data>
+  <data name="Dialog.EntityLabel.Client" xml:space="preserve">
+    <value>לקוח</value>
+  </data>
+  <data name="Dialog.EntityLabel.QuotaForResourcePool" xml:space="preserve">
+    <value>מכסה למאגר משאבים</value>
+  </data>
+  <data name="Dialog.EntityLabel.RateLimitForService" xml:space="preserve">
+    <value>הגבלת קצב לשירות</value>
+  </data>
+  <data name="Dialog.EntityLabel.ResourcePool" xml:space="preserve">
+    <value>מאגר משאבים</value>
+  </data>
+  <data name="Dialog.EntityLabel.Service" xml:space="preserve">
+    <value>שירות</value>
+  </data>
+  <data name="Dialog.ToggleFailed" xml:space="preserve">
+    <value>{0} נכשל: {1}</value>
+  </data>
+  <data name="Duration.Unit.Hours" xml:space="preserve">
+    <value>שעות</value>
+  </data>
+  <data name="Duration.Unit.Minutes" xml:space="preserve">
+    <value>דקות</value>
+  </data>
+  <data name="Duration.Unit.Seconds" xml:space="preserve">
+    <value>שניות</value>
+  </data>
+  <data name="Editor.BackLink" xml:space="preserve">
+    <value>→ חזרה</value>
+  </data>
+  <data name="Editor.Cancel" xml:space="preserve">
+    <value>ביטול</value>
+  </data>
+  <data name="Editor.Save" xml:space="preserve">
+    <value>שמירה</value>
+  </data>
+  <data name="Errors.access_denied" xml:space="preserve">
+    <value>הגישה לשירות זה נדחתה.</value>
+  </data>
+  <data name="Errors.access_not_configured" xml:space="preserve">
+    <value>הגישה לא הוגדרה עבור לקוח ושירות זה.</value>
+  </data>
+  <data name="Errors.allocation_not_found" xml:space="preserve">
+    <value>ההקצאה שצוינה לא נמצאה.</value>
+  </data>
+  <data name="Errors.client_disabled" xml:space="preserve">
+    <value>לקוח זה מושבת.</value>
+  </data>
+  <data name="Errors.client_global_rate_limit_not_found" xml:space="preserve">
+    <value>לא הוגדרה הגבלת קצב גלובלית עבור לקוח זה.</value>
+  </data>
+  <data name="Errors.client_not_found" xml:space="preserve">
+    <value>הלקוח שצוין לא נמצא.</value>
+  </data>
+  <data name="Errors.client_rate_limit_exceeded" xml:space="preserve">
+    <value>הגבלת הקצב חרגה.</value>
+  </data>
+  <data name="Errors.client_slot_limit_reached" xml:space="preserve">
+    <value>הגעת למגבלת המשבצות של הלקוח במאגר משאבים זה.</value>
+  </data>
+  <data name="Errors.global_rate_limit_already_exists" xml:space="preserve">
+    <value>הגבלת קצב כבר קיימת עבור יעד זה.</value>
+  </data>
+  <data name="Errors.global_rate_limit_not_found" xml:space="preserve">
+    <value>הגבלת הקצב שצוינה לא נמצאה.</value>
+  </data>
+  <data name="Errors.global_resource_pool_rate_limit_exceeded" xml:space="preserve">
+    <value>הגבלת הקצב הגלובלית של מאגר המשאבים חרגה.</value>
+  </data>
+  <data name="Errors.global_service_rate_limit_exceeded" xml:space="preserve">
+    <value>הגבלת הקצב הגלובלית של השירות חרגה.</value>
+  </data>
+  <data name="Errors.no_slots_available" xml:space="preserve">
+    <value>אין משבצות פנויות במאגר משאבים זה.</value>
+  </data>
+  <data name="Errors.resource_pool_already_exists" xml:space="preserve">
+    <value>מאגר משאבים עם מזהה זה כבר קיים.</value>
+  </data>
+  <data name="Errors.resource_pool_disabled" xml:space="preserve">
+    <value>מאגר משאבים זה מושבת.</value>
+  </data>
+  <data name="Errors.resource_pool_not_found" xml:space="preserve">
+    <value>מאגר המשאבים שצוין לא נמצא.</value>
+  </data>
+  <data name="Errors.resource_pool_settings_not_found" xml:space="preserve">
+    <value>הגדרות מאגר המשאבים לא נמצאו עבור לקוח זה.</value>
+  </data>
+  <data name="Errors.service_already_exists" xml:space="preserve">
+    <value>שירות עם מזהה זה כבר קיים.</value>
+  </data>
+  <data name="Errors.service_disabled" xml:space="preserve">
+    <value>שירות זה מושבת.</value>
+  </data>
+  <data name="Errors.service_not_found" xml:space="preserve">
+    <value>השירות שצוין לא נמצא.</value>
+  </data>
+  <data name="Errors.service_settings_not_found" xml:space="preserve">
+    <value>הגדרות השירות לא נמצאו עבור לקוח זה.</value>
+  </data>
+  <data name="Filter.AllClients" xml:space="preserve">
+    <value>כל הלקוחות</value>
+  </data>
+  <data name="Filter.AllStatuses" xml:space="preserve">
+    <value>כל הסטטוסים</value>
+  </data>
+  <data name="Filter.SelectPool" xml:space="preserve">
+    <value>בחר מאגר...</value>
+  </data>
+  <data name="Filter.SelectService" xml:space="preserve">
+    <value>בחר שירות...</value>
+  </data>
+  <data name="LanguageOption.en" xml:space="preserve">
+    <value>אנגלית</value>
+  </data>
+  <data name="LanguageOption.he-IL" xml:space="preserve">
+    <value>עברית</value>
+  </data>
+  <data name="ListTemplate.ApiConnectError" xml:space="preserve">
+    <value>לא ניתן להתחבר ל-API: {0}</value>
+  </data>
+  <data name="ListTemplate.SearchPlaceholder" xml:space="preserve">
+    <value>חיפוש...</value>
+  </data>
+  <data name="DataGrid.NoRecords" xml:space="preserve">
+    <value>אין רשומות להצגה.</value>
+  </data>
+  <data name="Nav.ActiveAllocations" xml:space="preserve">
+    <value>הקצאות פעילות</value>
+  </data>
+  <data name="Nav.BrandName" xml:space="preserve">
+    <value>ClientManager</value>
+  </data>
+  <data name="Nav.Clients" xml:space="preserve">
+    <value>לקוחות</value>
+  </data>
+  <data name="Nav.Dashboard" xml:space="preserve">
+    <value>לוח בקרה</value>
+  </data>
+  <data name="Nav.Monitor" xml:space="preserve">
+    <value>ניטור</value>
+  </data>
+  <data name="Nav.Quotas" xml:space="preserve">
+    <value>מכסות</value>
+  </data>
+  <data name="Nav.RateLimits" xml:space="preserve">
+    <value>הגבלות קצב</value>
+  </data>
+  <data name="Nav.ResourcePools" xml:space="preserve">
+    <value>מאגרי משאבים</value>
+  </data>
+  <data name="Nav.Services" xml:space="preserve">
+    <value>שירותים</value>
+  </data>
+  <data name="Nav.Settings" xml:space="preserve">
+    <value>הגדרות</value>
+  </data>
+  <data name="Pages.Allocations.AllResourcePools" xml:space="preserve">
+    <value>כל מאגרי המשאבים</value>
+  </data>
+  <data name="Pages.Allocations.Chart.DefaultTitle" xml:space="preserve">
+    <value>כל המאגרים - הקצאות פעילות</value>
+  </data>
+  <data name="Pages.Allocations.Chart.NoAllocationData" xml:space="preserve">
+    <value>אין נתוני הקצאה זמינים</value>
+  </data>
+  <data name="Pages.Allocations.ChartTitle" xml:space="preserve">
+    <value>{0} - {1}</value>
+  </data>
+  <data name="Pages.Allocations.ClientAccessDetailTitle" xml:space="preserve">
+    <value>פירוט גישת לקוח</value>
+  </data>
+  <data name="Pages.Allocations.ClientAccessDetailTitleWithPool" xml:space="preserve">
+    <value>{0} - פירוט גישת לקוח</value>
+  </data>
+  <data name="Pages.Allocations.ClientDetailTitle" xml:space="preserve">
+    <value>פירוט הקצאות לקוח</value>
+  </data>
+  <data name="Pages.Allocations.ClientDetailTitleWithPool" xml:space="preserve">
+    <value>{0} - פירוט הקצאות לקוח</value>
+  </data>
+  <data name="Pages.Allocations.LoadDataError" xml:space="preserve">
+    <value>לא ניתן לטעון נתונים: {0}</value>
+  </data>
+  <data name="Pages.Allocations.Metric.AccessRequests" xml:space="preserve">
+    <value>בקשות גישה</value>
+  </data>
+  <data name="Pages.Allocations.Metric.ActiveAllocations" xml:space="preserve">
+    <value>הקצאות פעילות</value>
+  </data>
+  <data name="Pages.Allocations.Subtitle" xml:space="preserve">
+    <value>ניצול מאגרי משאבים בכל הלקוחות והמאגרים.</value>
+  </data>
+  <data name="Pages.Allocations.Target.AllPools" xml:space="preserve">
+    <value>כל המאגרים</value>
+  </data>
+  <data name="Pages.Allocations.Title" xml:space="preserve">
+    <value>הקצאות פעילות</value>
+  </data>
+  <data name="Pages.Clients.BackLink" xml:space="preserve">
+    <value>→ חזרה ללקוחות</value>
+  </data>
+  <data name="Pages.Clients.BasicConfig.ClientId" xml:space="preserve">
+    <value>מזהה לקוח</value>
+  </data>
+  <data name="Pages.Clients.BasicConfig.ContributesToGlobalLimits" xml:space="preserve">
+    <value>תורם להגבלות גלובליות</value>
+  </data>
+  <data name="Pages.Clients.BasicConfig.Enabled" xml:space="preserve">
+    <value>מופעל</value>
+  </data>
+  <data name="Pages.Clients.BasicConfig.ExemptFromGlobalLimits" xml:space="preserve">
+    <value>פטור מהגבלות גלובליות</value>
+  </data>
+  <data name="Pages.Clients.BasicConfig.Name" xml:space="preserve">
+    <value>שם</value>
+  </data>
+  <data name="Pages.Clients.BasicConfig.Title" xml:space="preserve">
+    <value>תצורה בסיסית</value>
+  </data>
+  <data name="Pages.Clients.CreateButton" xml:space="preserve">
+    <value>יצירת לקוח</value>
+  </data>
+  <data name="Pages.Clients.CreateDescription" xml:space="preserve">
+    <value>הגדרת לקוח חדש.</value>
+  </data>
+  <data name="Pages.Clients.CreateTitle" xml:space="preserve">
+    <value>יצירת לקוח</value>
+  </data>
+  <data name="Pages.Clients.CreateTooltip" xml:space="preserve">
+    <value>יצירת לקוח</value>
+  </data>
+  <data name="Pages.Clients.DeleteTooltip" xml:space="preserve">
+    <value>מחיקת לקוח</value>
+  </data>
+  <data name="Pages.Clients.DisableTooltip" xml:space="preserve">
+    <value>השבתת לקוח</value>
+  </data>
+  <data name="Pages.Clients.EditDescription" xml:space="preserve">
+    <value>עדכון תצורת לקוח.</value>
+  </data>
+  <data name="Pages.Clients.EditTitle" xml:space="preserve">
+    <value>עריכת לקוח: {0}</value>
+  </data>
+  <data name="Pages.Clients.EditTooltip" xml:space="preserve">
+    <value>עריכת לקוח</value>
+  </data>
+  <data name="Pages.Clients.EnableTooltip" xml:space="preserve">
+    <value>הפעלת לקוח</value>
+  </data>
+  <data name="Pages.Clients.GlobalRateLimit.MaxRequests" xml:space="preserve">
+    <value>מקסימום בקשות</value>
+  </data>
+  <data name="Pages.Clients.GlobalRateLimit.Strategy" xml:space="preserve">
+    <value>אסטרטגיה</value>
+  </data>
+  <data name="Pages.Clients.GlobalRateLimit.Title" xml:space="preserve">
+    <value>הגבלת קצב גלובלית</value>
+  </data>
+  <data name="Pages.Clients.GlobalRateLimit.TokensPerRefill" xml:space="preserve">
+    <value>אסימונים למילוי</value>
+  </data>
+  <data name="Pages.Clients.GlobalRateLimit.Window" xml:space="preserve">
+    <value>חלון זמן</value>
+  </data>
+  <data name="Pages.Clients.NotFound" xml:space="preserve">
+    <value>הלקוח לא נמצא.</value>
+  </data>
+  <data name="Pages.Clients.ResourcePools.AddPool" xml:space="preserve">
+    <value>הוספת מאגר</value>
+  </data>
+  <data name="Pages.Clients.ResourcePools.Empty" xml:space="preserve">
+    <value>לא הוגדרו רשומות מאגרי משאבים.</value>
+  </data>
+  <data name="Pages.Clients.ResourcePools.MaxSlots" xml:space="preserve">
+    <value>מקסימום משבצות</value>
+  </data>
+  <data name="Pages.Clients.ResourcePools.NewPool" xml:space="preserve">
+    <value>מאגר חדש</value>
+  </data>
+  <data name="Pages.Clients.ResourcePools.PoolId" xml:space="preserve">
+    <value>מזהה מאגר</value>
+  </data>
+  <data name="Pages.Clients.ResourcePools.Title" xml:space="preserve">
+    <value>מאגרי משאבים ({0})</value>
+  </data>
+  <data name="Pages.Clients.SaveFailed" xml:space="preserve">
+    <value>השמירה נכשלה: {0}</value>
+  </data>
+  <data name="Pages.Clients.Search" xml:space="preserve">
+    <value>חיפוש לקוחות...</value>
+  </data>
+  <data name="Pages.Clients.ServiceAccess.AddService" xml:space="preserve">
+    <value>הוספת שירות</value>
+  </data>
+  <data name="Pages.Clients.ServiceAccess.Allowed" xml:space="preserve">
+    <value>מותר</value>
+  </data>
+  <data name="Pages.Clients.ServiceAccess.Empty" xml:space="preserve">
+    <value>לא הוגדרו רשומות גישה לשירותים.</value>
+  </data>
+  <data name="Pages.Clients.ServiceAccess.HasRateLimit" xml:space="preserve">
+    <value>יש הגבלת קצב</value>
+  </data>
+  <data name="Pages.Clients.ServiceAccess.NewService" xml:space="preserve">
+    <value>שירות חדש</value>
+  </data>
+  <data name="Pages.Clients.ServiceAccess.ServiceId" xml:space="preserve">
+    <value>מזהה שירות</value>
+  </data>
+  <data name="Pages.Clients.ServiceAccess.Title" xml:space="preserve">
+    <value>גישה לשירותים ({0})</value>
+  </data>
+  <data name="Pages.Clients.Subtitle" xml:space="preserve">
+    <value>ניהול תצורות לקוחות ובקרת גישה.</value>
+  </data>
+  <data name="Pages.Clients.Title" xml:space="preserve">
+    <value>לקוחות</value>
+  </data>
+  <data name="Pages.Dashboard.Chart.NoUsageData" xml:space="preserve">
+    <value>אין נתוני שימוש זמינים</value>
+  </data>
+  <data name="Pages.Dashboard.Chart.UsageOverTime" xml:space="preserve">
+    <value>{0} - שימוש לאורך זמן</value>
+  </data>
+  <data name="Pages.Dashboard.ClientOverview" xml:space="preserve">
+    <value>סקירת לקוחות</value>
+  </data>
+  <data name="Pages.Dashboard.FilterType.ResourcePool" xml:space="preserve">
+    <value>מאגר משאבים</value>
+  </data>
+  <data name="Pages.Dashboard.FilterType.Service" xml:space="preserve">
+    <value>שירות</value>
+  </data>
+  <data name="Pages.Dashboard.SearchClients" xml:space="preserve">
+    <value>חיפוש לקוחות...</value>
+  </data>
+  <data name="Pages.Dashboard.Stats.Clients" xml:space="preserve">
+    <value>לקוחות</value>
+  </data>
+  <data name="Pages.Dashboard.Stats.PoolAcquisition" xml:space="preserve">
+    <value>רכישת משבצות</value>
+  </data>
+  <data name="Pages.Dashboard.Stats.RequestsPerMin" xml:space="preserve">
+    <value>בקשות / דקה</value>
+  </data>
+  <data name="Pages.Dashboard.Stats.ResourcePools" xml:space="preserve">
+    <value>מאגרי משאבים</value>
+  </data>
+  <data name="Pages.Dashboard.Stats.Services" xml:space="preserve">
+    <value>שירותים</value>
+  </data>
+  <data name="Pages.Dashboard.Subtitle" xml:space="preserve">
+    <value>ביצועי המערכת במבט אחד.</value>
+  </data>
+  <data name="Pages.Dashboard.Target.AllResourcePools" xml:space="preserve">
+    <value>כל מאגרי המשאבים</value>
+  </data>
+  <data name="Pages.Dashboard.Target.AllServices" xml:space="preserve">
+    <value>כל השירותים</value>
+  </data>
+  <data name="Pages.Dashboard.Title" xml:space="preserve">
+    <value>ברוכים הבאים</value>
+  </data>
+  <data name="Pages.Monitor.AllServicesGrid" xml:space="preserve">
+    <value>כל השירותים</value>
+  </data>
+  <data name="Pages.Monitor.Chart.AllServices" xml:space="preserve">
+    <value>כל השירותים</value>
+  </data>
+  <data name="Pages.Monitor.ClientBreakdown" xml:space="preserve">
+    <value>פירוט לפי לקוח</value>
+  </data>
+  <data name="Pages.Monitor.LoadDataError" xml:space="preserve">
+    <value>לא ניתן לטעון נתונים: {0}</value>
+  </data>
+  <data name="Pages.Monitor.Subtitle" xml:space="preserve">
+    <value>ניתוח בקשות בזמן אמת בין שירותים ולקוחות.</value>
+  </data>
+  <data name="Pages.Monitor.Title" xml:space="preserve">
+    <value>ניטור</value>
+  </data>
+  <data name="Pages.Quotas.AlreadyHasQuota" xml:space="preserve">
+    <value>כבר יש מכסה</value>
+  </data>
+  <data name="Pages.Quotas.BackLink" xml:space="preserve">
+    <value>→ חזרה למכסות</value>
+  </data>
+  <data name="Pages.Quotas.CreateButton" xml:space="preserve">
+    <value>יצירת מכסה</value>
+  </data>
+  <data name="Pages.Quotas.CreateDescription" xml:space="preserve">
+    <value>הגדרת מכסת בקשות למאגר משאבים.</value>
+  </data>
+  <data name="Pages.Quotas.CreateDisabledTooltip" xml:space="preserve">
+    <value>לכל מאגר משאבים כבר יש מכסה.</value>
+  </data>
+  <data name="Pages.Quotas.CreateTitle" xml:space="preserve">
+    <value>יצירת מכסה</value>
+  </data>
+  <data name="Pages.Quotas.CreateTooltip" xml:space="preserve">
+    <value>יצירת מכסה</value>
+  </data>
+  <data name="Pages.Quotas.DeleteTooltip" xml:space="preserve">
+    <value>מחיקת מכסה</value>
+  </data>
+  <data name="Pages.Quotas.EditDescription" xml:space="preserve">
+    <value>עדכון תצורת מכסה.</value>
+  </data>
+  <data name="Pages.Quotas.EditTitle" xml:space="preserve">
+    <value>עריכת מכסה: {0}</value>
+  </data>
+  <data name="Pages.Quotas.EditTitlePrefix" xml:space="preserve">
+    <value>עריכת מכסה: </value>
+  </data>
+  <data name="Pages.Quotas.EditTooltip" xml:space="preserve">
+    <value>עריכת מכסה</value>
+  </data>
+  <data name="Pages.Quotas.NotFound" xml:space="preserve">
+    <value>המכסה לא נמצאה.</value>
+  </data>
+  <data name="Pages.Quotas.SaveFailed" xml:space="preserve">
+    <value>השמירה נכשלה: {0}</value>
+  </data>
+  <data name="Pages.Quotas.Search" xml:space="preserve">
+    <value>חיפוש מכסות...</value>
+  </data>
+  <data name="Pages.Quotas.Subtitle" xml:space="preserve">
+    <value>ניהול מכסות בקשות המוחלות על מאגרי משאבים.</value>
+  </data>
+  <data name="Pages.Quotas.Title" xml:space="preserve">
+    <value>מכסות</value>
+  </data>
+  <data name="Pages.RateLimits.AlreadyHasRateLimit" xml:space="preserve">
+    <value>כבר יש הגבלת קצב</value>
+  </data>
+  <data name="Pages.RateLimits.BackLink" xml:space="preserve">
+    <value>→ חזרה להגבלות קצב</value>
+  </data>
+  <data name="Pages.RateLimits.CreateButton" xml:space="preserve">
+    <value>יצירת הגבלת קצב</value>
+  </data>
+  <data name="Pages.RateLimits.CreateDescription" xml:space="preserve">
+    <value>הגדרת הגבלת קצב לנקודת קצה של שירות.</value>
+  </data>
+  <data name="Pages.RateLimits.CreateDisabledTooltip" xml:space="preserve">
+    <value>לכל שירות כבר יש הגבלת קצב.</value>
+  </data>
+  <data name="Pages.RateLimits.CreateTitle" xml:space="preserve">
+    <value>יצירת הגבלת קצב</value>
+  </data>
+  <data name="Pages.RateLimits.CreateTooltip" xml:space="preserve">
+    <value>יצירת הגבלת קצב</value>
+  </data>
+  <data name="Pages.RateLimits.DeleteTooltip" xml:space="preserve">
+    <value>מחיקת הגבלת קצב</value>
+  </data>
+  <data name="Pages.RateLimits.EditDescription" xml:space="preserve">
+    <value>עדכון תצורת הגבלת קצב.</value>
+  </data>
+  <data name="Pages.RateLimits.EditTitle" xml:space="preserve">
+    <value>עריכת הגבלת קצב: {0}</value>
+  </data>
+  <data name="Pages.RateLimits.EditTitlePrefix" xml:space="preserve">
+    <value>עריכת הגבלת קצב: </value>
+  </data>
+  <data name="Pages.RateLimits.EditTooltip" xml:space="preserve">
+    <value>עריכת הגבלת קצב</value>
+  </data>
+  <data name="Pages.RateLimits.NotFound" xml:space="preserve">
+    <value>הגבלת הקצב לא נמצאה.</value>
+  </data>
+  <data name="Pages.RateLimits.SaveFailed" xml:space="preserve">
+    <value>השמירה נכשלה: {0}</value>
+  </data>
+  <data name="Pages.RateLimits.Search" xml:space="preserve">
+    <value>חיפוש הגבלות קצב...</value>
+  </data>
+  <data name="Pages.RateLimits.Subtitle" xml:space="preserve">
+    <value>ניהול הגבלות קצב המוחלות על נקודות קצה של שירותים.</value>
+  </data>
+  <data name="Pages.RateLimits.Title" xml:space="preserve">
+    <value>הגבלות קצב</value>
+  </data>
+  <data name="Pages.ResourcePools.AllocationTtl" xml:space="preserve">
+    <value>תוקף הקצאה</value>
+  </data>
+  <data name="Pages.ResourcePools.BackLink" xml:space="preserve">
+    <value>→ חזרה למאגרי משאבים</value>
+  </data>
+  <data name="Pages.ResourcePools.CreateButton" xml:space="preserve">
+    <value>יצירת מאגר משאבים</value>
+  </data>
+  <data name="Pages.ResourcePools.CreateDescription" xml:space="preserve">
+    <value>הגדרת מאגר משאבים חדש.</value>
+  </data>
+  <data name="Pages.ResourcePools.CreateTitle" xml:space="preserve">
+    <value>יצירת מאגר משאבים</value>
+  </data>
+  <data name="Pages.ResourcePools.CreateTooltip" xml:space="preserve">
+    <value>יצירת מאגר משאבים</value>
+  </data>
+  <data name="Pages.ResourcePools.DeleteTooltip" xml:space="preserve">
+    <value>מחיקת מאגר משאבים</value>
+  </data>
+  <data name="Pages.ResourcePools.DisableTooltip" xml:space="preserve">
+    <value>השבתת מאגר משאבים</value>
+  </data>
+  <data name="Pages.ResourcePools.EditDescription" xml:space="preserve">
+    <value>עדכון תצורת מאגר משאבים.</value>
+  </data>
+  <data name="Pages.ResourcePools.EditTitlePrefix" xml:space="preserve">
+    <value>עריכת מאגר משאבים: </value>
+  </data>
+  <data name="Pages.ResourcePools.EditTooltip" xml:space="preserve">
+    <value>עריכת מאגר משאבים</value>
+  </data>
+  <data name="Pages.ResourcePools.EnableTooltip" xml:space="preserve">
+    <value>הפעלת מאגר משאבים</value>
+  </data>
+  <data name="Pages.ResourcePools.Enabled" xml:space="preserve">
+    <value>מופעל</value>
+  </data>
+  <data name="Pages.ResourcePools.MaxSlots" xml:space="preserve">
+    <value>מקסימום משבצות</value>
+  </data>
+  <data name="Pages.ResourcePools.Name" xml:space="preserve">
+    <value>שם</value>
+  </data>
+  <data name="Pages.ResourcePools.NotFound" xml:space="preserve">
+    <value>מאגר המשאבים לא נמצא.</value>
+  </data>
+  <data name="Pages.ResourcePools.PoolId" xml:space="preserve">
+    <value>מזהה מאגר</value>
+  </data>
+  <data name="Pages.ResourcePools.SaveFailed" xml:space="preserve">
+    <value>השמירה נכשלה: {0}</value>
+  </data>
+  <data name="Pages.ResourcePools.Search" xml:space="preserve">
+    <value>חיפוש מאגרים...</value>
+  </data>
+  <data name="Pages.ResourcePools.Subtitle" xml:space="preserve">
+    <value>ניהול הגדרות מאגרי משאבים, מגבלות משבצות ותוקף הקצאה.</value>
+  </data>
+  <data name="Pages.ResourcePools.Title" xml:space="preserve">
+    <value>מאגרי משאבים</value>
+  </data>
+  <data name="Pages.Services.BackLink" xml:space="preserve">
+    <value>→ חזרה לשירותים</value>
+  </data>
+  <data name="Pages.Services.CreateButton" xml:space="preserve">
+    <value>יצירת שירות</value>
+  </data>
+  <data name="Pages.Services.CreateDescription" xml:space="preserve">
+    <value>הגדרת שירות חדש.</value>
+  </data>
+  <data name="Pages.Services.CreateTitle" xml:space="preserve">
+    <value>יצירת שירות</value>
+  </data>
+  <data name="Pages.Services.CreateTooltip" xml:space="preserve">
+    <value>יצירת שירות</value>
+  </data>
+  <data name="Pages.Services.DeleteTooltip" xml:space="preserve">
+    <value>מחיקת שירות</value>
+  </data>
+  <data name="Pages.Services.DisableTooltip" xml:space="preserve">
+    <value>השבתת שירות</value>
+  </data>
+  <data name="Pages.Services.EditDescription" xml:space="preserve">
+    <value>עדכון תצורת שירות.</value>
+  </data>
+  <data name="Pages.Services.EditTitlePrefix" xml:space="preserve">
+    <value>עריכת שירות: </value>
+  </data>
+  <data name="Pages.Services.EditTooltip" xml:space="preserve">
+    <value>עריכת שירות</value>
+  </data>
+  <data name="Pages.Services.EnableTooltip" xml:space="preserve">
+    <value>הפעלת שירות</value>
+  </data>
+  <data name="Pages.Services.Enabled" xml:space="preserve">
+    <value>מופעל</value>
+  </data>
+  <data name="Pages.Services.Name" xml:space="preserve">
+    <value>שם</value>
+  </data>
+  <data name="Pages.Services.NotFound" xml:space="preserve">
+    <value>השירות לא נמצא.</value>
+  </data>
+  <data name="Pages.Services.SaveFailed" xml:space="preserve">
+    <value>השמירה נכשלה: {0}</value>
+  </data>
+  <data name="Pages.Services.Search" xml:space="preserve">
+    <value>חיפוש שירותים...</value>
+  </data>
+  <data name="Pages.Services.ServiceId" xml:space="preserve">
+    <value>מזהה שירות</value>
+  </data>
+  <data name="Pages.Services.Subtitle" xml:space="preserve">
+    <value>ניהול הגדרות שירותים וזמינות.</value>
+  </data>
+  <data name="Pages.Services.Title" xml:space="preserve">
+    <value>שירותים</value>
+  </data>
+  <data name="Presets.PollingInterval.10s.Label" xml:space="preserve">
+    <value>10 שניות</value>
+  </data>
+  <data name="Presets.PollingInterval.1m.Label" xml:space="preserve">
+    <value>דקה</value>
+  </data>
+  <data name="Presets.PollingInterval.2s.Label" xml:space="preserve">
+    <value>2 שניות</value>
+  </data>
+  <data name="Presets.PollingInterval.30s.Label" xml:space="preserve">
+    <value>30 שניות</value>
+  </data>
+  <data name="Presets.PollingInterval.5m.Label" xml:space="preserve">
+    <value>5 דקות</value>
+  </data>
+  <data name="Presets.PollingInterval.5s.Label" xml:space="preserve">
+    <value>5 שניות</value>
+  </data>
+  <data name="Presets.TimeRange.12h.Label" xml:space="preserve">
+    <value>12 שעות אחרונות</value>
+  </data>
+  <data name="Presets.TimeRange.15m.Label" xml:space="preserve">
+    <value>15 דקות אחרונות</value>
+  </data>
+  <data name="Presets.TimeRange.1d.Label" xml:space="preserve">
+    <value>24 שעות אחרונות</value>
+  </data>
+  <data name="Presets.TimeRange.1h.Label" xml:space="preserve">
+    <value>שעה אחרונה</value>
+  </data>
+  <data name="Presets.TimeRange.1m.Label" xml:space="preserve">
+    <value>דקה אחרונה</value>
+  </data>
+  <data name="Presets.TimeRange.30d.Label" xml:space="preserve">
+    <value>30 ימים אחרונים</value>
+  </data>
+  <data name="Presets.TimeRange.30m.Label" xml:space="preserve">
+    <value>30 דקות אחרונות</value>
+  </data>
+  <data name="Presets.TimeRange.3h.Label" xml:space="preserve">
+    <value>3 שעות אחרונות</value>
+  </data>
+  <data name="Presets.TimeRange.5m.Label" xml:space="preserve">
+    <value>5 דקות אחרונות</value>
+  </data>
+  <data name="Presets.TimeRange.6h.Label" xml:space="preserve">
+    <value>6 שעות אחרונות</value>
+  </data>
+  <data name="Presets.TimeRange.7d.Label" xml:space="preserve">
+    <value>7 ימים אחרונים</value>
+  </data>
+  <data name="Presets.TimeRange.90d.Label" xml:space="preserve">
+    <value>90 ימים אחרונים</value>
+  </data>
+  <data name="Presets.TimeRange.Group.Days" xml:space="preserve">
+    <value>ימים</value>
+  </data>
+  <data name="Presets.TimeRange.Group.Hours" xml:space="preserve">
+    <value>שעות</value>
+  </data>
+  <data name="Presets.TimeRange.Group.Minutes" xml:space="preserve">
+    <value>דקות</value>
+  </data>
+  <data name="Reconnect.Failed" xml:space="preserve">
+    <value>החיבור מחדש נכשל.</value>
+  </data>
+  <data name="Reconnect.FailedReload" xml:space="preserve">
+    <value>נסה שוב או רענן את הדף.</value>
+  </data>
+  <data name="Reconnect.Rejoining" xml:space="preserve">
+    <value>מתחבר מחדש לשרת...</value>
+  </data>
+  <data name="Reconnect.Resume" xml:space="preserve">
+    <value>המשך</value>
+  </data>
+  <data name="Reconnect.ResumeFailed" xml:space="preserve">
+    <value>המשך ההפעלה נכשל.</value>
+  </data>
+  <data name="Reconnect.ResumeFailedReload" xml:space="preserve">
+    <value>רענן את הדף.</value>
+  </data>
+  <data name="Reconnect.Retry" xml:space="preserve">
+    <value>נסה שוב</value>
+  </data>
+  <data name="Reconnect.RetryInSeconds" xml:space="preserve">
+    <value>החיבור מחדש נכשל... ניסיון נוסף בעוד {0} שניות.</value>
+  </data>
+  <data name="Reconnect.SessionPaused" xml:space="preserve">
+    <value>ההפעלה הושהתה על ידי השרת.</value>
+  </data>
+  <data name="Settings.Appearance.DarkMode" xml:space="preserve">
+    <value>תצוגה כהה</value>
+  </data>
+  <data name="Settings.Appearance.LightMode" xml:space="preserve">
+    <value>תצוגה בהירה</value>
+  </data>
+  <data name="Settings.Appearance.Description" xml:space="preserve">
+    <value>בחר בין מצב בהיר לכהה.</value>
+  </data>
+  <data name="Settings.Appearance.Title" xml:space="preserve">
+    <value>מראה</value>
+  </data>
+  <data name="Settings.DefaultAxisScale.Description" xml:space="preserve">
+    <value>בחר כיצד צירי Y בתרשימים מסתמכים על ערכים. לוגריתמי מדגיש ערכים קטנים.</value>
+  </data>
+  <data name="Settings.DefaultAxisScale.Title" xml:space="preserve">
+    <value>סקלת ציר ברירת מחדל</value>
+  </data>
+  <data name="Settings.DefaultPollingInterval.Description" xml:space="preserve">
+    <value>באיזו תדירות דפי הניטור מרעננים נתונים.</value>
+  </data>
+  <data name="Settings.DefaultPollingInterval.Title" xml:space="preserve">
+    <value>מרווח ריענון ברירת מחדל</value>
+  </data>
+  <data name="Settings.DefaultTimeRange.Description" xml:space="preserve">
+    <value>משמש בתרשימים כאשר לא נבחר טווח ספציפי.</value>
+  </data>
+  <data name="Settings.DefaultTimeRange.Title" xml:space="preserve">
+    <value>טווח זמן ברירת מחדל</value>
+  </data>
+  <data name="Settings.Language.Description" xml:space="preserve">
+    <value>בחר את שפת התצוגה המועדפת עליך.</value>
+  </data>
+  <data name="Settings.Language.Title" xml:space="preserve">
+    <value>שפה</value>
+  </data>
+  <data name="Settings.Subtitle" xml:space="preserve">
+    <value>התאם אישית את חוויית לוח הבקרה.</value>
+  </data>
+  <data name="Settings.Title" xml:space="preserve">
+    <value>הגדרות</value>
+  </data>
+  <data name="Terms.Cap.AccessCap" xml:space="preserve">
+    <value>תקרת גישה</value>
+  </data>
+  <data name="Terms.Cap.RateLimitCap" xml:space="preserve">
+    <value>תקרת הגבלת קצב</value>
+  </data>
+  <data name="Terms.Denied.Blocked" xml:space="preserve">
+    <value>חסום</value>
+  </data>
+  <data name="Terms.Denied.OutOfSlots" xml:space="preserve">
+    <value>אין משבצות פנויות</value>
+  </data>
+  <data name="Terms.Denied.Throttled" xml:space="preserve">
+    <value>מוגבל בקצב</value>
+  </data>
+  <data name="Terms.Denied.Tooltip" xml:space="preserve">
+    <value>לא מאומת: {0}
+חסום: {1}
+{2}: {3}</value>
+  </data>
+  <data name="Terms.Denied.Unauthenticated" xml:space="preserve">
+    <value>לא מאומת</value>
+  </data>
+  <data name="Terms.Entity.MaxSlots" xml:space="preserve">
+    <value>מקסימום משבצות</value>
+  </data>
+  <data name="Terms.Entity.Quotas" xml:space="preserve">
+    <value>מכסות</value>
+  </data>
+  <data name="Terms.Entity.RateLimits" xml:space="preserve">
+    <value>הגבלות קצב</value>
+  </data>
+  <data name="Terms.State.Available" xml:space="preserve">
+    <value>זמין</value>
+  </data>
+  <data name="Units.RequestsPerMinute" xml:space="preserve">
+    <value>{0} בקשות/דקה</value>
+  </data>
+  <data name="Units.Duration.HoursCompact" xml:space="preserve">
+    <value>{0} ש׳</value>
+  </data>
+  <data name="Units.Duration.MinutesCompact" xml:space="preserve">
+    <value>{0} דק׳</value>
+  </data>
+  <data name="Units.Duration.SecondsCompact" xml:space="preserve">
+    <value>{0} שנ׳</value>
+  </data>
+  <data name="Terms.State.NearLimit" xml:space="preserve">
+    <value>קרוב לתקרה</value>
+  </data>
+</root>
