@@ -1,37 +1,37 @@
 <div class="cm-editor__card">
     <div class="cm-editor__nested-header">
-        <div class="cm-editor__section-title" style="margin-bottom: 0; border-bottom: none; padding-bottom: 0;">Global Rate Limit</div>
+        <div class="cm-editor__section-title" style="margin-bottom: 0; border-bottom: none; padding-bottom: 0;">@L["Pages.Clients.GlobalRateLimit.Title"]</div>
         @if (HasRateLimit)
         {
-            <RadzenButton Text="Remove" Icon="delete" Size="ButtonSize.Small" Variant="Variant.Text"
+            <RadzenButton Text="@L["Common.Remove"]" Icon="delete" Size="ButtonSize.Small" Variant="Variant.Text"
                 ButtonStyle="ButtonStyle.Danger" Click="@Remove" />
         }
         else
         {
-            <RadzenButton Text="Add" Icon="add" Size="ButtonSize.Small" Variant="Variant.Outlined"
+            <RadzenButton Text="@L["Common.Add"]" Icon="add" Size="ButtonSize.Small" Variant="Variant.Outlined"
                 Click="@Add" />
         }
     </div>
     @if (HasRateLimit)
     {
         <div class="cm-editor__field">
-            <label>Strategy</label>
+            <label>@L["Pages.Clients.GlobalRateLimit.Strategy"]</label>
             <RadzenDropDown TValue="RateLimitStrategy" @bind-Value="RateLimit.Strategy"
-                Data="@(Enum.GetValues<RateLimitStrategy>())" Style="width: 100%;"
+                Data="@_strategyOptions" TextProperty="Label" ValueProperty="Strategy" Style="width: 100%;"
                 Change="@(_ => StateHasChanged())" />
         </div>
         <div class="cm-editor__field">
-            <label>Max Requests</label>
+            <label>@L["Pages.Clients.GlobalRateLimit.MaxRequests"]</label>
             <RadzenNumeric TValue="int" @bind-Value="RateLimit.MaxRequests" Style="width: 100%;" />
         </div>
         <div class="cm-editor__field">
-            <label>Window</label>
+            <label>@L["Pages.Clients.GlobalRateLimit.Window"]</label>
             <DurationInput Value="WindowSeconds" ValueChanged="WindowSecondsChanged" />
         </div>
         @if (RateLimit.Strategy == RateLimitStrategy.TokenBucket)
         {
             <div class="cm-editor__field">
-                <label>Tokens Per Refill</label>
+                <label>@L["Pages.Clients.GlobalRateLimit.TokensPerRefill"]</label>
                 <RadzenNumeric TValue="int?" @bind-Value="RateLimit.TokensPerRefill" Style="width: 100%;" />
             </div>
         }
@@ -44,6 +44,13 @@
     [Parameter, EditorRequired] public ClientRateLimitEntryModel RateLimit { get; set; } = null!;
     [Parameter] public double WindowSeconds { get; set; } = 60;
     [Parameter] public EventCallback<double> WindowSecondsChanged { get; set; }
+
+    private IReadOnlyList<RateLimitStrategyOption> _strategyOptions = [];
+
+    protected override void OnInitialized()
+    {
+        _strategyOptions = RateLimitStrategyLabels.GetOptions(L);
+    }
 
     private async Task Add()
     {

@@ -1,28 +1,28 @@
 <div class="cm-editor__card">
     <div class="cm-editor__nested-header">
-        <div class="cm-editor__section-title" style="margin-bottom: 0; border-bottom: none; padding-bottom: 0;">Resource Pools (@Entries.Count)</div>
-        <RadzenButton Text="Add Pool" Icon="add" Size="ButtonSize.Small" Variant="Variant.Outlined"
+        <div class="cm-editor__section-title" style="margin-bottom: 0; border-bottom: none; padding-bottom: 0;">@string.Format(L["Pages.Clients.ResourcePools.Title"], Entries.Count)</div>
+        <RadzenButton Text="@L["Pages.Clients.ResourcePools.AddPool"]" Icon="add" Size="ButtonSize.Small" Variant="Variant.Outlined"
             Click="@AddEntry" />
     </div>
     @if (Entries.Count == 0)
     {
-        <p style="color: var(--color-text-muted);">No resource pool entries configured.</p>
+        <p style="color: var(--color-text-muted);">@L["Pages.Clients.ResourcePools.Empty"]</p>
     }
     @foreach (var entry in Entries)
     {
         <div class="cm-editor__nested-item">
             <div class="cm-editor__nested-header">
-                <strong style="font-size: var(--font-size-sm);">@(string.IsNullOrEmpty(entry.PoolId) ? "New Pool" : entry.PoolId)</strong>
+                <strong style="font-size: var(--font-size-sm);">@(string.IsNullOrEmpty(entry.PoolId) ? L["Pages.Clients.ResourcePools.NewPool"] : entry.PoolId)</strong>
                 <RadzenButton Icon="delete" Size="ButtonSize.Small" Variant="Variant.Text"
                     ButtonStyle="ButtonStyle.Danger" Click="@(() => RemoveEntry(entry))" />
             </div>
             <div class="cm-editor__field">
-                <label>Pool ID</label>
+                <label>@L["Pages.Clients.ResourcePools.PoolId"]</label>
                 <EntityIdInput @bind-Value="entry.PoolId" Suggestions="PoolIds"
-                    Mode="EntityIdInputMode.Reference" EntityName="resource pool" />
+                    Mode="EntityIdInputMode.Reference" EntityName="@L["Dialog.EntityLabel.ResourcePool"]" />
             </div>
             <div class="cm-editor__field">
-                <label>Max Slots</label>
+                <label>@L["Pages.Clients.ResourcePools.MaxSlots"]</label>
                 <RadzenNumeric TValue="uint" @bind-Value="entry.MaxSlots" Style="width: 100%;" />
             </div>
         </div>

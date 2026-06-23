@@ -12,6 +12,7 @@ public partial class ClientEditor : ComponentBase
     [Inject] private ServiceApiService ServiceApi { get; set; } = null!;
     [Inject] private ResourcePoolApiService PoolApi { get; set; } = null!;
     [Inject] private NavigationManager Nav { get; set; } = null!;
+    [Inject] private ApiErrorLocalizer Errors { get; set; } = null!;
 
     private bool _isNew => string.IsNullOrEmpty(Id) || Id == "new";
     private bool _loading = true;
@@ -42,7 +43,7 @@ public partial class ClientEditor : ComponentBase
         }
         catch (HttpRequestException ex)
         {
-            _error = $"Unable to connect to the API: {ex.Message}";
+            _error = Errors.Format("Api.UnableToConnect", ex);
         }
         finally
         {
@@ -69,7 +70,7 @@ public partial class ClientEditor : ComponentBase
         }
         catch (HttpRequestException ex)
         {
-            _error = $"Save failed: {ex.Message}";
+            _error = Errors.Format("Pages.Clients.SaveFailed", ex);
         }
     }
 

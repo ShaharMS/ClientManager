@@ -1,54 +1,54 @@
 <div class="cm-editor__card">
     <div class="cm-editor__nested-header">
-        <div class="cm-editor__section-title" style="margin-bottom: 0; border-bottom: none; padding-bottom: 0;">Service Access (@Entries.Count)</div>
-        <RadzenButton Text="Add Service" Icon="add" Size="ButtonSize.Small" Variant="Variant.Outlined"
+        <div class="cm-editor__section-title" style="margin-bottom: 0; border-bottom: none; padding-bottom: 0;">@string.Format(L["Pages.Clients.ServiceAccess.Title"], Entries.Count)</div>
+        <RadzenButton Text="@L["Pages.Clients.ServiceAccess.AddService"]" Icon="add" Size="ButtonSize.Small" Variant="Variant.Outlined"
             Click="@AddEntry" />
     </div>
     @if (Entries.Count == 0)
     {
-        <p style="color: var(--color-text-muted);">No service access entries configured.</p>
+        <p style="color: var(--color-text-muted);">@L["Pages.Clients.ServiceAccess.Empty"]</p>
     }
     @foreach (var entry in Entries)
     {
         <div class="cm-editor__nested-item">
             <div class="cm-editor__nested-header">
-                <strong style="font-size: var(--font-size-sm);">@(string.IsNullOrEmpty(entry.ServiceId) ? "New Service" : entry.ServiceId)</strong>
+                <strong style="font-size: var(--font-size-sm);">@(string.IsNullOrEmpty(entry.ServiceId) ? L["Pages.Clients.ServiceAccess.NewService"] : entry.ServiceId)</strong>
                 <RadzenButton Icon="delete" Size="ButtonSize.Small" Variant="Variant.Text"
                     ButtonStyle="ButtonStyle.Danger" Click="@(() => RemoveEntry(entry))" />
             </div>
             <div class="cm-editor__field">
-                <label>Service ID</label>
+                <label>@L["Pages.Clients.ServiceAccess.ServiceId"]</label>
                 <EntityIdInput @bind-Value="entry.ServiceId" Suggestions="ServiceIds"
-                    Mode="EntityIdInputMode.Reference" EntityName="service" />
+                    Mode="EntityIdInputMode.Reference" EntityName="@L["Dialog.EntityLabel.Service"]" />
             </div>
             <div class="cm-editor__field">
-                <label>Allowed</label>
+                <label>@L["Pages.Clients.ServiceAccess.Allowed"]</label>
                 <RadzenSwitch @bind-Value="entry.IsAllowed" />
             </div>
             <div class="cm-editor__field">
-                <label>Has Rate Limit</label>
+                <label>@L["Pages.Clients.ServiceAccess.HasRateLimit"]</label>
                 <RadzenSwitch @bind-Value="entry.HasRateLimit" />
             </div>
             @if (entry.HasRateLimit)
             {
                 <div class="cm-editor__field">
-                    <label>Strategy</label>
+                    <label>@L["Columns.Strategy"]</label>
                     <RadzenDropDown TValue="RateLimitStrategy" @bind-Value="entry.RateLimitStrategy"
-                        Data="@(Enum.GetValues<RateLimitStrategy>())" Style="width: 100%;"
+                        Data="@_strategyOptions" TextProperty="Label" ValueProperty="Strategy" Style="width: 100%;"
                         Change="@(_ => StateHasChanged())" />
                 </div>
                 <div class="cm-editor__field">
-                    <label>Max Requests</label>
+                    <label>@L["Columns.MaxRequests"]</label>
                     <RadzenNumeric TValue="int" @bind-Value="entry.RateLimitMaxRequests" Style="width: 100%;" />
                 </div>
                 <div class="cm-editor__field">
-                    <label>Window</label>
+                    <label>@L["Columns.Window"]</label>
                     <DurationInput @bind-Value="entry.RateLimitWindowSeconds" />
                 </div>
                 @if (entry.RateLimitStrategy == RateLimitStrategy.TokenBucket)
                 {
                     <div class="cm-editor__field">
-                        <label>Tokens Per Refill</label>
+                        <label>@L["Pages.Clients.GlobalRateLimit.TokensPerRefill"]</label>
                         <RadzenNumeric TValue="int?" @bind-Value="entry.RateLimitTokensPerRefill" Style="width: 100%;" />
                     </div>
                 }
@@ -60,6 +60,13 @@
 @code {
     [Parameter, EditorRequired] public List<ServiceEntryModel> Entries { get; set; } = null!;
     [Parameter] public List<string> ServiceIds { get; set; } = [];
+
+    private IReadOnlyList<RateLimitStrategyOption> _strategyOptions = [];
+
+    protected override void OnInitialized()
+    {
+        _strategyOptions = RateLimitStrategyLabels.GetOptions(L);
+    }
 
     private void AddEntry() => Entries.Insert(0, new ServiceEntryModel());
     private void RemoveEntry(ServiceEntryModel entry) => Entries.Remove(entry);

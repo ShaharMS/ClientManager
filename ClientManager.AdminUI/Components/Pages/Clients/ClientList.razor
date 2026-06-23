@@ -2,12 +2,13 @@
 @inject ClientApiService ClientApi
 @inject NavigationManager Nav
 @inject DialogService Dialog
+@inject ApiErrorLocalizer errors
 @inject IJSRuntime JS
 @implements IAsyncDisposable
 
 <div class="cm-page-header">
-    <h1>Clients</h1>
-    <p>Manage client configurations and access control.</p>
+    <h1>@L["Pages.Clients.Title"]</h1>
+    <p>@L["Pages.Clients.Subtitle"]</p>
 </div>
 
 @if (_actionError is not null)
@@ -32,73 +33,73 @@ else
                     TextProperty="Label" ValueProperty="Value"
                     Value="@_enabledFilter"
                     ValueChanged="@((bool? v) => OnEnabledFilterChanged(v))"
-                    Placeholder="All statuses" AllowClear="true" />
+                    Placeholder="@L["Filter.AllStatuses"]" AllowClear="true" />
             </div>
             <div class="cm-list-page__header-actions">
-                <RadzenButton Text="Create Client" Icon="add"
+                <RadzenButton Text="@L["Pages.Clients.CreateButton"]" Icon="add"
                     class="cm-list-page__create-btn"
-                    title="Create client"
+                    title="@L["Pages.Clients.CreateTooltip"]"
                     Click="@(() => Nav.NavigateTo("/clients/new"))"
                     ButtonStyle="ButtonStyle.Primary" />
             </div>
             <div class="cm-list-page__search-field">
-                <RadzenTextBox Placeholder="Search clients..."
+                <RadzenTextBox Placeholder="@L["Pages.Clients.Search"]"
                     Value="@_search"
                     ValueChanged="@((string v) => { _search = v; StateHasChanged(); })"
                     @oninput="@(args => { _search = args.Value?.ToString(); StateHasChanged(); })" />
             </div>
         </div>
 
-        <RadzenDataGrid Data="@_filteredClients" TItem="ClientConfiguration"
+        <RadzenDataGrid Data="@_filteredClients" TItem="ClientConfiguration" EmptyText="@L["DataGrid.NoRecords"]"
             AllowSorting="true" AllowPaging="true" PageSize="@_pageSize"
             PagerHorizontalAlign="HorizontalAlign.Center">
             <Columns>
-                <RadzenDataGridColumn TItem="ClientConfiguration" Property="Id" Title="ID"
+                <RadzenDataGridColumn TItem="ClientConfiguration" Property="Id" Title="@L["Columns.Id"]"
                     CssClass="cm-col-id" HeaderCssClass="cm-col-id" />
-                <RadzenDataGridColumn TItem="ClientConfiguration" Property="Name" Title="Name"
+                <RadzenDataGridColumn TItem="ClientConfiguration" Property="Name" Title="@L["Columns.Name"]"
                     CssClass="cm-col-name" HeaderCssClass="cm-col-name" />
-                <RadzenDataGridColumn TItem="ClientConfiguration" Title="Status" Sortable="false"
+                <RadzenDataGridColumn TItem="ClientConfiguration" Title="@L["Columns.Status"]" Sortable="false"
                     CssClass="cm-col-status" HeaderCssClass="cm-col-status">
                     <Template Context="client">
                         @if (client.IsEnabled)
                         {
-                            <span class="cm-badge cm-badge--success">Enabled</span>
+                            <span class="cm-badge cm-badge--success">@L["Common.Enabled"]</span>
                         }
                         else
                         {
-                            <span class="cm-badge cm-badge--muted">Disabled</span>
+                            <span class="cm-badge cm-badge--muted">@L["Common.Disabled"]</span>
                         }
                     </Template>
                 </RadzenDataGridColumn>
-                <RadzenDataGridColumn TItem="ClientConfiguration" Title="Services"
+                <RadzenDataGridColumn TItem="ClientConfiguration" Title="@L["Columns.Services"]"
                     CssClass="cm-col-scalar-count" HeaderCssClass="cm-col-scalar-count">
                     <Template Context="client">@client.Services.Count</Template>
                 </RadzenDataGridColumn>
-                <RadzenDataGridColumn TItem="ClientConfiguration" Title="Pools"
+                <RadzenDataGridColumn TItem="ClientConfiguration" Title="@L["Columns.Pools"]"
                     CssClass="cm-col-scalar-count" HeaderCssClass="cm-col-scalar-count">
                     <Template Context="client">@client.ResourcePools.Count</Template>
                 </RadzenDataGridColumn>
-                <RadzenDataGridColumn TItem="ClientConfiguration" Title="Actions" Sortable="false"
+                <RadzenDataGridColumn TItem="ClientConfiguration" Title="@L["Columns.Actions"]" Sortable="false"
                     CssClass="cm-col-actions" HeaderCssClass="cm-col-actions">
                     <Template Context="client">
                         <div class="cm-list-page__actions-cell">
                         <RadzenButton Icon="edit" Size="ButtonSize.Small" Variant="Variant.Text"
-                            title="Edit client"
+                            title="@L["Pages.Clients.EditTooltip"]"
                             Click="@(() => Nav.NavigateTo($"/clients/{client.Id}"))" />
                         @if (client.IsEnabled)
                         {
                             <RadzenButton Icon="block" Size="ButtonSize.Small" Variant="Variant.Text"
-                                ButtonStyle="ButtonStyle.Warning" title="Disable client"
+                                ButtonStyle="ButtonStyle.Warning" title="@L["Pages.Clients.DisableTooltip"]"
                                 Click="@(async () => await ToggleEnabledAsync(client))" />
                         }
                         else
                         {
                             <RadzenButton Icon="lock_open" Size="ButtonSize.Small" Variant="Variant.Text"
-                                ButtonStyle="ButtonStyle.Success" title="Enable client"
+                                ButtonStyle="ButtonStyle.Success" title="@L["Pages.Clients.EnableTooltip"]"
                                 Click="@(async () => await ToggleEnabledAsync(client))" />
                         }
                         <RadzenButton Icon="delete" Size="ButtonSize.Small" Variant="Variant.Text"
-                            ButtonStyle="ButtonStyle.Danger" title="Delete client"
+                            ButtonStyle="ButtonStyle.Danger" title="@L["Pages.Clients.DeleteTooltip"]"
                             Click="@(async () => await DeleteAsync(client.Id))" />
                         </div>
                     </Template>
@@ -118,12 +119,7 @@ else
     private int _pageSize = 10;
     private IJSObjectReference? _tableJs;
     private DotNetObjectReference<ClientList>? _selfRef;
-
-    private static readonly List<object> _enabledOptions =
-    [
-        new { Label = "Enabled", Value = (bool?)true },
-        new { Label = "Disabled", Value = (bool?)false }
-    ];
+    private List<object> _enabledOptions = [];
 
     private IEnumerable<ClientConfiguration> _filteredClients =>
         string.IsNullOrWhiteSpace(_search)
@@ -134,6 +130,11 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        _enabledOptions =
+        [
+            new { Label = L["Common.Enabled"], Value = (bool?)true },
+            new { Label = L["Common.Disabled"], Value = (bool?)false }
+        ];
         await LoadAsync();
     }
 
@@ -186,7 +187,7 @@ else
         }
         catch (HttpRequestException ex)
         {
-            _error = $"Unable to connect to the API: {ex.Message}";
+            _error = errors.Format("Api.UnableToConnect", ex);
         }
         finally
         {
@@ -204,7 +205,9 @@ else
     private Task ToggleEnabledAsync(ClientConfiguration client) =>
         ListToggleEnabledSupport.ExecuteAsync(
             Dialog,
-            "client",
+            L,
+            errors,
+            L["Dialog.EntityLabel.Client"],
             client.Id,
             client.IsEnabled,
             async () =>
@@ -219,7 +222,9 @@ else
     private Task DeleteAsync(string id) =>
         ListDeleteSupport.ExecuteAsync(
             Dialog,
-            "client",
+            L,
+            errors,
+            L["Dialog.EntityLabel.Client"],
             id,
             () => ClientApi.DeleteAsync(id),
             LoadAsync,

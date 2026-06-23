@@ -2,47 +2,23 @@
 @page "/clients/{Id}"
 @using ClientManager.AdminUI.Models.Client
 
-<PageTitle>ClientManager · @(_isNew ? "Create Client" : $"Edit Client: {Id}")</PageTitle>
+<EditorPageTemplate TModel="ClientFormModel"
+    Id="@Id" IsNew="@_isNew"
+    BackPath="clients" BackLinkText="@L["Pages.Clients.BackLink"]"
+    CreateTitle="@L["Pages.Clients.CreateTitle"]" CreateDescription="@L["Pages.Clients.CreateDescription"]"
+    EditTitle="@(_isNew ? null : string.Format(L["Pages.Clients.EditTitle"], Id))"
+    EditTitlePrefix="" EditDescription="@L["Pages.Clients.EditDescription"]"
+    FormName="clientForm" Model="@_model" Loading="@_loading" Error="@_error"
+    OnValidSubmit="SaveAsync">
+    <ClientBasicConfigCard Model="_model" IsNew="_isNew" ExistingClientIds="_existingClientIds" />
 
-<div style="margin-bottom: var(--space-md);">
-    <RadzenLink Path="clients" Text="← Back to Clients" Style="font-size: var(--font-size-sm);" />
-</div>
+    <ClientGlobalRateLimitCard HasRateLimit="_hasGlobalRateLimit"
+        HasRateLimitChanged="OnGlobalRateLimitToggled"
+        RateLimit="_globalRateLimit"
+        WindowSeconds="_globalRateLimitWindowSeconds"
+        WindowSecondsChanged="v => _globalRateLimitWindowSeconds = v" />
 
-<div class="cm-page-header">
-    <h1>@(_isNew ? "Create Client" : $"Edit Client: {Id}")</h1>
-    <p>@(_isNew ? "Configure a new client." : "Update client configuration.")</p>
-</div>
+    <ClientServiceAccessCard Entries="_serviceEntries" ServiceIds="_serviceIds" />
 
-@if (_loading)
-{
-    <FormSkeleton />
-}
-else if (_error is not null)
-{
-    <div class="alert alert-danger">@_error</div>
-}
-else
-{
-    <div class="cm-editor">
-        <EditForm Model="_model" OnValidSubmit="SaveAsync" FormName="clientForm">
-            <DataAnnotationsValidator />
-
-            <ClientBasicConfigCard Model="_model" IsNew="_isNew" ExistingClientIds="_existingClientIds" />
-
-            <ClientGlobalRateLimitCard HasRateLimit="_hasGlobalRateLimit"
-                HasRateLimitChanged="OnGlobalRateLimitToggled"
-                RateLimit="_globalRateLimit"
-                WindowSeconds="_globalRateLimitWindowSeconds"
-                WindowSecondsChanged="v => _globalRateLimitWindowSeconds = v" />
-
-            <ClientServiceAccessCard Entries="_serviceEntries" ServiceIds="_serviceIds" />
-
-            <ClientResourcePoolsCard Entries="_poolEntries" PoolIds="_poolIds" />
-
-            <div class="cm-editor__actions">
-                <RadzenButton Text="Save" ButtonType="ButtonType.Submit" ButtonStyle="ButtonStyle.Primary" />
-                <RadzenButton Text="Cancel" Variant="Variant.Outlined" Click="@(() => Nav.NavigateTo("/clients"))" />
-            </div>
-        </EditForm>
-    </div>
-}
+    <ClientResourcePoolsCard Entries="_poolEntries" PoolIds="_poolIds" />
+</EditorPageTemplate>

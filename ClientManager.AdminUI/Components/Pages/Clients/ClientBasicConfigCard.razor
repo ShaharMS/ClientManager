@@ -1,24 +1,24 @@
 <div class="cm-editor__card">
-    <div class="cm-editor__section-title">Basic Configuration</div>
+    <div class="cm-editor__section-title">@L["Pages.Clients.BasicConfig.Title"]</div>
     <div class="cm-editor__field">
-        <label>Client ID</label>
+        <label>@L["Pages.Clients.BasicConfig.ClientId"]</label>
         <EntityIdInput @bind-Value="Model.Id" Suggestions="ExistingClientIds"
-            Mode="EntityIdInputMode.Unique" EntityName="client" Disabled="@(!IsNew)" />
+            Mode="EntityIdInputMode.Unique" EntityName="@L["Dialog.EntityLabel.Client"]" Disabled="@(!IsNew)" />
     </div>
     <div class="cm-editor__field">
-        <label>Name</label>
+        <label>@L["Pages.Clients.BasicConfig.Name"]</label>
         <RadzenTextBox @bind-Value="Model.Name" Style="width: 100%;" />
     </div>
     <div class="cm-editor__field">
-        <label>Enabled</label>
+        <label>@L["Pages.Clients.BasicConfig.Enabled"]</label>
         <RadzenSwitch @bind-Value="Model.IsEnabled" />
     </div>
     <div class="cm-editor__field">
-        <label>Contributes to Global Limits</label>
+        <label>@L["Pages.Clients.BasicConfig.ContributesToGlobalLimits"]</label>
         <RadzenSwitch @bind-Value="Model.ContributesToGlobalLimits" />
     </div>
     <div class="cm-editor__field">
-        <label>Exempt from Global Limits</label>
+        <label>@L["Pages.Clients.BasicConfig.ExemptFromGlobalLimits"]</label>
         <RadzenSwitch @bind-Value="Model.ExemptFromGlobalLimits" />
     </div>
 </div>
