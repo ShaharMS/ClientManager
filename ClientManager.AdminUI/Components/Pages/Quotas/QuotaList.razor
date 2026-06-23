@@ -49,31 +49,26 @@ else
             AllowSorting="true" AllowPaging="true" PageSize="@_pageSize"
             PagerHorizontalAlign="HorizontalAlign.Center">
             <Columns>
-                <RadzenDataGridColumn TItem="GlobalRateLimit" Title="Resource Pool" MinWidth="140px"
-                    Property="TargetId">
+                <RadzenDataGridColumn TItem="GlobalRateLimit" Title="Resource Pool"
+                    Property="TargetId" CssClass="cm-col-label" HeaderCssClass="cm-col-label">
                     <Template Context="limit">
                         @GetPoolName(limit.TargetId)
                     </Template>
                 </RadzenDataGridColumn>
                 <RadzenDataGridColumn TItem="GlobalRateLimit" Property="Strategy" Title="Strategy"
-                    Width="215px" MinWidth="215px" TextAlign="TextAlign.Center"
-                    CssClass="cm-list-page__col-center cm-list-page__col-status">
+                    CssClass="cm-col-strategy" HeaderCssClass="cm-col-strategy">
                     <Template Context="limit">
                         <span class="@RateLimitStrategyBadge.GetCssClass(limit.Strategy)">@limit.Strategy</span>
                     </Template>
                 </RadzenDataGridColumn>
                 <RadzenDataGridColumn TItem="GlobalRateLimit" Property="MaxRequests" Title="Max Requests"
-                    Width="140px" MinWidth="140px" TextAlign="TextAlign.Center"
-                    HeaderCssClass="cm-list-page__col-center cm-list-page__col-header"
-                    CssClass="cm-list-page__col-center cm-list-page__col-status" />
-                <RadzenDataGridColumn TItem="GlobalRateLimit" Title="Window" Width="88px" MinWidth="88px"
-                    TextAlign="TextAlign.Center" HeaderCssClass="cm-list-page__col-center cm-list-page__col-header"
-                    CssClass="cm-list-page__col-center cm-list-page__col-status">
+                    CssClass="cm-col-scalar-wide" HeaderCssClass="cm-col-scalar-wide" />
+                <RadzenDataGridColumn TItem="GlobalRateLimit" Title="Window"
+                    CssClass="cm-col-scalar-narrow" HeaderCssClass="cm-col-scalar-narrow">
                     <Template Context="limit">@FormatWindow(limit.Window)</Template>
                 </RadzenDataGridColumn>
-                <RadzenDataGridColumn TItem="GlobalRateLimit" Title="Actions" Width="120px" MinWidth="120px"
-                    Sortable="false" TextAlign="TextAlign.Center"
-                    CssClass="cm-list-page__col-center cm-list-page__col-actions">
+                <RadzenDataGridColumn TItem="GlobalRateLimit" Title="Actions" Sortable="false"
+                    CssClass="cm-col-actions" HeaderCssClass="cm-col-actions">
                     <Template Context="limit">
                         <div class="cm-list-page__actions-cell">
                             <RadzenButton Icon="edit" Size="ButtonSize.Small" Variant="Variant.Text"

@@ -53,10 +53,12 @@ else
             AllowSorting="true" AllowPaging="true" PageSize="@_pageSize"
             PagerHorizontalAlign="HorizontalAlign.Center">
             <Columns>
-                <RadzenDataGridColumn TItem="Service" Property="Id" Title="ID" Width="130px" />
-                <RadzenDataGridColumn TItem="Service" Property="Name" Title="Name" MinWidth="220px" />
-                <RadzenDataGridColumn TItem="Service" Title="Status" Width="130px" TextAlign="TextAlign.Center"
-                    CssClass="cm-list-page__col-center cm-list-page__col-status">
+                <RadzenDataGridColumn TItem="Service" Property="Id" Title="ID"
+                    CssClass="cm-col-id" HeaderCssClass="cm-col-id" />
+                <RadzenDataGridColumn TItem="Service" Property="Name" Title="Name"
+                    CssClass="cm-col-name" HeaderCssClass="cm-col-name" />
+                <RadzenDataGridColumn TItem="Service" Title="Status" Sortable="false"
+                    CssClass="cm-col-status" HeaderCssClass="cm-col-status">
                     <Template Context="svc">
                         @if (svc.IsEnabled)
                         {
@@ -68,8 +70,8 @@ else
                         }
                     </Template>
                 </RadzenDataGridColumn>
-                <RadzenDataGridColumn TItem="Service" Title="Actions" Width="120px" Sortable="false"
-                    TextAlign="TextAlign.Center" CssClass="cm-list-page__col-center cm-list-page__col-actions">
+                <RadzenDataGridColumn TItem="Service" Title="Actions" Sortable="false"
+                    CssClass="cm-col-actions" HeaderCssClass="cm-col-actions">
                     <Template Context="svc">
                         <div class="cm-list-page__actions-cell">
                         <RadzenButton Icon="edit" Size="ButtonSize.Small" Variant="Variant.Text"

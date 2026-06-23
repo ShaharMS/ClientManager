@@ -10,21 +10,24 @@
         AllowSorting="true" AllowPaging="true" PageSize="15"
         PagerHorizontalAlign="HorizontalAlign.Center">
         <Columns>
-            <RadzenDataGridColumn TItem="AllocationClientRow" Property="ClientName" Title="Client" />
+            <RadzenDataGridColumn TItem="AllocationClientRow" Property="ClientName" Title="Client"
+                CssClass="@(ShowPoolColumn ? "cm-col-id" : "cm-col-label")"
+                HeaderCssClass="@(ShowPoolColumn ? "cm-col-id" : "cm-col-label")" />
             @if (ShowPoolColumn)
             {
-                <RadzenDataGridColumn TItem="AllocationClientRow" Property="PoolName" Title="Pool" Width="150px" />
+                <RadzenDataGridColumn TItem="AllocationClientRow" Property="PoolName" Title="Pool"
+                    CssClass="cm-col-name" HeaderCssClass="cm-col-name" />
             }
-            <RadzenDataGridColumn TItem="AllocationClientRow" Title="@(IsAccessMetric ? "Requests" : "Active")" Width="90px"
-                TextAlign="TextAlign.Center" CssClass="cm-list-page__col-center">
+            <RadzenDataGridColumn TItem="AllocationClientRow" Title="@(IsAccessMetric ? "Requests" : "Active")"
+                CssClass="cm-col-scalar" HeaderCssClass="cm-col-scalar">
                 <Template Context="row">@row.CurrentValue.ToString("N0")</Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn TItem="AllocationClientRow" Title="@(IsAccessMetric ? "Cap" : "Max")" Width="90px"
-                TextAlign="TextAlign.Center" CssClass="cm-list-page__col-center">
+            <RadzenDataGridColumn TItem="AllocationClientRow" Title="@(IsAccessMetric ? "Cap" : "Max")"
+                CssClass="cm-col-scalar" HeaderCssClass="cm-col-scalar">
                 <Template Context="row">@(IsAccessMetric ? UtilizationHelper.FormatCap(row.CapValue) : row.CapValue.ToString("N0"))</Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn TItem="AllocationClientRow" Title="Denied" Width="110px"
-                TextAlign="TextAlign.Center" CssClass="cm-list-page__col-center">
+            <RadzenDataGridColumn TItem="AllocationClientRow" Title="Denied"
+                CssClass="cm-col-scalar-wide" HeaderCssClass="cm-col-scalar-wide">
                 <Template Context="row">
                     <DeniedBreakdownCell Total="@row.DeniedLast5Min"
                         Unauthenticated="@row.DeniedUnauthenticatedCount"
@@ -35,8 +38,8 @@
                         ShowBreakdown="@ShowDeniedBreakdown" />
                 </Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn TItem="AllocationClientRow" Title="Utilization" Width="180px"
-                TextAlign="TextAlign.Center" CssClass="cm-list-page__col-center">
+            <RadzenDataGridColumn TItem="AllocationClientRow" Title="Utilization"
+                CssClass="cm-col-bar" HeaderCssClass="cm-col-bar">
                 <Template Context="row">
                     @if (row.CapValue > 0 || !IsAccessMetric)
                     {
@@ -49,8 +52,8 @@
                     }
                 </Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn TItem="AllocationClientRow" Title="Status" Width="120px" Sortable="false"
-                TextAlign="TextAlign.Center" CssClass="cm-list-page__col-center cm-list-page__col-status">
+            <RadzenDataGridColumn TItem="AllocationClientRow" Title="Status" Sortable="false"
+                CssClass="cm-col-status" HeaderCssClass="cm-col-status">
                 <Template Context="row">
                     <div class="cm-list-page__actions-cell">
                         <AllocationClientStatusBadge Row="row" IsAccessMetric="IsAccessMetric" />

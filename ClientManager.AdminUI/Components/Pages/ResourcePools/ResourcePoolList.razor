@@ -53,16 +53,18 @@ else
             AllowSorting="true" AllowPaging="true" PageSize="@_pageSize"
             PagerHorizontalAlign="HorizontalAlign.Center">
             <Columns>
-                <RadzenDataGridColumn TItem="ResourcePool" Property="Id" Title="ID" Width="200px" />
-                <RadzenDataGridColumn TItem="ResourcePool" Property="Name" Title="Name" />
-                <RadzenDataGridColumn TItem="ResourcePool" Property="MaxSlots" Title="Max Slots" Width="120px"
-                    TextAlign="TextAlign.Center" CssClass="cm-list-page__col-center" />
-                <RadzenDataGridColumn TItem="ResourcePool" Title="Allocation TTL" Width="150px"
-                    TextAlign="TextAlign.Center" CssClass="cm-list-page__col-center">
+                <RadzenDataGridColumn TItem="ResourcePool" Property="Id" Title="ID"
+                    CssClass="cm-col-id" HeaderCssClass="cm-col-id" />
+                <RadzenDataGridColumn TItem="ResourcePool" Property="Name" Title="Name"
+                    CssClass="cm-col-name" HeaderCssClass="cm-col-name" />
+                <RadzenDataGridColumn TItem="ResourcePool" Property="MaxSlots" Title="Max Slots"
+                    CssClass="cm-col-scalar" HeaderCssClass="cm-col-scalar" />
+                <RadzenDataGridColumn TItem="ResourcePool" Title="Allocation TTL"
+                    CssClass="cm-col-scalar-wide" HeaderCssClass="cm-col-scalar-wide">
                     <Template Context="pool">@FormatTtl(pool.AllocationTtl)</Template>
                 </RadzenDataGridColumn>
-                <RadzenDataGridColumn TItem="ResourcePool" Title="Status" Width="130px" TextAlign="TextAlign.Center"
-                    CssClass="cm-list-page__col-center cm-list-page__col-status">
+                <RadzenDataGridColumn TItem="ResourcePool" Title="Status" Sortable="false"
+                    CssClass="cm-col-status" HeaderCssClass="cm-col-status">
                     <Template Context="pool">
                         @if (pool.IsEnabled)
                         {
@@ -74,8 +76,8 @@ else
                         }
                     </Template>
                 </RadzenDataGridColumn>
-                <RadzenDataGridColumn TItem="ResourcePool" Title="Actions" Width="200px" Sortable="false"
-                    TextAlign="TextAlign.Center" CssClass="cm-list-page__col-center">
+                <RadzenDataGridColumn TItem="ResourcePool" Title="Actions" Sortable="false"
+                    CssClass="cm-col-actions-wide" HeaderCssClass="cm-col-actions-wide">
                     <Template Context="pool">
                         <div class="cm-list-page__actions-cell">
                         <RadzenButton Icon="edit" Size="ButtonSize.Small" Variant="Variant.Text"

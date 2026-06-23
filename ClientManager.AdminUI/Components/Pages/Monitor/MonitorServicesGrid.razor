@@ -9,13 +9,14 @@
         AllowSorting="true" AllowPaging="true" PageSize="15"
         PagerHorizontalAlign="HorizontalAlign.Center">
         <Columns>
-            <RadzenDataGridColumn TItem="ServiceSummaryRow" Property="Name" Title="Service" />
-            <RadzenDataGridColumn TItem="ServiceSummaryRow" Property="CurrentUsage" Title="Usage" Width="100px"
-                TextAlign="TextAlign.Center" CssClass="cm-list-page__col-center" />
-            <RadzenDataGridColumn TItem="ServiceSummaryRow" Property="Cap" Title="Cap" Width="100px"
-                TextAlign="TextAlign.Center" CssClass="cm-list-page__col-center" />
-            <RadzenDataGridColumn TItem="ServiceSummaryRow" Title="Denied" Width="110px"
-                TextAlign="TextAlign.Center" CssClass="cm-list-page__col-center">
+            <RadzenDataGridColumn TItem="ServiceSummaryRow" Property="Name" Title="Service"
+                CssClass="cm-col-label" HeaderCssClass="cm-col-label" />
+            <RadzenDataGridColumn TItem="ServiceSummaryRow" Property="CurrentUsage" Title="Usage"
+                CssClass="cm-col-scalar" HeaderCssClass="cm-col-scalar" />
+            <RadzenDataGridColumn TItem="ServiceSummaryRow" Property="Cap" Title="Cap"
+                CssClass="cm-col-scalar" HeaderCssClass="cm-col-scalar" />
+            <RadzenDataGridColumn TItem="ServiceSummaryRow" Title="Denied"
+                CssClass="cm-col-scalar-wide" HeaderCssClass="cm-col-scalar-wide">
                 <Template Context="row">
                     <DeniedBreakdownCell Total="@row.DeniedLast5Min"
                         Unauthenticated="@row.DeniedUnauthenticatedCount"
@@ -26,8 +27,8 @@
                         ShowBreakdown="@ShowDeniedBreakdown" />
                 </Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn TItem="ServiceSummaryRow" Title="Utilization" Width="200px"
-                TextAlign="TextAlign.Center" CssClass="cm-list-page__col-center">
+            <RadzenDataGridColumn TItem="ServiceSummaryRow" Title="Utilization"
+                CssClass="cm-col-bar" HeaderCssClass="cm-col-bar">
                 <Template Context="row">
                     @{
                         var pct = row.Cap > 0 ? (int)(row.CurrentUsage * 100.0 / row.Cap) : 0;
@@ -35,8 +36,8 @@
                     <UtilizationProgressBar Percent="@pct" />
                 </Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn TItem="ServiceSummaryRow" Title="Status" Width="110px" Sortable="false"
-                TextAlign="TextAlign.Center" CssClass="cm-list-page__col-center cm-list-page__col-status">
+            <RadzenDataGridColumn TItem="ServiceSummaryRow" Title="Status" Sortable="false"
+                CssClass="cm-col-status" HeaderCssClass="cm-col-status">
                 <Template Context="row">
                     <div class="cm-list-page__actions-cell">
                         @if (row.Cap > 0 && row.CurrentUsage >= row.Cap)
