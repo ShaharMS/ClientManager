@@ -1,19 +1,27 @@
 using ClientManager.AdminUI.Models;
-using ClientManager.AdminUI.Services;
-using ClientManager.AdminUI.Models;
 using ClientManager.AdminUI.Models.Allocations;
 using ClientManager.AdminUI.Models.Charts;
+using ClientManager.AdminUI.Resources;
+using ClientManager.AdminUI.Services;
 using ClientManager.AdminUI.Utils;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Responses;
+using Microsoft.Extensions.Localization;
 
 namespace ClientManager.AdminUI.Services.ChartData;
 
 internal sealed class AllocationsSinglePoolChartLoader
 {
     private readonly StatisticsApiService _statsService;
+    private readonly IStringLocalizer<SharedResources> _localizer;
 
-    public AllocationsSinglePoolChartLoader(StatisticsApiService statsService) => _statsService = statsService;
+    public AllocationsSinglePoolChartLoader(
+        StatisticsApiService statsService,
+        IStringLocalizer<SharedResources> localizer)
+    {
+        _statsService = statsService;
+        _localizer = localizer;
+    }
 
     public async Task<(List<TargetChartData> Charts, List<AllocationClientRow> Rows)> LoadAsync(
         AllocationsLoadContext context,
@@ -114,7 +122,8 @@ internal sealed class AllocationsSinglePoolChartLoader
                 context.IsAccessMetric ? DeniedViewMode.RateLimitDenied : DeniedViewMode.CapacityDenied,
                 from,
                 now,
-                context.BucketCount);
+                context.BucketCount,
+                _localizer);
 
             charts.Add(new TargetChartData(pool.Name, clientAreas, capPoints));
         }

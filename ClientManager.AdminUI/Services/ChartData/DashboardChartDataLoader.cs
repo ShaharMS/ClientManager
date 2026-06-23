@@ -1,7 +1,9 @@
 using ClientManager.AdminUI.Models.Charts;
 using ClientManager.AdminUI.Models.Dashboard;
+using ClientManager.AdminUI.Resources;
 using ClientManager.AdminUI.Services;
 using ClientManager.AdminUI.Utils;
+using Microsoft.Extensions.Localization;
 
 namespace ClientManager.AdminUI.Services.ChartData;
 
@@ -10,15 +12,18 @@ public sealed class DashboardChartDataLoader
     private readonly DashboardDonutDataLoader _donutLoader;
     private readonly DashboardSingleTargetChartLoader _singleTargetLoader;
     private readonly DashboardAllTargetsChartLoader _allTargetsLoader;
+    private readonly IStringLocalizer<SharedResources> _localizer;
 
     public DashboardChartDataLoader(
         StatisticsApiService statsService,
         ResourcePoolApiService poolService,
-        GlobalRateLimitApiService rateLimitApi)
+        GlobalRateLimitApiService rateLimitApi,
+        IStringLocalizer<SharedResources> localizer)
     {
+        _localizer = localizer;
         _donutLoader = new DashboardDonutDataLoader(statsService);
-        _singleTargetLoader = new DashboardSingleTargetChartLoader(statsService, poolService, rateLimitApi);
-        _allTargetsLoader = new DashboardAllTargetsChartLoader(statsService, poolService, rateLimitApi);
+        _singleTargetLoader = new DashboardSingleTargetChartLoader(statsService, poolService, rateLimitApi, localizer);
+        _allTargetsLoader = new DashboardAllTargetsChartLoader(statsService, poolService, rateLimitApi, localizer);
     }
 
     public async Task<(List<TargetChartData> Charts, DashboardDonutData Donut)> LoadAsync(
@@ -37,10 +42,12 @@ public sealed class DashboardChartDataLoader
             rawDonut = await _singleTargetLoader.LoadAsync(context, newCharts);
         }
 
-        return (newCharts, BuildDonutData(rawDonut));
+        return (newCharts, BuildDonutData(rawDonut, _localizer["Common.Others"]));
     }
 
-    public static List<ClientUsagePoint> ToDisplaySlices(IReadOnlyList<ClientUsagePoint> points)
+    public static List<ClientUsagePoint> ToDisplaySlices(
+        IReadOnlyList<ClientUsagePoint> points,
+        string othersLabel)
     {
         if (points.Count <= ChartAggregator.DefaultTopN)
         {
@@ -52,7 +59,7 @@ public sealed class DashboardChartDataLoader
         var othersValue = ranked.Skip(ChartAggregator.DefaultTopN).Where(p => p.Value > 0).Sum(p => p.Value);
         if (othersValue > 0)
         {
-            top.Add(new ClientUsagePoint(ChartAggregator.OthersId, ChartAggregator.OthersLabel, othersValue));
+            top.Add(new ClientUsagePoint(ChartAggregator.OthersId, othersLabel, othersValue));
         }
 
         return top;
@@ -66,6 +73,6 @@ public sealed class DashboardChartDataLoader
                 .Where(p => p.Value > 0)
                 .ToList();
 
-    private static DashboardDonutData BuildDonutData(List<ClientUsagePoint> points) =>
-        new(ToDisplaySlices(points), GetOthersRestPool(points));
+    private static DashboardDonutData BuildDonutData(List<ClientUsagePoint> points, string othersLabel) =>
+        new(ToDisplaySlices(points, othersLabel), GetOthersRestPool(points));
 }

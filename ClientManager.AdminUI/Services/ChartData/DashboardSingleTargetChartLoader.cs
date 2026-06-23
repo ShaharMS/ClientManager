@@ -1,10 +1,11 @@
 using ClientManager.AdminUI.Models;
-using ClientManager.AdminUI.Models;
 using ClientManager.AdminUI.Models.Charts;
 using ClientManager.AdminUI.Models.Dashboard;
+using ClientManager.AdminUI.Resources;
 using ClientManager.AdminUI.Services;
 using ClientManager.AdminUI.Utils;
 using ClientManager.Shared.Models.Enums;
+using Microsoft.Extensions.Localization;
 
 namespace ClientManager.AdminUI.Services.ChartData;
 
@@ -13,15 +14,18 @@ internal sealed class DashboardSingleTargetChartLoader
     private readonly StatisticsApiService _statsService;
     private readonly ResourcePoolApiService _poolService;
     private readonly GlobalRateLimitApiService _rateLimitApi;
+    private readonly IStringLocalizer<SharedResources> _localizer;
 
     public DashboardSingleTargetChartLoader(
         StatisticsApiService statsService,
         ResourcePoolApiService poolService,
-        GlobalRateLimitApiService rateLimitApi)
+        GlobalRateLimitApiService rateLimitApi,
+        IStringLocalizer<SharedResources> localizer)
     {
         _statsService = statsService;
         _poolService = poolService;
         _rateLimitApi = rateLimitApi;
+        _localizer = localizer;
     }
 
     public async Task<List<ClientUsagePoint>> LoadAsync(
@@ -153,7 +157,8 @@ internal sealed class DashboardSingleTargetChartLoader
             isRateBased ? DeniedViewMode.RateLimitDenied : DeniedViewMode.CapacityDenied,
             from,
             now,
-            context.BucketCount);
+            context.BucketCount,
+            _localizer);
 
         charts.Add(new TargetChartData(targetName, clientAreas, capPoints));
 

@@ -1,8 +1,10 @@
 using ClientManager.AdminUI.Models;
 using ClientManager.AdminUI.Models.Charts;
 using ClientManager.AdminUI.Models.Monitor;
+using ClientManager.AdminUI.Resources;
 using ClientManager.AdminUI.Services;
 using ClientManager.AdminUI.Utils;
+using Microsoft.Extensions.Localization;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Enums;
 
@@ -13,12 +15,17 @@ public sealed class MonitorDataLoader
     private readonly StatisticsApiService _statsService;
     private readonly GlobalRateLimitApiService _rateLimitApi;
     private readonly MonitorSingleServiceChartLoader _singleServiceLoader;
+    private readonly IStringLocalizer<SharedResources> _localizer;
 
-    public MonitorDataLoader(StatisticsApiService statsService, GlobalRateLimitApiService rateLimitApi)
+    public MonitorDataLoader(
+        StatisticsApiService statsService,
+        GlobalRateLimitApiService rateLimitApi,
+        IStringLocalizer<SharedResources> localizer)
     {
         _statsService = statsService;
         _rateLimitApi = rateLimitApi;
-        _singleServiceLoader = new MonitorSingleServiceChartLoader(statsService);
+        _localizer = localizer;
+        _singleServiceLoader = new MonitorSingleServiceChartLoader(statsService, localizer);
     }
 
     public async Task<MonitorLoadResult> LoadAsync(MonitorLoadContext context)
@@ -59,7 +66,8 @@ public sealed class MonitorDataLoader
         {
             MonitorAllServicesChartBuilder.Build(
                 context, visibleServices, breakdowns,
-                allHistories, rateLimitLookup, chartBucketDuration, rangeDuration, from, now, charts, rows);
+                allHistories, rateLimitLookup, chartBucketDuration, rangeDuration, from, now, charts, rows,
+                _localizer);
         }
         else
         {

@@ -1,10 +1,12 @@
 using ClientManager.AdminUI.Models;
 using ClientManager.AdminUI.Models.Charts;
 using ClientManager.AdminUI.Models.Dashboard;
+using ClientManager.AdminUI.Resources;
 using ClientManager.AdminUI.Services;
 using ClientManager.AdminUI.Utils;
 using ClientManager.Shared.Models.Enums;
 using ClientManager.Shared.Models.Responses;
+using Microsoft.Extensions.Localization;
 
 namespace ClientManager.AdminUI.Services.ChartData;
 
@@ -13,15 +15,18 @@ internal sealed class DashboardAllTargetsChartLoader
     private readonly StatisticsApiService _statsService;
     private readonly ResourcePoolApiService _poolService;
     private readonly GlobalRateLimitApiService _rateLimitApi;
+    private readonly IStringLocalizer<SharedResources> _localizer;
 
     public DashboardAllTargetsChartLoader(
         StatisticsApiService statsService,
         ResourcePoolApiService poolService,
-        GlobalRateLimitApiService rateLimitApi)
+        GlobalRateLimitApiService rateLimitApi,
+        IStringLocalizer<SharedResources> localizer)
     {
         _statsService = statsService;
         _poolService = poolService;
         _rateLimitApi = rateLimitApi;
+        _localizer = localizer;
     }
 
     public async Task LoadAsync(DashboardChartLoadContext context, List<TargetChartData> charts)
@@ -67,7 +72,9 @@ internal sealed class DashboardAllTargetsChartLoader
         var histories = await _statsService.GetHistoricalUsageAsync(
             context.SelectedFilterType, targetIds, null, from, now, context.TimeRange.Granularity);
 
-        var aggregateLabel = isRateBased ? "All Services" : "All Resource Pools";
+        var aggregateLabel = isRateBased
+            ? _localizer["Pages.Dashboard.Target.AllServices"]
+            : _localizer["Pages.Dashboard.Target.AllResourcePools"];
         var targetPointLists = targets
             .Select(target => (IReadOnlyList<HistoricalUsagePoint>)(histories.FirstOrDefault(h => h.TargetId == target.Id)?.Points ?? []));
         var (clientAreas, referenceBuckets) = AggregateTargetChartSeriesBuilder.Build(
@@ -77,13 +84,13 @@ internal sealed class DashboardAllTargetsChartLoader
             isRateBased ? DeniedViewMode.RateLimitDenied : DeniedViewMode.CapacityDenied,
             from,
             now,
-            context.BucketCount);
+            context.BucketCount,
+            _localizer);
 
         var capPoints = referenceBuckets
             .Select(bucket => new ChartPoint(bucket.Label, scaledCap))
             .ToList();
 
-        var label = context.SelectedFilterType == "Service" ? "All Services" : "All Resource Pools";
-        charts.Add(new TargetChartData(label, clientAreas, capPoints));
+        charts.Add(new TargetChartData(aggregateLabel, clientAreas, capPoints));
     }
 }

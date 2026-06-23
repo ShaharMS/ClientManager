@@ -19,10 +19,10 @@
         }
         <RadzenLineSeries Data="@ChartSeriesTransform.TransformPoints(targetChart.CapSeries, AxisScale)"
             CategoryProperty="Label" ValueProperty="Value"
-            Title="Cap" LineType="LineType.Dashed"
+            Title="@CapLineTitle" LineType="LineType.Dashed"
             Stroke="var(--color-text-secondary)">
             <TooltipTemplate Context="point">
-                <span>Cap: @(point.OriginalValue.ToString("N0"))</span>
+                <span>@CapLineTitle: @(point.OriginalValue.ToString("N0"))</span>
             </TooltipTemplate>
         </RadzenLineSeries>
     }
@@ -35,4 +35,6 @@
     [Parameter] public IReadOnlyList<TargetChartData> Charts { get; set; } = [];
     [Parameter] public AxisScaleType AxisScale { get; set; }
     [Parameter] public int HeightPx { get; set; } = 400;
+
+    private string CapLineTitle => L["Common.Cap"];
 }

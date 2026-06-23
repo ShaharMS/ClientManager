@@ -1,7 +1,10 @@
+using ClientManager.AdminUI.Localization;
 using ClientManager.AdminUI.Models;
 using ClientManager.AdminUI.Models.Charts;
+using ClientManager.AdminUI.Resources;
 using ClientManager.AdminUI.Utils;
 using ClientManager.Shared.Models.Responses;
+using Microsoft.Extensions.Localization;
 
 namespace ClientManager.AdminUI.Services.ChartData;
 
@@ -14,14 +17,15 @@ internal static class DeniedChartSeriesBuilder
         DeniedViewMode mode,
         DateTime from,
         DateTime now,
-        int bucketCount)
+        int bucketCount,
+        IStringLocalizer<SharedResources> localizer)
     {
-        foreach (var (suffix, label) in GetTripletDefinitions(mode))
+        foreach (var (suffix, label) in GetTripletDefinitions(mode, localizer))
         {
             var deniedAgg = ChartBucketAggregator.Aggregate(
                 points.Select(point => new ChartBucketAggregator.RawPoint(
                     point.Timestamp,
-                    DeniedBreakdownHelper.GetDeniedCategoryValue(point, suffix))),
+                    DeniedBreakdownFormatter.GetDeniedCategoryValue(point, suffix))),
                 from,
                 now,
                 bucketCount,
@@ -39,18 +43,20 @@ internal static class DeniedChartSeriesBuilder
         }
     }
 
-    private static IEnumerable<(string Suffix, string Label)> GetTripletDefinitions(DeniedViewMode mode) =>
+    private static IEnumerable<(string Suffix, string Label)> GetTripletDefinitions(
+        DeniedViewMode mode,
+        IStringLocalizer<SharedResources> localizer) =>
         mode == DeniedViewMode.CapacityDenied
             ?
             [
-                (ChartAggregator.DeniedUnauthSuffix, "Unauthenticated"),
-                (ChartAggregator.DeniedBlockedSuffix, "Blocked"),
-                (ChartAggregator.DeniedCapacitySuffix, "Out Of Slots")
+                (ChartAggregator.DeniedUnauthSuffix, localizer[TermKeys.DeniedUnauthenticated]),
+                (ChartAggregator.DeniedBlockedSuffix, localizer[TermKeys.DeniedBlocked]),
+                (ChartAggregator.DeniedCapacitySuffix, localizer[TermKeys.DeniedOutOfSlots])
             ]
             :
             [
-                (ChartAggregator.DeniedUnauthSuffix, "Unauthenticated"),
-                (ChartAggregator.DeniedBlockedSuffix, "Blocked"),
-                (ChartAggregator.DeniedRateLimitedSuffix, "Throttled")
+                (ChartAggregator.DeniedUnauthSuffix, localizer[TermKeys.DeniedUnauthenticated]),
+                (ChartAggregator.DeniedBlockedSuffix, localizer[TermKeys.DeniedBlocked]),
+                (ChartAggregator.DeniedRateLimitedSuffix, localizer[TermKeys.DeniedThrottled])
             ];
 }

@@ -1,17 +1,26 @@
 using ClientManager.AdminUI.Models;
 using ClientManager.AdminUI.Models.Allocations;
 using ClientManager.AdminUI.Models.Charts;
+using ClientManager.AdminUI.Resources;
 using ClientManager.AdminUI.Utils;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Responses;
+using Microsoft.Extensions.Localization;
 
 namespace ClientManager.AdminUI.Services.ChartData;
 
 internal sealed class AllocationsAllPoolsChartLoader
 {
     private readonly StatisticsApiService _statsService;
+    private readonly IStringLocalizer<SharedResources> _localizer;
 
-    public AllocationsAllPoolsChartLoader(StatisticsApiService statsService) => _statsService = statsService;
+    public AllocationsAllPoolsChartLoader(
+        StatisticsApiService statsService,
+        IStringLocalizer<SharedResources> localizer)
+    {
+        _statsService = statsService;
+        _localizer = localizer;
+    }
 
     public async Task<(List<TargetChartData> Charts, List<AllocationClientRow> Rows)> LoadAsync(
         AllocationsLoadContext context,
@@ -50,22 +59,23 @@ internal sealed class AllocationsAllPoolsChartLoader
             }
         }
 
-        var aggregateLabel = context.IsAccessMetric ? "All Pools (Access)" : "All Pools";
+        var allPoolsLabel = _localizer["Pages.Allocations.Target.AllPools"];
         var targetPointLists = visiblePools
             .Select(pool => (IReadOnlyList<HistoricalUsagePoint>)(allHistories.FirstOrDefault(h => h.TargetId == pool.ResourcePoolId)?.Points ?? []));
         var (clientAreas, referenceBuckets) = AggregateTargetChartSeriesBuilder.Build(
             targetPointLists,
             context.IsAccessMetric,
-            aggregateLabel,
+            allPoolsLabel,
             context.IsAccessMetric ? DeniedViewMode.RateLimitDenied : DeniedViewMode.CapacityDenied,
             from,
             now,
-            context.BucketCount);
+            context.BucketCount,
+            _localizer);
 
         var capPoints = referenceBuckets
             .Select(bucket => new ChartPoint(bucket.Label, totalMaxSlots))
             .ToList();
-        charts.Add(new TargetChartData("All Pools", clientAreas, capPoints));
+        charts.Add(new TargetChartData(allPoolsLabel, clientAreas, capPoints));
 
         return (charts, rows);
     }
