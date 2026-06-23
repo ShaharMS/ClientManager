@@ -1,11 +1,13 @@
 @page "/settings"
 @inject UserPreferencesService PreferencesService
+@inject CultureService CultureService
+@inject IJSRuntime JS
 
-<PageTitle>ClientManager · Settings</PageTitle>
+<PageTitle>@string.Format(L["Common.PageTitleSuffix"], L["Settings.Title"])</PageTitle>
 
 <div class="cm-page-header">
-    <h1>Settings</h1>
-    <p>Customize your dashboard experience.</p>
+    <h1>@L["Settings.Title"]</h1>
+    <p>@L["Settings.Subtitle"]</p>
 </div>
 
 @if (_loading)
@@ -17,14 +19,33 @@ else
     <div class="cm-settings">
         <div class="cm-settings__card">
             <div class="cm-settings__card-header">
+                <RadzenIcon Icon="translate" class="cm-settings__card-icon" />
+                <div>
+                    <h3 class="cm-settings__card-title">@L["Settings.Language.Title"]</h3>
+                    <p class="cm-settings__card-desc">@L["Settings.Language.Description"]</p>
+                </div>
+            </div>
+            <div class="cm-settings__time-range-select">
+                <RadzenDropDown TValue="string"
+                                Data="@_languageOptions"
+                                TextProperty="Label"
+                                ValueProperty="Value"
+                                @bind-Value="_selectedCulture"
+                                Change="@OnCultureChanged"
+                                Style="width: 100%; max-width: 280px;" />
+            </div>
+        </div>
+
+        <div class="cm-settings__card">
+            <div class="cm-settings__card-header">
                 <RadzenIcon Icon="palette" class="cm-settings__card-icon" />
                 <div>
-                    <h3 class="cm-settings__card-title">Appearance</h3>
-                    <p class="cm-settings__card-desc">Choose between light and dark mode.</p>
+                    <h3 class="cm-settings__card-title">@L["Settings.Appearance.Title"]</h3>
+                    <p class="cm-settings__card-desc">@L["Settings.Appearance.Description"]</p>
                 </div>
             </div>
             <div class="cm-settings__option">
-                <span class="cm-settings__option-label">Dark Mode</span>
+                <span class="cm-settings__option-label">@(_isDarkMode ? L["Settings.Appearance.DarkMode"] : L["Settings.Appearance.LightMode"])</span>
                 <RadzenSwitch @bind-Value="_isDarkMode" Change="@OnThemeChanged" />
             </div>
         </div>
@@ -33,13 +54,13 @@ else
             <div class="cm-settings__card-header">
                 <RadzenIcon Icon="schedule" class="cm-settings__card-icon" />
                 <div>
-                    <h3 class="cm-settings__card-title">Default Time Range</h3>
-                    <p class="cm-settings__card-desc">Used by charts when no specific range is selected.</p>
+                    <h3 class="cm-settings__card-title">@L["Settings.DefaultTimeRange.Title"]</h3>
+                    <p class="cm-settings__card-desc">@L["Settings.DefaultTimeRange.Description"]</p>
                 </div>
             </div>
             <div class="cm-settings__time-range-select">
                 <RadzenDropDown TValue="string"
-                                Data="@TimeRangePreset.All"
+                                Data="@_timeRangeOptions"
                                 TextProperty="Label"
                                 ValueProperty="Key"
                                 @bind-Value="_selectedTimeRange"
@@ -52,13 +73,13 @@ else
             <div class="cm-settings__card-header">
                 <RadzenIcon Icon="update" class="cm-settings__card-icon" />
                 <div>
-                    <h3 class="cm-settings__card-title">Default Polling Interval</h3>
-                    <p class="cm-settings__card-desc">How often monitoring pages refresh data.</p>
+                    <h3 class="cm-settings__card-title">@L["Settings.DefaultPollingInterval.Title"]</h3>
+                    <p class="cm-settings__card-desc">@L["Settings.DefaultPollingInterval.Description"]</p>
                 </div>
             </div>
             <div class="cm-settings__time-range-select">
                 <RadzenDropDown TValue="string"
-                                Data="@PollingIntervalPreset.All"
+                                Data="@_pollingOptions"
                                 TextProperty="Label"
                                 ValueProperty="Key"
                                 @bind-Value="_selectedPollingInterval"
@@ -71,8 +92,8 @@ else
             <div class="cm-settings__card-header">
                 <RadzenIcon Icon="show_chart" class="cm-settings__card-icon" />
                 <div>
-                    <h3 class="cm-settings__card-title">Default Axis Scale</h3>
-                    <p class="cm-settings__card-desc">Choose how chart Y-axes scale values. Logarithmic makes small values more visible.</p>
+                    <h3 class="cm-settings__card-title">@L["Settings.DefaultAxisScale.Title"]</h3>
+                    <p class="cm-settings__card-desc">@L["Settings.DefaultAxisScale.Description"]</p>
                 </div>
             </div>
             <div class="cm-settings__time-range-select">
@@ -94,27 +115,61 @@ else
     private string _selectedTimeRange = "1h";
     private string _selectedPollingInterval = "10s";
     private string _selectedAxisScale = "Linear";
-
-    private static readonly List<AxisScaleOption> _axisScaleOptions = new()
-    {
-        new("Linear", "Linear"),
-        new("Logarithmic", "Logarithmic")
-    };
+    private string _selectedCulture = SupportedCultures.Default;
+    private List<PresetOption> _timeRangeOptions = [];
+    private List<PresetOption> _pollingOptions = [];
+    private List<AxisScaleOption> _axisScaleOptions = [];
+    private List<LanguageOption> _languageOptions = [];
+    private IJSObjectReference? _preferencesJs;
 
     private record AxisScaleOption(string Value, string Label);
+    private record PresetOption(string Key, string Label);
+    private record LanguageOption(string Value, string Label);
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
+            _languageOptions = SupportedCultures.Codes
+                .Select(c => new LanguageOption(c, L[$"LanguageOption.{c}"]))
+                .ToList();
+            _timeRangeOptions = TimeRangePreset.All
+                .Select(p => new PresetOption(p.Key, p.GetLocalizedLabel(L)))
+                .ToList();
+            _pollingOptions = PollingIntervalPreset.All
+                .Select(p => new PresetOption(p.Key, p.GetLocalizedLabel(L)))
+                .ToList();
+            _axisScaleOptions =
+            [
+                new("Linear", L["Common.Linear"]),
+                new("Logarithmic", L["Common.Logarithmic"])
+            ];
+
             var prefs = await PreferencesService.GetPreferencesAsync();
             _isDarkMode = prefs.Theme == "dark";
             _selectedTimeRange = prefs.DefaultTimeRange;
             _selectedPollingInterval = prefs.DefaultPollingInterval;
             _selectedAxisScale = prefs.DefaultAxisScale;
+            _selectedCulture = SupportedCultures.Normalize(prefs.Culture);
             _loading = false;
             StateHasChanged();
         }
+    }
+
+    private async Task OnCultureChanged(object? value)
+    {
+        if (value is not string culture)
+        {
+            return;
+        }
+
+        _selectedCulture = culture;
+        var prefs = await PreferencesService.GetPreferencesAsync();
+        prefs.Culture = culture;
+        await PreferencesService.SavePreferencesAsync(prefs);
+        CultureService.ApplyCultureToThread(culture);
+        _preferencesJs ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/preferences.js");
+        await _preferencesJs.InvokeVoidAsync("reloadPage");
     }
 
     private async Task OnThemeChanged(bool value)
