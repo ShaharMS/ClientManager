@@ -3,19 +3,19 @@
 
 <div class="cm-list-page__table-card" style="margin-top: var(--space-lg);">
     <div class="cm-dashboard__chart-header">
-        <span class="cm-dashboard__chart-title">Client Breakdown</span>
+        <span class="cm-dashboard__chart-title">@L["Pages.Monitor.ClientBreakdown"]</span>
     </div>
-    <RadzenDataGrid @ref="_grid" Data="@Rows" TItem="MonitorClientRow"
+    <RadzenDataGrid @ref="_grid" Data="@Rows" TItem="MonitorClientRow" EmptyText="@L["DataGrid.NoRecords"]"
         AllowSorting="true" AllowPaging="true" PageSize="15"
         PagerHorizontalAlign="HorizontalAlign.Center">
         <Columns>
-            <RadzenDataGridColumn TItem="MonitorClientRow" Property="ClientName" Title="Client"
+            <RadzenDataGridColumn TItem="MonitorClientRow" Property="ClientName" Title="@L["Columns.Client"]"
                 CssClass="cm-col-id" HeaderCssClass="cm-col-id" />
-            <RadzenDataGridColumn TItem="MonitorClientRow" Property="ServiceName" Title="Service"
+            <RadzenDataGridColumn TItem="MonitorClientRow" Property="ServiceName" Title="@L["Columns.Service"]"
                 CssClass="cm-col-name" HeaderCssClass="cm-col-name" />
-            <RadzenDataGridColumn TItem="MonitorClientRow" Property="GrantedLast5Min" Title="Requests"
+            <RadzenDataGridColumn TItem="MonitorClientRow" Property="GrantedLast5Min" Title="@L["Columns.Requests"]"
                 CssClass="cm-col-scalar" HeaderCssClass="cm-col-scalar" />
-            <RadzenDataGridColumn TItem="MonitorClientRow" Title="Denied"
+            <RadzenDataGridColumn TItem="MonitorClientRow" Title="@L["Columns.Denied"]"
                 CssClass="cm-col-scalar-wide" HeaderCssClass="cm-col-scalar-wide">
                 <Template Context="row">
                     <DeniedBreakdownCell Total="@row.DeniedLast5Min"
@@ -27,11 +27,11 @@
                         ShowBreakdown="@ShowDeniedBreakdown" />
                 </Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn TItem="MonitorClientRow" Title="Cap"
+            <RadzenDataGridColumn TItem="MonitorClientRow" Title="@L["Columns.Cap"]"
                 CssClass="cm-col-scalar" HeaderCssClass="cm-col-scalar">
                 <Template Context="row">@UtilizationHelper.FormatCapDisplay(row.RateLimitCap)</Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn TItem="MonitorClientRow" Title="Utilization"
+            <RadzenDataGridColumn TItem="MonitorClientRow" Title="@L["Columns.Utilization"]"
                 CssClass="cm-col-bar" HeaderCssClass="cm-col-bar">
                 <Template Context="row">
                     @if (row.RateLimitCap > 0)
@@ -45,7 +45,7 @@
                     }
                 </Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn TItem="MonitorClientRow" Title="Status" Sortable="false"
+            <RadzenDataGridColumn TItem="MonitorClientRow" Title="@L["Columns.Status"]" Sortable="false"
                 CssClass="cm-col-status" HeaderCssClass="cm-col-status">
                 <Template Context="row">
                     <div class="cm-list-page__actions-cell">

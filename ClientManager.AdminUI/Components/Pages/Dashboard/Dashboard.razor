@@ -2,11 +2,11 @@
 @using ClientManager.AdminUI.Models.Charts
 @using ClientManager.AdminUI.Models.Dashboard
 
-<PageTitle>ClientManager · Dashboard</PageTitle>
+<PageTitle>@string.Format(L["Common.PageTitleSuffix"], L["Pages.Dashboard.Title"])</PageTitle>
 
 <div class="cm-page-header">
-    <h1>Welcome</h1>
-    <p>Your system's performance at a glance.</p>
+    <h1>@L["Pages.Dashboard.Title"]</h1>
+    <p>@L["Pages.Dashboard.Subtitle"]</p>
 </div>
 
 @if (_loading)

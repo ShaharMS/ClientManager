@@ -1,5 +1,5 @@
 @using ClientManager.AdminUI.Models
-@using ClientManager.AdminUI.Utils
+@inject DeniedBreakdownFormatter Formatter
 
 <span class="@(ShowBreakdown && Total > 0 ? "cm-denied-breakdown__value" : null)"
       title="@(ShowBreakdown && Total > 0 ? TooltipText : null)">
@@ -19,9 +19,9 @@
     {
         get
         {
-            var triplet = DeniedBreakdownHelper.GetTriplet(
+            var triplet = DeniedBreakdownFormatter.GetTriplet(
                 Unauthenticated, Blocked, RateLimited, CapacityLimited, ViewMode);
-            return DeniedBreakdownHelper.BuildTooltip(
+            return Formatter.BuildTooltip(
                 triplet.Unauth, triplet.Blocked, triplet.Third, ViewMode);
         }
     }

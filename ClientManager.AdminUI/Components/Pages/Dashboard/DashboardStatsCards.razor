@@ -4,27 +4,27 @@
     <div class="cm-stat-card cm-stat-card--primary cm-stat-card--clickable" @onclick='() => Nav.NavigateTo("/clients")'>
         <div class="cm-stat-card__arrow"><RadzenIcon Icon="north_east" /></div>
         <div class="cm-stat-card__value">@TotalClients</div>
-        <div class="cm-stat-card__label">Clients</div>
+        <div class="cm-stat-card__label">@L["Pages.Dashboard.Stats.Clients"]</div>
     </div>
     <div class="cm-stat-card cm-stat-card--clickable" @onclick='() => Nav.NavigateTo("/services")'>
         <div class="cm-stat-card__arrow"><RadzenIcon Icon="north_east" /></div>
         <div class="cm-stat-card__value">@TotalServices</div>
-        <div class="cm-stat-card__label">Services</div>
+        <div class="cm-stat-card__label">@L["Pages.Dashboard.Stats.Services"]</div>
     </div>
     <div class="cm-stat-card cm-stat-card--clickable" @onclick='() => Nav.NavigateTo("/resource-pools")'>
         <div class="cm-stat-card__arrow"><RadzenIcon Icon="north_east" /></div>
         <div class="cm-stat-card__value">@TotalResourcePools</div>
-        <div class="cm-stat-card__label">Resource Pools</div>
+        <div class="cm-stat-card__label">@L["Pages.Dashboard.Stats.ResourcePools"]</div>
     </div>
     <div class="cm-stat-card cm-stat-card--clickable" @onclick='() => Nav.NavigateTo("/monitor")'>
         <div class="cm-stat-card__arrow"><RadzenIcon Icon="north_east" /></div>
         <div class="cm-stat-card__value">@GlobalUsage</div>
-        <div class="cm-stat-card__label">Requests / min</div>
+        <div class="cm-stat-card__label">@L["Pages.Dashboard.Stats.RequestsPerMin"]</div>
     </div>
     <div class="cm-stat-card cm-stat-card--clickable" @onclick='() => Nav.NavigateTo("/allocations")'>
         <div class="cm-stat-card__arrow"><RadzenIcon Icon="north_east" /></div>
         <div class="cm-stat-card__value">@AcquisitionPct%</div>
-        <div class="cm-stat-card__label">Pool Acquisition</div>
+        <div class="cm-stat-card__label">@L["Pages.Dashboard.Stats.PoolAcquisition"]</div>
     </div>
 </div>
 

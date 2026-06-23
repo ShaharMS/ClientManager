@@ -1,9 +1,12 @@
 using ClientManager.AdminUI.Models.Charts;
 using ClientManager.AdminUI.Models.Monitor;
+using ClientManager.AdminUI.Resources;
 using ClientManager.AdminUI.Services;
 using ClientManager.AdminUI.Services.ChartData;
-using ClientManager.AdminUI.Utils;using ClientManager.Shared.Models.Entities;
+using ClientManager.AdminUI.Utils;
+using ClientManager.Shared.Models.Entities;
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.Localization;
 using Microsoft.JSInterop;
 
 namespace ClientManager.AdminUI.Components.Pages.Monitor;
@@ -14,6 +17,9 @@ public partial class Monitor : ComponentBase, IAsyncDisposable
     [Inject] private ServiceApiService ServiceService { get; set; } = null!;
     [Inject] private ClientApiService ClientService { get; set; } = null!;
     [Inject] private GlobalRateLimitApiService RateLimitApi { get; set; } = null!;
+    [Inject] private IStringLocalizer<SharedResources> Localizer { get; set; } = null!;
+    [Inject] private ApiErrorLocalizer Errors { get; set; } = null!;
+    [Inject] private DeniedBreakdownFormatter DeniedBreakdownFormatter { get; set; } = null!;
     [Inject] private IJSRuntime JS { get; set; } = null!;
 
     private List<Service> _allServices = [];
@@ -34,7 +40,7 @@ public partial class Monitor : ComponentBase, IAsyncDisposable
     private MonitorClientGrid? _clientGrid;
     private MonitorServicesGrid? _servicesGrid;
 
-    private bool ShowDeniedBreakdown => DeniedBreakdownHelper.ShowBreakdown(_selectedClientIds);
+    private bool ShowDeniedBreakdown => DeniedBreakdownFormatter.ShowBreakdown(_selectedClientIds);
 
     private ChartTimeRange _timeRange = ChartTimeRange.FromPreset(TimeRangePreset.Default);
     private AxisScaleType _axisScaleType = AxisScaleType.Linear;
@@ -44,7 +50,7 @@ public partial class Monitor : ComponentBase, IAsyncDisposable
 
     protected override async Task OnInitializedAsync()
     {
-        _dataLoader = new MonitorDataLoader(StatsService, RateLimitApi);
+        _dataLoader = new MonitorDataLoader(StatsService, RateLimitApi, Localizer);
 
         try
         {
@@ -53,13 +59,13 @@ public partial class Monitor : ComponentBase, IAsyncDisposable
             _allClients = clients;
             _clientOptions = clients.Select(c => new ClientOption(c.Id, c.Name)).ToList();
 
-            _serviceOptions = new List<NamedItem> { new(MonitorLoadContext.AllServicesId, "All Services") }
+            _serviceOptions = new List<NamedItem> { new(MonitorLoadContext.AllServicesId, Localizer["Pages.Monitor.Chart.AllServices"]) }
                 .Concat(_allServices.Select(s => new NamedItem(s.Id, s.Name))).ToList();
             _selectedServiceId = MonitorLoadContext.AllServicesId;
         }
         catch (HttpRequestException ex)
         {
-            _error = $"Unable to connect to the API: {ex.Message}";
+            _error = Errors.Format("Pages.Monitor.LoadDataError", ex);
             _chartLoading = false;
         }
 

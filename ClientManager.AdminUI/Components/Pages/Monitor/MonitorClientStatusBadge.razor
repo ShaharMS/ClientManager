@@ -1,20 +1,21 @@
+@using ClientManager.AdminUI.Localization
 @using ClientManager.AdminUI.Models.Monitor
 
 @if (Row.DeniedLast5Min > 0 && Row.RateLimitCap > 0 && Row.GrantedLast5Min >= Row.RateLimitCap * 0.9)
 {
-    <StatusBadge Text="Hitting Limit" Variant="StatusBadgeVariant.Danger" />
+    <StatusBadge Text="@L[TermKeys.DeniedThrottled]" Variant="StatusBadgeVariant.Danger" />
 }
 else if (Row.DeniedLast5Min > 0)
 {
-    <StatusBadge Text="Denied" Variant="StatusBadgeVariant.Warning" />
+    <StatusBadge Text="@L[TermKeys.DeniedThrottled]" Variant="StatusBadgeVariant.Warning" />
 }
 else if (Row.RateLimitCap > 0 && Row.GrantedLast5Min >= Row.RateLimitCap * 0.9)
 {
-    <StatusBadge Text="Near Limit" Variant="StatusBadgeVariant.Warning" />
+    <StatusBadge Text="@L[TermKeys.StateNearLimit]" Variant="StatusBadgeVariant.Warning" />
 }
 else
 {
-    <StatusBadge Text="Healthy" Variant="StatusBadgeVariant.Success" />
+    <StatusBadge Text="@L[TermKeys.StateAvailable]" Variant="StatusBadgeVariant.Success" />
 }
 
 @code {

@@ -6,27 +6,27 @@
     <div class="cm-dashboard__chart-header">
         <span class="cm-dashboard__chart-title">@Title</span>
     </div>
-    <RadzenDataGrid @ref="_grid" Data="@Rows" TItem="AllocationClientRow"
+    <RadzenDataGrid @ref="_grid" Data="@Rows" TItem="AllocationClientRow" EmptyText="@L["DataGrid.NoRecords"]"
         AllowSorting="true" AllowPaging="true" PageSize="15"
         PagerHorizontalAlign="HorizontalAlign.Center">
         <Columns>
-            <RadzenDataGridColumn TItem="AllocationClientRow" Property="ClientName" Title="Client"
+            <RadzenDataGridColumn TItem="AllocationClientRow" Property="ClientName" Title="@L["Columns.Client"]"
                 CssClass="@(ShowPoolColumn ? "cm-col-id" : "cm-col-label")"
                 HeaderCssClass="@(ShowPoolColumn ? "cm-col-id" : "cm-col-label")" />
             @if (ShowPoolColumn)
             {
-                <RadzenDataGridColumn TItem="AllocationClientRow" Property="PoolName" Title="Pool"
+                <RadzenDataGridColumn TItem="AllocationClientRow" Property="PoolName" Title="@L["Columns.Pool"]"
                     CssClass="cm-col-name" HeaderCssClass="cm-col-name" />
             }
-            <RadzenDataGridColumn TItem="AllocationClientRow" Title="@(IsAccessMetric ? "Requests" : "Active")"
+            <RadzenDataGridColumn TItem="AllocationClientRow" Title="@(IsAccessMetric ? L["Columns.Requests"] : L["Columns.Active"])"
                 CssClass="cm-col-scalar" HeaderCssClass="cm-col-scalar">
                 <Template Context="row">@row.CurrentValue.ToString("N0")</Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn TItem="AllocationClientRow" Title="@(IsAccessMetric ? "Cap" : "Max")"
+            <RadzenDataGridColumn TItem="AllocationClientRow" Title="@(IsAccessMetric ? L["Columns.Cap"] : L["Columns.Max"])"
                 CssClass="cm-col-scalar" HeaderCssClass="cm-col-scalar">
                 <Template Context="row">@(IsAccessMetric ? UtilizationHelper.FormatCap(row.CapValue) : row.CapValue.ToString("N0"))</Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn TItem="AllocationClientRow" Title="Denied"
+            <RadzenDataGridColumn TItem="AllocationClientRow" Title="@L["Columns.Denied"]"
                 CssClass="cm-col-scalar-wide" HeaderCssClass="cm-col-scalar-wide">
                 <Template Context="row">
                     <DeniedBreakdownCell Total="@row.DeniedLast5Min"
@@ -38,7 +38,7 @@
                         ShowBreakdown="@ShowDeniedBreakdown" />
                 </Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn TItem="AllocationClientRow" Title="Utilization"
+            <RadzenDataGridColumn TItem="AllocationClientRow" Title="@L["Columns.Utilization"]"
                 CssClass="cm-col-bar" HeaderCssClass="cm-col-bar">
                 <Template Context="row">
                     @if (row.CapValue > 0 || !IsAccessMetric)
@@ -52,7 +52,7 @@
                     }
                 </Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn TItem="AllocationClientRow" Title="Status" Sortable="false"
+            <RadzenDataGridColumn TItem="AllocationClientRow" Title="@L["Columns.Status"]" Sortable="false"
                 CssClass="cm-col-status" HeaderCssClass="cm-col-status">
                 <Template Context="row">
                     <div class="cm-list-page__actions-cell">
@@ -65,7 +65,7 @@
 </div>
 
 @code {
-    [Parameter] public string Title { get; set; } = "Client Allocation Detail";
+    [Parameter] public string Title { get; set; } = "";
     [Parameter] public bool ShowPoolColumn { get; set; } = true;
     [Parameter] public List<AllocationClientRow> Rows { get; set; } = [];
     [Parameter] public bool IsAccessMetric { get; set; }
