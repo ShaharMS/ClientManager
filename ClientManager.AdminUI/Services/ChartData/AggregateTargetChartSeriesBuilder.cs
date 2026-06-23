@@ -46,7 +46,6 @@ internal static class AggregateTargetChartSeriesBuilder
         DeniedChartSeriesBuilder.AppendTripletSeries(
             series,
             ChartAggregator.AggregateSeriesId,
-            seriesLabel,
             mergedHistory,
             deniedViewMode,
             from,

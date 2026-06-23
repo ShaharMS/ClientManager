@@ -10,7 +10,6 @@ internal static class DeniedChartSeriesBuilder
     internal static void AppendTripletSeries(
         ICollection<ClientAreaSeries> series,
         string targetId,
-        string targetName,
         IReadOnlyList<HistoricalUsagePoint> points,
         DeniedViewMode mode,
         DateTime from,
@@ -34,7 +33,7 @@ internal static class DeniedChartSeriesBuilder
 
             series.Add(new ClientAreaSeries(
                 targetId + suffix,
-                $"{targetName} ({label})",
+                label,
                 deniedChartPoints,
                 Hidden: true));
         }
@@ -44,14 +43,14 @@ internal static class DeniedChartSeriesBuilder
         mode == DeniedViewMode.CapacityDenied
             ?
             [
-                (ChartAggregator.DeniedUnauthSuffix, "Denied: Unauthenticated"),
-                (ChartAggregator.DeniedBlockedSuffix, "Denied: Blocked"),
-                (ChartAggregator.DeniedCapacitySuffix, "Denied: Capacity")
+                (ChartAggregator.DeniedUnauthSuffix, "Unauthenticated"),
+                (ChartAggregator.DeniedBlockedSuffix, "Blocked"),
+                (ChartAggregator.DeniedCapacitySuffix, "Out Of Slots")
             ]
             :
             [
-                (ChartAggregator.DeniedUnauthSuffix, "Denied: Unauthenticated"),
-                (ChartAggregator.DeniedBlockedSuffix, "Denied: Blocked"),
-                (ChartAggregator.DeniedRateLimitedSuffix, "Denied: Rate limited")
+                (ChartAggregator.DeniedUnauthSuffix, "Unauthenticated"),
+                (ChartAggregator.DeniedBlockedSuffix, "Blocked"),
+                (ChartAggregator.DeniedRateLimitedSuffix, "Throttled")
             ];
 }

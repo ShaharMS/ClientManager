@@ -45,7 +45,7 @@ internal static class TargetBreakdownChartSeriesBuilder
             }
 
             DeniedChartSeriesBuilder.AppendTripletSeries(
-                series, id, name, points, deniedViewMode, from, now, bucketCount);
+                series, id, points, deniedViewMode, from, now, bucketCount);
         }
 
         referenceBuckets ??= ChartBucketAggregator.Aggregate([], from, now, bucketCount).Buckets;

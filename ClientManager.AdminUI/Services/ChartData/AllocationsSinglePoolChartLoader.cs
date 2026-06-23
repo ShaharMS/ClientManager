@@ -110,7 +110,6 @@ internal sealed class AllocationsSinglePoolChartLoader
             DeniedChartSeriesBuilder.AppendTripletSeries(
                 clientAreas,
                 pool.ResourcePoolId,
-                pool.Name,
                 poolHistory?.Points ?? [],
                 context.IsAccessMetric ? DeniedViewMode.RateLimitDenied : DeniedViewMode.CapacityDenied,
                 from,

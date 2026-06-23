@@ -112,7 +112,6 @@ internal sealed class MonitorSingleServiceChartLoader
             DeniedChartSeriesBuilder.AppendTripletSeries(
                 clientAreas,
                 service.Id,
-                service.Name,
                 serviceHistory?.Points ?? [],
                 DeniedViewMode.RateLimitDenied,
                 from,

@@ -149,7 +149,6 @@ internal sealed class DashboardSingleTargetChartLoader
         DeniedChartSeriesBuilder.AppendTripletSeries(
             clientAreas,
             context.SelectedTargetId!,
-            targetName,
             targetHistory?.Points ?? [],
             isRateBased ? DeniedViewMode.RateLimitDenied : DeniedViewMode.CapacityDenied,
             from,
