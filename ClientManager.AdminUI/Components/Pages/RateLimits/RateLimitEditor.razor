@@ -1,14 +1,16 @@
 @page "/rate-limits/new"
 @page "/rate-limits/{Id}"
+@using System.Globalization
 @inject GlobalRateLimitApiService RateLimitApi
 @inject ServiceApiService ServiceApi
 @inject NavigationManager Nav
+@inject ApiErrorLocalizer errors
 
 <EditorPageTemplate TModel="RateLimitFormModel"
     Id="@Id" IsNew="@_isNew"
-    BackPath="rate-limits" BackLinkText="← Back to Rate Limits"
-    CreateTitle="Create Rate Limit" CreateDescription="@_createDescription"
-    EditTitle="@_editTitle" EditTitlePrefix="Edit Rate Limit: " EditDescription="Update rate limit configuration."
+    BackPath="rate-limits" BackLinkText="@L["Pages.RateLimits.BackLink"]"
+    CreateTitle="@L["Pages.RateLimits.CreateTitle"]" CreateDescription="@_createDescription"
+    EditTitle="@_editTitle" EditTitlePrefix="@L["Pages.RateLimits.EditTitlePrefix"]" EditDescription="@L["Pages.RateLimits.EditDescription"]"
     FormName="rateLimitForm" Model="@_model" Loading="@_loading" Error="@_error"
     SubmitDisabled="@_submitDisabled" SubmitTitle="@_submitTitle"
     OnValidSubmit="SaveAsync">
@@ -17,45 +19,43 @@
         <div class="alert alert-danger" style="margin-bottom: var(--space-md);">@_saveError</div>
     }
     <div class="cm-editor__field">
-        <label>Service</label>
+        <label>@L["Columns.Service"]</label>
         <EntityIdInput @bind-Value="_model.TargetId" Suggestions="_serviceIds"
             DisabledSuggestions="@_limitedServiceIds"
-            DisabledSuggestionMessage="Already has a rate limit"
-            Mode="EntityIdInputMode.Reference" EntityName="service"
+            DisabledSuggestionMessage="@L["Pages.RateLimits.AlreadyHasRateLimit"]"
+            Mode="EntityIdInputMode.Reference" EntityName="@L["Dialog.EntityLabel.Service"]"
             Disabled="@(_isNew && !_canCreate)" />
     </div>
     <div class="cm-editor__field">
-        <label>Strategy</label>
+        <label>@L["Columns.Strategy"]</label>
         <RadzenDropDown TValue="RateLimitStrategy" @bind-Value="_model.Strategy"
-            Data="@(Enum.GetValues<RateLimitStrategy>())" Style="width: 100%;"
+            Data="@_strategyOptions" TextProperty="Label" ValueProperty="Strategy" Style="width: 100%;"
             Change="@(_ => StateHasChanged())" />
     </div>
     <div class="cm-editor__field">
-        <label>Max Requests</label>
+        <label>@L["Columns.MaxRequests"]</label>
         <RadzenNumeric TValue="int" @bind-Value="_model.MaxRequests" Style="width: 100%;" />
     </div>
     <div class="cm-editor__field">
-        <label>Window</label>
+        <label>@L["Columns.Window"]</label>
         <DurationInput @bind-Value="_model.WindowSeconds" />
     </div>
     @if (_model.Strategy == RateLimitStrategy.TokenBucket)
     {
         <div class="cm-editor__field">
-            <label>Tokens Per Refill</label>
+            <label>@L["Pages.Clients.GlobalRateLimit.TokensPerRefill"]</label>
             <RadzenNumeric TValue="int?" @bind-Value="_model.TokensPerRefill" Style="width: 100%;" />
         </div>
     }
 </EditorPageTemplate>
 
 @code {
-    private const string AllServicesLimitedTooltip = "Every service already has a rate limit.";
-
     [Parameter] public string? Id { get; set; }
     private bool _isNew => string.IsNullOrEmpty(Id) || Id == "new";
     private bool _loading = true;
     private string? _error;
     private string? _saveError;
-    private string _createDescription = "Define a rate limit for a service endpoint.";
+    private string _createDescription = "";
     private string? _editTitle;
     private RateLimitFormModel _model = new() { TargetType = TargetType.Service };
     private List<string> _serviceIds = [];
@@ -63,9 +63,13 @@
     private bool _canCreate;
     private bool _submitDisabled;
     private string? _submitTitle;
+    private IReadOnlyList<RateLimitStrategyOption> _strategyOptions = [];
 
     protected override async Task OnInitializedAsync()
     {
+        _strategyOptions = RateLimitStrategyLabels.GetOptions(L);
+        _createDescription = L["Pages.RateLimits.CreateDescription"];
+
         try
         {
             _serviceIds = (await ServiceApi.GetAllAsync()).Select(s => s.Id).ToList();
@@ -79,11 +83,11 @@
                 var limit = await RateLimitApi.GetByIdAsync(Id!);
                 if (limit is null)
                 {
-                    _error = "Rate limit not found.";
+                    _error = L["Pages.RateLimits.NotFound"];
                     return;
                 }
 
-                _editTitle = $"Edit Rate Limit: {limit.TargetId}";
+                _editTitle = string.Format(CultureInfo.CurrentCulture, L["Pages.RateLimits.EditTitle"], limit.TargetId);
 
                 limitedTargets.Remove(limit.TargetId);
 
@@ -111,7 +115,7 @@
         }
         catch (HttpRequestException ex)
         {
-            _error = $"Unable to connect to the API: {ex.Message}";
+            _error = errors.Format("Api.UnableToConnect", ex);
         }
         finally
         {
@@ -128,19 +132,21 @@
             return;
         }
 
+        var allLimited = L["Pages.RateLimits.CreateDisabledTooltip"];
         _canCreate = _serviceIds.Any(id => !_limitedServiceIds.Contains(id, StringComparer.OrdinalIgnoreCase));
         _submitDisabled = !_canCreate;
-        _submitTitle = _canCreate ? null : AllServicesLimitedTooltip;
+        _submitTitle = _canCreate ? null : allLimited;
         _createDescription = _canCreate
-            ? "Define a rate limit for a service endpoint."
-            : AllServicesLimitedTooltip;
+            ? L["Pages.RateLimits.CreateDescription"]
+            : allLimited;
     }
 
     private async Task SaveAsync()
     {
+        var allLimited = L["Pages.RateLimits.CreateDisabledTooltip"];
         if (_isNew && (!_canCreate || _limitedServiceIds.Any(id => string.Equals(id, _model.TargetId, StringComparison.OrdinalIgnoreCase))))
         {
-            _saveError = AllServicesLimitedTooltip;
+            _saveError = allLimited;
             StateHasChanged();
             return;
         }
@@ -172,7 +178,7 @@
         }
         catch (HttpRequestException ex)
         {
-            _saveError = $"Save failed: {ex.Message}";
+            _saveError = errors.Format("Pages.RateLimits.SaveFailed", ex);
             StateHasChanged();
             return;
         }

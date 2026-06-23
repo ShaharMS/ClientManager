@@ -3,12 +3,13 @@
 @inject ResourcePoolApiService PoolApi
 @inject NavigationManager Nav
 @inject DialogService Dialog
+@inject ApiErrorLocalizer errors
 @inject IJSRuntime JS
 @implements IAsyncDisposable
 
 <div class="cm-page-header">
-    <h1>Quotas</h1>
-    <p>Manage request quotas applied to resource pools.</p>
+    <h1>@L["Pages.Quotas.Title"]</h1>
+    <p>@L["Pages.Quotas.Subtitle"]</p>
 </div>
 
 @if (_deleteError is not null)
@@ -29,15 +30,15 @@ else
     <div class="cm-list-page__table-card">
         <div class="cm-list-page__header cm-list-page__header--quota">
             <div class="cm-list-page__search-field">
-                <RadzenTextBox Placeholder="Search quotas..."
+                <RadzenTextBox Placeholder="@L["Pages.Quotas.Search"]"
                     Value="@_search"
                     ValueChanged="@((string v) => { _search = v; StateHasChanged(); })"
                     @oninput="@(args => { _search = args.Value?.ToString(); StateHasChanged(); })" />
             </div>
             <div class="cm-list-page__header-actions">
                 <span class="cm-list-page__create-btn-wrap @(_canCreateMore ? null : "cm-list-page__create-btn-wrap--disabled")"
-                      title="@(_canCreateMore ? "Create quota" : _createDisabledTooltip)">
-                    <RadzenButton Text="Create Quota" Icon="add"
+                      title="@(_canCreateMore ? L["Pages.Quotas.CreateTooltip"] : _createDisabledTooltip)">
+                    <RadzenButton Text="@L["Pages.Quotas.CreateButton"]" Icon="add"
                         class="cm-list-page__create-btn"
                         Click="@(() => Nav.NavigateTo("/quotas/new"))"
                         ButtonStyle="ButtonStyle.Primary" Disabled="@(!_canCreateMore)" />
@@ -45,37 +46,37 @@ else
             </div>
         </div>
 
-        <RadzenDataGrid Data="@_filteredLimits" TItem="GlobalRateLimit"
+        <RadzenDataGrid Data="@_filteredLimits" TItem="GlobalRateLimit" EmptyText="@L["DataGrid.NoRecords"]"
             AllowSorting="true" AllowPaging="true" PageSize="@_pageSize"
             PagerHorizontalAlign="HorizontalAlign.Center">
             <Columns>
-                <RadzenDataGridColumn TItem="GlobalRateLimit" Title="Resource Pool"
+                <RadzenDataGridColumn TItem="GlobalRateLimit" Title="@L["Columns.ResourcePool"]"
                     Property="TargetId" CssClass="cm-col-label" HeaderCssClass="cm-col-label">
                     <Template Context="limit">
                         @GetPoolName(limit.TargetId)
                     </Template>
                 </RadzenDataGridColumn>
-                <RadzenDataGridColumn TItem="GlobalRateLimit" Property="Strategy" Title="Strategy"
+                <RadzenDataGridColumn TItem="GlobalRateLimit" Property="Strategy" Title="@L["Columns.Strategy"]"
                     CssClass="cm-col-strategy" HeaderCssClass="cm-col-strategy">
                     <Template Context="limit">
-                        <span class="@RateLimitStrategyBadge.GetCssClass(limit.Strategy)">@limit.Strategy</span>
+                        <span class="@RateLimitStrategyBadge.GetCssClass(limit.Strategy)">@RateLimitStrategyLabels.GetLabel(limit.Strategy, L)</span>
                     </Template>
                 </RadzenDataGridColumn>
-                <RadzenDataGridColumn TItem="GlobalRateLimit" Property="MaxRequests" Title="Max Requests"
+                <RadzenDataGridColumn TItem="GlobalRateLimit" Property="MaxRequests" Title="@L["Columns.MaxRequests"]"
                     CssClass="cm-col-scalar-wide" HeaderCssClass="cm-col-scalar-wide" />
-                <RadzenDataGridColumn TItem="GlobalRateLimit" Title="Window"
+                <RadzenDataGridColumn TItem="GlobalRateLimit" Title="@L["Columns.Window"]"
                     CssClass="cm-col-scalar-narrow" HeaderCssClass="cm-col-scalar-narrow">
-                    <Template Context="limit">@FormatWindow(limit.Window)</Template>
+                    <Template Context="limit">@TimeSpanFormatter.FormatCompact(limit.Window, L)</Template>
                 </RadzenDataGridColumn>
-                <RadzenDataGridColumn TItem="GlobalRateLimit" Title="Actions" Sortable="false"
+                <RadzenDataGridColumn TItem="GlobalRateLimit" Title="@L["Columns.Actions"]" Sortable="false"
                     CssClass="cm-col-actions" HeaderCssClass="cm-col-actions">
                     <Template Context="limit">
                         <div class="cm-list-page__actions-cell">
                             <RadzenButton Icon="edit" Size="ButtonSize.Small" Variant="Variant.Text"
-                                title="Edit quota"
+                                title="@L["Pages.Quotas.EditTooltip"]"
                                 Click="@(() => Nav.NavigateTo($"/quotas/{limit.Id}"))" />
                             <RadzenButton Icon="delete" Size="ButtonSize.Small" Variant="Variant.Text"
-                                ButtonStyle="ButtonStyle.Danger" title="Delete quota"
+                                ButtonStyle="ButtonStyle.Danger" title="@L["Pages.Quotas.DeleteTooltip"]"
                                 Click="@(async () => await DeleteAsync(limit))" />
                         </div>
                     </Template>
@@ -150,7 +151,7 @@ else
         }
         catch (HttpRequestException ex)
         {
-            _error = $"Unable to connect to the API: {ex.Message}";
+            _error = errors.Format("Api.UnableToConnect", ex);
         }
         finally
         {
@@ -166,7 +167,7 @@ else
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         _canCreateMore = pools.Any(p => !limitedTargets.Contains(p.Id));
-        _createDisabledTooltip = _canCreateMore ? null : "Every resource pool already has a quota.";
+        _createDisabledTooltip = _canCreateMore ? null : L["Pages.Quotas.CreateDisabledTooltip"];
     }
 
     private string GetPoolName(string poolId) =>
@@ -175,17 +176,13 @@ else
     private Task DeleteAsync(GlobalRateLimit limit) =>
         ListDeleteSupport.ExecuteAsync(
             Dialog,
-            "quota for resource pool",
+            L,
+            errors,
+            L["Dialog.EntityLabel.QuotaForResourcePool"],
             GetPoolName(limit.TargetId),
             () => RateLimitApi.DeleteAsync(limit.Id),
             LoadAsync,
             message => _deleteError = message,
             StateHasChanged);
 
-    private static string FormatWindow(TimeSpan window)
-    {
-        if (window.TotalHours >= 1) return $"{window.TotalHours:0.#}h";
-        if (window.TotalMinutes >= 1) return $"{window.TotalMinutes:0.#}m";
-        return $"{window.TotalSeconds:0.#}s";
-    }
 }
