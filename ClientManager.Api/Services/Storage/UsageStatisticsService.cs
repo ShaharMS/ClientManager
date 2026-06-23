@@ -340,7 +340,6 @@ public partial class UsageStatisticsService : IUsageStatisticsService
         {
             var accessibleServices = client.Services.Count(service => service.Value.IsAllowed);
             var totalMaxRequests = client.Services.Values.Where(service => service.RateLimit is not null).Sum(service => service.RateLimit!.MaxRequests);
-            var rateLimitCap = totalMaxRequests > 0 ? $"{totalMaxRequests} req/min" : "-";
             var accessiblePools = client.ResourcePools.Count;
             var usedSlots = 0;
             var totalAccessibleSlots = 0;
@@ -355,7 +354,7 @@ public partial class UsageStatisticsService : IUsageStatisticsService
                 client.Id,
                 client.Name,
                 accessibleServices,
-                rateLimitCap,
+                totalMaxRequests,
                 accessiblePools,
                 usedSlots,
                 totalAccessibleSlots));

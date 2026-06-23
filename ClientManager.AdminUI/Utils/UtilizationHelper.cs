@@ -1,3 +1,6 @@
+using System.Globalization;
+using ClientManager.AdminUI.Resources;
+using Microsoft.Extensions.Localization;
 using Radzen;
 using Radzen.Blazor;
 
@@ -16,4 +19,14 @@ public static class UtilizationHelper
 
     public static string FormatRemaining(long? remainingValue) =>
         remainingValue.HasValue ? remainingValue.Value.ToString("N0") : "-";
+
+    public static string FormatRequestsPerMinute(
+        IStringLocalizer<SharedResources> localizer,
+        int requestsPerMinute) =>
+        requestsPerMinute > 0
+            ? string.Format(
+                CultureInfo.CurrentCulture,
+                localizer["Units.RequestsPerMinute"],
+                requestsPerMinute.ToString("N0", CultureInfo.CurrentCulture))
+            : "-";
 }

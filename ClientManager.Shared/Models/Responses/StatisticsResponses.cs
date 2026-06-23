@@ -92,7 +92,7 @@ public record ClientSummariesResponse(
 /// <param name="ClientId">The unique identifier of the client.</param>
 /// <param name="DisplayName">Human-readable display name.</param>
 /// <param name="AccessibleServices">Number of services the client can access.</param>
-/// <param name="TotalRateLimitCap">Formatted string summarizing the client's total rate limit capacity.</param>
+/// <param name="TotalRateLimitRequests">Sum of per-service rate limit max requests; 0 when none.</param>
 /// <param name="AccessiblePools">Number of resource pools the client has access to.</param>
 /// <param name="UsedSlots">Number of resource pool slots currently in use.</param>
 /// <param name="TotalAccessibleSlots">Total number of resource pool slots the client can access.</param>
@@ -100,7 +100,7 @@ public record ClientSummaryRow(
     string ClientId,
     string DisplayName,
     int AccessibleServices,
-    string TotalRateLimitCap,
+    int TotalRateLimitRequests,
     int AccessiblePools,
     int UsedSlots,
     int TotalAccessibleSlots);
