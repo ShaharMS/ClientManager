@@ -18,6 +18,11 @@ public record ProblemResponse
     public int? Status { get; init; }
 
     /// <summary>
+    /// Machine-readable error code for client-side localization (matches <see cref="StorageErrorCodes"/>).
+    /// </summary>
+    public string? ErrorCode { get; init; }
+
+    /// <summary>
     /// Human-readable explanation specific to this occurrence of the problem.
     /// </summary>
     public string? Detail { get; init; }
