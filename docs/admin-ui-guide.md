@@ -23,7 +23,7 @@ If the API is down, every page fails to load data.
 | `/rate-limits/new`, `/rate-limits/{id}` | Rate limit editor | Aggregate throughput caps per service |
 | `/quotas` | Quotas | **Global** limits where `targetType = ResourcePool` |
 | `/quotas/new`, `/quotas/{id}` | Quota editor | Aggregate acquisition-rate caps per pool |
-| `/settings` | Settings | Chart axis scale and UI preferences (stored in browser local storage) |
+| `/settings` | Settings | Language, chart axis scale, and UI preferences (stored in browser local storage) |
 
 ### Naming: rate limits vs quotas
 
@@ -98,8 +98,17 @@ Charts poll on an interval. Heavy polling is safe for statistics endpoints; do *
 
 The UI uses a named `HttpClient` (`ClientManagerApi`) configured with `ApiBaseUrl`. In Development, TLS certificate validation is relaxed for local HTTPS experiments.
 
+## Localization
+
+The Admin UI supports **English** and **Hebrew** (`he-IL`). Change language under **Settings → Language**; the page reloads to apply the new culture.
+
+Strings live in `ClientManager.AdminUI/Resources/SharedResources*.resx`. Edit those files directly — there is no JSON or codegen pipeline. Hebrew uses RTL layout (Bootstrap RTL CSS + logical CSS properties).
+
+For architecture, key naming, adding a culture, and terminology rules, see [Localization](localization.md).
+
 ## Related reading
 
+- [Localization](localization.md) — `.resx` files, `SupportedCultures`, RTL, and editing workflow
 - [Domain model](core/domain-model.md) — entity relationships and limit precedence
 - [API overview](api-overview.md) — catalog and statistics endpoints the UI calls
 - [Request flow](core/request-flow.md) — what access checks and acquisitions do
