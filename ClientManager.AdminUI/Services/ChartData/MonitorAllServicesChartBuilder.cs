@@ -1,3 +1,4 @@
+using ClientManager.AdminUI.Models;
 using ClientManager.AdminUI.Models.Charts;
 using ClientManager.AdminUI.Models.Monitor;
 using ClientManager.AdminUI.Utils;
@@ -21,7 +22,6 @@ internal static class MonitorAllServicesChartBuilder
         List<TargetChartData> charts,
         List<MonitorClientRow> rows)
     {
-        var rawPoints = new List<ChartBucketAggregator.RawPoint>();
         var totalCap = 0;
 
         foreach (var service in visibleServices)
@@ -30,10 +30,6 @@ internal static class MonitorAllServicesChartBuilder
                 service.Id, rateLimitLookup, chartBucketDuration);
 
             var breakdown = breakdowns.FirstOrDefault(b => b.TargetId == service.Id);
-            var history = allHistories.FirstOrDefault(h => h.TargetId == service.Id);
-
-            rawPoints.AddRange((history?.Points ?? [])
-                .Select(point => new ChartBucketAggregator.RawPoint(point.Timestamp, point.GrantedCount)));
 
             foreach (var entry in breakdown?.Entries ?? [])
             {
@@ -41,21 +37,30 @@ internal static class MonitorAllServicesChartBuilder
                     entry.ClientId, entry.ClientName, service.Name,
                     entry.GrantedCount,
                     entry.DeniedCount,
+                    entry.DeniedUnauthenticatedCount,
+                    entry.DeniedBlockedCount,
+                    entry.DeniedRateLimitedCount,
+                    entry.DeniedCapacityLimitedCount,
                     MonitorCapCalculator.GetEffectiveClientServiceCap(
                         entry.ClientId, service.Id, context.AllClients, rateLimitLookup, rangeDuration)));
             }
         }
 
-        var aggregation = ChartBucketAggregator.Aggregate(rawPoints, from, now, context.BucketCount);
-        var sortedPoints = aggregation.Buckets
-            .Select(bucket => new ChartPoint(bucket.Label, bucket.Value))
-            .ToList();
-        var capPoints = sortedPoints
-            .Select(p => new ChartPoint(p.Label, totalCap))
+        var targetPointLists = visibleServices
+            .Select(service => (IReadOnlyList<HistoricalUsagePoint>)(allHistories.FirstOrDefault(h => h.TargetId == service.Id)?.Points ?? []));
+        var (clientAreas, referenceBuckets) = AggregateTargetChartSeriesBuilder.Build(
+            targetPointLists,
+            usageIsSummed: true,
+            "All Services",
+            DeniedViewMode.RateLimitDenied,
+            from,
+            now,
+            context.BucketCount);
+
+        var capPoints = referenceBuckets
+            .Select(bucket => new ChartPoint(bucket.Label, totalCap))
             .ToList();
 
-        charts.Add(new TargetChartData("All Services",
-            new List<ClientAreaSeries> { new("total", "Total", sortedPoints) },
-            capPoints));
+        charts.Add(new TargetChartData("All Services", clientAreas, capPoints));
     }
 }

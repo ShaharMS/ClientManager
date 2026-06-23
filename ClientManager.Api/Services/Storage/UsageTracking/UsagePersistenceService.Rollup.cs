@@ -77,11 +77,16 @@ public partial class UsagePersistenceService
         CancellationToken cancellationToken)
     {
         var counterKeys = buckets
-            .SelectMany(bucket => new[]
+            .SelectMany(bucket =>
             {
-                UsageSegmentHelper.BuildUsageCounterKey(source.ClientId, source.TargetType, source.TargetId, bucket.Timestamp, UsageEventType.Granted),
-                UsageSegmentHelper.BuildUsageCounterKey(source.ClientId, source.TargetType, source.TargetId, bucket.Timestamp, UsageEventType.Denied),
-                UsageSegmentHelper.BuildUsageCounterKey(source.ClientId, source.TargetType, source.TargetId, bucket.Timestamp, UsageEventType.Released)
+                var keys = new List<string>
+                {
+                    UsageSegmentHelper.BuildUsageCounterKey(source.ClientId, source.TargetType, source.TargetId, bucket.Timestamp, UsageEventType.Granted),
+                    UsageSegmentHelper.BuildUsageCounterKey(source.ClientId, source.TargetType, source.TargetId, bucket.Timestamp, UsageEventType.Released)
+                };
+                keys.AddRange(UsageSegmentHelper.EnumerateDeniedCounterKeys(
+                    source.ClientId, source.TargetType, source.TargetId, bucket.Timestamp));
+                return keys;
             })
             .ToList();
 
@@ -91,21 +96,27 @@ public partial class UsagePersistenceService
         var merged = buckets.Select(bucket =>
         {
             var grantedKey = UsageSegmentHelper.BuildUsageCounterKey(source.ClientId, source.TargetType, source.TargetId, bucket.Timestamp, UsageEventType.Granted);
-            var deniedKey = UsageSegmentHelper.BuildUsageCounterKey(source.ClientId, source.TargetType, source.TargetId, bucket.Timestamp, UsageEventType.Denied);
             var releasedKey = UsageSegmentHelper.BuildUsageCounterKey(source.ClientId, source.TargetType, source.TargetId, bucket.Timestamp, UsageEventType.Released);
 
             var grantedDelta = counterValues.GetValueOrDefault(grantedKey);
-            var deniedDelta = counterValues.GetValueOrDefault(deniedKey);
             var releasedDelta = counterValues.GetValueOrDefault(releasedKey);
+            var updated = bucket;
+
+            foreach (var category in Enum.GetValues<UsageDenialCategory>())
+            {
+                var deniedKey = UsageSegmentHelper.BuildUsageCounterKey(
+                    source.ClientId, source.TargetType, source.TargetId, bucket.Timestamp, UsageEventType.Denied, category);
+                var deniedDelta = counterValues.GetValueOrDefault(deniedKey);
+                if (deniedDelta > 0)
+                {
+                    keysToReset.Add(deniedKey);
+                    updated = updated.WithDeniedDelta(category, deniedDelta);
+                }
+            }
 
             if (grantedDelta > 0)
             {
                 keysToReset.Add(grantedKey);
-            }
-
-            if (deniedDelta > 0)
-            {
-                keysToReset.Add(deniedKey);
             }
 
             if (releasedDelta > 0)
@@ -113,11 +124,11 @@ public partial class UsagePersistenceService
                 keysToReset.Add(releasedKey);
             }
 
-            return bucket with
+            return updated with
             {
-                GrantedCount = bucket.GrantedCount + grantedDelta,
-                DeniedCount = bucket.DeniedCount + deniedDelta,
-                ReleasedCount = bucket.ReleasedCount + releasedDelta
+                GrantedCount = updated.GrantedCount + grantedDelta,
+                ReleasedCount = updated.ReleasedCount + releasedDelta,
+                ActiveCount = Math.Max(0, updated.ActiveCount + grantedDelta - releasedDelta)
             };
         }).ToList();
 
@@ -166,7 +177,11 @@ public partial class UsagePersistenceService
             merged[existingIndex] = merged[existingIndex] with
             {
                 GrantedCount = merged[existingIndex].GrantedCount + totals.Granted,
-                DeniedCount = merged[existingIndex].DeniedCount + totals.Denied,
+                DeniedUnauthenticatedCount = merged[existingIndex].DeniedUnauthenticatedCount + totals.DeniedUnauth,
+                DeniedBlockedCount = merged[existingIndex].DeniedBlockedCount + totals.DeniedBlocked,
+                DeniedRateLimitedCount = merged[existingIndex].DeniedRateLimitedCount + totals.DeniedRateLimited,
+                DeniedCapacityLimitedCount = merged[existingIndex].DeniedCapacityLimitedCount + totals.DeniedCapacity,
+                DeniedCount = merged[existingIndex].DeniedCount + totals.DeniedUnauth + totals.DeniedBlocked + totals.DeniedRateLimited + totals.DeniedCapacity,
                 ReleasedCount = merged[existingIndex].ReleasedCount + totals.Released,
                 ActiveCount = Math.Max(merged[existingIndex].ActiveCount, totals.Active)
             };
@@ -178,7 +193,11 @@ public partial class UsagePersistenceService
         {
             Timestamp = targetTimestamp,
             GrantedCount = totals.Granted,
-            DeniedCount = totals.Denied,
+            DeniedUnauthenticatedCount = totals.DeniedUnauth,
+            DeniedBlockedCount = totals.DeniedBlocked,
+            DeniedRateLimitedCount = totals.DeniedRateLimited,
+            DeniedCapacityLimitedCount = totals.DeniedCapacity,
+            DeniedCount = totals.DeniedUnauth + totals.DeniedBlocked + totals.DeniedRateLimited + totals.DeniedCapacity,
             ReleasedCount = totals.Released,
             ActiveCount = totals.Active
         });
@@ -242,14 +261,29 @@ public partial class UsagePersistenceService
         return mutated;
     }
 
-    private static (long Granted, long Denied, long Released, long Active) SumBuckets(
+    private static (long Granted, long DeniedUnauth, long DeniedBlocked, long DeniedRateLimited, long DeniedCapacity, long Released, long Active) SumBuckets(
         IReadOnlyList<UsageBucket> buckets)
     {
+        long unauth = 0, blocked = 0, rateLimited = 0, capacity = 0;
+        foreach (var bucket in buckets)
+        {
+            var breakdown = bucket.GetDeniedBreakdown();
+            unauth += breakdown.Unauth;
+            blocked += breakdown.Blocked;
+            rateLimited += breakdown.RateLimited;
+            capacity += breakdown.Capacity;
+        }
+
         return (
             buckets.Sum(bucket => bucket.GrantedCount),
-            buckets.Sum(bucket => bucket.DeniedCount),
+            unauth,
+            blocked,
+            rateLimited,
+            capacity,
             buckets.Sum(bucket => bucket.ReleasedCount),
-            buckets.Max(bucket => bucket.ActiveCount));
+            buckets.Count > 0
+                ? buckets.OrderBy(bucket => bucket.Timestamp).Last().ActiveCount
+                : 0);
     }
 
     private static DateTime RoundDownToFiveMinutes(DateTime utc)

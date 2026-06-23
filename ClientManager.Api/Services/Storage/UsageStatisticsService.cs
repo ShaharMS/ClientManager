@@ -15,6 +15,8 @@ namespace ClientManager.Api.Services.Storage;
 /// </summary>
 public partial class UsageStatisticsService : IUsageStatisticsService
 {
+    private static readonly TimeSpan DefaultBreakdownWindow = TimeSpan.FromMinutes(5);
+
     private readonly IClientConfigurationDatabase _clientConfigDatabase;
     private readonly IEntityRepository<Service> _serviceRepository;
     private readonly IEntityRepository<ResourcePool> _poolRepository;
@@ -126,7 +128,7 @@ public partial class UsageStatisticsService : IUsageStatisticsService
             {
                 var effectiveGranularity = granularity ?? BucketGranularity.FiveMinute;
                 var now = DateTime.UtcNow;
-                var effectiveFrom = from ?? RoundDownToFiveMinutes(now).AddMinutes(-5);
+                var effectiveFrom = from ?? now.Subtract(DefaultBreakdownWindow);
                 var effectiveTo = to ?? now;
                 var clients = await _clientConfigDatabase.GetAllAsync(token);
                 var clientMap = clients.ToDictionary(client => client.Id, StringComparer.Ordinal);
@@ -153,14 +155,24 @@ public partial class UsageStatisticsService : IUsageStatisticsService
                             continue;
                         }
 
-                        var grantedCount = totals.Buckets.Values.Sum(bucket => bucket.Granted);
-                        var deniedCount = totals.Buckets.Values.Sum(bucket => bucket.Denied);
-                        var latestActiveCount = totals.Buckets.Last().Value.Active;
+                        var grantedCount = SumGrantedInRange(totals.Buckets, effectiveFrom, effectiveTo);
+                        var deniedCount = SumDeniedInRange(totals.Buckets, effectiveFrom, effectiveTo);
+                        var deniedBreakdown = SumDeniedBreakdownInRange(totals.Buckets, effectiveFrom, effectiveTo);
+                        var latestActiveCount = ComputeRunningActive(totals.Buckets, effectiveTo);
 
                         if (grantedCount > 0 || deniedCount > 0 || latestActiveCount > 0)
                         {
                             var client = clientMap[clientId];
-                            entries.Add(new ClientUsageEntry(client.Id, client.Name, grantedCount, deniedCount, latestActiveCount));
+                            entries.Add(new ClientUsageEntry(
+                                client.Id,
+                                client.Name,
+                                grantedCount,
+                                deniedCount,
+                                deniedBreakdown.Unauth,
+                                deniedBreakdown.Blocked,
+                                deniedBreakdown.RateLimited,
+                                deniedBreakdown.Capacity,
+                                latestActiveCount));
                         }
                     }
 
@@ -310,7 +322,7 @@ public partial class UsageStatisticsService : IUsageStatisticsService
             cancellationToken);
 
         var recentRequests = totalsByService.Values
-            .Sum(service => service.Buckets.Values.Sum(bucket => bucket.Granted));
+            .Sum(service => SumGrantedInRange(service.Buckets, recentWindowStart, now));
 
         return new GlobalUsageStatsResponse(
             Math.Round(recentRequests / 5.0, 1),

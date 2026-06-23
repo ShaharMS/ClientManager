@@ -1,32 +1,30 @@
 @using ClientManager.AdminUI.Models.Charts
 @using ClientManager.AdminUI.Models.Monitor
 
-<div class="cm-monitor__chart-card">
-    <div class="cm-monitor__chart-toolbar cm-monitor__chart-toolbar--monitor">
-        <div class="cm-dashboard__filters cm-monitor__chart-filters cm-monitor__chart-filters--monitor">
-            <div class="cm-monitor__chart-filters-service">
-                <RadzenDropDown TValue="string" Value="@SelectedServiceId"
-                    ValueChanged="@OnServiceChanged"
-                    Data="@ServiceOptions" TextProperty="Name" ValueProperty="Id"
-                    Placeholder="Select service..." />
-            </div>
-            <div class="cm-monitor__chart-filters-clients">
-                <RadzenDropDown TValue="IEnumerable<string>" Value="@SelectedClientIds"
-                    ValueChanged="@OnClientsChanged" Multiple="true"
-                    Data="@ClientOptions" TextProperty="Name" ValueProperty="Id"
-                    Placeholder="All clients" />
-            </div>
-        </div>
-        <span class="cm-dashboard__chart-title cm-monitor__chart-title">@ChartTitle</span>
-        <div class="cm-monitor__chart-settings">
-            <ChartSettingsDropdown OnTimeRangeChanged="OnTimeRangeChanged"
-                                   OnPollingIntervalChanged="OnPollingIntervalChanged"
-                                   OnAxisScaleChanged="OnAxisScaleChanged" />
-        </div>
-    </div>
-    <StackedUsageChartList Charts="@TargetCharts" AxisScale="@AxisScaleType"
-        CapLineTitle="Cap" Loading="@Loading" ShowTitles="false" />
-</div>
+<ChartCard Title="@ChartTitle"
+           Spaced="true"
+           OnTimeRangeChanged="OnTimeRangeChanged"
+           OnPollingIntervalChanged="OnPollingIntervalChanged"
+           OnAxisScaleChanged="OnAxisScaleChanged">
+    <Filters>
+        <ChartCardFilter>
+            <RadzenDropDown TValue="string" Value="@SelectedServiceId"
+                ValueChanged="@OnServiceChanged"
+                Data="@ServiceOptions" TextProperty="Name" ValueProperty="Id"
+                Placeholder="Select service..." />
+        </ChartCardFilter>
+        <ChartCardFilter Clients="true">
+            <RadzenDropDown TValue="IEnumerable<string>" Value="@SelectedClientIds"
+                ValueChanged="@OnClientsChanged" Multiple="true"
+                Data="@ClientOptions" TextProperty="Name" ValueProperty="Id"
+                Placeholder="All clients" />
+        </ChartCardFilter>
+    </Filters>
+    <ChildContent>
+        <StackedUsageChartList Charts="@TargetCharts" AxisScale="@AxisScaleType"
+            CapLineTitle="Cap" Loading="@Loading" ShowTitles="false" />
+    </ChildContent>
+</ChartCard>
 
 @code {
     [Parameter] public string SelectedServiceId { get; set; } = "";

@@ -9,8 +9,9 @@
             <RadzenStackedAreaSeries Data="@clientArea.Points"
                 CategoryProperty="Label" ValueProperty="Value"
                 Title="@clientArea.ClientName"
-                Fill="@Colors.GetColor(clientArea.ClientId)"
-                Stroke="@Colors.GetColor(clientArea.ClientId)">
+                Hidden="@clientArea.Hidden"
+                Fill="@Colors.GetSeriesColor(clientArea.ClientId)"
+                Stroke="@Colors.GetSeriesColor(clientArea.ClientId)">
                 <TooltipTemplate Context="point">
                     <span>@clientArea.ClientName: @(point.OriginalValue.ToString("N0"))</span>
                 </TooltipTemplate>

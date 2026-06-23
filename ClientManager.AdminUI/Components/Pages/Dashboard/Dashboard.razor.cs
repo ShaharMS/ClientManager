@@ -43,7 +43,8 @@ public partial class Dashboard : ComponentBase, IAsyncDisposable
     private List<NamedItem> _clients = [];
 
     private List<TargetChartData> _targetCharts = [];
-    private List<ClientUsagePoint> _perClientUsage = [];
+    private DashboardDonutData _donutData = new([], []);
+    private int _donutDataGeneration;
 
     private ChartTimeRange _timeRange = ChartTimeRange.FromPreset(TimeRangePreset.Default);
     private AxisScaleType _axisScaleType = AxisScaleType.Linear;

@@ -1,0 +1,28 @@
+@using ClientManager.AdminUI.Models
+@using ClientManager.AdminUI.Utils
+
+<span class="@(ShowBreakdown && Total > 0 ? "cm-denied-breakdown__value" : null)"
+      title="@(ShowBreakdown && Total > 0 ? TooltipText : null)">
+    @Total.ToString("N0")
+</span>
+
+@code {
+    [Parameter] public long Total { get; set; }
+    [Parameter] public long Unauthenticated { get; set; }
+    [Parameter] public long Blocked { get; set; }
+    [Parameter] public long RateLimited { get; set; }
+    [Parameter] public long CapacityLimited { get; set; }
+    [Parameter] public DeniedViewMode ViewMode { get; set; }
+    [Parameter] public bool ShowBreakdown { get; set; }
+
+    private string TooltipText
+    {
+        get
+        {
+            var triplet = DeniedBreakdownHelper.GetTriplet(
+                Unauthenticated, Blocked, RateLimited, CapacityLimited, ViewMode);
+            return DeniedBreakdownHelper.BuildTooltip(
+                triplet.Unauth, triplet.Blocked, triplet.Third, ViewMode);
+        }
+    }
+}

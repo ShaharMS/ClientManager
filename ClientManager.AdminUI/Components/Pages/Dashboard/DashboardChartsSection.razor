@@ -1,49 +1,55 @@
 @using ClientManager.AdminUI.Models.Charts
 @using ClientManager.AdminUI.Models.Dashboard
+@using ClientManager.AdminUI.Services.ChartData
 @inject EntityColorService Colors
 
-<div class="cm-dashboard__chart-card">
-    <div class="cm-monitor__chart-toolbar cm-monitor__chart-toolbar--allocations">
-        <div class="cm-monitor__chart-filters cm-monitor__chart-filters--allocations">
-            <div class="cm-monitor__chart-filters-metric">
-                <RadzenDropDown TValue="string" Value="@SelectedFilterType"
-                    ValueChanged="@OnFilterTypeChanged"
-                    Data="@FilterTypes" TextProperty="Label" ValueProperty="Value"
-                    Placeholder="Filter by..." />
-            </div>
-            <div class="cm-monitor__chart-filters-pool">
-                <RadzenDropDown TValue="string" Value="@SelectedTargetId"
-                    ValueChanged="@OnTargetChanged"
-                    Data="@FilterTargets" TextProperty="Name" ValueProperty="Id"
-                    Placeholder="Select target..." />
-            </div>
-            <div class="cm-monitor__chart-filters-clients">
-                <RadzenDropDown TValue="IEnumerable<string>" Value="@SelectedClientIds"
-                    ValueChanged="@OnClientsChanged" Multiple="true"
-                    Data="@Clients" TextProperty="Name" ValueProperty="Id"
-                    Placeholder="All clients" />
-            </div>
-        </div>
-        <span class="cm-dashboard__chart-title cm-monitor__chart-title">@ChartTitle</span>
-        <div class="cm-monitor__chart-settings">
-            <ChartSettingsDropdown OnTimeRangeChanged="OnTimeRangeChanged"
-                                   OnPollingIntervalChanged="OnPollingIntervalChanged"
-                                   OnAxisScaleChanged="OnAxisScaleChanged" />
-        </div>
-    </div>
-    <CombinedStackedUsageChart Charts="@TargetCharts" AxisScale="@AxisScaleType" />
-</div>
+<ChartCard Title="@ChartTitle"
+           OnTimeRangeChanged="OnTimeRangeChanged"
+           OnPollingIntervalChanged="OnPollingIntervalChanged"
+           OnAxisScaleChanged="OnAxisScaleChanged">
+    <Filters>
+        <ChartCardFilter>
+            <RadzenDropDown TValue="string" Value="@SelectedFilterType"
+                ValueChanged="@OnFilterTypeChanged"
+                Data="@FilterTypes" TextProperty="Label" ValueProperty="Value"
+                Placeholder="Filter by..." />
+        </ChartCardFilter>
+        <ChartCardFilter>
+            <RadzenDropDown TValue="string" Value="@SelectedTargetId"
+                ValueChanged="@OnTargetChanged"
+                Data="@FilterTargets" TextProperty="Name" ValueProperty="Id"
+                Placeholder="Select target..." />
+        </ChartCardFilter>
+        <ChartCardFilter Clients="true">
+            <RadzenDropDown TValue="IEnumerable<string>" Value="@SelectedClientIds"
+                ValueChanged="@OnClientsChanged" Multiple="true"
+                Data="@Clients" TextProperty="Name" ValueProperty="Id"
+                Placeholder="All clients" />
+        </ChartCardFilter>
+    </Filters>
+    <ChildContent>
+        <CombinedStackedUsageChart Charts="@TargetCharts" AxisScale="@AxisScaleType" />
+    </ChildContent>
+</ChartCard>
 
-<div class="cm-dashboard__chart-card">
-    <div class="cm-dashboard__chart-header">
-        <span class="cm-dashboard__chart-title">Usage Per Client</span>
+<div class="cm-chart-card">
+    <div class="cm-chart-card__header">
+        <div class="cm-donut-chart-heading">
+            <span class="cm-chart-card__title cm-chart-card__title--plain">@DonutTitle</span>
+            @if (_drillDownStack.Count > 0)
+            {
+                <button type="button" class="cm-editor-back cm-editor-back--danger" @onclick="OnDonutBack">← Back</button>
+            }
+        </div>
     </div>
-    @if (PerClientUsage.Count > 0)
+    @if (ActiveDonutData.Count > 0)
     {
-        <RadzenChart Style="height: 300px;">
-            <RadzenDonutSeries Data="@PerClientUsage" CategoryProperty="ClientName"
+        <RadzenChart Style="height: 300px;"
+            SeriesClick="@OnDonutSeriesClick"
+            LegendClick="@OnDonutLegendClick">
+            <RadzenDonutSeries Data="@ActiveDonutData" CategoryProperty="ClientName"
                 ValueProperty="Value"
-                Fills="@PerClientUsage.Select(p => Colors.GetColor(p.ClientId)).ToArray()" />
+                Fills="@ActiveDonutData.Select(p => Colors.GetColor(p.ClientId)).ToArray()" />
             <RadzenLegend Position="LegendPosition.Right" />
         </RadzenChart>
     }
@@ -66,7 +72,8 @@
     [Parameter] public List<NamedItem> FilterTargets { get; set; } = [];
     [Parameter] public List<NamedItem> Clients { get; set; } = [];
     [Parameter] public List<TargetChartData> TargetCharts { get; set; } = [];
-    [Parameter] public List<ClientUsagePoint> PerClientUsage { get; set; } = [];
+    [Parameter] public DashboardDonutData DonutData { get; set; } = new([], []);
+    [Parameter] public int DonutDataGeneration { get; set; }
     [Parameter] public AxisScaleType AxisScaleType { get; set; }
     [Parameter] public EventCallback OnFilterChanged { get; set; }
     [Parameter] public EventCallback<ChartTimeRange> OnTimeRangeChanged { get; set; }
@@ -74,6 +81,25 @@
     [Parameter] public EventCallback<AxisScaleType> OnAxisScaleChanged { get; set; }
 
     private string ChartTitle => $"{SelectedTargetName} - Usage Over Time";
+
+    private readonly Stack<List<ClientUsagePoint>> _drillDownStack = new();
+    private int _seenDonutDataGeneration = -1;
+
+    private string DonutTitle => _drillDownStack.Count > 0 ? "Others - Usage Per Client" : "Usage Per Client";
+
+    private IReadOnlyList<ClientUsagePoint> ActiveDonutData =>
+        _drillDownStack.Count > 0
+            ? DashboardChartDataLoader.ToDisplaySlices(_drillDownStack.Peek())
+            : DonutData.Slices;
+
+    protected override void OnParametersSet()
+    {
+        if (DonutDataGeneration != _seenDonutDataGeneration)
+        {
+            _seenDonutDataGeneration = DonutDataGeneration;
+            _drillDownStack.Clear();
+        }
+    }
 
     private string SelectedTargetName =>
         SelectedTargetId == DashboardChartLoadContext.AllTargetsId
@@ -98,4 +124,53 @@
         await SelectedClientIdsChanged.InvokeAsync(value);
         await OnFilterChanged.InvokeAsync();
     }
+
+    private void OnDonutBack()
+    {
+        if (_drillDownStack.Count > 0)
+        {
+            _drillDownStack.Pop();
+        }
+    }
+
+    private void DrillIntoOthers()
+    {
+        var nextPool = _drillDownStack.Count == 0
+            ? DonutData.OthersBreakdown.OrderByDescending(p => p.Value).ToList()
+            : DashboardChartDataLoader.GetOthersRestPool(_drillDownStack.Peek());
+
+        if (nextPool.Count == 0)
+        {
+            return;
+        }
+
+        _drillDownStack.Push(nextPool);
+    }
+
+    private bool CanDrillIntoOthers() =>
+        _drillDownStack.Count == 0
+            ? DonutData.OthersBreakdown.Count > 0
+            : _drillDownStack.Peek().Count > ChartAggregator.DefaultTopN;
+
+    private void OnDonutSeriesClick(SeriesClickEventArgs args)
+    {
+        if (IsOthersPoint(args.Data) && CanDrillIntoOthers())
+        {
+            DrillIntoOthers();
+        }
+    }
+
+    private void OnDonutLegendClick(LegendClickEventArgs args)
+    {
+        if (IsOthersLegend(args.Title) && CanDrillIntoOthers())
+        {
+            DrillIntoOthers();
+        }
+    }
+
+    private static bool IsOthersPoint(object? data) =>
+        data is ClientUsagePoint point && point.ClientId == ChartAggregator.OthersId;
+
+    private static bool IsOthersLegend(string? title) =>
+        string.Equals(title, ChartAggregator.OthersLabel, StringComparison.OrdinalIgnoreCase);
 }

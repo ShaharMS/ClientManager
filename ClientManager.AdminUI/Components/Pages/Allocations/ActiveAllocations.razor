@@ -13,11 +13,6 @@
     <RadzenAlert AlertStyle="AlertStyle.Danger" Shade="Shade.Light">@_error</RadzenAlert>
 }
 
-@if (_loading)
-{
-    <SkeletonBlock CssClass="cm-skeleton--text" Style="height: 3px; margin-bottom: var(--space-sm);" />
-}
-
 <AllocationsChartSection
     SelectedPoolId="@_selectedPoolId"
     SelectedPoolIdChanged="@(v => _selectedPoolId = v)"
@@ -31,7 +26,7 @@
     ChartTitle="@ChartTitle"
     TargetCharts="@_targetCharts"
     AxisScaleType="@_axisScaleType"
-    Loading="@_loading"
+    Loading="@_chartLoading"
     OnFilterChanged="OnFilterChanged"
     MetricSelectionChanged="OnMetricChanged"
     OnTimeRangeChanged="OnTimeRangeChanged"
@@ -42,11 +37,15 @@
     Title="@ClientDetailTitle"
     ShowPoolColumn="@ShowPoolColumnInClientGrid"
     Rows="@_clientDetailRows"
-    IsAccessMetric="@IsAccessMetric" />
+    IsAccessMetric="@IsAccessMetric"
+    ShowDeniedBreakdown="@ShowDeniedBreakdown"
+    DeniedViewMode="@AllocationDeniedViewMode" />
 
 <hr class="cm-monitor__separator" />
 
 <AllocationsPoolSummaryGrid @ref="_allPoolsGrid"
     Title="All Resource Pools"
     Rows="@_poolSummaryRows"
-    IsAccessMetric="@IsAccessMetric" />
+    IsAccessMetric="@IsAccessMetric"
+    ShowDeniedBreakdown="@ShowDeniedBreakdown"
+    DeniedViewMode="@AllocationDeniedViewMode" />

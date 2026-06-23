@@ -58,7 +58,8 @@ public partial class Dashboard
             }
 
             _targetCharts = charts;
-            _perClientUsage = donut;
+            _donutData = donut;
+            _donutDataGeneration++;
         }
         catch (HttpRequestException)
         {

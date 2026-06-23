@@ -12,30 +12,43 @@ internal static class AllocationsPoolSummaryBuilder
         IReadOnlyDictionary<string, GlobalRateLimit> rateLimitLookup,
         bool isAccessMetric)
     {
-        if (!isAccessMetric)
-        {
-            return pools
-                .Select(pool => new PoolSummaryRow(
-                    pool.ResourcePoolId, pool.Name, pool.ActiveAllocations,
-                    pool.MaxSlots, pool.AvailableSlots, 0))
-                .ToList();
-        }
-
         var rows = new List<PoolSummaryRow>();
         foreach (var pool in pools)
         {
             var recentEntries = recentBreakdowns
                 .FirstOrDefault(breakdown => breakdown.TargetId == pool.ResourcePoolId)?.Entries ?? [];
-            var currentValue = recentEntries.Sum(entry => entry.GrantedCount);
-            var capValue = AllocationsCapCalculator.GetScaledGlobalPoolCap(
-                pool.ResourcePoolId, rateLimitLookup, AllocationsLoadContext.RecentWindow);
-            long? remainingValue = capValue > 0
-                ? Math.Max((long)capValue - currentValue, 0)
-                : null;
-            var deniedCount = recentEntries.Sum(entry => entry.DeniedCount);
+
+            long currentValue;
+            int capValue;
+            long? remainingValue;
+
+            if (isAccessMetric)
+            {
+                currentValue = recentEntries.Sum(entry => entry.GrantedCount);
+                capValue = AllocationsCapCalculator.GetScaledGlobalPoolCap(
+                    pool.ResourcePoolId, rateLimitLookup, AllocationsLoadContext.RecentWindow);
+                remainingValue = capValue > 0
+                    ? Math.Max((long)capValue - currentValue, 0)
+                    : null;
+            }
+            else
+            {
+                currentValue = pool.ActiveAllocations;
+                capValue = pool.MaxSlots;
+                remainingValue = pool.AvailableSlots;
+            }
 
             rows.Add(new PoolSummaryRow(
-                pool.ResourcePoolId, pool.Name, currentValue, capValue, remainingValue, deniedCount));
+                pool.ResourcePoolId,
+                pool.Name,
+                currentValue,
+                capValue,
+                remainingValue,
+                recentEntries.Sum(entry => entry.DeniedCount),
+                recentEntries.Sum(entry => entry.DeniedUnauthenticatedCount),
+                recentEntries.Sum(entry => entry.DeniedBlockedCount),
+                recentEntries.Sum(entry => entry.DeniedRateLimitedCount),
+                recentEntries.Sum(entry => entry.DeniedCapacityLimitedCount)));
         }
 
         return rows;

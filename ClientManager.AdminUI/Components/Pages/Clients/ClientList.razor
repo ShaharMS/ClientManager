@@ -53,10 +53,12 @@ else
             AllowSorting="true" AllowPaging="true" PageSize="@_pageSize"
             PagerHorizontalAlign="HorizontalAlign.Center">
             <Columns>
-                <RadzenDataGridColumn TItem="ClientConfiguration" Property="Id" Title="ID" Width="130px" />
-                <RadzenDataGridColumn TItem="ClientConfiguration" Property="Name" Title="Name" MinWidth="220px" />
-                <RadzenDataGridColumn TItem="ClientConfiguration" Title="Status" Width="130px" TextAlign="TextAlign.Center"
-                    CssClass="cm-list-page__col-center cm-list-page__col-status">
+                <RadzenDataGridColumn TItem="ClientConfiguration" Property="Id" Title="ID"
+                    CssClass="cm-col-id" HeaderCssClass="cm-col-id" />
+                <RadzenDataGridColumn TItem="ClientConfiguration" Property="Name" Title="Name"
+                    CssClass="cm-col-name" HeaderCssClass="cm-col-name" />
+                <RadzenDataGridColumn TItem="ClientConfiguration" Title="Status" Sortable="false"
+                    CssClass="cm-col-status" HeaderCssClass="cm-col-status">
                     <Template Context="client">
                         @if (client.IsEnabled)
                         {
@@ -68,16 +70,16 @@ else
                         }
                     </Template>
                 </RadzenDataGridColumn>
-                <RadzenDataGridColumn TItem="ClientConfiguration" Title="Services" Width="110px" TextAlign="TextAlign.Center"
-                    CssClass="cm-list-page__col-center">
+                <RadzenDataGridColumn TItem="ClientConfiguration" Title="Services"
+                    CssClass="cm-col-scalar-count" HeaderCssClass="cm-col-scalar-count">
                     <Template Context="client">@client.Services.Count</Template>
                 </RadzenDataGridColumn>
-                <RadzenDataGridColumn TItem="ClientConfiguration" Title="Pools" Width="100px" TextAlign="TextAlign.Center"
-                    CssClass="cm-list-page__col-center">
+                <RadzenDataGridColumn TItem="ClientConfiguration" Title="Pools"
+                    CssClass="cm-col-scalar-count" HeaderCssClass="cm-col-scalar-count">
                     <Template Context="client">@client.ResourcePools.Count</Template>
                 </RadzenDataGridColumn>
-                <RadzenDataGridColumn TItem="ClientConfiguration" Title="Actions" Width="120px" Sortable="false"
-                    TextAlign="TextAlign.Center" CssClass="cm-list-page__col-center cm-list-page__col-actions">
+                <RadzenDataGridColumn TItem="ClientConfiguration" Title="Actions" Sortable="false"
+                    CssClass="cm-col-actions" HeaderCssClass="cm-col-actions">
                     <Template Context="client">
                         <div class="cm-list-page__actions-cell">
                         <RadzenButton Icon="edit" Size="ButtonSize.Small" Variant="Variant.Text"

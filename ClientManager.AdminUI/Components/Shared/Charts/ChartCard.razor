@@ -1,0 +1,38 @@
+<div class="cm-chart-card @(Spaced ? "cm-chart-card--spaced" : null) @CssClass">
+    @if (Filters is not null || Title is not null || ShowSettings)
+    {
+        <div class="cm-chart-card__toolbar">
+            @if (Filters is not null)
+            {
+                <div class="cm-chart-card__filters">@Filters</div>
+            }
+            @if (Title is not null)
+            {
+                <span class="cm-chart-card__title">@Title</span>
+            }
+            @if (ShowSettings)
+            {
+                <div class="cm-chart-card__settings">
+                    <ChartSettingsDropdown OnTimeRangeChanged="OnTimeRangeChanged"
+                                           OnPollingIntervalChanged="OnPollingIntervalChanged"
+                                           OnAxisScaleChanged="OnAxisScaleChanged"
+                                           InitialTimeRangeKey="@InitialTimeRangeKey" />
+                </div>
+            }
+        </div>
+    }
+    @ChildContent
+</div>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? Filters { get; set; }
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public string? CssClass { get; set; }
+    [Parameter] public bool Spaced { get; set; }
+    [Parameter] public bool ShowSettings { get; set; } = true;
+    [Parameter] public string? InitialTimeRangeKey { get; set; }
+    [Parameter] public EventCallback<ChartTimeRange> OnTimeRangeChanged { get; set; }
+    [Parameter] public EventCallback<PollingIntervalPreset> OnPollingIntervalChanged { get; set; }
+    [Parameter] public EventCallback<AxisScaleType> OnAxisScaleChanged { get; set; }
+}

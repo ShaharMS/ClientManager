@@ -2,7 +2,7 @@ using ClientManager.AdminUI.Models.Charts;
 using ClientManager.AdminUI.Models.Monitor;
 using ClientManager.AdminUI.Services;
 using ClientManager.AdminUI.Services.ChartData;
-using ClientManager.Shared.Models.Entities;
+using ClientManager.AdminUI.Utils;using ClientManager.Shared.Models.Entities;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 
@@ -23,7 +23,7 @@ public partial class Monitor : ComponentBase, IAsyncDisposable
     private string _selectedServiceId = MonitorLoadContext.AllServicesId;
     private IEnumerable<string>? _selectedClientIds;
 
-    private bool _loading;
+    private bool _chartLoading = true;
     private string? _error;
     private PagePollingLifecycle? _polling;
     private MonitorDataLoader? _dataLoader;
@@ -34,6 +34,8 @@ public partial class Monitor : ComponentBase, IAsyncDisposable
     private MonitorClientGrid? _clientGrid;
     private MonitorServicesGrid? _servicesGrid;
 
+    private bool ShowDeniedBreakdown => DeniedBreakdownHelper.ShowBreakdown(_selectedClientIds);
+
     private ChartTimeRange _timeRange = ChartTimeRange.FromPreset(TimeRangePreset.Default);
     private AxisScaleType _axisScaleType = AxisScaleType.Linear;
     private int _chartBucketCount = ChartBucketAggregator.DefaultBucketCount;
@@ -43,7 +45,6 @@ public partial class Monitor : ComponentBase, IAsyncDisposable
     protected override async Task OnInitializedAsync()
     {
         _dataLoader = new MonitorDataLoader(StatsService, RateLimitApi);
-        _loading = true;
 
         try
         {
@@ -55,16 +56,11 @@ public partial class Monitor : ComponentBase, IAsyncDisposable
             _serviceOptions = new List<NamedItem> { new(MonitorLoadContext.AllServicesId, "All Services") }
                 .Concat(_allServices.Select(s => new NamedItem(s.Id, s.Name))).ToList();
             _selectedServiceId = MonitorLoadContext.AllServicesId;
-
-            await LoadDataAsync();
         }
         catch (HttpRequestException ex)
         {
             _error = $"Unable to connect to the API: {ex.Message}";
-        }
-        finally
-        {
-            _loading = false;
+            _chartLoading = false;
         }
 
         _polling = new PagePollingLifecycle(JS, InvokeAsync, LoadDataAsync);
@@ -78,7 +74,17 @@ public partial class Monitor : ComponentBase, IAsyncDisposable
             _chartJs = await JS.InvokeAsync<IJSObjectReference>("import", "./js/chart.js");
             _chartSelfRef = DotNetObjectReference.Create(this);
             await _chartJs.InvokeVoidAsync("register", _chartSelfRef);
-            await UpdateChartBucketCountAsync(reloadWhenChanged: true);
+
+            var chartWidth = await _chartJs.InvokeAsync<int>("getChartCardWidth");
+            _chartBucketCount = ChartBucketAggregator.GetBucketCountForWidth(chartWidth);
+
+            if (_error is null)
+            {
+                await LoadDataAsync();
+            }
+
+            _chartLoading = false;
+            StateHasChanged();
         }
 
         if (firstRender && _polling is not null)

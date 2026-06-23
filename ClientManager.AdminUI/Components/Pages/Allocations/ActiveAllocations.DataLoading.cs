@@ -10,24 +10,19 @@ public partial class ActiveAllocations
     private async Task OnTimeRangeChanged(ChartTimeRange range)
     {
         _timeRange = range;
-        await LoadDataAsync();
+        await LoadChartDataWithSkeletonAsync();
     }
 
-    private async Task OnMetricChanged()
-    {
-        _loading = true;
-        StateHasChanged();
-        await LoadDataAsync();
-        _loading = false;
-        StateHasChanged();
-    }
+    private Task OnMetricChanged() => LoadChartDataWithSkeletonAsync();
 
-    private async Task OnFilterChanged()
+    private Task OnFilterChanged() => LoadChartDataWithSkeletonAsync();
+
+    private async Task LoadChartDataWithSkeletonAsync()
     {
-        _loading = true;
+        _chartLoading = true;
         StateHasChanged();
         await LoadDataAsync();
-        _loading = false;
+        _chartLoading = false;
         StateHasChanged();
     }
 
@@ -76,14 +71,16 @@ public partial class ActiveAllocations
 
             _error = null;
         }
-        catch (HttpRequestException ex)
+        catch (Exception ex)
         {
             if (loadVersion != _loadVersion)
             {
                 return;
             }
 
-            _error = $"Unable to load data: {ex.Message}";
+            _error = ex is HttpRequestException http
+                ? $"Unable to load data: {http.Message}"
+                : $"Unable to load data: {ex.Message}";
         }
     }
 }

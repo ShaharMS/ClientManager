@@ -36,4 +36,6 @@ public interface IUsageRecorder
     void RecordServiceRequest(string clientId, string serviceId, UsageEventType eventType);
 
     void RecordAllocationEvent(string clientId, string resourcePoolId, UsageEventType eventType);
+
+    void RecordDenied(string clientId, TargetType targetType, string targetId, UsageDenialCategory category);
 }

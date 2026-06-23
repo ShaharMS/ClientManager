@@ -1,5 +1,6 @@
 using ClientManager.AdminUI.Models;
 using ClientManager.AdminUI.Services;
+using ClientManager.AdminUI.Models;
 using ClientManager.AdminUI.Models.Allocations;
 using ClientManager.AdminUI.Models.Charts;
 using ClientManager.AdminUI.Utils;
@@ -102,6 +103,18 @@ internal sealed class AllocationsSinglePoolChartLoader
                 a.Id, a.Name,
                 a.Points.Select(p => new ChartPoint(p.Label, p.Value)).ToList()
             )).ToList();
+
+            var poolHistory = (await _statsService.GetHistoricalUsageAsync(
+                "ResourcePool", new[] { pool.ResourcePoolId }, null, from, now, context.TimeRange.Granularity))
+                .FirstOrDefault();
+            DeniedChartSeriesBuilder.AppendTripletSeries(
+                clientAreas,
+                pool.ResourcePoolId,
+                poolHistory?.Points ?? [],
+                context.IsAccessMetric ? DeniedViewMode.RateLimitDenied : DeniedViewMode.CapacityDenied,
+                from,
+                now,
+                context.BucketCount);
 
             charts.Add(new TargetChartData(pool.Name, clientAreas, capPoints));
         }

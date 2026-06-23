@@ -220,6 +220,17 @@ public interface IUsageSnapshotDatabase
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Reads pending usage counters for a client/target in a second-level time window.
+    /// </summary>
+    Task<IReadOnlyDictionary<string, long>> GetPendingCountersInRangeAsync(
+        string clientId,
+        TargetType targetType,
+        string targetId,
+        DateTime from,
+        DateTime to,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Clears pending usage counters after their values were folded into snapshots.
     /// </summary>
     Task ResetPendingCountersAsync(

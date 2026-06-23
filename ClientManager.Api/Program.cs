@@ -29,6 +29,11 @@ var logger = LogManager.Setup()
 
 try
 {
+    if (args.Contains("--usage-continuity-check", StringComparer.Ordinal))
+    {
+        Environment.Exit(UsageStatisticsContinuityChecks.Run());
+    }
+
     var builder = WebApplication.CreateBuilder(args);
 
     builder.Logging.ClearProviders();

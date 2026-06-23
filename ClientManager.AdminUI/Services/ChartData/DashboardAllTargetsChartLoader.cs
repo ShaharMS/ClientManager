@@ -4,6 +4,7 @@ using ClientManager.AdminUI.Models.Dashboard;
 using ClientManager.AdminUI.Services;
 using ClientManager.AdminUI.Utils;
 using ClientManager.Shared.Models.Enums;
+using ClientManager.Shared.Models.Responses;
 
 namespace ClientManager.AdminUI.Services.ChartData;
 
@@ -37,8 +38,7 @@ internal sealed class DashboardAllTargetsChartLoader
 
         var targetIds = targets.Select(t => t.Id).ToList();
 
-        double totalBaseCap = 0;
-        TimeSpan? rateWindow = null;
+        double scaledCap = 0;
 
         if (isRateBased)
         {
@@ -48,8 +48,10 @@ internal sealed class DashboardAllTargetsChartLoader
                 var limit = rateLimits.FirstOrDefault(r => r.TargetId == target.Id);
                 if (limit is not null)
                 {
-                    totalBaseCap += limit.MaxRequests;
-                    rateWindow ??= limit.Window;
+                    scaledCap += RateLimitCapScaler.ScaleRateLimitCap(
+                        limit.MaxRequests,
+                        limit.Window,
+                        emptyAggregation.BucketDuration);
                 }
             }
         }
@@ -58,43 +60,30 @@ internal sealed class DashboardAllTargetsChartLoader
             var pools = await _poolService.GetAllAsync();
             foreach (var target in targets)
             {
-                var cap = pools.FirstOrDefault(p => p.Id == target.Id)?.MaxSlots ?? 0;
-                totalBaseCap += cap;
+                scaledCap += pools.FirstOrDefault(p => p.Id == target.Id)?.MaxSlots ?? 0;
             }
         }
 
         var histories = await _statsService.GetHistoricalUsageAsync(
             context.SelectedFilterType, targetIds, null, from, now, context.TimeRange.Granularity);
 
-        var targetAggregations = histories
-            .Select(history => ChartBucketAggregator.Aggregate(
-                history.Points.Select(point => new ChartBucketAggregator.RawPoint(
-                    point.Timestamp,
-                    ChartValueHelper.GetHistoricalPointValue(point, isRateBased))),
-                from,
-                now,
-                context.BucketCount,
-                chartAggregationMode))
-            .ToList();
+        var aggregateLabel = isRateBased ? "All Services" : "All Resource Pools";
+        var targetPointLists = targets
+            .Select(target => (IReadOnlyList<HistoricalUsagePoint>)(histories.FirstOrDefault(h => h.TargetId == target.Id)?.Points ?? []));
+        var (clientAreas, referenceBuckets) = AggregateTargetChartSeriesBuilder.Build(
+            targetPointLists,
+            isRateBased,
+            aggregateLabel,
+            isRateBased ? DeniedViewMode.RateLimitDenied : DeniedViewMode.CapacityDenied,
+            from,
+            now,
+            context.BucketCount);
 
-        var referenceBuckets = targetAggregations.FirstOrDefault()?.Buckets
-            ?? emptyAggregation.Buckets;
-        var sortedPoints = ChartValueHelper.SumBuckets(targetAggregations, referenceBuckets);
-
-        var scaledCap = totalBaseCap;
-        if (isRateBased && rateWindow.HasValue && rateWindow.Value > TimeSpan.Zero)
-        {
-            var scaleFactor = emptyAggregation.BucketDuration.TotalSeconds / rateWindow.Value.TotalSeconds;
-            scaledCap = totalBaseCap * scaleFactor;
-        }
-
-        var capPoints = sortedPoints
-            .Select(p => new ChartPoint(p.Label, scaledCap))
+        var capPoints = referenceBuckets
+            .Select(bucket => new ChartPoint(bucket.Label, scaledCap))
             .ToList();
 
         var label = context.SelectedFilterType == "Service" ? "All Services" : "All Resource Pools";
-        charts.Add(new TargetChartData(label,
-            new List<ClientAreaSeries> { new("total", "Total", sortedPoints) },
-            capPoints));
+        charts.Add(new TargetChartData(label, clientAreas, capPoints));
     }
 }

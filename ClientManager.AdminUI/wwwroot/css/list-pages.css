@@ -292,26 +292,26 @@
     color: var(--color-primary-dark);
 }
 
-/* Centered numeric/status/action columns */
+/* Centered numeric/status/action columns — legacy alias; prefer cm-col-* in tables.css */
 .cm-list-page__table-card .cm-list-page__col-center,
 .cm-list-page__table-card th.cm-list-page__col-center {
     text-align: center;
 }
 
 .cm-list-page__table-card .cm-list-page__col-status,
-.cm-list-page__table-card th.cm-list-page__col-status {
+.cm-list-page__table-card th.cm-list-page__col-status,
+.cm-dashboard__table-card .cm-col-status {
     white-space: nowrap;
 }
 
-/* Radzen applies rz-text-truncate to header labels; show full titles in list tables */
-.cm-list-page__table-card .rz-grid-table thead .rz-column-title,
-.cm-list-page__table-card .rz-grid-table thead .rz-column-title-content.rz-text-truncate {
-    overflow: visible;
-    text-overflow: clip;
-}
+/* Radzen header title overflow — see tables.css for shared table-card rules */
 
 .cm-list-page__table-card .rz-grid-table thead th:last-child,
-.cm-list-page__table-card .rz-grid-table td.cm-list-page__col-actions {
+.cm-list-page__table-card .rz-grid-table td.cm-list-page__col-actions,
+.cm-list-page__table-card .rz-grid-table td.cm-col-actions,
+.cm-list-page__table-card .rz-grid-table td.cm-col-actions-wide,
+.cm-dashboard__table-card .rz-grid-table td.cm-col-actions,
+.cm-dashboard__table-card .rz-grid-table td.cm-col-actions-wide {
     white-space: nowrap;
 }
 
@@ -321,9 +321,15 @@
     justify-content: center;
 }
 
-.cm-list-page__table-card .cm-list-page__utilization-bar {
+.cm-list-page__table-card .cm-list-page__utilization-bar,
+.cm-dashboard__table-card .cm-list-page__utilization-bar {
     display: block;
     width: 100%;
+}
+
+.cm-denied-breakdown__value {
+    cursor: help;
+    border-bottom: 1px dotted var(--color-text-secondary);
 }
 
 /* List action buttons — edit icon dark blue; delete stays danger */

@@ -1,0 +1,221 @@
+/* Shared Radzen data-grid column layout: dynamic labels start, fixed scalars end */
+
+:is(.cm-list-page__table-card, .cm-dashboard__table-card) .rz-grid-table {
+    table-layout: fixed;
+    width: 100%;
+}
+
+:is(.cm-list-page__table-card, .cm-dashboard__table-card) .rz-grid-table :is(th, td).cm-col-id {
+    width: 16%;
+    text-align: start;
+}
+
+:is(.cm-list-page__table-card, .cm-dashboard__table-card) .rz-grid-table :is(th, td).cm-col-name {
+    width: auto;
+    text-align: start;
+}
+
+:is(.cm-list-page__table-card, .cm-dashboard__table-card) .rz-grid-table :is(th, td).cm-col-label {
+    text-align: start;
+}
+
+:is(.cm-list-page__table-card, .cm-dashboard__table-card) .rz-grid-table :is(th, td).cm-col-scalar-count {
+    width: 7.75rem;
+    text-align: center;
+}
+
+:is(.cm-list-page__table-card, .cm-dashboard__table-card) .rz-grid-table :is(th, td).cm-col-scalar {
+    width: 7.25rem;
+    text-align: center;
+}
+
+:is(.cm-list-page__table-card, .cm-dashboard__table-card) .rz-grid-table :is(th, td).cm-col-scalar-wide {
+    width: 11rem;
+    text-align: center;
+}
+
+:is(.cm-list-page__table-card, .cm-dashboard__table-card) .rz-grid-table :is(th, td).cm-col-strategy {
+    width: 13rem;
+    text-align: center;
+}
+
+:is(.cm-list-page__table-card, .cm-dashboard__table-card) .rz-grid-table :is(th, td).cm-col-scalar-narrow {
+    width: 6rem;
+    text-align: center;
+}
+
+:is(.cm-list-page__table-card, .cm-dashboard__table-card) .rz-grid-table :is(th, td).cm-col-bar {
+    width: 11rem;
+    text-align: center;
+}
+
+:is(.cm-list-page__table-card, .cm-dashboard__table-card) .rz-grid-table :is(th, td).cm-col-status {
+    width: 7.5rem;
+    text-align: center;
+    white-space: nowrap;
+}
+
+:is(.cm-list-page__table-card, .cm-dashboard__table-card) .rz-grid-table :is(th, td).cm-col-actions {
+    width: 8.5rem;
+    text-align: center;
+    white-space: nowrap;
+}
+
+:is(.cm-list-page__table-card, .cm-dashboard__table-card) .rz-grid-table :is(th, td).cm-col-actions-wide {
+    width: 8.5rem;
+    text-align: center;
+    white-space: nowrap;
+}
+
+/* Centered headers: title centered in column; sort icon anchored after title, out of flow */
+:is(.cm-list-page__table-card, .cm-dashboard__table-card) .rz-grid-table thead :is(
+    th.cm-col-scalar-count,
+    th.cm-col-scalar,
+    th.cm-col-scalar-wide,
+    th.cm-col-scalar-narrow,
+    th.cm-col-strategy,
+    th.cm-col-bar,
+    th.cm-col-status,
+    th.cm-col-actions,
+    th.cm-col-actions-wide
+) {
+    text-align: center;
+}
+
+:is(.cm-list-page__table-card, .cm-dashboard__table-card) .rz-grid-table thead :is(
+    th.cm-col-scalar-count,
+    th.cm-col-scalar,
+    th.cm-col-scalar-wide,
+    th.cm-col-scalar-narrow,
+    th.cm-col-strategy,
+    th.cm-col-bar,
+    th.cm-col-status,
+    th.cm-col-actions,
+    th.cm-col-actions-wide
+) > div:not(.rz-cell-filter) {
+    position: relative;
+    justify-content: center;
+}
+
+:is(.cm-list-page__table-card, .cm-dashboard__table-card) .rz-grid-table thead :is(
+    th.cm-col-scalar-count,
+    th.cm-col-scalar,
+    th.cm-col-scalar-wide,
+    th.cm-col-scalar-narrow,
+    th.cm-col-strategy,
+    th.cm-col-bar,
+    th.cm-col-status,
+    th.cm-col-actions,
+    th.cm-col-actions-wide
+) .rz-column-title {
+    position: relative;
+    flex: 1 1 auto;
+    width: 100%;
+    justify-content: center;
+    padding-inline: 0 !important;
+}
+
+:is(.cm-list-page__table-card, .cm-dashboard__table-card) .rz-grid-table thead :is(
+    th.cm-col-scalar-count,
+    th.cm-col-scalar,
+    th.cm-col-scalar-wide,
+    th.cm-col-scalar-narrow,
+    th.cm-col-strategy,
+    th.cm-col-bar,
+    th.cm-col-status,
+    th.cm-col-actions,
+    th.cm-col-actions-wide
+) .rz-column-title-content {
+    text-align: center;
+}
+
+:is(.cm-list-page__table-card, .cm-dashboard__table-card) .rz-grid-table thead :is(
+    th.cm-col-scalar-count,
+    th.cm-col-scalar,
+    th.cm-col-scalar-wide,
+    th.cm-col-scalar-narrow,
+    th.cm-col-strategy,
+    th.cm-col-bar,
+    th.cm-col-status,
+    th.cm-col-actions,
+    th.cm-col-actions-wide
+).rz-sortable-column {
+    anchor-scope: --cm-col-title;
+}
+
+:is(.cm-list-page__table-card, .cm-dashboard__table-card) .rz-grid-table thead :is(
+    th.cm-col-scalar-count,
+    th.cm-col-scalar,
+    th.cm-col-scalar-wide,
+    th.cm-col-scalar-narrow,
+    th.cm-col-strategy,
+    th.cm-col-bar,
+    th.cm-col-status,
+    th.cm-col-actions,
+    th.cm-col-actions-wide
+).rz-sortable-column .rz-column-title-content {
+    anchor-name: --cm-col-title;
+}
+
+/* Radzen nests the sort icon inside .rz-column-title, not beside it */
+:is(.cm-list-page__table-card, .cm-dashboard__table-card) .rz-grid-table thead :is(
+    th.cm-col-scalar-count,
+    th.cm-col-scalar,
+    th.cm-col-scalar-wide,
+    th.cm-col-scalar-narrow,
+    th.cm-col-strategy,
+    th.cm-col-bar,
+    th.cm-col-status,
+    th.cm-col-actions,
+    th.cm-col-actions-wide
+).rz-sortable-column .rz-column-title :is(.rzi-grid-sort, .rz-sortable-column-icon) {
+    position: absolute;
+    position-anchor: --cm-col-title;
+    inset-inline-start: anchor(end);
+    top: anchor(center);
+    translate: 0 -50%;
+    margin-inline-start: 0.125rem;
+    width: var(--rz-grid-sort-icon-width, 1rem);
+    height: var(--rz-grid-sort-icon-height, 1rem);
+}
+
+@supports not (anchor-scope: --cm-col-title) {
+    :is(.cm-list-page__table-card, .cm-dashboard__table-card) .rz-grid-table thead :is(
+        th.cm-col-scalar-count,
+        th.cm-col-scalar,
+        th.cm-col-scalar-wide,
+        th.cm-col-scalar-narrow,
+        th.cm-col-strategy,
+        th.cm-col-bar,
+        th.cm-col-status,
+        th.cm-col-actions,
+        th.cm-col-actions-wide
+    ).rz-sortable-column .rz-column-title :is(.rzi-grid-sort, .rz-sortable-column-icon) {
+        position: absolute;
+        position-anchor: initial;
+        inset-inline-start: auto;
+        inset-inline-end: 0;
+        top: 50%;
+        translate: 0 -50%;
+        margin-inline-start: 0;
+    }
+}
+
+:is(.cm-list-page__table-card, .cm-dashboard__table-card) .rz-grid-table td.cm-col-label,
+:is(.cm-list-page__table-card, .cm-dashboard__table-card) .rz-grid-table td.cm-col-id,
+:is(.cm-list-page__table-card, .cm-dashboard__table-card) .rz-grid-table td.cm-col-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+:is(.cm-list-page__table-card, .cm-dashboard__table-card) .rz-grid-table thead .rz-column-title,
+:is(.cm-list-page__table-card, .cm-dashboard__table-card) .rz-grid-table thead .rz-column-title-content.rz-text-truncate {
+    overflow: visible;
+    text-overflow: clip;
+}
+
+:is(.cm-list-page__table-card, .cm-dashboard__table-card) .rz-grid-table td.cm-col-bar .cm-list-page__utilization-bar {
+    display: block;
+    width: 100%;
+}

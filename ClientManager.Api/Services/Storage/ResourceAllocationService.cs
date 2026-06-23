@@ -60,7 +60,7 @@ public class ResourceAllocationService : IResourceAllocationService
             },
             async (completion, ct) =>
             {
-                var poolTask = ReadPoolAsync(resourcePoolId, ct);
+                var poolTask = ReadPoolAsync(clientId, resourcePoolId, ct);
                 var configurationTask = ReadConfigurationAsync(clientId, resourcePoolId, ct);
                 ObserveFault(configurationTask);
 
@@ -168,12 +168,17 @@ public class ResourceAllocationService : IResourceAllocationService
     }
 
     private async Task<ResourcePool> ReadPoolAsync(
+        string clientId,
         string resourcePoolId,
         CancellationToken cancellationToken)
     {
         using var activity = _metrics.ActivitySource.StartInternalActivity(
             "storage.resource.pool_read",
-            act => act?.SetTag("resource_pool.id", resourcePoolId));
+            act =>
+            {
+                act?.SetTag("client.id", clientId);
+                act?.SetTag("resource_pool.id", resourcePoolId);
+            });
 
         var pool = await _poolRepository.GetByIdAsync(resourcePoolId, cancellationToken)
             ?? throw DomainErrors.ResourcePool(resourcePoolId);
@@ -186,6 +191,7 @@ public class ResourceAllocationService : IResourceAllocationService
             return pool;
         }
 
+        RecordDenied(clientId, resourcePoolId, UsageDenialCategory.Blocked);
         throw DomainErrors.ResourcePoolDisabled(resourcePoolId);
     }
 
@@ -227,6 +233,7 @@ public class ResourceAllocationService : IResourceAllocationService
             return configuration;
         }
 
+        RecordDenied(clientId, resourcePoolId, UsageDenialCategory.Blocked);
         throw DomainErrors.ClientDisabled(clientId);
     }
 
@@ -266,7 +273,8 @@ public class ResourceAllocationService : IResourceAllocationService
         if (!configuration.ResourcePools.TryGetValue(resourcePoolId, out var poolSettings))
         {
             activity?.SetTag("capacity.configured", false);
-            return;
+            RecordDenied(clientId, resourcePoolId, UsageDenialCategory.Unauthenticated);
+            throw DomainErrors.AccessNotConfigured(clientId, resourcePoolId);
         }
 
         activity?.SetTag("capacity.configured", true);
@@ -412,7 +420,13 @@ public class ResourceAllocationService : IResourceAllocationService
     private void RecordDenied(
         string clientId,
         string resourcePoolId,
-        ResourceAllocationDenialReason reason)
+        ResourceAllocationDenialReason reason) =>
+        RecordDenied(clientId, resourcePoolId, DenialCategoryMapper.FromPoolReason(reason));
+
+    private void RecordDenied(
+        string clientId,
+        string resourcePoolId,
+        UsageDenialCategory category)
     {
         using (var activity = _metrics.ActivitySource.StartInternalActivity(
             "storage.resource.metrics",
@@ -420,18 +434,18 @@ public class ResourceAllocationService : IResourceAllocationService
             {
                 act?.SetTag("client.id", clientId);
                 act?.SetTag("resource_pool.id", resourcePoolId);
-                act?.SetTag("denial.reason", reason.ToTagValue());
+                act?.SetTag("denial.category", category.ToString());
             }))
         {
             _metrics.ResourceDenied.Add(1, new TagList
             {
                 { MetricTagKey.ClientId.ToTagName(), clientId },
                 { MetricTagKey.ResourcePoolId.ToTagName(), resourcePoolId },
-                { MetricTagKey.Reason.ToTagName(), reason.ToTagValue() }
+                { MetricTagKey.Reason.ToTagName(), category.ToString() }
             });
         }
 
-        RecordAllocationUsage(clientId, resourcePoolId, UsageEventType.Denied);
+        _usageRecorder.RecordDenied(clientId, TargetType.ResourcePool, resourcePoolId, category);
     }
 
     private void RecordReleased(ResourceAllocation allocation)

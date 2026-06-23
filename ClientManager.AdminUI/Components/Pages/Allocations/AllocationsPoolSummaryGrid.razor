@@ -1,4 +1,6 @@
+@using ClientManager.AdminUI.Models
 @using ClientManager.AdminUI.Models.Allocations
+@using ClientManager.AdminUI.Utils
 
 <div class="cm-list-page__table-card" style="margin-top: var(--space-lg);">
     <div class="cm-dashboard__chart-header">
@@ -8,21 +10,34 @@
         AllowSorting="true" AllowPaging="true" PageSize="15"
         PagerHorizontalAlign="HorizontalAlign.Center">
         <Columns>
-            <RadzenDataGridColumn TItem="PoolSummaryRow" Property="Name" Title="Pool" />
-            <RadzenDataGridColumn TItem="PoolSummaryRow" Title="@(IsAccessMetric ? "Requests" : "Active")" Width="100px"
-                TextAlign="TextAlign.Center" CssClass="cm-list-page__col-center">
+            <RadzenDataGridColumn TItem="PoolSummaryRow" Property="Name" Title="Pool"
+                CssClass="cm-col-label" HeaderCssClass="cm-col-label" />
+            <RadzenDataGridColumn TItem="PoolSummaryRow" Title="@(IsAccessMetric ? "Requests" : "Active")"
+                CssClass="cm-col-scalar" HeaderCssClass="cm-col-scalar">
                 <Template Context="pool">@pool.CurrentValue.ToString("N0")</Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn TItem="PoolSummaryRow" Title="@(IsAccessMetric ? "Cap" : "Max")" Width="100px"
-                TextAlign="TextAlign.Center" CssClass="cm-list-page__col-center">
+            <RadzenDataGridColumn TItem="PoolSummaryRow" Title="@(IsAccessMetric ? "Cap" : "Max")"
+                CssClass="cm-col-scalar" HeaderCssClass="cm-col-scalar">
                 <Template Context="pool">@(IsAccessMetric ? UtilizationHelper.FormatCap(pool.CapValue) : pool.CapValue.ToString("N0"))</Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn TItem="PoolSummaryRow" Title="@(IsAccessMetric ? "Remaining" : "Available")" Width="110px"
-                TextAlign="TextAlign.Center" CssClass="cm-list-page__col-center">
+            <RadzenDataGridColumn TItem="PoolSummaryRow" Title="@(IsAccessMetric ? "Remaining" : "Available")"
+                CssClass="cm-col-scalar" HeaderCssClass="cm-col-scalar">
                 <Template Context="pool">@(IsAccessMetric ? UtilizationHelper.FormatRemaining(pool.RemainingValue) : (pool.RemainingValue ?? 0).ToString("N0"))</Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn TItem="PoolSummaryRow" Title="Utilization" Width="200px"
-                TextAlign="TextAlign.Center" CssClass="cm-list-page__col-center">
+            <RadzenDataGridColumn TItem="PoolSummaryRow" Title="Denied"
+                CssClass="cm-col-scalar-wide" HeaderCssClass="cm-col-scalar-wide">
+                <Template Context="pool">
+                    <DeniedBreakdownCell Total="@pool.DeniedLast5Min"
+                        Unauthenticated="@pool.DeniedUnauthenticatedCount"
+                        Blocked="@pool.DeniedBlockedCount"
+                        RateLimited="@pool.DeniedRateLimitedCount"
+                        CapacityLimited="@pool.DeniedCapacityLimitedCount"
+                        ViewMode="@DeniedViewMode"
+                        ShowBreakdown="@ShowDeniedBreakdown" />
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="PoolSummaryRow" Title="Utilization"
+                CssClass="cm-col-bar" HeaderCssClass="cm-col-bar">
                 <Template Context="pool">
                     @if (pool.CapValue > 0 || !IsAccessMetric)
                     {
@@ -35,8 +50,8 @@
                     }
                 </Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn TItem="PoolSummaryRow" Title="Status" Width="120px" Sortable="false"
-                TextAlign="TextAlign.Center" CssClass="cm-list-page__col-center cm-list-page__col-status">
+            <RadzenDataGridColumn TItem="PoolSummaryRow" Title="Status" Sortable="false"
+                CssClass="cm-col-status" HeaderCssClass="cm-col-status">
                 <Template Context="pool">
                     <div class="cm-list-page__actions-cell">
                         <AllocationPoolStatusBadge Row="pool" IsAccessMetric="IsAccessMetric" />
@@ -51,6 +66,8 @@
     [Parameter] public string Title { get; set; } = "All Resource Pools";
     [Parameter] public List<PoolSummaryRow> Rows { get; set; } = [];
     [Parameter] public bool IsAccessMetric { get; set; }
+    [Parameter] public bool ShowDeniedBreakdown { get; set; }
+    [Parameter] public DeniedViewMode DeniedViewMode { get; set; }
     private RadzenDataGrid<PoolSummaryRow>? _grid;
 
     public async Task ReloadAsync(Func<Func<Task>, Task> dispatchAsync)

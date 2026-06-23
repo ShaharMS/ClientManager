@@ -69,8 +69,9 @@ public sealed class MonitorDataLoader
         }
 
         var allServiceIds = context.AllServices.Select(s => s.Id).ToList();
+        var recentFrom = now.Subtract(MonitorLoadContext.RecentWindow);
         var summaryBreakdowns = await _statsService.GetClientUsageBreakdownAsync(
-            "Service", allServiceIds, null);
+            "Service", allServiceIds, null, recentFrom, now, "FiveMinute");
 
         var serviceStats = context.AllServices.Select(service =>
         {
@@ -78,7 +79,17 @@ public sealed class MonitorDataLoader
             var totalUsage = bd?.Entries.Sum(e => e.GrantedCount) ?? 0;
             var cap = MonitorCapCalculator.GetScaledGlobalServiceCap(
                 service.Id, rateLimitLookup, MonitorLoadContext.RecentWindow);
-            return new ServiceSummaryRow(service.Id, service.Name, totalUsage, cap);
+            var entries = bd?.Entries ?? [];
+            return new ServiceSummaryRow(
+                service.Id,
+                service.Name,
+                totalUsage,
+                cap,
+                entries.Sum(e => e.DeniedCount),
+                entries.Sum(e => e.DeniedUnauthenticatedCount),
+                entries.Sum(e => e.DeniedBlockedCount),
+                entries.Sum(e => e.DeniedRateLimitedCount),
+                entries.Sum(e => e.DeniedCapacityLimitedCount));
         }).ToList();
 
         return new MonitorLoadResult(charts, rows, serviceStats);
