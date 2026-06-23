@@ -1,5 +1,7 @@
 namespace ClientManager.AdminUI.Models;
 
+using System.Globalization;
+
 public enum ChartTimeRangeMode
 {
     Relative,
@@ -61,25 +63,27 @@ public sealed class ChartTimeRange
             return FormatRelativeLabel(RelativeDuration);
         }
 
+        var culture = CultureInfo.CurrentCulture;
         var fromLocal = CustomFromUtc.ToLocalTime();
         var toLocal = CustomToUtc.ToLocalTime();
         if (fromLocal.Date == toLocal.Date)
         {
-            return $"{fromLocal:MMM d, HH:mm} – {toLocal:HH:mm}";
+            return $"{fromLocal.ToString("MMM d, HH:mm", culture)} – {toLocal.ToString("HH:mm", culture)}";
         }
 
-        return $"{fromLocal:MMM d, HH:mm} – {toLocal:MMM d, HH:mm}";
+        return $"{fromLocal.ToString("MMM d, HH:mm", culture)} – {toLocal.ToString("MMM d, HH:mm", culture)}";
     }
 
-    public string FormatTimestamp(DateTime timestamp)
+    public string FormatTimestamp(DateTime timestamp, bool invariant = false)
     {
+        var culture = invariant ? CultureInfo.InvariantCulture : CultureInfo.CurrentCulture;
         var local = timestamp.ToLocalTime();
         return Granularity switch
         {
-            "Second" => local.ToString("HH:mm:ss"),
-            "Day" => local.ToString("MMM dd"),
-            "Hour" => local.ToString("MMM dd HH:mm"),
-            _ => local.ToString("HH:mm")
+            "Second" => local.ToString("T", culture),
+            "Day" => local.ToString("MMM dd", culture),
+            "Hour" => local.ToString("MMM dd HH:mm", culture),
+            _ => local.ToString("HH:mm", culture)
         };
     }
 

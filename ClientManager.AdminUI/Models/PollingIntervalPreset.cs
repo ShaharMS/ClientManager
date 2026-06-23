@@ -1,7 +1,12 @@
+using ClientManager.AdminUI.Resources;
+using Microsoft.Extensions.Localization;
+
 namespace ClientManager.AdminUI.Models;
 
 public record PollingIntervalPreset(string Key, string Label, TimeSpan Interval)
 {
+    public string GetLocalizedLabel(IStringLocalizer<SharedResources> localizer) =>
+        localizer[$"Presets.PollingInterval.{Key}.Label"];
     public static readonly List<PollingIntervalPreset> All =
     [
         new("2s",  "2 seconds",  TimeSpan.FromSeconds(2)),

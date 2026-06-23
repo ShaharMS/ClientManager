@@ -1,20 +1,31 @@
+using System.Globalization;
+using ClientManager.AdminUI.Resources;
+using Microsoft.Extensions.Localization;
+
 namespace ClientManager.AdminUI.Models;
 
 public record TimeRangePreset(string Key, string Label, string Group, TimeSpan Duration, string Granularity)
 {
+    public string GetLocalizedLabel(IStringLocalizer<SharedResources> localizer) =>
+        localizer[$"Presets.TimeRange.{Key}.Label"];
+
+    public string GetLocalizedGroup(IStringLocalizer<SharedResources> localizer) =>
+        localizer[$"Presets.TimeRange.Group.{Group}"];
+
     public DateTime GetFrom(DateTime to) => to - Duration;
     public DateTime GetFrom() => DateTime.UtcNow - Duration;
     public DateTime GetTo() => DateTime.UtcNow;
 
-    public string FormatTimestamp(DateTime timestamp)
+    public string FormatTimestamp(DateTime timestamp, bool invariant = false)
     {
+        var culture = invariant ? CultureInfo.InvariantCulture : CultureInfo.CurrentCulture;
         var local = timestamp.ToLocalTime();
         return Granularity switch
         {
-            "Second" => local.ToString("HH:mm:ss"),
-            "Day" => local.ToString("MMM dd"),
-            "Hour" => local.ToString("MMM dd HH:mm"),
-            _ => local.ToString("HH:mm")
+            "Second" => local.ToString("T", culture),
+            "Day" => local.ToString("MMM dd", culture),
+            "Hour" => local.ToString("MMM dd HH:mm", culture),
+            _ => local.ToString("HH:mm", culture)
         };
     }
 
