@@ -1,0 +1,1060 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="Api.DeleteFailed" xml:space="preserve">
+    <value>Delete failed: {0}</value>
+  </data>
+  <data name="Api.SaveFailed" xml:space="preserve">
+    <value>Save failed: {0}</value>
+  </data>
+  <data name="Api.ServiceUnavailable.RetryIn" xml:space="preserve">
+    <value>The service is temporarily unavailable. Try again in {0} seconds.</value>
+  </data>
+  <data name="Api.ServiceUnavailable.Shortly" xml:space="preserve">
+    <value>The service is temporarily unavailable. Please try again shortly.</value>
+  </data>
+  <data name="Api.UnableToConnect" xml:space="preserve">
+    <value>Unable to connect to the API: {0}</value>
+  </data>
+  <data name="Api.UnableToLoadData" xml:space="preserve">
+    <value>Unable to load data: {0}</value>
+  </data>
+  <data name="Charts.AccessCap" xml:space="preserve">
+    <value>Access Cap</value>
+  </data>
+  <data name="Charts.MaxSlots" xml:space="preserve">
+    <value>Max Slots</value>
+  </data>
+  <data name="Charts.NoUsageData" xml:space="preserve">
+    <value>No usage data available</value>
+  </data>
+  <data name="Charts.Settings.AxisType" xml:space="preserve">
+    <value>Axis Type</value>
+  </data>
+  <data name="Charts.Settings.From" xml:space="preserve">
+    <value>From</value>
+  </data>
+  <data name="Charts.Settings.Last" xml:space="preserve">
+    <value>Last</value>
+  </data>
+  <data name="Charts.Settings.Or" xml:space="preserve">
+    <value>OR</value>
+  </data>
+  <data name="Charts.Settings.Refresh" xml:space="preserve">
+    <value>Refresh</value>
+  </data>
+  <data name="Charts.Settings.To" xml:space="preserve">
+    <value>To</value>
+  </data>
+  <data name="Columns.Actions" xml:space="preserve">
+    <value>Actions</value>
+  </data>
+  <data name="Columns.Active" xml:space="preserve">
+    <value>Active</value>
+  </data>
+  <data name="Columns.AllocationTtl" xml:space="preserve">
+    <value>Allocation TTL</value>
+  </data>
+  <data name="Columns.Available" xml:space="preserve">
+    <value>Available</value>
+  </data>
+  <data name="Columns.Cap" xml:space="preserve">
+    <value>Cap</value>
+  </data>
+  <data name="Columns.Client" xml:space="preserve">
+    <value>Client</value>
+  </data>
+  <data name="Columns.ClientId" xml:space="preserve">
+    <value>Client ID</value>
+  </data>
+  <data name="Columns.Denied" xml:space="preserve">
+    <value>Denied</value>
+  </data>
+  <data name="Columns.Id" xml:space="preserve">
+    <value>ID</value>
+  </data>
+  <data name="Columns.Max" xml:space="preserve">
+    <value>Max</value>
+  </data>
+  <data name="Columns.MaxRequests" xml:space="preserve">
+    <value>Max Requests</value>
+  </data>
+  <data name="Columns.MaxSlots" xml:space="preserve">
+    <value>Max Slots</value>
+  </data>
+  <data name="Columns.Name" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="Columns.Pool" xml:space="preserve">
+    <value>Pool</value>
+  </data>
+  <data name="Columns.Pools" xml:space="preserve">
+    <value>Pools</value>
+  </data>
+  <data name="Columns.RateLimitCap" xml:space="preserve">
+    <value>Rate Limit Cap</value>
+  </data>
+  <data name="Columns.Remaining" xml:space="preserve">
+    <value>Remaining</value>
+  </data>
+  <data name="Columns.Requests" xml:space="preserve">
+    <value>Requests</value>
+  </data>
+  <data name="Columns.ResourcePool" xml:space="preserve">
+    <value>Resource Pool</value>
+  </data>
+  <data name="Columns.Service" xml:space="preserve">
+    <value>Service</value>
+  </data>
+  <data name="Columns.Services" xml:space="preserve">
+    <value>Services</value>
+  </data>
+  <data name="Columns.Status" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="Columns.Strategy" xml:space="preserve">
+    <value>Strategy</value>
+  </data>
+  <data name="RateLimitStrategy.ApproximateSlidingWindow" xml:space="preserve">
+    <value>Sliding window (approx.)</value>
+  </data>
+  <data name="RateLimitStrategy.FixedWindow" xml:space="preserve">
+    <value>Fixed window</value>
+  </data>
+  <data name="RateLimitStrategy.TokenBucket" xml:space="preserve">
+    <value>Token bucket</value>
+  </data>
+  <data name="Columns.Usage" xml:space="preserve">
+    <value>Usage</value>
+  </data>
+  <data name="Columns.Utilization" xml:space="preserve">
+    <value>Utilization</value>
+  </data>
+  <data name="Columns.Window" xml:space="preserve">
+    <value>Window</value>
+  </data>
+  <data name="Common.Add" xml:space="preserve">
+    <value>Add</value>
+  </data>
+  <data name="Common.AppName" xml:space="preserve">
+    <value>ClientManager</value>
+  </data>
+  <data name="Common.Back" xml:space="preserve">
+    <value>← Back</value>
+  </data>
+  <data name="Common.Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Common.Cap" xml:space="preserve">
+    <value>Cap</value>
+  </data>
+  <data name="Common.Disabled" xml:space="preserve">
+    <value>Disabled</value>
+  </data>
+  <data name="Common.Enabled" xml:space="preserve">
+    <value>Enabled</value>
+  </data>
+  <data name="Common.Linear" xml:space="preserve">
+    <value>Linear</value>
+  </data>
+  <data name="Common.Logarithmic" xml:space="preserve">
+    <value>Logarithmic</value>
+  </data>
+  <data name="Common.Others" xml:space="preserve">
+    <value>Others</value>
+  </data>
+  <data name="Common.PageTitleSuffix" xml:space="preserve">
+    <value>ClientManager · {0}</value>
+  </data>
+  <data name="Common.Remove" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="Common.Save" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="Common.Search" xml:space="preserve">
+    <value>Search...</value>
+  </data>
+  <data name="Dialog.ConfirmDelete.Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Dialog.ConfirmDelete.Failed" xml:space="preserve">
+    <value>Delete failed: {0}</value>
+  </data>
+  <data name="Dialog.ConfirmDelete.Message" xml:space="preserve">
+    <value>Are you sure you want to delete {0} &quot;{1}&quot;? This cannot be undone.</value>
+  </data>
+  <data name="Dialog.ConfirmDelete.Ok" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <data name="Dialog.ConfirmDelete.Title" xml:space="preserve">
+    <value>Confirm delete</value>
+  </data>
+  <data name="Dialog.ConfirmDisable.DefaultMessage" xml:space="preserve">
+    <value>Disable {0} &quot;{1}&quot;? Requests from this client will be rejected until it is re-enabled.</value>
+  </data>
+  <data name="Dialog.ConfirmDisable.Ok" xml:space="preserve">
+    <value>Disable</value>
+  </data>
+  <data name="Dialog.ConfirmDisable.ResourcePool" xml:space="preserve">
+    <value>Disable resource pool &quot;{0}&quot;? Slot acquisitions will be rejected until it is re-enabled.</value>
+  </data>
+  <data name="Dialog.ConfirmDisable.Service" xml:space="preserve">
+    <value>Disable service &quot;{0}&quot;? Requests to this service will be rejected until it is re-enabled.</value>
+  </data>
+  <data name="Dialog.ConfirmDisable.Title" xml:space="preserve">
+    <value>Confirm disable</value>
+  </data>
+  <data name="Dialog.ConfirmEnable.DefaultMessage" xml:space="preserve">
+    <value>Enable {0} &quot;{1}&quot;? Requests will be allowed again, subject to access rules.</value>
+  </data>
+  <data name="Dialog.ConfirmEnable.Ok" xml:space="preserve">
+    <value>Enable</value>
+  </data>
+  <data name="Dialog.ConfirmEnable.ResourcePool" xml:space="preserve">
+    <value>Enable resource pool &quot;{0}&quot;? Slot acquisitions will be allowed again.</value>
+  </data>
+  <data name="Dialog.ConfirmEnable.Service" xml:space="preserve">
+    <value>Enable service &quot;{0}&quot;? Requests will be allowed again, subject to access rules.</value>
+  </data>
+  <data name="Dialog.ConfirmEnable.Title" xml:space="preserve">
+    <value>Confirm enable</value>
+  </data>
+  <data name="Dialog.ConfirmToggle.Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Dialog.EntityLabel.Client" xml:space="preserve">
+    <value>client</value>
+  </data>
+  <data name="Dialog.EntityLabel.QuotaForResourcePool" xml:space="preserve">
+    <value>quota for resource pool</value>
+  </data>
+  <data name="Dialog.EntityLabel.RateLimitForService" xml:space="preserve">
+    <value>rate limit for service</value>
+  </data>
+  <data name="Dialog.EntityLabel.ResourcePool" xml:space="preserve">
+    <value>resource pool</value>
+  </data>
+  <data name="Dialog.EntityLabel.Service" xml:space="preserve">
+    <value>service</value>
+  </data>
+  <data name="Dialog.ToggleFailed" xml:space="preserve">
+    <value>{0} failed: {1}</value>
+  </data>
+  <data name="Duration.Unit.Hours" xml:space="preserve">
+    <value>Hours</value>
+  </data>
+  <data name="Duration.Unit.Minutes" xml:space="preserve">
+    <value>Minutes</value>
+  </data>
+  <data name="Duration.Unit.Seconds" xml:space="preserve">
+    <value>Seconds</value>
+  </data>
+  <data name="Editor.BackLink" xml:space="preserve">
+    <value>← Back</value>
+  </data>
+  <data name="Editor.Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Editor.Save" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="Errors.access_denied" xml:space="preserve">
+    <value>Access to this service was denied.</value>
+  </data>
+  <data name="Errors.access_not_configured" xml:space="preserve">
+    <value>Access is not configured for this client and service.</value>
+  </data>
+  <data name="Errors.allocation_not_found" xml:space="preserve">
+    <value>The specified allocation was not found.</value>
+  </data>
+  <data name="Errors.client_disabled" xml:space="preserve">
+    <value>This client is disabled.</value>
+  </data>
+  <data name="Errors.client_global_rate_limit_not_found" xml:space="preserve">
+    <value>No global rate limit is configured for this client.</value>
+  </data>
+  <data name="Errors.client_not_found" xml:space="preserve">
+    <value>The specified client was not found.</value>
+  </data>
+  <data name="Errors.client_rate_limit_exceeded" xml:space="preserve">
+    <value>Rate limit exceeded.</value>
+  </data>
+  <data name="Errors.client_slot_limit_reached" xml:space="preserve">
+    <value>Client slot limit reached for this resource pool.</value>
+  </data>
+  <data name="Errors.global_rate_limit_already_exists" xml:space="preserve">
+    <value>A rate limit already exists for this target.</value>
+  </data>
+  <data name="Errors.global_rate_limit_not_found" xml:space="preserve">
+    <value>The specified rate limit was not found.</value>
+  </data>
+  <data name="Errors.global_resource_pool_rate_limit_exceeded" xml:space="preserve">
+    <value>Global resource pool rate limit exceeded.</value>
+  </data>
+  <data name="Errors.global_service_rate_limit_exceeded" xml:space="preserve">
+    <value>Global service rate limit exceeded.</value>
+  </data>
+  <data name="Errors.no_slots_available" xml:space="preserve">
+    <value>No slots are available in this resource pool.</value>
+  </data>
+  <data name="Errors.resource_pool_already_exists" xml:space="preserve">
+    <value>A resource pool with this ID already exists.</value>
+  </data>
+  <data name="Errors.resource_pool_disabled" xml:space="preserve">
+    <value>This resource pool is disabled.</value>
+  </data>
+  <data name="Errors.resource_pool_not_found" xml:space="preserve">
+    <value>The specified resource pool was not found.</value>
+  </data>
+  <data name="Errors.resource_pool_settings_not_found" xml:space="preserve">
+    <value>Resource pool settings were not found for this client.</value>
+  </data>
+  <data name="Errors.service_already_exists" xml:space="preserve">
+    <value>A service with this ID already exists.</value>
+  </data>
+  <data name="Errors.service_disabled" xml:space="preserve">
+    <value>This service is disabled.</value>
+  </data>
+  <data name="Errors.service_not_found" xml:space="preserve">
+    <value>The specified service was not found.</value>
+  </data>
+  <data name="Errors.service_settings_not_found" xml:space="preserve">
+    <value>Service settings were not found for this client.</value>
+  </data>
+  <data name="Filter.AllClients" xml:space="preserve">
+    <value>All clients</value>
+  </data>
+  <data name="Filter.AllStatuses" xml:space="preserve">
+    <value>All statuses</value>
+  </data>
+  <data name="Filter.SelectPool" xml:space="preserve">
+    <value>Select pool...</value>
+  </data>
+  <data name="Filter.SelectService" xml:space="preserve">
+    <value>Select service...</value>
+  </data>
+  <data name="LanguageOption.en" xml:space="preserve">
+    <value>English</value>
+  </data>
+  <data name="LanguageOption.he-IL" xml:space="preserve">
+    <value>Hebrew</value>
+  </data>
+  <data name="ListTemplate.ApiConnectError" xml:space="preserve">
+    <value>Unable to connect to the API: {0}</value>
+  </data>
+  <data name="ListTemplate.SearchPlaceholder" xml:space="preserve">
+    <value>Search...</value>
+  </data>
+  <data name="DataGrid.NoRecords" xml:space="preserve">
+    <value>No records to display.</value>
+  </data>
+  <data name="Nav.ActiveAllocations" xml:space="preserve">
+    <value>Active Allocations</value>
+  </data>
+  <data name="Nav.BrandName" xml:space="preserve">
+    <value>ClientManager</value>
+  </data>
+  <data name="Nav.Clients" xml:space="preserve">
+    <value>Clients</value>
+  </data>
+  <data name="Nav.Dashboard" xml:space="preserve">
+    <value>Dashboard</value>
+  </data>
+  <data name="Nav.Monitor" xml:space="preserve">
+    <value>Monitor</value>
+  </data>
+  <data name="Nav.Quotas" xml:space="preserve">
+    <value>Quotas</value>
+  </data>
+  <data name="Nav.RateLimits" xml:space="preserve">
+    <value>Rate Limits</value>
+  </data>
+  <data name="Nav.ResourcePools" xml:space="preserve">
+    <value>Resource Pools</value>
+  </data>
+  <data name="Nav.Services" xml:space="preserve">
+    <value>Services</value>
+  </data>
+  <data name="Nav.Settings" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="Pages.Allocations.AllResourcePools" xml:space="preserve">
+    <value>All Resource Pools</value>
+  </data>
+  <data name="Pages.Allocations.Chart.DefaultTitle" xml:space="preserve">
+    <value>All Pools - Active Allocations</value>
+  </data>
+  <data name="Pages.Allocations.Chart.NoAllocationData" xml:space="preserve">
+    <value>No allocation data available</value>
+  </data>
+  <data name="Pages.Allocations.ChartTitle" xml:space="preserve">
+    <value>{0} - {1}</value>
+  </data>
+  <data name="Pages.Allocations.ClientAccessDetailTitle" xml:space="preserve">
+    <value>Client Access Detail</value>
+  </data>
+  <data name="Pages.Allocations.ClientAccessDetailTitleWithPool" xml:space="preserve">
+    <value>{0} - Client Access Detail</value>
+  </data>
+  <data name="Pages.Allocations.ClientDetailTitle" xml:space="preserve">
+    <value>Client Allocation Detail</value>
+  </data>
+  <data name="Pages.Allocations.ClientDetailTitleWithPool" xml:space="preserve">
+    <value>{0} - Client Allocation Detail</value>
+  </data>
+  <data name="Pages.Allocations.LoadDataError" xml:space="preserve">
+    <value>Unable to load data: {0}</value>
+  </data>
+  <data name="Pages.Allocations.Metric.AccessRequests" xml:space="preserve">
+    <value>Access Requests</value>
+  </data>
+  <data name="Pages.Allocations.Metric.ActiveAllocations" xml:space="preserve">
+    <value>Active Allocations</value>
+  </data>
+  <data name="Pages.Allocations.Subtitle" xml:space="preserve">
+    <value>Resource pool utilization across all clients and pools.</value>
+  </data>
+  <data name="Pages.Allocations.Target.AllPools" xml:space="preserve">
+    <value>All Pools</value>
+  </data>
+  <data name="Pages.Allocations.Title" xml:space="preserve">
+    <value>Active Allocations</value>
+  </data>
+  <data name="Pages.Clients.BackLink" xml:space="preserve">
+    <value>← Back to Clients</value>
+  </data>
+  <data name="Pages.Clients.BasicConfig.ClientId" xml:space="preserve">
+    <value>Client ID</value>
+  </data>
+  <data name="Pages.Clients.BasicConfig.ContributesToGlobalLimits" xml:space="preserve">
+    <value>Contributes to Global Limits</value>
+  </data>
+  <data name="Pages.Clients.BasicConfig.Enabled" xml:space="preserve">
+    <value>Enabled</value>
+  </data>
+  <data name="Pages.Clients.BasicConfig.ExemptFromGlobalLimits" xml:space="preserve">
+    <value>Exempt from Global Limits</value>
+  </data>
+  <data name="Pages.Clients.BasicConfig.Name" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="Pages.Clients.BasicConfig.Title" xml:space="preserve">
+    <value>Basic Configuration</value>
+  </data>
+  <data name="Pages.Clients.CreateButton" xml:space="preserve">
+    <value>Create Client</value>
+  </data>
+  <data name="Pages.Clients.CreateDescription" xml:space="preserve">
+    <value>Configure a new client.</value>
+  </data>
+  <data name="Pages.Clients.CreateTitle" xml:space="preserve">
+    <value>Create Client</value>
+  </data>
+  <data name="Pages.Clients.CreateTooltip" xml:space="preserve">
+    <value>Create client</value>
+  </data>
+  <data name="Pages.Clients.DeleteTooltip" xml:space="preserve">
+    <value>Delete client</value>
+  </data>
+  <data name="Pages.Clients.DisableTooltip" xml:space="preserve">
+    <value>Disable client</value>
+  </data>
+  <data name="Pages.Clients.EditDescription" xml:space="preserve">
+    <value>Update client configuration.</value>
+  </data>
+  <data name="Pages.Clients.EditTitle" xml:space="preserve">
+    <value>Edit Client: {0}</value>
+  </data>
+  <data name="Pages.Clients.EditTooltip" xml:space="preserve">
+    <value>Edit client</value>
+  </data>
+  <data name="Pages.Clients.EnableTooltip" xml:space="preserve">
+    <value>Enable client</value>
+  </data>
+  <data name="Pages.Clients.GlobalRateLimit.MaxRequests" xml:space="preserve">
+    <value>Max Requests</value>
+  </data>
+  <data name="Pages.Clients.GlobalRateLimit.Strategy" xml:space="preserve">
+    <value>Strategy</value>
+  </data>
+  <data name="Pages.Clients.GlobalRateLimit.Title" xml:space="preserve">
+    <value>Global Rate Limit</value>
+  </data>
+  <data name="Pages.Clients.GlobalRateLimit.TokensPerRefill" xml:space="preserve">
+    <value>Tokens Per Refill</value>
+  </data>
+  <data name="Pages.Clients.GlobalRateLimit.Window" xml:space="preserve">
+    <value>Window</value>
+  </data>
+  <data name="Pages.Clients.NotFound" xml:space="preserve">
+    <value>Client not found.</value>
+  </data>
+  <data name="Pages.Clients.ResourcePools.AddPool" xml:space="preserve">
+    <value>Add Pool</value>
+  </data>
+  <data name="Pages.Clients.ResourcePools.Empty" xml:space="preserve">
+    <value>No resource pool entries configured.</value>
+  </data>
+  <data name="Pages.Clients.ResourcePools.MaxSlots" xml:space="preserve">
+    <value>Max Slots</value>
+  </data>
+  <data name="Pages.Clients.ResourcePools.NewPool" xml:space="preserve">
+    <value>New Pool</value>
+  </data>
+  <data name="Pages.Clients.ResourcePools.PoolId" xml:space="preserve">
+    <value>Pool ID</value>
+  </data>
+  <data name="Pages.Clients.ResourcePools.Title" xml:space="preserve">
+    <value>Resource Pools ({0})</value>
+  </data>
+  <data name="Pages.Clients.SaveFailed" xml:space="preserve">
+    <value>Save failed: {0}</value>
+  </data>
+  <data name="Pages.Clients.Search" xml:space="preserve">
+    <value>Search clients...</value>
+  </data>
+  <data name="Pages.Clients.ServiceAccess.AddService" xml:space="preserve">
+    <value>Add Service</value>
+  </data>
+  <data name="Pages.Clients.ServiceAccess.Allowed" xml:space="preserve">
+    <value>Allowed</value>
+  </data>
+  <data name="Pages.Clients.ServiceAccess.Empty" xml:space="preserve">
+    <value>No service access entries configured.</value>
+  </data>
+  <data name="Pages.Clients.ServiceAccess.HasRateLimit" xml:space="preserve">
+    <value>Has Rate Limit</value>
+  </data>
+  <data name="Pages.Clients.ServiceAccess.NewService" xml:space="preserve">
+    <value>New Service</value>
+  </data>
+  <data name="Pages.Clients.ServiceAccess.ServiceId" xml:space="preserve">
+    <value>Service ID</value>
+  </data>
+  <data name="Pages.Clients.ServiceAccess.Title" xml:space="preserve">
+    <value>Service Access ({0})</value>
+  </data>
+  <data name="Pages.Clients.Subtitle" xml:space="preserve">
+    <value>Manage client configurations and access control.</value>
+  </data>
+  <data name="Pages.Clients.Title" xml:space="preserve">
+    <value>Clients</value>
+  </data>
+  <data name="Pages.Dashboard.Chart.NoUsageData" xml:space="preserve">
+    <value>No usage data available</value>
+  </data>
+  <data name="Pages.Dashboard.Chart.UsageOverTime" xml:space="preserve">
+    <value>{0} - Usage Over Time</value>
+  </data>
+  <data name="Pages.Dashboard.ClientOverview" xml:space="preserve">
+    <value>Client Overview</value>
+  </data>
+  <data name="Pages.Dashboard.FilterType.ResourcePool" xml:space="preserve">
+    <value>Resource Pool</value>
+  </data>
+  <data name="Pages.Dashboard.FilterType.Service" xml:space="preserve">
+    <value>Service</value>
+  </data>
+  <data name="Pages.Dashboard.SearchClients" xml:space="preserve">
+    <value>Search clients...</value>
+  </data>
+  <data name="Pages.Dashboard.Stats.Clients" xml:space="preserve">
+    <value>Clients</value>
+  </data>
+  <data name="Pages.Dashboard.Stats.PoolAcquisition" xml:space="preserve">
+    <value>Pool Acquisition</value>
+  </data>
+  <data name="Pages.Dashboard.Stats.RequestsPerMin" xml:space="preserve">
+    <value>Requests / min</value>
+  </data>
+  <data name="Pages.Dashboard.Stats.ResourcePools" xml:space="preserve">
+    <value>Resource Pools</value>
+  </data>
+  <data name="Pages.Dashboard.Stats.Services" xml:space="preserve">
+    <value>Services</value>
+  </data>
+  <data name="Pages.Dashboard.Subtitle" xml:space="preserve">
+    <value>Your system's performance at a glance.</value>
+  </data>
+  <data name="Pages.Dashboard.Target.AllResourcePools" xml:space="preserve">
+    <value>All Resource Pools</value>
+  </data>
+  <data name="Pages.Dashboard.Target.AllServices" xml:space="preserve">
+    <value>All Services</value>
+  </data>
+  <data name="Pages.Dashboard.Title" xml:space="preserve">
+    <value>Welcome</value>
+  </data>
+  <data name="Pages.Monitor.AllServicesGrid" xml:space="preserve">
+    <value>All Services</value>
+  </data>
+  <data name="Pages.Monitor.Chart.AllServices" xml:space="preserve">
+    <value>All Services</value>
+  </data>
+  <data name="Pages.Monitor.ClientBreakdown" xml:space="preserve">
+    <value>Client Breakdown</value>
+  </data>
+  <data name="Pages.Monitor.LoadDataError" xml:space="preserve">
+    <value>Unable to load data: {0}</value>
+  </data>
+  <data name="Pages.Monitor.Subtitle" xml:space="preserve">
+    <value>Real-time request analytics across services and clients.</value>
+  </data>
+  <data name="Pages.Monitor.Title" xml:space="preserve">
+    <value>Monitor</value>
+  </data>
+  <data name="Pages.Quotas.AlreadyHasQuota" xml:space="preserve">
+    <value>Already has a quota</value>
+  </data>
+  <data name="Pages.Quotas.BackLink" xml:space="preserve">
+    <value>← Back to Quotas</value>
+  </data>
+  <data name="Pages.Quotas.CreateButton" xml:space="preserve">
+    <value>Create Quota</value>
+  </data>
+  <data name="Pages.Quotas.CreateDescription" xml:space="preserve">
+    <value>Define a request quota for a resource pool.</value>
+  </data>
+  <data name="Pages.Quotas.CreateDisabledTooltip" xml:space="preserve">
+    <value>Every resource pool already has a quota.</value>
+  </data>
+  <data name="Pages.Quotas.CreateTitle" xml:space="preserve">
+    <value>Create Quota</value>
+  </data>
+  <data name="Pages.Quotas.CreateTooltip" xml:space="preserve">
+    <value>Create quota</value>
+  </data>
+  <data name="Pages.Quotas.DeleteTooltip" xml:space="preserve">
+    <value>Delete quota</value>
+  </data>
+  <data name="Pages.Quotas.EditDescription" xml:space="preserve">
+    <value>Update quota configuration.</value>
+  </data>
+  <data name="Pages.Quotas.EditTitle" xml:space="preserve">
+    <value>Edit Quota: {0}</value>
+  </data>
+  <data name="Pages.Quotas.EditTitlePrefix" xml:space="preserve">
+    <value>Edit Quota: </value>
+  </data>
+  <data name="Pages.Quotas.EditTooltip" xml:space="preserve">
+    <value>Edit quota</value>
+  </data>
+  <data name="Pages.Quotas.NotFound" xml:space="preserve">
+    <value>Quota not found.</value>
+  </data>
+  <data name="Pages.Quotas.SaveFailed" xml:space="preserve">
+    <value>Save failed: {0}</value>
+  </data>
+  <data name="Pages.Quotas.Search" xml:space="preserve">
+    <value>Search quotas...</value>
+  </data>
+  <data name="Pages.Quotas.Subtitle" xml:space="preserve">
+    <value>Manage request quotas applied to resource pools.</value>
+  </data>
+  <data name="Pages.Quotas.Title" xml:space="preserve">
+    <value>Quotas</value>
+  </data>
+  <data name="Pages.RateLimits.AlreadyHasRateLimit" xml:space="preserve">
+    <value>Already has a rate limit</value>
+  </data>
+  <data name="Pages.RateLimits.BackLink" xml:space="preserve">
+    <value>← Back to Rate Limits</value>
+  </data>
+  <data name="Pages.RateLimits.CreateButton" xml:space="preserve">
+    <value>Create Rate Limit</value>
+  </data>
+  <data name="Pages.RateLimits.CreateDescription" xml:space="preserve">
+    <value>Define a rate limit for a service endpoint.</value>
+  </data>
+  <data name="Pages.RateLimits.CreateDisabledTooltip" xml:space="preserve">
+    <value>Every service already has a rate limit.</value>
+  </data>
+  <data name="Pages.RateLimits.CreateTitle" xml:space="preserve">
+    <value>Create Rate Limit</value>
+  </data>
+  <data name="Pages.RateLimits.CreateTooltip" xml:space="preserve">
+    <value>Create rate limit</value>
+  </data>
+  <data name="Pages.RateLimits.DeleteTooltip" xml:space="preserve">
+    <value>Delete rate limit</value>
+  </data>
+  <data name="Pages.RateLimits.EditDescription" xml:space="preserve">
+    <value>Update rate limit configuration.</value>
+  </data>
+  <data name="Pages.RateLimits.EditTitle" xml:space="preserve">
+    <value>Edit Rate Limit: {0}</value>
+  </data>
+  <data name="Pages.RateLimits.EditTitlePrefix" xml:space="preserve">
+    <value>Edit Rate Limit: </value>
+  </data>
+  <data name="Pages.RateLimits.EditTooltip" xml:space="preserve">
+    <value>Edit rate limit</value>
+  </data>
+  <data name="Pages.RateLimits.NotFound" xml:space="preserve">
+    <value>Rate limit not found.</value>
+  </data>
+  <data name="Pages.RateLimits.SaveFailed" xml:space="preserve">
+    <value>Save failed: {0}</value>
+  </data>
+  <data name="Pages.RateLimits.Search" xml:space="preserve">
+    <value>Search rate limits...</value>
+  </data>
+  <data name="Pages.RateLimits.Subtitle" xml:space="preserve">
+    <value>Manage rate limits applied to service endpoints.</value>
+  </data>
+  <data name="Pages.RateLimits.Title" xml:space="preserve">
+    <value>Rate Limits</value>
+  </data>
+  <data name="Pages.ResourcePools.AllocationTtl" xml:space="preserve">
+    <value>Allocation TTL</value>
+  </data>
+  <data name="Pages.ResourcePools.BackLink" xml:space="preserve">
+    <value>← Back to Resource Pools</value>
+  </data>
+  <data name="Pages.ResourcePools.CreateButton" xml:space="preserve">
+    <value>Create Resource Pool</value>
+  </data>
+  <data name="Pages.ResourcePools.CreateDescription" xml:space="preserve">
+    <value>Define a new resource pool.</value>
+  </data>
+  <data name="Pages.ResourcePools.CreateTitle" xml:space="preserve">
+    <value>Create Resource Pool</value>
+  </data>
+  <data name="Pages.ResourcePools.CreateTooltip" xml:space="preserve">
+    <value>Create resource pool</value>
+  </data>
+  <data name="Pages.ResourcePools.DeleteTooltip" xml:space="preserve">
+    <value>Delete resource pool</value>
+  </data>
+  <data name="Pages.ResourcePools.DisableTooltip" xml:space="preserve">
+    <value>Disable resource pool</value>
+  </data>
+  <data name="Pages.ResourcePools.EditDescription" xml:space="preserve">
+    <value>Update resource pool configuration.</value>
+  </data>
+  <data name="Pages.ResourcePools.EditTitlePrefix" xml:space="preserve">
+    <value>Edit Resource Pool: </value>
+  </data>
+  <data name="Pages.ResourcePools.EditTooltip" xml:space="preserve">
+    <value>Edit resource pool</value>
+  </data>
+  <data name="Pages.ResourcePools.EnableTooltip" xml:space="preserve">
+    <value>Enable resource pool</value>
+  </data>
+  <data name="Pages.ResourcePools.Enabled" xml:space="preserve">
+    <value>Enabled</value>
+  </data>
+  <data name="Pages.ResourcePools.MaxSlots" xml:space="preserve">
+    <value>Max Slots</value>
+  </data>
+  <data name="Pages.ResourcePools.Name" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="Pages.ResourcePools.NotFound" xml:space="preserve">
+    <value>Resource pool not found.</value>
+  </data>
+  <data name="Pages.ResourcePools.PoolId" xml:space="preserve">
+    <value>Pool ID</value>
+  </data>
+  <data name="Pages.ResourcePools.SaveFailed" xml:space="preserve">
+    <value>Save failed: {0}</value>
+  </data>
+  <data name="Pages.ResourcePools.Search" xml:space="preserve">
+    <value>Search pools...</value>
+  </data>
+  <data name="Pages.ResourcePools.Subtitle" xml:space="preserve">
+    <value>Manage resource pool definitions, slot limits, and TTL settings.</value>
+  </data>
+  <data name="Pages.ResourcePools.Title" xml:space="preserve">
+    <value>Resource Pools</value>
+  </data>
+  <data name="Pages.Services.BackLink" xml:space="preserve">
+    <value>← Back to Services</value>
+  </data>
+  <data name="Pages.Services.CreateButton" xml:space="preserve">
+    <value>Create Service</value>
+  </data>
+  <data name="Pages.Services.CreateDescription" xml:space="preserve">
+    <value>Define a new service.</value>
+  </data>
+  <data name="Pages.Services.CreateTitle" xml:space="preserve">
+    <value>Create Service</value>
+  </data>
+  <data name="Pages.Services.CreateTooltip" xml:space="preserve">
+    <value>Create service</value>
+  </data>
+  <data name="Pages.Services.DeleteTooltip" xml:space="preserve">
+    <value>Delete service</value>
+  </data>
+  <data name="Pages.Services.DisableTooltip" xml:space="preserve">
+    <value>Disable service</value>
+  </data>
+  <data name="Pages.Services.EditDescription" xml:space="preserve">
+    <value>Update service configuration.</value>
+  </data>
+  <data name="Pages.Services.EditTitlePrefix" xml:space="preserve">
+    <value>Edit Service: </value>
+  </data>
+  <data name="Pages.Services.EditTooltip" xml:space="preserve">
+    <value>Edit service</value>
+  </data>
+  <data name="Pages.Services.EnableTooltip" xml:space="preserve">
+    <value>Enable service</value>
+  </data>
+  <data name="Pages.Services.Enabled" xml:space="preserve">
+    <value>Enabled</value>
+  </data>
+  <data name="Pages.Services.Name" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="Pages.Services.NotFound" xml:space="preserve">
+    <value>Service not found.</value>
+  </data>
+  <data name="Pages.Services.SaveFailed" xml:space="preserve">
+    <value>Save failed: {0}</value>
+  </data>
+  <data name="Pages.Services.Search" xml:space="preserve">
+    <value>Search services...</value>
+  </data>
+  <data name="Pages.Services.ServiceId" xml:space="preserve">
+    <value>Service ID</value>
+  </data>
+  <data name="Pages.Services.Subtitle" xml:space="preserve">
+    <value>Manage service definitions and availability.</value>
+  </data>
+  <data name="Pages.Services.Title" xml:space="preserve">
+    <value>Services</value>
+  </data>
+  <data name="Presets.PollingInterval.10s.Label" xml:space="preserve">
+    <value>10 seconds</value>
+  </data>
+  <data name="Presets.PollingInterval.1m.Label" xml:space="preserve">
+    <value>1 minute</value>
+  </data>
+  <data name="Presets.PollingInterval.2s.Label" xml:space="preserve">
+    <value>2 seconds</value>
+  </data>
+  <data name="Presets.PollingInterval.30s.Label" xml:space="preserve">
+    <value>30 seconds</value>
+  </data>
+  <data name="Presets.PollingInterval.5m.Label" xml:space="preserve">
+    <value>5 minutes</value>
+  </data>
+  <data name="Presets.PollingInterval.5s.Label" xml:space="preserve">
+    <value>5 seconds</value>
+  </data>
+  <data name="Presets.TimeRange.12h.Label" xml:space="preserve">
+    <value>Last 12 hours</value>
+  </data>
+  <data name="Presets.TimeRange.15m.Label" xml:space="preserve">
+    <value>Last 15 minutes</value>
+  </data>
+  <data name="Presets.TimeRange.1d.Label" xml:space="preserve">
+    <value>Last 24 hours</value>
+  </data>
+  <data name="Presets.TimeRange.1h.Label" xml:space="preserve">
+    <value>Last hour</value>
+  </data>
+  <data name="Presets.TimeRange.1m.Label" xml:space="preserve">
+    <value>Last minute</value>
+  </data>
+  <data name="Presets.TimeRange.30d.Label" xml:space="preserve">
+    <value>Last 30 days</value>
+  </data>
+  <data name="Presets.TimeRange.30m.Label" xml:space="preserve">
+    <value>Last 30 minutes</value>
+  </data>
+  <data name="Presets.TimeRange.3h.Label" xml:space="preserve">
+    <value>Last 3 hours</value>
+  </data>
+  <data name="Presets.TimeRange.5m.Label" xml:space="preserve">
+    <value>Last 5 minutes</value>
+  </data>
+  <data name="Presets.TimeRange.6h.Label" xml:space="preserve">
+    <value>Last 6 hours</value>
+  </data>
+  <data name="Presets.TimeRange.7d.Label" xml:space="preserve">
+    <value>Last 7 days</value>
+  </data>
+  <data name="Presets.TimeRange.90d.Label" xml:space="preserve">
+    <value>Last 90 days</value>
+  </data>
+  <data name="Presets.TimeRange.Group.Days" xml:space="preserve">
+    <value>Days</value>
+  </data>
+  <data name="Presets.TimeRange.Group.Hours" xml:space="preserve">
+    <value>Hours</value>
+  </data>
+  <data name="Presets.TimeRange.Group.Minutes" xml:space="preserve">
+    <value>Minutes</value>
+  </data>
+  <data name="Reconnect.Failed" xml:space="preserve">
+    <value>Failed to rejoin.</value>
+  </data>
+  <data name="Reconnect.FailedReload" xml:space="preserve">
+    <value>Please retry or reload the page.</value>
+  </data>
+  <data name="Reconnect.Rejoining" xml:space="preserve">
+    <value>Rejoining the server...</value>
+  </data>
+  <data name="Reconnect.Resume" xml:space="preserve">
+    <value>Resume</value>
+  </data>
+  <data name="Reconnect.ResumeFailed" xml:space="preserve">
+    <value>Failed to resume the session.</value>
+  </data>
+  <data name="Reconnect.ResumeFailedReload" xml:space="preserve">
+    <value>Please reload the page.</value>
+  </data>
+  <data name="Reconnect.Retry" xml:space="preserve">
+    <value>Retry</value>
+  </data>
+  <data name="Reconnect.RetryInSeconds" xml:space="preserve">
+    <value>Rejoin failed... trying again in {0} seconds.</value>
+  </data>
+  <data name="Reconnect.SessionPaused" xml:space="preserve">
+    <value>The session has been paused by the server.</value>
+  </data>
+  <data name="Settings.Appearance.DarkMode" xml:space="preserve">
+    <value>Dark Mode</value>
+  </data>
+  <data name="Settings.Appearance.LightMode" xml:space="preserve">
+    <value>Light Mode</value>
+  </data>
+  <data name="Settings.Appearance.Description" xml:space="preserve">
+    <value>Choose between light and dark mode.</value>
+  </data>
+  <data name="Settings.Appearance.Title" xml:space="preserve">
+    <value>Appearance</value>
+  </data>
+  <data name="Settings.DefaultAxisScale.Description" xml:space="preserve">
+    <value>Choose how chart Y-axes scale values. Logarithmic makes small values more visible.</value>
+  </data>
+  <data name="Settings.DefaultAxisScale.Title" xml:space="preserve">
+    <value>Default Axis Scale</value>
+  </data>
+  <data name="Settings.DefaultPollingInterval.Description" xml:space="preserve">
+    <value>How often monitoring pages refresh data.</value>
+  </data>
+  <data name="Settings.DefaultPollingInterval.Title" xml:space="preserve">
+    <value>Default Polling Interval</value>
+  </data>
+  <data name="Settings.DefaultTimeRange.Description" xml:space="preserve">
+    <value>Used by charts when no specific range is selected.</value>
+  </data>
+  <data name="Settings.DefaultTimeRange.Title" xml:space="preserve">
+    <value>Default Time Range</value>
+  </data>
+  <data name="Settings.Language.Description" xml:space="preserve">
+    <value>Choose your preferred display language.</value>
+  </data>
+  <data name="Settings.Language.Title" xml:space="preserve">
+    <value>Language</value>
+  </data>
+  <data name="Settings.Subtitle" xml:space="preserve">
+    <value>Customize your dashboard experience.</value>
+  </data>
+  <data name="Settings.Title" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="Terms.Cap.AccessCap" xml:space="preserve">
+    <value>Access Cap</value>
+  </data>
+  <data name="Terms.Cap.RateLimitCap" xml:space="preserve">
+    <value>Rate Limit Cap</value>
+  </data>
+  <data name="Terms.Denied.Blocked" xml:space="preserve">
+    <value>Blocked</value>
+  </data>
+  <data name="Terms.Denied.OutOfSlots" xml:space="preserve">
+    <value>Out of slots</value>
+  </data>
+  <data name="Terms.Denied.Throttled" xml:space="preserve">
+    <value>Throttled</value>
+  </data>
+  <data name="Terms.Denied.Tooltip" xml:space="preserve">
+    <value>Unauthenticated: {0}
+Blocked: {1}
+{2}: {3}</value>
+  </data>
+  <data name="Terms.Denied.Unauthenticated" xml:space="preserve">
+    <value>Unauthenticated</value>
+  </data>
+  <data name="Terms.Entity.MaxSlots" xml:space="preserve">
+    <value>Max Slots</value>
+  </data>
+  <data name="Terms.Entity.Quotas" xml:space="preserve">
+    <value>Quotas</value>
+  </data>
+  <data name="Terms.Entity.RateLimits" xml:space="preserve">
+    <value>Rate Limits</value>
+  </data>
+  <data name="Terms.State.Available" xml:space="preserve">
+    <value>Available</value>
+  </data>
+  <data name="Units.RequestsPerMinute" xml:space="preserve">
+    <value>{0} req/min</value>
+  </data>
+  <data name="Units.Duration.HoursCompact" xml:space="preserve">
+    <value>{0}h</value>
+  </data>
+  <data name="Units.Duration.MinutesCompact" xml:space="preserve">
+    <value>{0}m</value>
+  </data>
+  <data name="Units.Duration.SecondsCompact" xml:space="preserve">
+    <value>{0}s</value>
+  </data>
+  <data name="Terms.State.NearLimit" xml:space="preserve">
+    <value>Near limit</value>
+  </data>
+</root>

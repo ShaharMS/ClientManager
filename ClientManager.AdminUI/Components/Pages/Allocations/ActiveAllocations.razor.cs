@@ -1,11 +1,14 @@
 using ClientManager.AdminUI.Models;
 using ClientManager.AdminUI.Models.Allocations;
 using ClientManager.AdminUI.Models.Charts;
+using ClientManager.AdminUI.Resources;
 using ClientManager.AdminUI.Services;
 using ClientManager.AdminUI.Services.ChartData;
-using ClientManager.AdminUI.Utils;using ClientManager.Shared.Models.Entities;
+using ClientManager.AdminUI.Utils;
+using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Responses;
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.Localization;
 using Microsoft.JSInterop;
 
 namespace ClientManager.AdminUI.Components.Pages.Allocations;
@@ -15,12 +18,15 @@ public partial class ActiveAllocations : ComponentBase, IAsyncDisposable
     [Inject] private StatisticsApiService StatsService { get; set; } = null!;
     [Inject] private ClientApiService ClientService { get; set; } = null!;
     [Inject] private GlobalRateLimitApiService RateLimitApi { get; set; } = null!;
+    [Inject] private IStringLocalizer<SharedResources> Localizer { get; set; } = null!;
+    [Inject] private ApiErrorLocalizer Errors { get; set; } = null!;
+    [Inject] private DeniedBreakdownFormatter DeniedBreakdownFormatter { get; set; } = null!;
     [Inject] private IJSRuntime JS { get; set; } = null!;
 
-    private static readonly List<MetricOption> MetricOptions =
+    private List<MetricOption> MetricOptions =>
     [
-        new(AllocationsChartSection.ActiveAllocationsMetric, "Active Allocations"),
-        new(AllocationsChartSection.AccessRequestsMetric, "Access Requests")
+        new(AllocationsChartSection.ActiveAllocationsMetric, Localizer["Pages.Allocations.Metric.ActiveAllocations"]),
+        new(AllocationsChartSection.AccessRequestsMetric, Localizer["Pages.Allocations.Metric.AccessRequests"])
     ];
 
     private List<ResourcePoolStatisticsResponse> _pools = [];
@@ -50,7 +56,7 @@ public partial class ActiveAllocations : ComponentBase, IAsyncDisposable
 
     private bool IsAccessMetric => _selectedMetric == AllocationsChartSection.AccessRequestsMetric;
 
-    private bool ShowDeniedBreakdown => DeniedBreakdownHelper.ShowBreakdown(_selectedClientIds);
+    private bool ShowDeniedBreakdown => DeniedBreakdownFormatter.ShowBreakdown(_selectedClientIds);
 
     private DeniedViewMode AllocationDeniedViewMode =>
         IsAccessMetric ? DeniedViewMode.RateLimitDenied : DeniedViewMode.CapacityDenied;
@@ -59,20 +65,20 @@ public partial class ActiveAllocations : ComponentBase, IAsyncDisposable
 
     private string ClientDetailTitle =>
         _selectedPoolId == AllocationsLoadContext.AllPoolsId
-            ? IsAccessMetric ? "Client Access Detail" : "Client Allocation Detail"
-            : $"{SelectedPoolName} - {(IsAccessMetric ? "Client Access Detail" : "Client Allocation Detail")}";
+            ? IsAccessMetric ? Localizer["Pages.Allocations.ClientAccessDetailTitle"] : Localizer["Pages.Allocations.ClientDetailTitle"]
+            : $"{SelectedPoolName} - {(IsAccessMetric ? Localizer["Pages.Allocations.ClientAccessDetailTitle"] : Localizer["Pages.Allocations.ClientDetailTitle"])}";
 
     private string SelectedPoolName =>
         _selectedPoolId == AllocationsLoadContext.AllPoolsId || string.IsNullOrEmpty(_selectedPoolId)
-            ? "All Pools"
-            : _poolOptions.FirstOrDefault(p => p.Id == _selectedPoolId)?.Name ?? "All Pools";
+            ? Localizer["Pages.Allocations.Target.AllPools"]
+            : _poolOptions.FirstOrDefault(p => p.Id == _selectedPoolId)?.Name ?? Localizer["Pages.Allocations.Target.AllPools"];
 
     private string ChartTitle =>
-        $"{SelectedPoolName} - {(IsAccessMetric ? "Access Requests" : "Active Allocations")}";
+        $"{SelectedPoolName} - {(IsAccessMetric ? Localizer["Pages.Allocations.Metric.AccessRequests"] : Localizer["Pages.Allocations.Metric.ActiveAllocations"])}";
 
     protected override async Task OnInitializedAsync()
     {
-        _dataLoader = new AllocationsDataLoader(StatsService, RateLimitApi);
+        _dataLoader = new AllocationsDataLoader(StatsService, RateLimitApi, Localizer);
 
         try
         {
@@ -81,14 +87,14 @@ public partial class ActiveAllocations : ComponentBase, IAsyncDisposable
             _allClients = clients;
             _clientOptions = clients.Select(c => new NamedItem(c.Id, c.Name)).ToList();
 
-            _poolOptions = new List<NamedItem> { new(AllocationsLoadContext.AllPoolsId, "All Pools") }
+            _poolOptions = new List<NamedItem> { new(AllocationsLoadContext.AllPoolsId, Localizer["Pages.Allocations.Target.AllPools"]) }
                 .Concat(_pools.Select(p => new NamedItem(p.ResourcePoolId, p.Name)))
                 .ToList();
             _selectedPoolId = AllocationsLoadContext.AllPoolsId;
         }
         catch (HttpRequestException ex)
         {
-            _error = $"Unable to connect to the API: {ex.Message}";
+            _error = Errors.Format("Pages.Allocations.LoadDataError", ex);
             _chartLoading = false;
         }
 

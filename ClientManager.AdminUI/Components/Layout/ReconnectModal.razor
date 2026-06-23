@@ -5,25 +5,28 @@
             <div></div>
         </div>
         <p class="components-reconnect-first-attempt-visible">
-            Rejoining the server...
+            @L["Reconnect.Rejoining"]
         </p>
         <p class="components-reconnect-repeated-attempt-visible">
-            Rejoin failed... trying again in <span id="components-seconds-to-next-attempt"></span> seconds.
+            @{
+                var retryParts = L["Reconnect.RetryInSeconds"].Value.Split("{0}");
+            }
+            @retryParts[0]<span id="components-seconds-to-next-attempt"></span>@retryParts[1]
         </p>
         <p class="components-reconnect-failed-visible">
-            Failed to rejoin.<br />Please retry or reload the page.
+            @L["Reconnect.Failed"]<br />@L["Reconnect.FailedReload"]
         </p>
         <button id="components-reconnect-button" class="components-reconnect-failed-visible">
-            Retry
+            @L["Reconnect.Retry"]
         </button>
         <p class="components-pause-visible">
-            The session has been paused by the server.
+            @L["Reconnect.SessionPaused"]
         </p>
         <button id="components-resume-button" class="components-pause-visible">
-            Resume
+            @L["Reconnect.Resume"]
         </button>
         <p class="components-resume-failed-visible">
-            Failed to resume the session.<br />Please reload the page.
+            @L["Reconnect.ResumeFailed"]<br />@L["Reconnect.ResumeFailedReload"]
         </p>
     </div>
 </dialog>

@@ -117,7 +117,7 @@
 
     .cm-list-page__header--with-filter.cm-list-page__header--services .cm-list-page__header-actions {
         order: 3;
-        margin-left: auto;
+        margin-inline-start: auto;
     }
 
     .cm-list-page__header--with-filter.cm-list-page__header--services .cm-list-page__create-btn.rz-button {
@@ -175,7 +175,7 @@
 
     .cm-list-page__header--with-filter.cm-list-page__header--clients .cm-list-page__header-actions {
         order: 3;
-        margin-left: auto;
+        margin-inline-start: auto;
     }
 
     .cm-list-page__header--with-filter.cm-list-page__header--clients .cm-list-page__create-btn.rz-button {
@@ -233,7 +233,7 @@
 
     .cm-list-page__header--with-filter.cm-list-page__header--resource-pools .cm-list-page__header-actions {
         order: 3;
-        margin-left: auto;
+        margin-inline-start: auto;
     }
 
     .cm-list-page__header--with-filter.cm-list-page__header--resource-pools .cm-list-page__create-btn.rz-button {

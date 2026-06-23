@@ -1,18 +1,27 @@
 using ClientManager.AdminUI.Models;
-using ClientManager.AdminUI.Models;
 using ClientManager.AdminUI.Models.Charts;
-using ClientManager.AdminUI.Models.Monitor;using ClientManager.AdminUI.Services;
+using ClientManager.AdminUI.Models.Monitor;
+using ClientManager.AdminUI.Resources;
+using ClientManager.AdminUI.Services;
 using ClientManager.AdminUI.Utils;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Responses;
+using Microsoft.Extensions.Localization;
 
 namespace ClientManager.AdminUI.Services.ChartData;
 
 internal sealed class MonitorSingleServiceChartLoader
 {
     private readonly StatisticsApiService _statsService;
+    private readonly IStringLocalizer<SharedResources> _localizer;
 
-    public MonitorSingleServiceChartLoader(StatisticsApiService statsService) => _statsService = statsService;
+    public MonitorSingleServiceChartLoader(
+        StatisticsApiService statsService,
+        IStringLocalizer<SharedResources> localizer)
+    {
+        _statsService = statsService;
+        _localizer = localizer;
+    }
 
     public async Task LoadAsync(
         MonitorLoadContext context,
@@ -116,7 +125,8 @@ internal sealed class MonitorSingleServiceChartLoader
                 DeniedViewMode.RateLimitDenied,
                 from,
                 now,
-                context.BucketCount);
+                context.BucketCount,
+                _localizer);
 
             charts.Add(new TargetChartData(service.Name, clientAreas, chartCapPoints));
         }

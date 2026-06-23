@@ -1,21 +1,22 @@
+@using ClientManager.AdminUI.Localization
 @using ClientManager.AdminUI.Models
 @using ClientManager.AdminUI.Models.Monitor
 
 <div class="cm-list-page__table-card" style="margin-top: var(--space-lg);">
     <div class="cm-dashboard__chart-header">
-        <span class="cm-dashboard__chart-title">All Services</span>
+        <span class="cm-dashboard__chart-title">@L["Pages.Monitor.AllServicesGrid"]</span>
     </div>
-    <RadzenDataGrid @ref="_grid" Data="@Rows" TItem="ServiceSummaryRow"
+    <RadzenDataGrid @ref="_grid" Data="@Rows" TItem="ServiceSummaryRow" EmptyText="@L["DataGrid.NoRecords"]"
         AllowSorting="true" AllowPaging="true" PageSize="15"
         PagerHorizontalAlign="HorizontalAlign.Center">
         <Columns>
-            <RadzenDataGridColumn TItem="ServiceSummaryRow" Property="Name" Title="Service"
+            <RadzenDataGridColumn TItem="ServiceSummaryRow" Property="Name" Title="@L["Columns.Service"]"
                 CssClass="cm-col-label" HeaderCssClass="cm-col-label" />
-            <RadzenDataGridColumn TItem="ServiceSummaryRow" Property="CurrentUsage" Title="Usage"
+            <RadzenDataGridColumn TItem="ServiceSummaryRow" Property="CurrentUsage" Title="@L["Columns.Usage"]"
                 CssClass="cm-col-scalar" HeaderCssClass="cm-col-scalar" />
-            <RadzenDataGridColumn TItem="ServiceSummaryRow" Property="Cap" Title="Cap"
+            <RadzenDataGridColumn TItem="ServiceSummaryRow" Property="Cap" Title="@L["Columns.Cap"]"
                 CssClass="cm-col-scalar" HeaderCssClass="cm-col-scalar" />
-            <RadzenDataGridColumn TItem="ServiceSummaryRow" Title="Denied"
+            <RadzenDataGridColumn TItem="ServiceSummaryRow" Title="@L["Columns.Denied"]"
                 CssClass="cm-col-scalar-wide" HeaderCssClass="cm-col-scalar-wide">
                 <Template Context="row">
                     <DeniedBreakdownCell Total="@row.DeniedLast5Min"
@@ -27,7 +28,7 @@
                         ShowBreakdown="@ShowDeniedBreakdown" />
                 </Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn TItem="ServiceSummaryRow" Title="Utilization"
+            <RadzenDataGridColumn TItem="ServiceSummaryRow" Title="@L["Columns.Utilization"]"
                 CssClass="cm-col-bar" HeaderCssClass="cm-col-bar">
                 <Template Context="row">
                     @{
@@ -36,17 +37,17 @@
                     <UtilizationProgressBar Percent="@pct" />
                 </Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn TItem="ServiceSummaryRow" Title="Status" Sortable="false"
+            <RadzenDataGridColumn TItem="ServiceSummaryRow" Title="@L["Columns.Status"]" Sortable="false"
                 CssClass="cm-col-status" HeaderCssClass="cm-col-status">
                 <Template Context="row">
                     <div class="cm-list-page__actions-cell">
                         @if (row.Cap > 0 && row.CurrentUsage >= row.Cap)
                         {
-                            <StatusBadge Text="At Capacity" Variant="StatusBadgeVariant.Danger" />
+                            <StatusBadge Text="@L[TermKeys.DeniedThrottled]" Variant="StatusBadgeVariant.Danger" />
                         }
                         else
                         {
-                            <StatusBadge Text="Available" Variant="StatusBadgeVariant.Success" />
+                            <StatusBadge Text="@L[TermKeys.StateAvailable]" Variant="StatusBadgeVariant.Success" />
                         }
                     </div>
                 </Template>

@@ -1,3 +1,4 @@
+using ClientManager.AdminUI.Localization;
 using ClientManager.AdminUI.Models;
 using Microsoft.JSInterop;
 
@@ -40,7 +41,27 @@ public class UserPreferencesService : IAsyncDisposable
         var module = await GetModuleAsync();
         await module.InvokeVoidAsync("savePreferences", preferences);
         await module.InvokeVoidAsync("applyTheme", preferences.Theme);
+        if (!string.IsNullOrWhiteSpace(preferences.Culture))
+        {
+            await module.InvokeVoidAsync(
+                "applyCulture",
+                SupportedCultures.Normalize(preferences.Culture),
+                SupportedCultures.IsRtl(preferences.Culture));
+        }
         OnPreferencesChanged?.Invoke();
+    }
+
+    public async Task<string> GetCultureAsync()
+    {
+        var prefs = await GetPreferencesAsync();
+        if (!string.IsNullOrWhiteSpace(prefs.Culture))
+        {
+            return SupportedCultures.Normalize(prefs.Culture);
+        }
+
+        var module = await GetModuleAsync();
+        var resolved = await module.InvokeAsync<string>("getResolvedCulture");
+        return SupportedCultures.Normalize(resolved);
     }
 
     public async Task ApplyCurrentThemeAsync()

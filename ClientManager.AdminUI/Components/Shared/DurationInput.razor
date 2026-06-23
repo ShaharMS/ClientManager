@@ -20,12 +20,7 @@
 
     private sealed record UnitOption(DurationUnit Unit, string Label);
 
-    private static readonly List<UnitOption> _units =
-    [
-        new(DurationUnit.Seconds, "Seconds"),
-        new(DurationUnit.Minutes, "Minutes"),
-        new(DurationUnit.Hours, "Hours"),
-    ];
+    private List<UnitOption> _units = [];
 
     [Parameter] public double Value { get; set; }
     [Parameter] public EventCallback<double> ValueChanged { get; set; }
@@ -34,6 +29,16 @@
     private double _amount = 60;
     private DurationUnit _unit = DurationUnit.Seconds;
     private double _lastSyncedValue = double.NaN;
+
+    protected override void OnInitialized()
+    {
+        _units =
+        [
+            new(DurationUnit.Seconds, L["Duration.Unit.Seconds"]),
+            new(DurationUnit.Minutes, L["Duration.Unit.Minutes"]),
+            new(DurationUnit.Hours, L["Duration.Unit.Hours"]),
+        ];
+    }
 
     protected override void OnParametersSet()
     {

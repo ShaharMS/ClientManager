@@ -1,5 +1,9 @@
 @inherits LayoutComponentBase
+@using System.Globalization
+@using Microsoft.AspNetCore.Localization
 @inject UserPreferencesService PreferencesService
+@inject CultureService CultureService
+@inject IHttpContextAccessor HttpContextAccessor
 
 <NavMenu />
 <div class="cm-main">
@@ -8,11 +12,38 @@
 <RadzenComponents />
 
 @code {
+    protected override void OnInitialized()
+    {
+        var httpContext = HttpContextAccessor.HttpContext;
+        if (httpContext?.Request.Cookies.TryGetValue(CmCultureCookieProvider.CookieName, out var cookieCulture) == true
+            && SupportedCultures.IsSupported(cookieCulture))
+        {
+            CultureService.ApplyCultureToThread(cookieCulture);
+            return;
+        }
+
+        var culture = httpContext?.Features
+            .Get<IRequestCultureFeature>()?.RequestCulture?.UICulture?.Name;
+        if (!string.IsNullOrEmpty(culture))
+        {
+            CultureService.ApplyCultureToThread(culture);
+        }
+    }
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
+        if (!firstRender)
         {
-            await PreferencesService.ApplyCurrentThemeAsync();
+            return;
+        }
+
+        await PreferencesService.ApplyCurrentThemeAsync();
+
+        var before = CultureInfo.CurrentUICulture.Name;
+        await CultureService.ApplyCultureFromPreferencesAsync();
+        if (!string.Equals(before, CultureInfo.CurrentUICulture.Name, StringComparison.OrdinalIgnoreCase))
+        {
+            StateHasChanged();
         }
     }
 }

@@ -1,11 +1,11 @@
 @page "/monitor"
 @using ClientManager.AdminUI.Models.Charts
 
-<PageTitle>ClientManager · Monitor</PageTitle>
+<PageTitle>@string.Format(L["Common.PageTitleSuffix"], L["Pages.Monitor.Title"])</PageTitle>
 
 <div class="cm-page-header">
-    <h1>Monitor</h1>
-    <p>Real-time request analytics across services and clients.</p>
+    <h1>@L["Pages.Monitor.Title"]</h1>
+    <p>@L["Pages.Monitor.Subtitle"]</p>
 </div>
 
 @if (_error is not null)

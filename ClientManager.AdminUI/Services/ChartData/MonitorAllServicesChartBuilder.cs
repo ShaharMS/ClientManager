@@ -1,9 +1,11 @@
 using ClientManager.AdminUI.Models;
 using ClientManager.AdminUI.Models.Charts;
 using ClientManager.AdminUI.Models.Monitor;
+using ClientManager.AdminUI.Resources;
 using ClientManager.AdminUI.Utils;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Responses;
+using Microsoft.Extensions.Localization;
 
 namespace ClientManager.AdminUI.Services.ChartData;
 
@@ -20,7 +22,8 @@ internal static class MonitorAllServicesChartBuilder
         DateTime from,
         DateTime now,
         List<TargetChartData> charts,
-        List<MonitorClientRow> rows)
+        List<MonitorClientRow> rows,
+        IStringLocalizer<SharedResources> localizer)
     {
         var totalCap = 0;
 
@@ -48,19 +51,21 @@ internal static class MonitorAllServicesChartBuilder
 
         var targetPointLists = visibleServices
             .Select(service => (IReadOnlyList<HistoricalUsagePoint>)(allHistories.FirstOrDefault(h => h.TargetId == service.Id)?.Points ?? []));
+        var allServicesLabel = localizer["Pages.Monitor.Chart.AllServices"];
         var (clientAreas, referenceBuckets) = AggregateTargetChartSeriesBuilder.Build(
             targetPointLists,
             usageIsSummed: true,
-            "All Services",
+            allServicesLabel,
             DeniedViewMode.RateLimitDenied,
             from,
             now,
-            context.BucketCount);
+            context.BucketCount,
+            localizer);
 
         var capPoints = referenceBuckets
             .Select(bucket => new ChartPoint(bucket.Label, totalCap))
             .ToList();
 
-        charts.Add(new TargetChartData("All Services", clientAreas, capPoints));
+        charts.Add(new TargetChartData(allServicesLabel, clientAreas, capPoints));
     }
 }

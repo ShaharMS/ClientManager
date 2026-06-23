@@ -1,10 +1,12 @@
 using ClientManager.AdminUI.Models;
-using ClientManager.AdminUI.Services;
 using ClientManager.AdminUI.Models.Allocations;
+using ClientManager.AdminUI.Resources;
+using ClientManager.AdminUI.Services;
 using ClientManager.AdminUI.Utils;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Enums;
 using ClientManager.Shared.Models.Responses;
+using Microsoft.Extensions.Localization;
 
 namespace ClientManager.AdminUI.Services.ChartData;
 
@@ -15,12 +17,15 @@ public sealed class AllocationsDataLoader
     private readonly AllocationsAllPoolsChartLoader _allPoolsLoader;
     private readonly AllocationsSinglePoolChartLoader _singlePoolLoader;
 
-    public AllocationsDataLoader(StatisticsApiService statsService, GlobalRateLimitApiService rateLimitApi)
+    public AllocationsDataLoader(
+        StatisticsApiService statsService,
+        GlobalRateLimitApiService rateLimitApi,
+        IStringLocalizer<SharedResources> localizer)
     {
         _statsService = statsService;
         _rateLimitApi = rateLimitApi;
-        _allPoolsLoader = new AllocationsAllPoolsChartLoader(statsService);
-        _singlePoolLoader = new AllocationsSinglePoolChartLoader(statsService);
+        _allPoolsLoader = new AllocationsAllPoolsChartLoader(statsService, localizer);
+        _singlePoolLoader = new AllocationsSinglePoolChartLoader(statsService, localizer);
     }
 
     public async Task<AllocationsLoadResult> LoadAsync(AllocationsLoadContext context)

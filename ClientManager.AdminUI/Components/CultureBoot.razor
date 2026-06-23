@@ -1,0 +1,16 @@
+@using System.Text.Json
+@using ClientManager.AdminUI.Localization
+@inject IHttpContextAccessor HttpContextAccessor
+@{
+    var acceptLanguage = HttpContextAccessor.HttpContext?.Request.Headers.AcceptLanguage.ToString();
+    var resolvedCulture = SupportedCultures.MatchBest(SupportedCultures.ParseAcceptLanguage(acceptLanguage));
+    var cultureRtl = SupportedCultures.Codes.ToDictionary(c => c, SupportedCultures.IsRtl);
+}
+<script>
+    window.__resolvedCulture = @(JsonSerializer.Serialize(resolvedCulture));
+    window.__cultureRtl = @(JsonSerializer.Serialize(cultureRtl));
+</script>
+<script type="module">
+    import { initCulture } from './js/preferences.js';
+    initCulture();
+</script>

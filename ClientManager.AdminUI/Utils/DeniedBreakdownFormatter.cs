@@ -1,11 +1,22 @@
+using System.Globalization;
+using ClientManager.AdminUI.Localization;
 using ClientManager.AdminUI.Models;
+using ClientManager.AdminUI.Resources;
 using ClientManager.AdminUI.Services;
 using ClientManager.Shared.Models.Responses;
+using Microsoft.Extensions.Localization;
 
 namespace ClientManager.AdminUI.Utils;
 
-public static class DeniedBreakdownHelper
+public class DeniedBreakdownFormatter
 {
+    private readonly IStringLocalizer<SharedResources> _localizer;
+
+    public DeniedBreakdownFormatter(IStringLocalizer<SharedResources> localizer)
+    {
+        _localizer = localizer;
+    }
+
     public static bool ShowBreakdown(IEnumerable<string>? selectedClientIds) =>
         (selectedClientIds?.Count() ?? 0) <= 1;
 
@@ -23,11 +34,19 @@ public static class DeniedBreakdownHelper
             entry.DeniedCapacityLimitedCount,
             mode);
 
-    public static string ThirdLabel(DeniedViewMode mode) =>
-        mode == DeniedViewMode.CapacityDenied ? "Capacity limited" : "Rate limited";
+    public string ThirdLabel(DeniedViewMode mode) =>
+        mode == DeniedViewMode.CapacityDenied
+            ? _localizer[TermKeys.DeniedOutOfSlots]
+            : _localizer[TermKeys.DeniedThrottled];
 
-    public static string BuildTooltip(long unauth, long blocked, long third, DeniedViewMode mode) =>
-        $"Unauthenticated: {unauth:N0}\nBlocked: {blocked:N0}\n{ThirdLabel(mode)}: {third:N0}";
+    public string BuildTooltip(long unauth, long blocked, long third, DeniedViewMode mode) =>
+        string.Format(
+            CultureInfo.CurrentCulture,
+            _localizer["Terms.Denied.Tooltip"],
+            unauth.ToString("N0", CultureInfo.CurrentCulture),
+            blocked.ToString("N0", CultureInfo.CurrentCulture),
+            ThirdLabel(mode),
+            third.ToString("N0", CultureInfo.CurrentCulture));
 
     public static double GetDeniedCategoryValue(HistoricalUsagePoint point, string seriesSuffix) =>
         seriesSuffix switch

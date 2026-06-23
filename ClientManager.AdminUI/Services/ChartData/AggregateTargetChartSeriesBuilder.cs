@@ -1,8 +1,10 @@
 using ClientManager.AdminUI.Models;
 using ClientManager.AdminUI.Models.Charts;
+using ClientManager.AdminUI.Resources;
 using ClientManager.AdminUI.Services;
 using ClientManager.AdminUI.Utils;
 using ClientManager.Shared.Models.Responses;
+using Microsoft.Extensions.Localization;
 
 namespace ClientManager.AdminUI.Services.ChartData;
 
@@ -15,7 +17,8 @@ internal static class AggregateTargetChartSeriesBuilder
         DeniedViewMode deniedViewMode,
         DateTime from,
         DateTime now,
-        int bucketCount)
+        int bucketCount,
+        IStringLocalizer<SharedResources> localizer)
     {
         var targetPointLists = targetPoints.ToList();
         var usageMode = ChartValueHelper.GetAggregationMode(usageIsSummed);
@@ -50,7 +53,8 @@ internal static class AggregateTargetChartSeriesBuilder
             deniedViewMode,
             from,
             now,
-            bucketCount);
+            bucketCount,
+            localizer);
 
         return (series, referenceBuckets);
     }

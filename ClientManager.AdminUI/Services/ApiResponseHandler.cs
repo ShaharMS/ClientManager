@@ -37,8 +37,11 @@ internal static class ApiResponseHandler
 
     private static async Task<Exception> CreateExceptionAsync(HttpResponseMessage response)
     {
-        var message = await BuildMessageAsync(response);
-        return new HttpRequestException(message, null, response.StatusCode);
+        var problem = await ReadProblemAsync(response);
+        var message = response.StatusCode == HttpStatusCode.ServiceUnavailable
+            ? CreateUnavailableMessage(response)
+            : problem.Detail ?? problem.Title ?? $"The API returned status {(int)response.StatusCode}.";
+        return new ApiProblemException(message, problem.ErrorCode, response.StatusCode);
     }
 
     private static async Task<string> BuildMessageAsync(HttpResponseMessage response)

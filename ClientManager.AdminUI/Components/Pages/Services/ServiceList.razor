@@ -1,13 +1,15 @@
 @page "/services"
+@using System.Globalization
 @inject ServiceApiService ServiceApi
 @inject NavigationManager Nav
 @inject DialogService Dialog
+@inject ApiErrorLocalizer errors
 @inject IJSRuntime JS
 @implements IAsyncDisposable
 
 <div class="cm-page-header">
-    <h1>Services</h1>
-    <p>Manage service definitions and availability.</p>
+    <h1>@L["Pages.Services.Title"]</h1>
+    <p>@L["Pages.Services.Subtitle"]</p>
 </div>
 
 @if (_actionError is not null)
@@ -32,65 +34,65 @@ else
                     TextProperty="Label" ValueProperty="Value"
                     Value="@_enabledFilter"
                     ValueChanged="@((bool? v) => OnEnabledFilterChanged(v))"
-                    Placeholder="All statuses" AllowClear="true" />
+                    Placeholder="@L["Filter.AllStatuses"]" AllowClear="true" />
             </div>
             <div class="cm-list-page__header-actions">
-                <RadzenButton Text="Create Service" Icon="add"
+                <RadzenButton Text="@L["Pages.Services.CreateButton"]" Icon="add"
                     class="cm-list-page__create-btn"
-                    title="Create service"
+                    title="@L["Pages.Services.CreateTooltip"]"
                     Click="@(() => Nav.NavigateTo("/services/new"))"
                     ButtonStyle="ButtonStyle.Primary" />
             </div>
             <div class="cm-list-page__search-field">
-                <RadzenTextBox Placeholder="Search services..."
+                <RadzenTextBox Placeholder="@L["Pages.Services.Search"]"
                     Value="@_search"
                     ValueChanged="@((string v) => { _search = v; StateHasChanged(); })"
                     @oninput="@(args => { _search = args.Value?.ToString(); StateHasChanged(); })" />
             </div>
         </div>
 
-        <RadzenDataGrid Data="@_filteredServices" TItem="Service"
+        <RadzenDataGrid Data="@_filteredServices" TItem="Service" EmptyText="@L["DataGrid.NoRecords"]"
             AllowSorting="true" AllowPaging="true" PageSize="@_pageSize"
             PagerHorizontalAlign="HorizontalAlign.Center">
             <Columns>
-                <RadzenDataGridColumn TItem="Service" Property="Id" Title="ID"
+                <RadzenDataGridColumn TItem="Service" Property="Id" Title="@L["Columns.Id"]"
                     CssClass="cm-col-id" HeaderCssClass="cm-col-id" />
-                <RadzenDataGridColumn TItem="Service" Property="Name" Title="Name"
+                <RadzenDataGridColumn TItem="Service" Property="Name" Title="@L["Columns.Name"]"
                     CssClass="cm-col-name" HeaderCssClass="cm-col-name" />
-                <RadzenDataGridColumn TItem="Service" Title="Status" Sortable="false"
+                <RadzenDataGridColumn TItem="Service" Title="@L["Columns.Status"]" Sortable="false"
                     CssClass="cm-col-status" HeaderCssClass="cm-col-status">
                     <Template Context="svc">
                         @if (svc.IsEnabled)
                         {
-                            <span class="cm-badge cm-badge--success">Enabled</span>
+                            <span class="cm-badge cm-badge--success">@L["Common.Enabled"]</span>
                         }
                         else
                         {
-                            <span class="cm-badge cm-badge--muted">Disabled</span>
+                            <span class="cm-badge cm-badge--muted">@L["Common.Disabled"]</span>
                         }
                     </Template>
                 </RadzenDataGridColumn>
-                <RadzenDataGridColumn TItem="Service" Title="Actions" Sortable="false"
+                <RadzenDataGridColumn TItem="Service" Title="@L["Columns.Actions"]" Sortable="false"
                     CssClass="cm-col-actions" HeaderCssClass="cm-col-actions">
                     <Template Context="svc">
                         <div class="cm-list-page__actions-cell">
                         <RadzenButton Icon="edit" Size="ButtonSize.Small" Variant="Variant.Text"
-                            title="Edit service"
+                            title="@L["Pages.Services.EditTooltip"]"
                             Click="@(() => Nav.NavigateTo($"/services/{svc.Id}"))" />
                         @if (svc.IsEnabled)
                         {
                             <RadzenButton Icon="block" Size="ButtonSize.Small" Variant="Variant.Text"
-                                ButtonStyle="ButtonStyle.Warning" title="Disable service"
+                                ButtonStyle="ButtonStyle.Warning" title="@L["Pages.Services.DisableTooltip"]"
                                 Click="@(async () => await ToggleEnabledAsync(svc))" />
                         }
                         else
                         {
                             <RadzenButton Icon="lock_open" Size="ButtonSize.Small" Variant="Variant.Text"
-                                ButtonStyle="ButtonStyle.Success" title="Enable service"
+                                ButtonStyle="ButtonStyle.Success" title="@L["Pages.Services.EnableTooltip"]"
                                 Click="@(async () => await ToggleEnabledAsync(svc))" />
                         }
                         <RadzenButton Icon="delete" Size="ButtonSize.Small" Variant="Variant.Text"
-                            ButtonStyle="ButtonStyle.Danger" title="Delete service"
+                            ButtonStyle="ButtonStyle.Danger" title="@L["Pages.Services.DeleteTooltip"]"
                             Click="@(async () => await DeleteAsync(svc.Id))" />
                         </div>
                     </Template>
@@ -110,12 +112,7 @@ else
     private int _pageSize = 10;
     private IJSObjectReference? _tableJs;
     private DotNetObjectReference<ServiceList>? _selfRef;
-
-    private static readonly List<object> _enabledOptions =
-    [
-        new { Label = "Enabled", Value = (bool?)true },
-        new { Label = "Disabled", Value = (bool?)false }
-    ];
+    private List<object> _enabledOptions = [];
 
     private IEnumerable<Service> _filteredServices =>
         string.IsNullOrWhiteSpace(_search)
@@ -124,7 +121,15 @@ else
                 s.Id.Contains(_search, StringComparison.OrdinalIgnoreCase) ||
                 s.Name.Contains(_search, StringComparison.OrdinalIgnoreCase));
 
-    protected override async Task OnInitializedAsync() => await LoadAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        _enabledOptions =
+        [
+            new { Label = L["Common.Enabled"], Value = (bool?)true },
+            new { Label = L["Common.Disabled"], Value = (bool?)false }
+        ];
+        await LoadAsync();
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -175,7 +180,7 @@ else
         }
         catch (HttpRequestException ex)
         {
-            _error = $"Unable to connect to the API: {ex.Message}";
+            _error = errors.Format("Api.UnableToConnect", ex);
         }
         finally
         {
@@ -193,7 +198,9 @@ else
     private Task ToggleEnabledAsync(Service service) =>
         ListToggleEnabledSupport.ExecuteAsync(
             Dialog,
-            "service",
+            L,
+            errors,
+            L["Dialog.EntityLabel.Service"],
             service.Id,
             service.IsEnabled,
             async () =>
@@ -204,13 +211,15 @@ else
             LoadAsync,
             message => _actionError = message,
             StateHasChanged,
-            disableMessage: $"Disable service \"{service.Id}\"? Requests to this service will be rejected until it is re-enabled.",
-            enableMessage: $"Enable service \"{service.Id}\"? Requests will be allowed again, subject to access rules.");
+            disableMessage: string.Format(CultureInfo.CurrentCulture, L["Dialog.ConfirmDisable.Service"], service.Id),
+            enableMessage: string.Format(CultureInfo.CurrentCulture, L["Dialog.ConfirmEnable.Service"], service.Id));
 
     private Task DeleteAsync(string id) =>
         ListDeleteSupport.ExecuteAsync(
             Dialog,
-            "service",
+            L,
+            errors,
+            L["Dialog.EntityLabel.Service"],
             id,
             () => ServiceApi.DeleteAsync(id),
             LoadAsync,

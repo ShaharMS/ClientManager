@@ -2,25 +2,26 @@
 @page "/services/{Id}"
 @inject ServiceApiService ServiceApi
 @inject NavigationManager Nav
+@inject ApiErrorLocalizer errors
 
 <EditorPageTemplate TModel="ServiceFormModel"
     Id="@Id" IsNew="@_isNew"
-    BackPath="services" BackLinkText="← Back to Services"
-    CreateTitle="Create Service" CreateDescription="Define a new service."
-    EditTitlePrefix="Edit Service: " EditDescription="Update service configuration."
+    BackPath="services" BackLinkText="@L["Pages.Services.BackLink"]"
+    CreateTitle="@L["Pages.Services.CreateTitle"]" CreateDescription="@L["Pages.Services.CreateDescription"]"
+    EditTitlePrefix="@L["Pages.Services.EditTitlePrefix"]" EditDescription="@L["Pages.Services.EditDescription"]"
     FormName="serviceForm" Model="@_model" Loading="@_loading" Error="@_error"
     OnValidSubmit="SaveAsync">
     <div class="cm-editor__field">
-        <label>Service ID</label>
+        <label>@L["Pages.Services.ServiceId"]</label>
         <EntityIdInput @bind-Value="_model.Id" Suggestions="_existingIds"
-            Mode="EntityIdInputMode.Unique" EntityName="service" Disabled="@(!_isNew)" />
+            Mode="EntityIdInputMode.Unique" EntityName="@L["Dialog.EntityLabel.Service"]" Disabled="@(!_isNew)" />
     </div>
     <div class="cm-editor__field">
-        <label>Name</label>
+        <label>@L["Pages.Services.Name"]</label>
         <RadzenTextBox @bind-Value="_model.Name" Style="width: 100%;" />
     </div>
     <div class="cm-editor__field">
-        <label>Enabled</label>
+        <label>@L["Pages.Services.Enabled"]</label>
         <RadzenSwitch @bind-Value="_model.IsEnabled" />
     </div>
 </EditorPageTemplate>
@@ -44,7 +45,7 @@
                 var svc = await ServiceApi.GetByIdAsync(Id!);
                 if (svc is null)
                 {
-                    _error = $"Service '{Id}' not found.";
+                    _error = L["Pages.Services.NotFound"];
                     return;
                 }
 
@@ -58,7 +59,7 @@
         }
         catch (HttpRequestException ex)
         {
-            _error = $"Unable to connect to the API: {ex.Message}";
+            _error = errors.Format("Api.UnableToConnect", ex);
         }
         finally
         {
@@ -88,7 +89,7 @@
         }
         catch (HttpRequestException ex)
         {
-            _error = $"Save failed: {ex.Message}";
+            _error = errors.Format("Pages.Services.SaveFailed", ex);
             return;
         }
 

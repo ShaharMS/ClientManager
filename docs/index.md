@@ -13,6 +13,7 @@ These guides explain how ClientManager works internally, how to wire it into you
 | [Getting started](getting-started.md) | Solution layout, first run, Docker, seed data, and where to read next |
 | [Configuration reference](configuration-reference.md) | Every `appsettings` section, defaults, and environment-variable overrides |
 | [Admin UI guide](admin-ui-guide.md) | Operator screens, routes, and typical workflows |
+| [Localization](localization.md) | Admin UI languages, `.resx` workflow, RTL, and adding cultures |
 | [API overview](api-overview.md) | Catalog CRUD, statistics, metrics, and runtime endpoints |
 | [Development and operations](development-and-operations.md) | Scripts, security model, deployment notes, troubleshooting |
 | [Metrics integration guide](metrics-integration-guide.md) | Prometheus, Grafana, Jaeger, OTLP — scrape targets, metric catalog, alerts |

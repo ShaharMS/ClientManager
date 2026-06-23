@@ -1,13 +1,15 @@
 @page "/resource-pools"
+@using System.Globalization
 @inject ResourcePoolApiService PoolApi
 @inject NavigationManager Nav
 @inject DialogService Dialog
+@inject ApiErrorLocalizer errors
 @inject IJSRuntime JS
 @implements IAsyncDisposable
 
 <div class="cm-page-header">
-    <h1>Resource Pools</h1>
-    <p>Manage resource pool definitions, slot limits, and TTL settings.</p>
+    <h1>@L["Pages.ResourcePools.Title"]</h1>
+    <p>@L["Pages.ResourcePools.Subtitle"]</p>
 </div>
 
 @if (_actionError is not null)
@@ -32,71 +34,71 @@ else
                     TextProperty="Label" ValueProperty="Value"
                     Value="@_enabledFilter"
                     ValueChanged="@((bool? v) => OnEnabledFilterChanged(v))"
-                    Placeholder="All statuses" AllowClear="true" />
+                    Placeholder="@L["Filter.AllStatuses"]" AllowClear="true" />
             </div>
             <div class="cm-list-page__header-actions">
-                <RadzenButton Text="Create Resource Pool" Icon="add"
+                <RadzenButton Text="@L["Pages.ResourcePools.CreateButton"]" Icon="add"
                     class="cm-list-page__create-btn"
-                    title="Create resource pool"
+                    title="@L["Pages.ResourcePools.CreateTooltip"]"
                     Click="@(() => Nav.NavigateTo("/resource-pools/new"))"
                     ButtonStyle="ButtonStyle.Primary" />
             </div>
             <div class="cm-list-page__search-field">
-                <RadzenTextBox Placeholder="Search pools..."
+                <RadzenTextBox Placeholder="@L["Pages.ResourcePools.Search"]"
                     Value="@_search"
                     ValueChanged="@((string v) => { _search = v; StateHasChanged(); })"
                     @oninput="@(args => { _search = args.Value?.ToString(); StateHasChanged(); })" />
             </div>
         </div>
 
-        <RadzenDataGrid Data="@_filteredPools" TItem="ResourcePool"
+        <RadzenDataGrid Data="@_filteredPools" TItem="ResourcePool" EmptyText="@L["DataGrid.NoRecords"]"
             AllowSorting="true" AllowPaging="true" PageSize="@_pageSize"
             PagerHorizontalAlign="HorizontalAlign.Center">
             <Columns>
-                <RadzenDataGridColumn TItem="ResourcePool" Property="Id" Title="ID"
+                <RadzenDataGridColumn TItem="ResourcePool" Property="Id" Title="@L["Columns.Id"]"
                     CssClass="cm-col-id" HeaderCssClass="cm-col-id" />
-                <RadzenDataGridColumn TItem="ResourcePool" Property="Name" Title="Name"
+                <RadzenDataGridColumn TItem="ResourcePool" Property="Name" Title="@L["Columns.Name"]"
                     CssClass="cm-col-name" HeaderCssClass="cm-col-name" />
-                <RadzenDataGridColumn TItem="ResourcePool" Property="MaxSlots" Title="Max Slots"
+                <RadzenDataGridColumn TItem="ResourcePool" Property="MaxSlots" Title="@L["Columns.MaxSlots"]"
                     CssClass="cm-col-scalar" HeaderCssClass="cm-col-scalar" />
-                <RadzenDataGridColumn TItem="ResourcePool" Title="Allocation TTL"
+                <RadzenDataGridColumn TItem="ResourcePool" Title="@L["Columns.AllocationTtl"]"
                     CssClass="cm-col-scalar-wide" HeaderCssClass="cm-col-scalar-wide">
-                    <Template Context="pool">@FormatTtl(pool.AllocationTtl)</Template>
+                    <Template Context="pool">@TimeSpanFormatter.FormatCompact(pool.AllocationTtl, L)</Template>
                 </RadzenDataGridColumn>
-                <RadzenDataGridColumn TItem="ResourcePool" Title="Status" Sortable="false"
+                <RadzenDataGridColumn TItem="ResourcePool" Title="@L["Columns.Status"]" Sortable="false"
                     CssClass="cm-col-status" HeaderCssClass="cm-col-status">
                     <Template Context="pool">
                         @if (pool.IsEnabled)
                         {
-                            <span class="cm-badge cm-badge--success">Enabled</span>
+                            <span class="cm-badge cm-badge--success">@L["Common.Enabled"]</span>
                         }
                         else
                         {
-                            <span class="cm-badge cm-badge--muted">Disabled</span>
+                            <span class="cm-badge cm-badge--muted">@L["Common.Disabled"]</span>
                         }
                     </Template>
                 </RadzenDataGridColumn>
-                <RadzenDataGridColumn TItem="ResourcePool" Title="Actions" Sortable="false"
+                <RadzenDataGridColumn TItem="ResourcePool" Title="@L["Columns.Actions"]" Sortable="false"
                     CssClass="cm-col-actions-wide" HeaderCssClass="cm-col-actions-wide">
                     <Template Context="pool">
                         <div class="cm-list-page__actions-cell">
                         <RadzenButton Icon="edit" Size="ButtonSize.Small" Variant="Variant.Text"
-                            title="Edit resource pool"
+                            title="@L["Pages.ResourcePools.EditTooltip"]"
                             Click="@(() => Nav.NavigateTo($"/resource-pools/{pool.Id}"))" />
                         @if (pool.IsEnabled)
                         {
                             <RadzenButton Icon="block" Size="ButtonSize.Small" Variant="Variant.Text"
-                                ButtonStyle="ButtonStyle.Warning" title="Disable resource pool"
+                                ButtonStyle="ButtonStyle.Warning" title="@L["Pages.ResourcePools.DisableTooltip"]"
                                 Click="@(async () => await ToggleEnabledAsync(pool))" />
                         }
                         else
                         {
                             <RadzenButton Icon="lock_open" Size="ButtonSize.Small" Variant="Variant.Text"
-                                ButtonStyle="ButtonStyle.Success" title="Enable resource pool"
+                                ButtonStyle="ButtonStyle.Success" title="@L["Pages.ResourcePools.EnableTooltip"]"
                                 Click="@(async () => await ToggleEnabledAsync(pool))" />
                         }
                         <RadzenButton Icon="delete" Size="ButtonSize.Small" Variant="Variant.Text"
-                            ButtonStyle="ButtonStyle.Danger" title="Delete resource pool"
+                            ButtonStyle="ButtonStyle.Danger" title="@L["Pages.ResourcePools.DeleteTooltip"]"
                             Click="@(async () => await DeleteAsync(pool.Id))" />
                         </div>
                     </Template>
@@ -116,12 +118,7 @@ else
     private int _pageSize = 10;
     private IJSObjectReference? _tableJs;
     private DotNetObjectReference<ResourcePoolList>? _selfRef;
-
-    private static readonly List<object> _enabledOptions =
-    [
-        new { Label = "Enabled", Value = (bool?)true },
-        new { Label = "Disabled", Value = (bool?)false }
-    ];
+    private List<object> _enabledOptions = [];
 
     private IEnumerable<ResourcePool> _filteredPools =>
         string.IsNullOrWhiteSpace(_search)
@@ -130,7 +127,15 @@ else
                 p.Id.Contains(_search, StringComparison.OrdinalIgnoreCase) ||
                 p.Name.Contains(_search, StringComparison.OrdinalIgnoreCase));
 
-    protected override async Task OnInitializedAsync() => await LoadAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        _enabledOptions =
+        [
+            new { Label = L["Common.Enabled"], Value = (bool?)true },
+            new { Label = L["Common.Disabled"], Value = (bool?)false }
+        ];
+        await LoadAsync();
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -181,7 +186,7 @@ else
         }
         catch (HttpRequestException ex)
         {
-            _error = $"Unable to connect to the API: {ex.Message}";
+            _error = errors.Format("Api.UnableToConnect", ex);
         }
         finally
         {
@@ -199,7 +204,9 @@ else
     private Task ToggleEnabledAsync(ResourcePool pool) =>
         ListToggleEnabledSupport.ExecuteAsync(
             Dialog,
-            "resource pool",
+            L,
+            errors,
+            L["Dialog.EntityLabel.ResourcePool"],
             pool.Id,
             pool.IsEnabled,
             async () =>
@@ -210,23 +217,19 @@ else
             LoadAsync,
             message => _actionError = message,
             StateHasChanged,
-            disableMessage: $"Disable resource pool \"{pool.Id}\"? Slot acquisitions will be rejected until it is re-enabled.",
-            enableMessage: $"Enable resource pool \"{pool.Id}\"? Slot acquisitions will be allowed again.");
+            disableMessage: string.Format(CultureInfo.CurrentCulture, L["Dialog.ConfirmDisable.ResourcePool"], pool.Id),
+            enableMessage: string.Format(CultureInfo.CurrentCulture, L["Dialog.ConfirmEnable.ResourcePool"], pool.Id));
 
     private Task DeleteAsync(string id) =>
         ListDeleteSupport.ExecuteAsync(
             Dialog,
-            "resource pool",
+            L,
+            errors,
+            L["Dialog.EntityLabel.ResourcePool"],
             id,
             () => PoolApi.DeleteAsync(id),
             LoadAsync,
             message => _actionError = message,
             StateHasChanged);
 
-    private static string FormatTtl(TimeSpan ttl)
-    {
-        if (ttl.TotalHours >= 1) return $"{ttl.TotalHours:0.#}h";
-        if (ttl.TotalMinutes >= 1) return $"{ttl.TotalMinutes:0.#}m";
-        return $"{ttl.TotalSeconds:0.#}s";
-    }
 }

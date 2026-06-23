@@ -1,3 +1,4 @@
+@using ClientManager.AdminUI.Localization
 @using ClientManager.AdminUI.Models.Allocations
 @using ClientManager.AdminUI.Models.Charts
 
@@ -16,31 +17,25 @@
             <RadzenDropDown TValue="string" Value="@SelectedPoolId"
                 ValueChanged="@OnPoolChanged" AllowClear="false"
                 Data="@PoolOptions" TextProperty="Name" ValueProperty="Id"
-                Placeholder="Select pool..." />
+                Placeholder="@L["Filter.SelectPool"]" />
         </ChartCardFilter>
         <ChartCardFilter Clients="true">
             <RadzenDropDown TValue="IEnumerable<string>" Value="@SelectedClientIds"
                 ValueChanged="@OnClientsChanged" Multiple="true"
                 Data="@ClientOptions" TextProperty="Name" ValueProperty="Id"
-                Placeholder="All clients" />
+                Placeholder="@L["Filter.AllClients"]" />
         </ChartCardFilter>
     </Filters>
     <ChildContent>
         <StackedUsageChartList Charts="@TargetCharts" AxisScale="@AxisScaleType"
             CapLineTitle="@CapLineTitle" Loading="@Loading" ShowTitles="false"
-            EmptyMessage="No allocation data available" />
+            EmptyMessage="@L["Pages.Allocations.Chart.NoAllocationData"]" />
     </ChildContent>
 </ChartCard>
 
 @code {
     public const string ActiveAllocationsMetric = "ActiveAllocations";
     public const string AccessRequestsMetric = "AccessRequests";
-
-    private static readonly List<MetricOption> DefaultMetricOptions =
-    [
-        new(ActiveAllocationsMetric, "Active Allocations"),
-        new(AccessRequestsMetric, "Access Requests")
-    ];
 
     [Parameter] public string SelectedPoolId { get; set; } = "";
     [Parameter] public EventCallback<string> SelectedPoolIdChanged { get; set; }
@@ -50,8 +45,8 @@
     [Parameter] public EventCallback<string> SelectedMetricChanged { get; set; }
     [Parameter] public List<NamedItem> PoolOptions { get; set; } = [];
     [Parameter] public List<NamedItem> ClientOptions { get; set; } = [];
-    [Parameter] public List<MetricOption> MetricOptions { get; set; } = DefaultMetricOptions;
-    [Parameter] public string ChartTitle { get; set; } = "All Pools - Active Allocations";
+    [Parameter] public List<MetricOption> MetricOptions { get; set; } = [];
+    [Parameter] public string ChartTitle { get; set; } = "";
     [Parameter] public List<TargetChartData> TargetCharts { get; set; } = [];
     [Parameter] public AxisScaleType AxisScaleType { get; set; }
     [Parameter] public bool Loading { get; set; }
@@ -62,11 +57,12 @@
     [Parameter] public EventCallback<AxisScaleType> OnAxisScaleChanged { get; set; }
 
     private bool IsAccessMetric => SelectedMetric == AccessRequestsMetric;
-    private string CapLineTitle => IsAccessMetric ? "Access Cap" : "Max Slots";
+    private string CapLineTitle => IsAccessMetric ? L[TermKeys.CapAccessCap] : L[TermKeys.EntityMaxSlots];
 
     private MetricOption SelectedMetricOption =>
         MetricOptions.FirstOrDefault(m => m.Value == SelectedMetric)
-        ?? DefaultMetricOptions[0];
+        ?? MetricOptions.FirstOrDefault()
+        ?? new MetricOption(ActiveAllocationsMetric, L["Pages.Allocations.Metric.ActiveAllocations"]);
 
     private async Task OnPoolChanged(string value)
     {

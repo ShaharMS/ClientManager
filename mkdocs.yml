@@ -29,6 +29,7 @@ nav:
   - Getting started: getting-started.md
   - Configuration reference: configuration-reference.md
   - Admin UI guide: admin-ui-guide.md
+  - Localization: localization.md
   - API overview: api-overview.md
   - Development and operations: development-and-operations.md
   - Core concepts:

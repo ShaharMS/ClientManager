@@ -1,14 +1,16 @@
 @page "/quotas/new"
 @page "/quotas/{Id}"
+@using System.Globalization
 @inject GlobalRateLimitApiService RateLimitApi
 @inject ResourcePoolApiService PoolApi
 @inject NavigationManager Nav
+@inject ApiErrorLocalizer errors
 
 <EditorPageTemplate TModel="RateLimitFormModel"
     Id="@Id" IsNew="@_isNew"
-    BackPath="quotas" BackLinkText="← Back to Quotas"
-    CreateTitle="Create Quota" CreateDescription="@_createDescription"
-    EditTitle="@_editTitle" EditTitlePrefix="Edit Quota: " EditDescription="Update quota configuration."
+    BackPath="quotas" BackLinkText="@L["Pages.Quotas.BackLink"]"
+    CreateTitle="@L["Pages.Quotas.CreateTitle"]" CreateDescription="@_createDescription"
+    EditTitle="@_editTitle" EditTitlePrefix="@L["Pages.Quotas.EditTitlePrefix"]" EditDescription="@L["Pages.Quotas.EditDescription"]"
     FormName="quotaForm" Model="@_model" Loading="@_loading" Error="@_error"
     SubmitDisabled="@_submitDisabled" SubmitTitle="@_submitTitle"
     OnValidSubmit="SaveAsync">
@@ -17,45 +19,43 @@
         <div class="alert alert-danger" style="margin-bottom: var(--space-md);">@_saveError</div>
     }
     <div class="cm-editor__field">
-        <label>Resource Pool</label>
+        <label>@L["Columns.ResourcePool"]</label>
         <EntityIdInput @bind-Value="_model.TargetId" Suggestions="_poolIds"
             DisabledSuggestions="@_limitedPoolIds"
-            DisabledSuggestionMessage="Already has a quota"
-            Mode="EntityIdInputMode.Reference" EntityName="resource pool"
+            DisabledSuggestionMessage="@L["Pages.Quotas.AlreadyHasQuota"]"
+            Mode="EntityIdInputMode.Reference" EntityName="@L["Dialog.EntityLabel.ResourcePool"]"
             Disabled="@(_isNew && !_canCreate)" />
     </div>
     <div class="cm-editor__field">
-        <label>Strategy</label>
+        <label>@L["Columns.Strategy"]</label>
         <RadzenDropDown TValue="RateLimitStrategy" @bind-Value="_model.Strategy"
-            Data="@(Enum.GetValues<RateLimitStrategy>())" Style="width: 100%;"
+            Data="@_strategyOptions" TextProperty="Label" ValueProperty="Strategy" Style="width: 100%;"
             Change="@(_ => StateHasChanged())" />
     </div>
     <div class="cm-editor__field">
-        <label>Max Requests</label>
+        <label>@L["Columns.MaxRequests"]</label>
         <RadzenNumeric TValue="int" @bind-Value="_model.MaxRequests" Style="width: 100%;" />
     </div>
     <div class="cm-editor__field">
-        <label>Window</label>
+        <label>@L["Columns.Window"]</label>
         <DurationInput @bind-Value="_model.WindowSeconds" />
     </div>
     @if (_model.Strategy == RateLimitStrategy.TokenBucket)
     {
         <div class="cm-editor__field">
-            <label>Tokens Per Refill</label>
+            <label>@L["Pages.Clients.GlobalRateLimit.TokensPerRefill"]</label>
             <RadzenNumeric TValue="int?" @bind-Value="_model.TokensPerRefill" Style="width: 100%;" />
         </div>
     }
 </EditorPageTemplate>
 
 @code {
-    private const string AllPoolsLimitedTooltip = "Every resource pool already has a quota.";
-
     [Parameter] public string? Id { get; set; }
     private bool _isNew => string.IsNullOrEmpty(Id) || Id == "new";
     private bool _loading = true;
     private string? _error;
     private string? _saveError;
-    private string _createDescription = "Define a request quota for a resource pool.";
+    private string _createDescription = "";
     private string? _editTitle;
     private RateLimitFormModel _model = new() { TargetType = TargetType.ResourcePool };
     private List<string> _poolIds = [];
@@ -64,9 +64,13 @@
     private bool _canCreate;
     private bool _submitDisabled;
     private string? _submitTitle;
+    private IReadOnlyList<RateLimitStrategyOption> _strategyOptions = [];
 
     protected override async Task OnInitializedAsync()
     {
+        _strategyOptions = RateLimitStrategyLabels.GetOptions(L);
+        _createDescription = L["Pages.Quotas.CreateDescription"];
+
         try
         {
             var pools = await PoolApi.GetAllAsync();
@@ -82,11 +86,11 @@
                 var limit = await RateLimitApi.GetByIdAsync(Id!);
                 if (limit is null)
                 {
-                    _error = "Quota not found.";
+                    _error = L["Pages.Quotas.NotFound"];
                     return;
                 }
 
-                _editTitle = $"Edit Quota: {GetPoolName(limit.TargetId)}";
+                _editTitle = string.Format(CultureInfo.CurrentCulture, L["Pages.Quotas.EditTitle"], GetPoolName(limit.TargetId));
 
                 limitedTargets.Remove(limit.TargetId);
 
@@ -114,7 +118,7 @@
         }
         catch (HttpRequestException ex)
         {
-            _error = $"Unable to connect to the API: {ex.Message}";
+            _error = errors.Format("Api.UnableToConnect", ex);
         }
         finally
         {
@@ -131,19 +135,21 @@
             return;
         }
 
+        var allLimited = L["Pages.Quotas.CreateDisabledTooltip"];
         _canCreate = _poolIds.Any(id => !_limitedPoolIds.Contains(id, StringComparer.OrdinalIgnoreCase));
         _submitDisabled = !_canCreate;
-        _submitTitle = _canCreate ? null : AllPoolsLimitedTooltip;
+        _submitTitle = _canCreate ? null : allLimited;
         _createDescription = _canCreate
-            ? "Define a request quota for a resource pool."
-            : AllPoolsLimitedTooltip;
+            ? L["Pages.Quotas.CreateDescription"]
+            : allLimited;
     }
 
     private async Task SaveAsync()
     {
+        var allLimited = L["Pages.Quotas.CreateDisabledTooltip"];
         if (_isNew && (!_canCreate || _limitedPoolIds.Any(id => string.Equals(id, _model.TargetId, StringComparison.OrdinalIgnoreCase))))
         {
-            _saveError = AllPoolsLimitedTooltip;
+            _saveError = allLimited;
             StateHasChanged();
             return;
         }
@@ -175,7 +181,7 @@
         }
         catch (HttpRequestException ex)
         {
-            _saveError = $"Save failed: {ex.Message}";
+            _saveError = errors.Format("Pages.Quotas.SaveFailed", ex);
             StateHasChanged();
             return;
         }

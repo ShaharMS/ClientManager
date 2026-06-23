@@ -3,12 +3,13 @@
 @inject ServiceApiService ServiceApi
 @inject NavigationManager Nav
 @inject DialogService Dialog
+@inject ApiErrorLocalizer errors
 @inject IJSRuntime JS
 @implements IAsyncDisposable
 
 <div class="cm-page-header">
-    <h1>Rate Limits</h1>
-    <p>Manage rate limits applied to service endpoints.</p>
+    <h1>@L["Pages.RateLimits.Title"]</h1>
+    <p>@L["Pages.RateLimits.Subtitle"]</p>
 </div>
 
 @if (_deleteError is not null)
@@ -29,15 +30,15 @@ else
     <div class="cm-list-page__table-card">
         <div class="cm-list-page__header cm-list-page__header--rate-limits">
             <div class="cm-list-page__search-field">
-                <RadzenTextBox Placeholder="Search rate limits..."
+                <RadzenTextBox Placeholder="@L["Pages.RateLimits.Search"]"
                     Value="@_search"
                     ValueChanged="@((string v) => { _search = v; StateHasChanged(); })"
                     @oninput="@(args => { _search = args.Value?.ToString(); StateHasChanged(); })" />
             </div>
             <div class="cm-list-page__header-actions">
                 <span class="cm-list-page__create-btn-wrap @(_canCreateMore ? null : "cm-list-page__create-btn-wrap--disabled")"
-                      title="@(_canCreateMore ? "Create rate limit" : _createDisabledTooltip)">
-                    <RadzenButton Text="Create Rate Limit" Icon="add"
+                      title="@(_canCreateMore ? L["Pages.RateLimits.CreateTooltip"] : _createDisabledTooltip)">
+                    <RadzenButton Text="@L["Pages.RateLimits.CreateButton"]" Icon="add"
                         class="cm-list-page__create-btn"
                         Click="@(() => Nav.NavigateTo("/rate-limits/new"))"
                         ButtonStyle="ButtonStyle.Primary" Disabled="@(!_canCreateMore)" />
@@ -45,33 +46,33 @@ else
             </div>
         </div>
 
-        <RadzenDataGrid Data="@_filteredLimits" TItem="GlobalRateLimit"
+        <RadzenDataGrid Data="@_filteredLimits" TItem="GlobalRateLimit" EmptyText="@L["DataGrid.NoRecords"]"
             AllowSorting="true" AllowPaging="true" PageSize="@_pageSize"
             PagerHorizontalAlign="HorizontalAlign.Center">
             <Columns>
-                <RadzenDataGridColumn TItem="GlobalRateLimit" Property="TargetId" Title="Service"
+                <RadzenDataGridColumn TItem="GlobalRateLimit" Property="TargetId" Title="@L["Columns.Service"]"
                     CssClass="cm-col-label" HeaderCssClass="cm-col-label" />
-                <RadzenDataGridColumn TItem="GlobalRateLimit" Property="Strategy" Title="Strategy"
+                <RadzenDataGridColumn TItem="GlobalRateLimit" Property="Strategy" Title="@L["Columns.Strategy"]"
                     CssClass="cm-col-strategy" HeaderCssClass="cm-col-strategy">
                     <Template Context="limit">
-                        <span class="@RateLimitStrategyBadge.GetCssClass(limit.Strategy)">@limit.Strategy</span>
+                        <span class="@RateLimitStrategyBadge.GetCssClass(limit.Strategy)">@RateLimitStrategyLabels.GetLabel(limit.Strategy, L)</span>
                     </Template>
                 </RadzenDataGridColumn>
-                <RadzenDataGridColumn TItem="GlobalRateLimit" Property="MaxRequests" Title="Max Requests"
+                <RadzenDataGridColumn TItem="GlobalRateLimit" Property="MaxRequests" Title="@L["Columns.MaxRequests"]"
                     CssClass="cm-col-scalar-wide" HeaderCssClass="cm-col-scalar-wide" />
-                <RadzenDataGridColumn TItem="GlobalRateLimit" Title="Window"
+                <RadzenDataGridColumn TItem="GlobalRateLimit" Title="@L["Columns.Window"]"
                     CssClass="cm-col-scalar-narrow" HeaderCssClass="cm-col-scalar-narrow">
-                    <Template Context="limit">@FormatWindow(limit.Window)</Template>
+                    <Template Context="limit">@TimeSpanFormatter.FormatCompact(limit.Window, L)</Template>
                 </RadzenDataGridColumn>
-                <RadzenDataGridColumn TItem="GlobalRateLimit" Title="Actions" Sortable="false"
+                <RadzenDataGridColumn TItem="GlobalRateLimit" Title="@L["Columns.Actions"]" Sortable="false"
                     CssClass="cm-col-actions" HeaderCssClass="cm-col-actions">
                     <Template Context="limit">
                         <div class="cm-list-page__actions-cell">
                             <RadzenButton Icon="edit" Size="ButtonSize.Small" Variant="Variant.Text"
-                                title="Edit rate limit"
+                                title="@L["Pages.RateLimits.EditTooltip"]"
                                 Click="@(() => Nav.NavigateTo($"/rate-limits/{limit.Id}"))" />
                             <RadzenButton Icon="delete" Size="ButtonSize.Small" Variant="Variant.Text"
-                                ButtonStyle="ButtonStyle.Danger" title="Delete rate limit"
+                                ButtonStyle="ButtonStyle.Danger" title="@L["Pages.RateLimits.DeleteTooltip"]"
                                 Click="@(async () => await DeleteAsync(limit))" />
                         </div>
                     </Template>
@@ -142,7 +143,7 @@ else
         }
         catch (HttpRequestException ex)
         {
-            _error = $"Unable to connect to the API: {ex.Message}";
+            _error = errors.Format("Api.UnableToConnect", ex);
         }
         finally
         {
@@ -159,23 +160,19 @@ else
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         _canCreateMore = services.Any(s => !limitedTargets.Contains(s.Id));
-        _createDisabledTooltip = _canCreateMore ? null : "Every service already has a rate limit.";
+        _createDisabledTooltip = _canCreateMore ? null : L["Pages.RateLimits.CreateDisabledTooltip"];
     }
 
     private Task DeleteAsync(GlobalRateLimit limit) =>
         ListDeleteSupport.ExecuteAsync(
             Dialog,
-            "rate limit for service",
+            L,
+            errors,
+            L["Dialog.EntityLabel.RateLimitForService"],
             limit.TargetId,
             () => RateLimitApi.DeleteAsync(limit.Id),
             LoadAsync,
             message => _deleteError = message,
             StateHasChanged);
 
-    private static string FormatWindow(TimeSpan window)
-    {
-        if (window.TotalHours >= 1) return $"{window.TotalHours:0.#}h";
-        if (window.TotalMinutes >= 1) return $"{window.TotalMinutes:0.#}m";
-        return $"{window.TotalSeconds:0.#}s";
-    }
 }

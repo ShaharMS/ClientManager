@@ -1,7 +1,9 @@
 using ClientManager.AdminUI.Models;
 using ClientManager.AdminUI.Models.Charts;
+using ClientManager.AdminUI.Resources;
 using ClientManager.AdminUI.Utils;
 using ClientManager.Shared.Models.Responses;
+using Microsoft.Extensions.Localization;
 
 namespace ClientManager.AdminUI.Services.ChartData;
 
@@ -13,7 +15,8 @@ internal static class TargetBreakdownChartSeriesBuilder
         DeniedViewMode deniedViewMode,
         DateTime from,
         DateTime now,
-        int bucketCount)
+        int bucketCount,
+        IStringLocalizer<SharedResources> localizer)
     {
         var usageMode = ChartValueHelper.GetAggregationMode(usageIsSummed);
         var series = new List<ClientAreaSeries>();
@@ -45,7 +48,7 @@ internal static class TargetBreakdownChartSeriesBuilder
             }
 
             DeniedChartSeriesBuilder.AppendTripletSeries(
-                series, id, points, deniedViewMode, from, now, bucketCount);
+                series, id, points, deniedViewMode, from, now, bucketCount, localizer);
         }
 
         referenceBuckets ??= ChartBucketAggregator.Aggregate([], from, now, bucketCount).Buckets;

@@ -1,11 +1,11 @@
 @page "/allocations"
 @using ClientManager.AdminUI.Models.Charts
 
-<PageTitle>ClientManager · Active Allocations</PageTitle>
+<PageTitle>@string.Format(L["Common.PageTitleSuffix"], L["Pages.Allocations.Title"])</PageTitle>
 
 <div class="cm-page-header">
-    <h1>Active Allocations</h1>
-    <p>Resource pool utilization across all clients and pools.</p>
+    <h1>@L["Pages.Allocations.Title"]</h1>
+    <p>@L["Pages.Allocations.Subtitle"]</p>
 </div>
 
 @if (_error is not null)
@@ -44,7 +44,7 @@
 <hr class="cm-monitor__separator" />
 
 <AllocationsPoolSummaryGrid @ref="_allPoolsGrid"
-    Title="All Resource Pools"
+    Title="@L["Pages.Allocations.AllResourcePools"]"
     Rows="@_poolSummaryRows"
     IsAccessMetric="@IsAccessMetric"
     ShowDeniedBreakdown="@ShowDeniedBreakdown"

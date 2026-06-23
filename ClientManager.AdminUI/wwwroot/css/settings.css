@@ -99,7 +99,7 @@
 .cm-time-range-dropdown__menu {
     position: absolute;
     top: calc(100% + 4px);
-    right: 0;
+    inset-inline-end: 0;
     min-width: 180px;
     max-height: 320px;
     overflow-y: auto;
@@ -134,7 +134,7 @@
     background: transparent;
     color: var(--color-text-primary);
     font-size: var(--font-size-sm);
-    text-align: left;
+    text-align: start;
     cursor: pointer;
     transition: background 0.1s ease;
 }
@@ -189,7 +189,7 @@
 .cm-polling-interval-dropdown__menu {
     position: absolute;
     top: calc(100% + 4px);
-    right: 0;
+    inset-inline-end: 0;
     min-width: 140px;
     max-height: 280px;
     overflow-y: auto;
@@ -209,7 +209,7 @@
     background: transparent;
     color: var(--color-text-primary);
     font-size: var(--font-size-sm);
-    text-align: left;
+    text-align: start;
     cursor: pointer;
     transition: background 0.1s ease;
 }

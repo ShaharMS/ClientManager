@@ -11,7 +11,7 @@ public partial class ClientEditor
         var config = await ClientApi.GetByIdAsync(Id!);
         if (config is null)
         {
-            _error = $"Client '{Id}' not found.";
+            _error = L["Pages.Clients.NotFound"];
             return;
         }
 

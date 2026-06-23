@@ -60,11 +60,16 @@ public class ErrorHandlingMiddleware(
             context.Response.Headers.RetryAfter = exception.RetryAfterSeconds.Value.ToString();
         }
 
-        await WriteProblemDetailsAsync(context, exception.StatusCode, exception.Title, exception.Message);
+        await WriteProblemDetailsAsync(
+            context,
+            exception.StatusCode,
+            exception.Title,
+            exception.Message,
+            exception.ErrorCode);
     }
 
     private static async Task WriteProblemDetailsAsync(
-        HttpContext context, int statusCode, string title, string detail)
+        HttpContext context, int statusCode, string title, string detail, string? errorCode = null)
     {
         context.Response.StatusCode = statusCode;
         context.Response.ContentType = "application/problem+json";
@@ -74,7 +79,8 @@ public class ErrorHandlingMiddleware(
             Title = title,
             Status = statusCode,
             Detail = detail,
-            TraceId = context.TraceIdentifier
+            TraceId = context.TraceIdentifier,
+            ErrorCode = errorCode
         };
 
         var json = JsonSerializer.Serialize(problemDetails, ProblemJsonOptions);

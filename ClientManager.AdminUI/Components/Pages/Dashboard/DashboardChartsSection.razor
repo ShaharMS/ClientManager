@@ -1,3 +1,4 @@
+@using System.Globalization
 @using ClientManager.AdminUI.Models.Charts
 @using ClientManager.AdminUI.Models.Dashboard
 @using ClientManager.AdminUI.Services.ChartData
@@ -12,19 +13,19 @@
             <RadzenDropDown TValue="string" Value="@SelectedFilterType"
                 ValueChanged="@OnFilterTypeChanged"
                 Data="@FilterTypes" TextProperty="Label" ValueProperty="Value"
-                Placeholder="Filter by..." />
+                Placeholder="@L["Pages.Dashboard.FilterType.Service"]" />
         </ChartCardFilter>
         <ChartCardFilter>
             <RadzenDropDown TValue="string" Value="@SelectedTargetId"
                 ValueChanged="@OnTargetChanged"
                 Data="@FilterTargets" TextProperty="Name" ValueProperty="Id"
-                Placeholder="Select target..." />
+                Placeholder="@L["Filter.SelectService"]" />
         </ChartCardFilter>
         <ChartCardFilter Clients="true">
             <RadzenDropDown TValue="IEnumerable<string>" Value="@SelectedClientIds"
                 ValueChanged="@OnClientsChanged" Multiple="true"
                 Data="@Clients" TextProperty="Name" ValueProperty="Id"
-                Placeholder="All clients" />
+                Placeholder="@L["Filter.AllClients"]" />
         </ChartCardFilter>
     </Filters>
     <ChildContent>
@@ -38,7 +39,7 @@
             <span class="cm-chart-card__title cm-chart-card__title--plain">@DonutTitle</span>
             @if (_drillDownStack.Count > 0)
             {
-                <button type="button" class="cm-editor-back cm-editor-back--danger" @onclick="OnDonutBack">← Back</button>
+                <button type="button" class="cm-editor-back cm-editor-back--danger" @onclick="OnDonutBack">@L["Common.Back"]</button>
             }
         </div>
     </div>
@@ -56,7 +57,7 @@
     else
     {
         <div style="height: 300px; display: flex; align-items: center; justify-content: center; color: var(--color-text-muted);">
-            No usage data available
+            @L["Pages.Dashboard.Chart.NoUsageData"]
         </div>
     }
 </div>
@@ -80,16 +81,18 @@
     [Parameter] public EventCallback<PollingIntervalPreset> OnPollingIntervalChanged { get; set; }
     [Parameter] public EventCallback<AxisScaleType> OnAxisScaleChanged { get; set; }
 
-    private string ChartTitle => $"{SelectedTargetName} - Usage Over Time";
+    private string ChartTitle => string.Format(CultureInfo.CurrentCulture, L["Pages.Dashboard.Chart.UsageOverTime"], SelectedTargetName);
 
     private readonly Stack<List<ClientUsagePoint>> _drillDownStack = new();
     private int _seenDonutDataGeneration = -1;
 
-    private string DonutTitle => _drillDownStack.Count > 0 ? "Others - Usage Per Client" : "Usage Per Client";
+    private string DonutTitle => _drillDownStack.Count > 0
+        ? $"{L["Common.Others"]} - {L["Pages.Dashboard.ClientOverview"]}"
+        : L["Pages.Dashboard.ClientOverview"];
 
     private IReadOnlyList<ClientUsagePoint> ActiveDonutData =>
         _drillDownStack.Count > 0
-            ? DashboardChartDataLoader.ToDisplaySlices(_drillDownStack.Peek())
+            ? DashboardChartDataLoader.ToDisplaySlices(_drillDownStack.Peek(), L["Common.Others"])
             : DonutData.Slices;
 
     protected override void OnParametersSet()
@@ -103,9 +106,9 @@
 
     private string SelectedTargetName =>
         SelectedTargetId == DashboardChartLoadContext.AllTargetsId
-            ? SelectedFilterType == "Service" ? "All Services" : "All Resource Pools"
+            ? SelectedFilterType == "Service" ? L["Pages.Dashboard.Target.AllServices"] : L["Pages.Dashboard.Target.AllResourcePools"]
             : FilterTargets.FirstOrDefault(t => t.Id == SelectedTargetId)?.Name
-                ?? (SelectedFilterType == "Service" ? "All Services" : "All Resource Pools");
+                ?? (SelectedFilterType == "Service" ? L["Pages.Dashboard.Target.AllServices"] : L["Pages.Dashboard.Target.AllResourcePools"]);
 
     private async Task OnFilterTypeChanged(string value)
     {
@@ -171,6 +174,6 @@
     private static bool IsOthersPoint(object? data) =>
         data is ClientUsagePoint point && point.ClientId == ChartAggregator.OthersId;
 
-    private static bool IsOthersLegend(string? title) =>
-        string.Equals(title, ChartAggregator.OthersLabel, StringComparison.OrdinalIgnoreCase);
+    private bool IsOthersLegend(string? title) =>
+        string.Equals(title, L["Common.Others"], StringComparison.OrdinalIgnoreCase);
 }

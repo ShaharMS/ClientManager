@@ -30,10 +30,10 @@ else if (Charts.Count > 0)
             }
             <RadzenLineSeries Data="@ChartSeriesTransform.TransformPoints(targetChart.CapSeries, AxisScale)"
                 CategoryProperty="Label" ValueProperty="Value"
-                Title="@CapLineTitle" LineType="LineType.Dashed"
+                Title="@ResolvedCapLineTitle" LineType="LineType.Dashed"
                 Stroke="var(--color-text-secondary)">
                 <TooltipTemplate Context="point">
-                    <span>@CapLineTitle: @(point.OriginalValue.ToString("N0"))</span>
+                    <span>@ResolvedCapLineTitle: @(point.OriginalValue.ToString("N0"))</span>
                 </TooltipTemplate>
             </RadzenLineSeries>
             <RadzenCategoryAxis />
@@ -44,18 +44,21 @@ else if (Charts.Count > 0)
 }
 else
 {
-    <div class="cm-chart-empty">@EmptyMessage</div>
+    <div class="cm-chart-empty">@ResolvedEmptyMessage</div>
 }
 
 @code {
     [Parameter] public IReadOnlyList<TargetChartData> Charts { get; set; } = [];
     [Parameter] public AxisScaleType AxisScale { get; set; }
-    [Parameter] public string CapLineTitle { get; set; } = "Cap";
+    [Parameter] public string? CapLineTitle { get; set; }
     [Parameter] public int HeightPx { get; set; } = 400;
     [Parameter] public bool Loading { get; set; }
     [Parameter] public bool ShowTitles { get; set; } = true;
-    [Parameter] public string EmptyMessage { get; set; } = "No usage data available";
+    [Parameter] public string? EmptyMessage { get; set; }
     [Parameter] public string? TitleSuffix { get; set; }
+
+    private string ResolvedCapLineTitle => CapLineTitle ?? L["Common.Cap"];
+    private string ResolvedEmptyMessage => EmptyMessage ?? L["Charts.NoUsageData"];
 
     private string FormatTitle(TargetChartData chart) =>
         TitleSuffix is null ? chart.TargetName : $"{chart.TargetName} - {TitleSuffix}";

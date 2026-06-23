@@ -6,25 +6,25 @@
     <div class="cm-dashboard__chart-header">
         <span class="cm-dashboard__chart-title">@Title</span>
     </div>
-    <RadzenDataGrid @ref="_grid" Data="@Rows" TItem="PoolSummaryRow"
+    <RadzenDataGrid @ref="_grid" Data="@Rows" TItem="PoolSummaryRow" EmptyText="@L["DataGrid.NoRecords"]"
         AllowSorting="true" AllowPaging="true" PageSize="15"
         PagerHorizontalAlign="HorizontalAlign.Center">
         <Columns>
-            <RadzenDataGridColumn TItem="PoolSummaryRow" Property="Name" Title="Pool"
+            <RadzenDataGridColumn TItem="PoolSummaryRow" Property="Name" Title="@L["Columns.Pool"]"
                 CssClass="cm-col-label" HeaderCssClass="cm-col-label" />
-            <RadzenDataGridColumn TItem="PoolSummaryRow" Title="@(IsAccessMetric ? "Requests" : "Active")"
+            <RadzenDataGridColumn TItem="PoolSummaryRow" Title="@(IsAccessMetric ? L["Columns.Requests"] : L["Columns.Active"])"
                 CssClass="cm-col-scalar" HeaderCssClass="cm-col-scalar">
                 <Template Context="pool">@pool.CurrentValue.ToString("N0")</Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn TItem="PoolSummaryRow" Title="@(IsAccessMetric ? "Cap" : "Max")"
+            <RadzenDataGridColumn TItem="PoolSummaryRow" Title="@(IsAccessMetric ? L["Columns.Cap"] : L["Columns.Max"])"
                 CssClass="cm-col-scalar" HeaderCssClass="cm-col-scalar">
                 <Template Context="pool">@(IsAccessMetric ? UtilizationHelper.FormatCap(pool.CapValue) : pool.CapValue.ToString("N0"))</Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn TItem="PoolSummaryRow" Title="@(IsAccessMetric ? "Remaining" : "Available")"
+            <RadzenDataGridColumn TItem="PoolSummaryRow" Title="@(IsAccessMetric ? L["Columns.Remaining"] : L["Columns.Available"])"
                 CssClass="cm-col-scalar" HeaderCssClass="cm-col-scalar">
                 <Template Context="pool">@(IsAccessMetric ? UtilizationHelper.FormatRemaining(pool.RemainingValue) : (pool.RemainingValue ?? 0).ToString("N0"))</Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn TItem="PoolSummaryRow" Title="Denied"
+            <RadzenDataGridColumn TItem="PoolSummaryRow" Title="@L["Columns.Denied"]"
                 CssClass="cm-col-scalar-wide" HeaderCssClass="cm-col-scalar-wide">
                 <Template Context="pool">
                     <DeniedBreakdownCell Total="@pool.DeniedLast5Min"
@@ -36,7 +36,7 @@
                         ShowBreakdown="@ShowDeniedBreakdown" />
                 </Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn TItem="PoolSummaryRow" Title="Utilization"
+            <RadzenDataGridColumn TItem="PoolSummaryRow" Title="@L["Columns.Utilization"]"
                 CssClass="cm-col-bar" HeaderCssClass="cm-col-bar">
                 <Template Context="pool">
                     @if (pool.CapValue > 0 || !IsAccessMetric)
@@ -50,7 +50,7 @@
                     }
                 </Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn TItem="PoolSummaryRow" Title="Status" Sortable="false"
+            <RadzenDataGridColumn TItem="PoolSummaryRow" Title="@L["Columns.Status"]" Sortable="false"
                 CssClass="cm-col-status" HeaderCssClass="cm-col-status">
                 <Template Context="pool">
                     <div class="cm-list-page__actions-cell">
@@ -63,7 +63,7 @@
 </div>
 
 @code {
-    [Parameter] public string Title { get; set; } = "All Resource Pools";
+    [Parameter] public string Title { get; set; } = "";
     [Parameter] public List<PoolSummaryRow> Rows { get; set; } = [];
     [Parameter] public bool IsAccessMetric { get; set; }
     [Parameter] public bool ShowDeniedBreakdown { get; set; }

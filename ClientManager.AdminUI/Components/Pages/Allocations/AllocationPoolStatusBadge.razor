@@ -1,24 +1,22 @@
 @using ClientManager.AdminUI.Models.Allocations
+@using ClientManager.AdminUI.Localization
 
 @if (!IsAccessMetric && Row.RemainingValue == 0)
 {
-    <StatusBadge Text="At Capacity" Variant="StatusBadgeVariant.Danger" />
+    <StatusBadge Text="@L[TermKeys.DeniedOutOfSlots]" Variant="StatusBadgeVariant.Danger" />
 }
-else if (IsAccessMetric && Row.DeniedLast5Min > 0 && Row.CapValue > 0 && Row.CurrentValue >= Row.CapValue * 0.9)
+else if (IsAccessMetric && (Row.DeniedLast5Min > 0
+    || (Row.CapValue > 0 && Row.CurrentValue >= Row.CapValue * 0.9)))
 {
-    <StatusBadge Text="Hitting Limit" Variant="StatusBadgeVariant.Danger" />
+    <StatusBadge Text="@L[TermKeys.DeniedThrottled]" Variant="StatusBadgeVariant.Warning" />
 }
-else if (IsAccessMetric && Row.DeniedLast5Min > 0)
+else if (Row.CapValue > 0 && Row.CurrentValue >= Row.CapValue * 0.9)
 {
-    <StatusBadge Text="Denied" Variant="StatusBadgeVariant.Warning" />
-}
-else if (IsAccessMetric && Row.CapValue > 0 && Row.CurrentValue >= Row.CapValue * 0.9)
-{
-    <StatusBadge Text="Near Limit" Variant="StatusBadgeVariant.Warning" />
+    <StatusBadge Text="@L[TermKeys.StateNearLimit]" Variant="StatusBadgeVariant.Warning" />
 }
 else
 {
-    <StatusBadge Text="Available" Variant="StatusBadgeVariant.Success" />
+    <StatusBadge Text="@L[TermKeys.StateAvailable]" Variant="StatusBadgeVariant.Success" />
 }
 
 @code {

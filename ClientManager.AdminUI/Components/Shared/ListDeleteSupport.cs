@@ -1,3 +1,7 @@
+using System.Globalization;
+using ClientManager.AdminUI.Resources;
+using ClientManager.AdminUI.Services;
+using Microsoft.Extensions.Localization;
 using Radzen;
 
 namespace ClientManager.AdminUI.Components.Shared;
@@ -9,6 +13,8 @@ internal static class ListDeleteSupport
 {
     public static async Task ExecuteAsync(
         DialogService dialog,
+        IStringLocalizer<SharedResources> localizer,
+        ApiErrorLocalizer errors,
         string entityLabel,
         string id,
         Func<Task> deleteAsync,
@@ -17,12 +23,12 @@ internal static class ListDeleteSupport
         Action refreshUi)
     {
         var confirmed = await dialog.Confirm(
-            $"Are you sure you want to delete {entityLabel} \"{id}\"? This cannot be undone.",
-            "Confirm delete",
+            string.Format(CultureInfo.CurrentCulture, localizer["Dialog.ConfirmDelete.Message"], entityLabel, id),
+            localizer["Dialog.ConfirmDelete.Title"],
             new ConfirmOptions
             {
-                OkButtonText = "Delete",
-                CancelButtonText = "Cancel"
+                OkButtonText = localizer["Dialog.ConfirmDelete.Ok"],
+                CancelButtonText = localizer["Dialog.ConfirmDelete.Cancel"]
             });
 
         if (confirmed != true)
@@ -41,7 +47,7 @@ internal static class ListDeleteSupport
         }
         catch (HttpRequestException ex)
         {
-            setDeleteError($"Delete failed: {ex.Message}");
+            setDeleteError(errors.Format("Dialog.ConfirmDelete.Failed", ex));
             refreshUi();
         }
     }

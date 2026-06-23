@@ -45,7 +45,7 @@
 .cm-chart-settings-dropdown__panel {
     position: absolute;
     top: calc(100% + 4px);
-    right: 0;
+    inset-inline-end: 0;
     width: min(22rem, calc(100vw - 2rem));
     max-height: min(34rem, calc(100vh - 6rem));
     overflow-y: auto;
@@ -169,7 +169,7 @@
 }
 
 .cm-chart-settings-dropdown__segment:not(:last-child) {
-    border-right: 1px solid var(--color-border);
+    border-inline-end: 1px solid var(--color-border);
 }
 
 .cm-chart-settings-dropdown__segment:hover {
@@ -193,7 +193,7 @@
     }
 
     .cm-chart-settings-dropdown__panel {
-        right: auto;
-        left: 0;
+        inset-inline-start: 0;
+        inset-inline-end: auto;
     }
 }

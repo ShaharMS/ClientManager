@@ -1,9 +1,11 @@
 using ClientManager.AdminUI.Models.Charts;
 using ClientManager.AdminUI.Models.Dashboard;
+using ClientManager.AdminUI.Resources;
 using ClientManager.AdminUI.Services;
 using ClientManager.AdminUI.Services.ChartData;
 using ClientManager.Shared.Models.Responses;
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.Localization;
 using Microsoft.JSInterop;
 
 namespace ClientManager.AdminUI.Components.Pages.Dashboard;
@@ -15,6 +17,8 @@ public partial class Dashboard : ComponentBase, IAsyncDisposable
     [Inject] private ServiceApiService ServiceService { get; set; } = null!;
     [Inject] private ResourcePoolApiService PoolService { get; set; } = null!;
     [Inject] private GlobalRateLimitApiService RateLimitApi { get; set; } = null!;
+    [Inject] private IStringLocalizer<SharedResources> Localizer { get; set; } = null!;
+    [Inject] private ApiErrorLocalizer Errors { get; set; } = null!;
     [Inject] private IJSRuntime JS { get; set; } = null!;
 
     private bool _loading = true;
@@ -32,11 +36,17 @@ public partial class Dashboard : ComponentBase, IAsyncDisposable
     private PagePollingLifecycle? _polling;
     private DashboardChartDataLoader? _chartLoader;
 
-    private List<FilterOption> _filterTypes =
-    [
-        new("Service", "Service"),
-        new("Resource Pool", "ResourcePool")
-    ];
+    private List<FilterOption> _filterTypes = [];
+
+    protected override void OnInitialized()
+    {
+        _filterTypes =
+        [
+            new(Localizer["Pages.Dashboard.FilterType.Service"], "Service"),
+            new(Localizer["Pages.Dashboard.FilterType.ResourcePool"], "ResourcePool")
+        ];
+    }
+
     private List<NamedItem> _filterTargets = [];
     private List<NamedItem> _allServices = [];
     private List<NamedItem> _allPools = [];
@@ -57,7 +67,7 @@ public partial class Dashboard : ComponentBase, IAsyncDisposable
 
     protected override async Task OnInitializedAsync()
     {
-        _chartLoader = new DashboardChartDataLoader(StatsService, PoolService, RateLimitApi);
+        _chartLoader = new DashboardChartDataLoader(StatsService, PoolService, RateLimitApi, Localizer);
 
         try
         {
@@ -68,9 +78,9 @@ public partial class Dashboard : ComponentBase, IAsyncDisposable
             var clients = await ClientService.GetAllAsync();
 
             _clients = clients.Select(c => new NamedItem(c.Id, c.Name)).ToList();
-            _allServices = new List<NamedItem> { new(DashboardChartLoadContext.AllTargetsId, "All Services") }
+            _allServices = new List<NamedItem> { new(DashboardChartLoadContext.AllTargetsId, Localizer["Pages.Dashboard.Target.AllServices"]) }
                 .Concat(services.Select(s => new NamedItem(s.Id, s.Name))).ToList();
-            _allPools = new List<NamedItem> { new(DashboardChartLoadContext.AllTargetsId, "All Resource Pools") }
+            _allPools = new List<NamedItem> { new(DashboardChartLoadContext.AllTargetsId, Localizer["Pages.Dashboard.Target.AllResourcePools"]) }
                 .Concat(pools.Select(p => new NamedItem(p.Id, p.Name))).ToList();
             _filterTargets = _allServices;
 
@@ -86,7 +96,7 @@ public partial class Dashboard : ComponentBase, IAsyncDisposable
             var summaries = await StatsService.GetClientSummariesAsync();
             _clientSummaries = summaries.Select(r => new ClientSummaryTableRow(
                 r.ClientId, r.DisplayName, r.AccessibleServices,
-                r.TotalRateLimitCap, r.AccessiblePools,
+                r.TotalRateLimitRequests, r.AccessiblePools,
                 r.TotalAccessibleSlots
             )).ToList();
             _filteredClientSummaries = _clientSummaries;
@@ -98,7 +108,7 @@ public partial class Dashboard : ComponentBase, IAsyncDisposable
         }
         catch (HttpRequestException ex)
         {
-            _error = $"Unable to connect to the API: {ex.Message}";
+            _error = Errors.Format("Api.UnableToConnect", ex);
         }
         finally
         {
