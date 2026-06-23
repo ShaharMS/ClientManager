@@ -1,3 +1,7 @@
+using System.Globalization;
+using ClientManager.AdminUI.Resources;
+using ClientManager.AdminUI.Services;
+using Microsoft.Extensions.Localization;
 using Radzen;
 
 namespace ClientManager.AdminUI.Components.Shared;
@@ -9,6 +13,8 @@ internal static class ListToggleEnabledSupport
 {
     public static async Task ExecuteAsync(
         DialogService dialog,
+        IStringLocalizer<SharedResources> localizer,
+        ApiErrorLocalizer errors,
         string entityLabel,
         string id,
         bool currentlyEnabled,
@@ -20,16 +26,16 @@ internal static class ListToggleEnabledSupport
         string? enableMessage = null)
     {
         var message = currentlyEnabled
-            ? (disableMessage ?? $"Disable {entityLabel} \"{id}\"? Requests from this client will be rejected until it is re-enabled.")
-            : (enableMessage ?? $"Enable {entityLabel} \"{id}\"? Requests will be allowed again, subject to access rules.");
+            ? (disableMessage ?? string.Format(CultureInfo.CurrentCulture, localizer["Dialog.ConfirmDisable.DefaultMessage"], entityLabel, id))
+            : (enableMessage ?? string.Format(CultureInfo.CurrentCulture, localizer["Dialog.ConfirmEnable.DefaultMessage"], entityLabel, id));
 
         var confirmed = await dialog.Confirm(
             message,
-            currentlyEnabled ? "Confirm disable" : "Confirm enable",
+            currentlyEnabled ? localizer["Dialog.ConfirmDisable.Title"] : localizer["Dialog.ConfirmEnable.Title"],
             new ConfirmOptions
             {
-                OkButtonText = currentlyEnabled ? "Disable" : "Enable",
-                CancelButtonText = "Cancel"
+                OkButtonText = currentlyEnabled ? localizer["Dialog.ConfirmDisable.Ok"] : localizer["Dialog.ConfirmEnable.Ok"],
+                CancelButtonText = localizer["Dialog.ConfirmToggle.Cancel"]
             });
 
         if (confirmed != true)
@@ -48,8 +54,8 @@ internal static class ListToggleEnabledSupport
         }
         catch (HttpRequestException ex)
         {
-            var verb = currentlyEnabled ? "Disable" : "Enable";
-            setActionError($"{verb} failed: {ex.Message}");
+            var verb = currentlyEnabled ? localizer["Dialog.ConfirmDisable.Ok"] : localizer["Dialog.ConfirmEnable.Ok"];
+            setActionError(string.Format(CultureInfo.CurrentCulture, localizer["Dialog.ToggleFailed"], verb, errors.Localize(ex)));
             refreshUi();
         }
     }

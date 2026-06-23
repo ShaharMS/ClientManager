@@ -1,6 +1,7 @@
 @typeparam TItem
 @inject NavigationManager Nav
 @inject IJSRuntime JS
+@inject ApiErrorLocalizer errors
 @implements IAsyncDisposable
 
 <div class="cm-page-header">
@@ -34,13 +35,13 @@ else
                     ButtonStyle="ButtonStyle.Primary" />
             </div>
             <div class="cm-list-page__search-field">
-                <RadzenTextBox Placeholder="@SearchPlaceholder"
+                <RadzenTextBox Placeholder="@ResolvedSearchPlaceholder"
                     @bind-Value="_search" />
             </div>
         </div>
 
         @* Note: RadzenDataGrid columns must be declared in the page, not via this template. *@
-        <RadzenDataGrid Data="@FilteredItems" TItem="TItem"
+        <RadzenDataGrid Data="@FilteredItems" TItem="TItem" EmptyText="@L["DataGrid.NoRecords"]"
             AllowSorting="true" AllowPaging="true" PageSize="@_pageSize"
             PagerHorizontalAlign="HorizontalAlign.Center">
             @Columns
@@ -51,13 +52,15 @@ else
 @code {
     [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
     [Parameter, EditorRequired] public string Description { get; set; } = string.Empty;
-    [Parameter] public string SearchPlaceholder { get; set; } = "Search...";
+    [Parameter] public string? SearchPlaceholder { get; set; }
     [Parameter, EditorRequired] public string CreateButtonText { get; set; } = string.Empty;
     [Parameter, EditorRequired] public string CreateUrl { get; set; } = string.Empty;
     [Parameter, EditorRequired] public Func<Task<IReadOnlyList<TItem>>> LoadItemsAsync { get; set; } = default!;
     [Parameter, EditorRequired] public Func<TItem, IEnumerable<string>> SearchableValues { get; set; } = default!;
     [Parameter, EditorRequired] public RenderFragment Columns { get; set; } = default!;
     [Parameter] public RenderFragment? ToolbarExtra { get; set; }
+
+    private string ResolvedSearchPlaceholder => SearchPlaceholder ?? L["ListTemplate.SearchPlaceholder"];
 
     private bool _loading = true;
     private string? _error;
@@ -102,7 +105,7 @@ else
         }
         catch (HttpRequestException ex)
         {
-            _error = $"Unable to connect to the API: {ex.Message}";
+            _error = errors.Format("Api.UnableToConnect", ex);
         }
         finally
         {
