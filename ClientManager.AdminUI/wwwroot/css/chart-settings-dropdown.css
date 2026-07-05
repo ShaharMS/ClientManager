@@ -135,6 +135,15 @@
     gap: 4px;
 }
 
+.cm-chart-settings-dropdown__calendar-field .rz-datepicker .rz-inputtext {
+    width: 100%;
+}
+
+[dir="rtl"] .cm-chart-settings-dropdown__calendar-field .rz-datepicker .rz-inputtext {
+    direction: rtl;
+    text-align: start;
+}
+
 .cm-chart-settings-dropdown__axis {
     display: flex;
     flex-direction: column;

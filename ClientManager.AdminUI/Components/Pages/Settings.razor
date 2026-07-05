@@ -25,14 +25,13 @@ else
                     <p class="cm-settings__card-desc">@L["Settings.Language.Description"]</p>
                 </div>
             </div>
-            <div class="cm-settings__time-range-select">
+            <div class="cm-settings__card-control">
                 <RadzenDropDown TValue="string"
                                 Data="@_languageOptions"
                                 TextProperty="Label"
                                 ValueProperty="Value"
                                 @bind-Value="_selectedCulture"
-                                Change="@OnCultureChanged"
-                                Style="width: 100%; max-width: 280px;" />
+                                Change="@OnCultureChanged" />
             </div>
         </div>
 
@@ -44,7 +43,7 @@ else
                     <p class="cm-settings__card-desc">@L["Settings.Appearance.Description"]</p>
                 </div>
             </div>
-            <div class="cm-settings__option">
+            <div class="cm-settings__card-control cm-settings__card-control--switch">
                 <span class="cm-settings__option-label">@(_isDarkMode ? L["Settings.Appearance.DarkMode"] : L["Settings.Appearance.LightMode"])</span>
                 <RadzenSwitch @bind-Value="_isDarkMode" Change="@OnThemeChanged" />
             </div>
@@ -58,14 +57,13 @@ else
                     <p class="cm-settings__card-desc">@L["Settings.DefaultTimeRange.Description"]</p>
                 </div>
             </div>
-            <div class="cm-settings__time-range-select">
+            <div class="cm-settings__card-control">
                 <RadzenDropDown TValue="string"
                                 Data="@_timeRangeOptions"
                                 TextProperty="Label"
                                 ValueProperty="Key"
                                 @bind-Value="_selectedTimeRange"
-                                Change="@(args => OnTimeRangeChanged((string)args))"
-                                Style="width: 100%; max-width: 280px;" />
+                                Change="@(args => OnTimeRangeChanged((string)args))" />
             </div>
         </div>
 
@@ -77,14 +75,13 @@ else
                     <p class="cm-settings__card-desc">@L["Settings.DefaultPollingInterval.Description"]</p>
                 </div>
             </div>
-            <div class="cm-settings__time-range-select">
+            <div class="cm-settings__card-control">
                 <RadzenDropDown TValue="string"
                                 Data="@_pollingOptions"
                                 TextProperty="Label"
                                 ValueProperty="Key"
                                 @bind-Value="_selectedPollingInterval"
-                                Change="@(args => OnPollingIntervalChanged((string)args))"
-                                Style="width: 100%; max-width: 280px;" />
+                                Change="@(args => OnPollingIntervalChanged((string)args))" />
             </div>
         </div>
 
@@ -96,14 +93,13 @@ else
                     <p class="cm-settings__card-desc">@L["Settings.DefaultAxisScale.Description"]</p>
                 </div>
             </div>
-            <div class="cm-settings__time-range-select">
+            <div class="cm-settings__card-control">
                 <RadzenDropDown TValue="string"
                                 Data="@_axisScaleOptions"
                                 TextProperty="Label"
                                 ValueProperty="Value"
                                 @bind-Value="_selectedAxisScale"
-                                Change="@(args => OnAxisScaleChanged((string)args))"
-                                Style="width: 100%; max-width: 280px;" />
+                                Change="@(args => OnAxisScaleChanged((string)args))" />
             </div>
         </div>
     </div>

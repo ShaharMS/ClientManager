@@ -5,6 +5,7 @@ public record MetricOption(string Value, string Name);
 public record AllocationClientRow(
     string ClientId,
     string ClientName,
+    string PoolId,
     string PoolName,
     long CurrentValue,
     int CapValue,

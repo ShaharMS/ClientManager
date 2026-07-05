@@ -26,6 +26,7 @@ internal static class AllocationsClientRowFactory
         return new AllocationClientRow(
             clientId,
             clientName,
+            pool.ResourcePoolId,
             pool.Name,
             currentValue,
             capValue,

@@ -29,11 +29,23 @@ public class UserPreferencesService : IAsyncDisposable
     {
         if (_cached is not null) return _cached;
 
-        var module = await GetModuleAsync();
-        _cached = await module.InvokeAsync<UserPreferences?>("getPreferences")
-                  ?? new UserPreferences();
+        try
+        {
+            var module = await GetModuleAsync();
+            _cached = await module.InvokeAsync<UserPreferences?>("getPreferences")
+                      ?? new UserPreferences();
+        }
+        catch (InvalidOperationException ex) when (IsPrerenderJsInteropError(ex))
+        {
+            _cached = new UserPreferences();
+        }
+
         return _cached;
     }
+
+    private static bool IsPrerenderJsInteropError(InvalidOperationException ex) =>
+        ex.Message.Contains("statically rendered", StringComparison.OrdinalIgnoreCase)
+        || ex.Message.Contains("JavaScript interop calls cannot be issued", StringComparison.OrdinalIgnoreCase);
 
     public async Task SavePreferencesAsync(UserPreferences preferences)
     {
@@ -59,9 +71,21 @@ public class UserPreferencesService : IAsyncDisposable
             return SupportedCultures.Normalize(prefs.Culture);
         }
 
-        var module = await GetModuleAsync();
-        var resolved = await module.InvokeAsync<string>("getResolvedCulture");
-        return SupportedCultures.Normalize(resolved);
+        return await GetResolvedCultureSafeAsync();
+    }
+
+    private async Task<string> GetResolvedCultureSafeAsync()
+    {
+        try
+        {
+            var module = await GetModuleAsync();
+            var resolved = await module.InvokeAsync<string>("getResolvedCulture");
+            return SupportedCultures.Normalize(resolved);
+        }
+        catch (InvalidOperationException ex) when (IsPrerenderJsInteropError(ex))
+        {
+            return SupportedCultures.Default;
+        }
     }
 
     public async Task ApplyCurrentThemeAsync()
