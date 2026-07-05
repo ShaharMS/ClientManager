@@ -220,6 +220,13 @@ public interface IUsageSnapshotDatabase
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Reads non-zero pending usage counters whose keys start with <paramref name="keyPrefix"/>.
+    /// </summary>
+    Task<IReadOnlyDictionary<string, long>> GetPendingCounterValuesByPrefixAsync(
+        string keyPrefix,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Reads pending usage counters for a client/target in a second-level time window.
     /// </summary>
     Task<IReadOnlyDictionary<string, long>> GetPendingCountersInRangeAsync(

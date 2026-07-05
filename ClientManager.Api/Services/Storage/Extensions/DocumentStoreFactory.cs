@@ -27,6 +27,13 @@ internal static class DocumentStoreFactory
             PersistenceProvider.MongoDb => CreateMongoStore(binding.MongoDb, mongoClients),
             PersistenceProvider.Redis => CreateRedisStore(binding.Redis, redisMultiplexers),
             PersistenceProvider.Lucene => CreateLuceneStore(binding.Lucene, luceneStores),
+            PersistenceProvider.Sqlite => CreateJsonFileStore(
+                new JsonFileStoreOptions
+                {
+                    DataDirectory = Path.GetDirectoryName(
+                        ResolvePath(binding.Sqlite?.DatabasePath ?? "./data/statistics.db"))!
+                },
+                jsonFileStores),
             _ => throw new InvalidOperationException($"Unsupported persistence provider: {binding.Provider}")
         };
     }

@@ -22,7 +22,9 @@ public class UsageSnapshotDatabase : IUsageSnapshotDatabase
     /// </summary>
     /// <param name="store">The document store to delegate operations to.</param>
     /// <param name="clientConfigDatabase">Used by range queries to enumerate client IDs for segment ID construction.</param>
-    public UsageSnapshotDatabase(IDocumentStore store, IClientConfigurationDatabase clientConfigDatabase)
+    public UsageSnapshotDatabase(
+        IDocumentStore store,
+        IClientConfigurationDatabase clientConfigDatabase)
     {
         _store = store;
         _clientConfigDatabase = clientConfigDatabase;
@@ -145,49 +147,49 @@ public class UsageSnapshotDatabase : IUsageSnapshotDatabase
         DateTime from, DateTime to, IEnumerable<string> clientIds,
         CancellationToken cancellationToken = default)
     {
-            return await GetByTargetsAndRangeAsync(
-                new[] { targetId },
-                targetType,
-                granularity,
-                from,
-                to,
-                clientIds,
-                cancellationToken);
-        }
+        return await GetByTargetsAndRangeAsync(
+            new[] { targetId },
+            targetType,
+            granularity,
+            from,
+            to,
+            clientIds,
+            cancellationToken);
+    }
 
-        /// <inheritdoc />
-        public async Task<IReadOnlyList<UsageSnapshot>> GetByTargetsAndRangeAsync(
-            IEnumerable<string> targetIds,
-            TargetType targetType,
-            BucketGranularity granularity,
-            DateTime from,
-            DateTime to,
-            IEnumerable<string> clientIds,
-            CancellationToken cancellationToken = default)
-        {
-            var selectedTargetIds = targetIds.Distinct(StringComparer.Ordinal).ToList();
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<UsageSnapshot>> GetByTargetsAndRangeAsync(
+        IEnumerable<string> targetIds,
+        TargetType targetType,
+        BucketGranularity granularity,
+        DateTime from,
+        DateTime to,
+        IEnumerable<string> clientIds,
+        CancellationToken cancellationToken = default)
+    {
+        var selectedTargetIds = targetIds.Distinct(StringComparer.Ordinal).ToList();
         var selectedClientIds = clientIds.Distinct(StringComparer.Ordinal).ToList();
         var segmentStarts = UsageSegmentHelper.EnumerateSegmentStarts(from, to, granularity).ToList();
 
-            if (selectedTargetIds.Count == 0 || selectedClientIds.Count == 0 || segmentStarts.Count == 0)
+        if (selectedTargetIds.Count == 0 || selectedClientIds.Count == 0 || segmentStarts.Count == 0)
         {
             return [];
         }
 
-            var ids = new List<string>(selectedTargetIds.Count * selectedClientIds.Count * segmentStarts.Count);
-            foreach (var selectedTargetId in selectedTargetIds)
+        var ids = new List<string>(selectedTargetIds.Count * selectedClientIds.Count * segmentStarts.Count);
+        foreach (var selectedTargetId in selectedTargetIds)
         {
-                foreach (var selectedClientId in selectedClientIds)
+            foreach (var selectedClientId in selectedClientIds)
             {
-                    foreach (var segmentStart in segmentStarts)
-                    {
-                        ids.Add(UsageSegmentHelper.BuildSegmentId(
-                            selectedClientId,
-                            targetType,
-                            selectedTargetId,
-                            granularity,
-                            segmentStart));
-                    }
+                foreach (var segmentStart in segmentStarts)
+                {
+                    ids.Add(UsageSegmentHelper.BuildSegmentId(
+                        selectedClientId,
+                        targetType,
+                        selectedTargetId,
+                        granularity,
+                        segmentStart));
+                }
             }
         }
 
@@ -216,6 +218,12 @@ public class UsageSnapshotDatabase : IUsageSnapshotDatabase
         CancellationToken cancellationToken = default) =>
         _store.GetManyCountersAsync(keys, cancellationToken);
 
+    /// <inheritdoc />
+    public Task<IReadOnlyDictionary<string, long>> GetPendingCounterValuesByPrefixAsync(
+        string keyPrefix,
+        CancellationToken cancellationToken = default) =>
+        _store.GetCountersByPrefixAsync(keyPrefix, cancellationToken);
+
     public async Task<IReadOnlyDictionary<string, long>> GetPendingCountersInRangeAsync(
         string clientId,
         TargetType targetType,
@@ -224,15 +232,9 @@ public class UsageSnapshotDatabase : IUsageSnapshotDatabase
         DateTime to,
         CancellationToken cancellationToken = default)
     {
-        if (_store is Stores.Implementations.JsonFileDocumentStore jsonStore)
-        {
-            var prefix = UsageSegmentHelper.BuildUsageCounterScanPrefix(clientId, targetType, targetId);
-            var counters = await jsonStore.GetCountersByPrefixAsync(prefix, cancellationToken);
-            return FilterCountersInSecondRange(counters, from, to);
-        }
-
-        var keys = UsageSegmentHelper.EnumerateUsageCounterKeys(clientId, targetType, targetId, from, to);
-        return await GetPendingCounterValuesAsync(keys, cancellationToken);
+        var prefix = UsageSegmentHelper.BuildUsageCounterScanPrefix(clientId, targetType, targetId);
+        var counters = await _store.GetCountersByPrefixAsync(prefix, cancellationToken);
+        return FilterCountersInSecondRange(counters, from, to);
     }
 
     private static IReadOnlyDictionary<string, long> FilterCountersInSecondRange(
