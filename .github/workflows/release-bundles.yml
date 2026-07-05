@@ -37,7 +37,7 @@ jobs:
           if [[ "${{ github.event_name }}" == "release" ]]; then
             tags=("${{ github.event.release.tag_name }}")
           elif [[ "$BACKFILL_ALL" == "true" ]]; then
-            mapfile -t tags < <(gh release list --limit 500 --json tagName -q '.[].tagName')
+            mapfile -t tags < <(gh release list --repo "${{ github.repository }}" --limit 500 --json tagName -q '.[].tagName')
           elif [[ -n "$INPUT_TAG" ]]; then
             tags=("$INPUT_TAG")
           else
@@ -78,5 +78,5 @@ jobs:
           set -euo pipefail
           while IFS= read -r file; do
             [[ -n "$file" ]] || continue
-            gh release upload "${{ matrix.tag }}" "$file" --clobber
+            gh release upload "${{ matrix.tag }}" "$file" --repo "${{ github.repository }}" --clobber
           done <<< "${{ steps.bundles.outputs.upload_files }}"
