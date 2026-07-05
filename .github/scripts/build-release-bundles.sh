@@ -11,11 +11,11 @@ git rev-parse --verify "refs/tags/${TAG}^{commit}" >/dev/null
 
 PREV=""
 while IFS= read -r candidate; do
-  [[ "$candidate" == "$TAG" ]] && continue
-  if git merge-base --is-ancestor "refs/tags/${candidate}^{commit}" "refs/tags/${TAG}^{commit}"; then
-    PREV="$candidate"
+  if [[ "$candidate" == "$TAG" ]]; then
+    break
   fi
-done < <(git tag -l --sort=v:refname)
+  PREV="$candidate"
+done < <(git for-each-ref refs/tags --sort=creatordate --format='%(refname:short)')
 
 FULL="${OUT_DIR}/${REPO_NAME}-${TAG}.full.bundle"
 git bundle create "$FULL" "refs/tags/${TAG}"
@@ -43,5 +43,5 @@ fi
 
 if [[ -z "${GITHUB_OUTPUT:-}" ]]; then
   printf 'Built %s\n' "${UPLOAD_FILES[*]}"
-  [[ -n "$PREV" ]] && printf 'Previous ancestor tag: %s\n' "$PREV"
+  [[ -n "$PREV" ]] && printf 'Previous release tag: %s\n' "$PREV"
 fi
