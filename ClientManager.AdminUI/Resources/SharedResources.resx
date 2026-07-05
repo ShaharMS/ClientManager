@@ -1014,7 +1014,7 @@
     <value>Rate Limit Cap</value>
   </data>
   <data name="Terms.Denied.Blocked" xml:space="preserve">
-    <value>Blocked</value>
+    <value>Access Blocked</value>
   </data>
   <data name="Terms.Denied.OutOfSlots" xml:space="preserve">
     <value>Out of slots</value>

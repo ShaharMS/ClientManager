@@ -1,0 +1,6 @@
+Heebo — Copyright 2014 The Heebo Project Authors (https://github.com/OdedEzer/heebo)
+
+Licensed under the SIL Open Font License, Version 1.1.
+https://scripts.sil.org/OFL
+
+Full license text: https://openfontlicense.org/open-font-license-official-text/

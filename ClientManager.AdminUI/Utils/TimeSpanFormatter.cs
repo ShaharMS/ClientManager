@@ -35,4 +35,10 @@ public static class TimeSpanFormatter
             localizer["Units.Duration.SecondsCompact"],
             value.TotalSeconds.ToString("0.#", culture));
     }
+
+    public static string FormatRequestsWindow(
+        int maxRequests,
+        TimeSpan window,
+        IStringLocalizer<SharedResources> localizer) =>
+        $"{maxRequests.ToString(CultureInfo.CurrentCulture)} / {FormatCompact(window, localizer)}";
 }
