@@ -309,9 +309,8 @@ public partial class UsageStatisticsService : IUsageStatisticsService
         var now = DateTime.UtcNow;
         var recentWindowStart = now.AddMinutes(-5);
         var services = await _serviceRepository.GetAllAsync(cancellationToken);
-        var clients = await _clientConfigDatabase.GetAllAsync(cancellationToken);
         var serviceIds = NormalizeIds(services.Select(service => service.Id));
-        var clientIds = NormalizeIds(clients.Select(client => client.Id));
+        var clientIds = await ResolveClientIdsAsync(null, cancellationToken);
         var totalsByService = await GetContinuousBucketTotalsByTargetAsync(
             serviceIds,
             TargetType.Service,

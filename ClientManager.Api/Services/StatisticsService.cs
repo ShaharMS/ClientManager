@@ -49,16 +49,14 @@ public class StatisticsService : IStatisticsService
     public async Task<SystemOverviewResponse> GetOverviewAsync(CancellationToken cancellationToken = default)
     {
         var enabledClientQuery = new DocumentQuery()
-            .Where(nameof(ClientConfiguration.IsEnabled), FilterOperator.Equals, true)
-            .WithPagination(0, 1);
-        var enabledServiceQuery = new DocumentQuery()
-            .Where(nameof(Service.IsEnabled), FilterOperator.Equals, true)
-            .WithPagination(0, 1);
+            .Where(nameof(ClientConfiguration.IsEnabled), FilterOperator.Equals, true);
 
-        var allClients = await _clientConfigurationDatabase.SearchAsync(DocumentQuery.All.WithPagination(0, 1), cancellationToken);
-        var enabledClients = await _clientConfigurationDatabase.SearchAsync(enabledClientQuery, cancellationToken);
-        var allServices = await _serviceRepository.SearchAsync(DocumentQuery.All.WithPagination(0, 1), cancellationToken);
-        var enabledServices = await _serviceRepository.SearchAsync(enabledServiceQuery, cancellationToken);
+        var allClientsCount = await _clientConfigurationDatabase.CountAsync(DocumentQuery.All, cancellationToken);
+        var enabledClientsCount = await _clientConfigurationDatabase.CountAsync(enabledClientQuery, cancellationToken);
+        var allServicesCount = await _serviceRepository.CountAsync(DocumentQuery.All, cancellationToken);
+        var enabledServicesCount = await _serviceRepository.CountAsync(
+            new DocumentQuery().Where(nameof(Service.IsEnabled), FilterOperator.Equals, true),
+            cancellationToken);
         var allPools = await _resourcePoolRepository.SearchAsync(DocumentQuery.All, cancellationToken);
 
         var activeAllocations = 0;
@@ -68,10 +66,10 @@ public class StatisticsService : IStatisticsService
         }
 
         return new SystemOverviewResponse(
-            (int)allClients.TotalCount,
-            (int)enabledClients.TotalCount,
-            (int)allServices.TotalCount,
-            (int)enabledServices.TotalCount,
+            (int)allClientsCount,
+            (int)enabledClientsCount,
+            (int)allServicesCount,
+            (int)enabledServicesCount,
             (int)allPools.TotalCount,
             activeAllocations);
     }
@@ -273,8 +271,46 @@ public class StatisticsService : IStatisticsService
     /// <inheritdoc />
     public async Task<PagedResponse<ClientSummaryRow>> GetClientSummariesAsync(PagedRequest paging, CancellationToken cancellationToken = default)
     {
-        var summaries = await _usageStatisticsService.GetClientSummariesAsync(cancellationToken);
-        return summaries.Rows.ToPagedResponse(paging);
+        var clamped = paging.Clamp();
+        var skip = (clamped.Page - 1) * clamped.PageSize;
+        var clientPage = await _clientConfigurationDatabase.SearchAsync(
+            DocumentQuery.All.WithPagination(skip, clamped.PageSize),
+            cancellationToken);
+
+        var rows = new List<ClientSummaryRow>();
+        foreach (var client in clientPage.Items)
+        {
+            var accessibleServices = client.Services.Count(service => service.Value.IsAllowed);
+            var totalMaxRequests = client.Services.Values
+                .Where(service => service.RateLimit is not null)
+                .Sum(service => service.RateLimit!.MaxRequests);
+            var accessiblePools = client.ResourcePools.Count;
+            var usedSlots = 0;
+            var totalAccessibleSlots = 0;
+
+            foreach (var (poolId, poolSettings) in client.ResourcePools)
+            {
+                totalAccessibleSlots += (int)poolSettings.MaxSlots;
+                usedSlots += await _allocationDatabase.GetActiveCountByClientAsync(poolId, client.Id, cancellationToken);
+            }
+
+            rows.Add(new ClientSummaryRow(
+                client.Id,
+                client.Name,
+                accessibleServices,
+                totalMaxRequests,
+                accessiblePools,
+                usedSlots,
+                totalAccessibleSlots));
+        }
+
+        var totalPages = (int)Math.Ceiling((double)clientPage.TotalCount / clamped.PageSize);
+        return new PagedResponse<ClientSummaryRow>(
+            rows,
+            clamped.Page,
+            clamped.PageSize,
+            (int)Math.Min(int.MaxValue, clientPage.TotalCount),
+            totalPages);
     }
 
     /// <inheritdoc />
