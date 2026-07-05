@@ -1,8 +1,6 @@
-/* Import Google Fonts - Inter */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-
 html, body {
     font-family: var(--font-family);
+    font-synthesis: none;
     background-color: var(--color-bg);
     color: var(--color-text-primary);
     margin: 0;
@@ -95,6 +93,10 @@ body.no-scroll {
 
 .cm-stat-card__arrow .rzi {
     font-size: 16px;
+}
+
+[dir="rtl"] .cm-stat-card__arrow .rzi {
+    transform: scaleX(-1);
 }
 
 .cm-stat-card--clickable:hover .cm-stat-card__arrow {

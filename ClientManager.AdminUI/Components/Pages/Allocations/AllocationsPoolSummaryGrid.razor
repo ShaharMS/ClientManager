@@ -2,16 +2,27 @@
 @using ClientManager.AdminUI.Models.Allocations
 @using ClientManager.AdminUI.Utils
 
-<div class="cm-list-page__table-card" style="margin-top: var(--space-lg);">
+<div class="cm-list-page__table-card cm-allocations-pool-grid" style="margin-top: var(--space-lg);">
     <div class="cm-dashboard__chart-header">
         <span class="cm-dashboard__chart-title">@Title</span>
     </div>
+    @if (Loading)
+    {
+        <TableRowsSkeleton />
+    }
+    else
+    {
     <RadzenDataGrid @ref="_grid" Data="@Rows" TItem="PoolSummaryRow" EmptyText="@L["DataGrid.NoRecords"]"
         AllowSorting="true" AllowPaging="true" PageSize="15"
         PagerHorizontalAlign="HorizontalAlign.Center">
         <Columns>
             <RadzenDataGridColumn TItem="PoolSummaryRow" Property="Name" Title="@L["Columns.Pool"]"
-                CssClass="cm-col-label" HeaderCssClass="cm-col-label" />
+                CssClass="cm-col-label" HeaderCssClass="cm-col-label">
+                <Template Context="pool">
+                    <span class="cm-allocations-pool-grid__pool-name">@pool.Name</span>
+                    <span class="cm-allocations-pool-grid__pool-id">@pool.PoolId</span>
+                </Template>
+            </RadzenDataGridColumn>
             <RadzenDataGridColumn TItem="PoolSummaryRow" Title="@(IsAccessMetric ? L["Columns.Requests"] : L["Columns.Active"])"
                 CssClass="cm-col-scalar" HeaderCssClass="cm-col-scalar">
                 <Template Context="pool">@pool.CurrentValue.ToString("N0")</Template>
@@ -60,10 +71,12 @@
             </RadzenDataGridColumn>
         </Columns>
     </RadzenDataGrid>
+    }
 </div>
 
 @code {
     [Parameter] public string Title { get; set; } = "";
+    [Parameter] public bool Loading { get; set; }
     [Parameter] public List<PoolSummaryRow> Rows { get; set; } = [];
     [Parameter] public bool IsAccessMetric { get; set; }
     [Parameter] public bool ShowDeniedBreakdown { get; set; }

@@ -1,18 +1,28 @@
 @using ClientManager.AdminUI.Models
 @using ClientManager.AdminUI.Models.Monitor
 
-<div class="cm-list-page__table-card" style="margin-top: var(--space-lg);">
+<div class="cm-list-page__table-card cm-monitor-client-grid" style="margin-top: var(--space-lg);">
     <div class="cm-dashboard__chart-header">
         <span class="cm-dashboard__chart-title">@L["Pages.Monitor.ClientBreakdown"]</span>
     </div>
+    @if (Loading)
+    {
+        <TableRowsSkeleton />
+    }
+    else
+    {
     <RadzenDataGrid @ref="_grid" Data="@Rows" TItem="MonitorClientRow" EmptyText="@L["DataGrid.NoRecords"]"
         AllowSorting="true" AllowPaging="true" PageSize="15"
         PagerHorizontalAlign="HorizontalAlign.Center">
         <Columns>
             <RadzenDataGridColumn TItem="MonitorClientRow" Property="ClientName" Title="@L["Columns.Client"]"
-                CssClass="cm-col-id" HeaderCssClass="cm-col-id" />
+                CssClass="cm-col-id" HeaderCssClass="cm-col-id">
+                <Template Context="row">@row.ClientName</Template>
+            </RadzenDataGridColumn>
             <RadzenDataGridColumn TItem="MonitorClientRow" Property="ServiceName" Title="@L["Columns.Service"]"
-                CssClass="cm-col-name" HeaderCssClass="cm-col-name" />
+                CssClass="cm-col-name" HeaderCssClass="cm-col-name">
+                <Template Context="row">@row.ServiceName</Template>
+            </RadzenDataGridColumn>
             <RadzenDataGridColumn TItem="MonitorClientRow" Property="GrantedLast5Min" Title="@L["Columns.Requests"]"
                 CssClass="cm-col-scalar" HeaderCssClass="cm-col-scalar" />
             <RadzenDataGridColumn TItem="MonitorClientRow" Title="@L["Columns.Denied"]"
@@ -55,10 +65,12 @@
             </RadzenDataGridColumn>
         </Columns>
     </RadzenDataGrid>
+    }
 </div>
 
 @code {
     [Parameter] public List<MonitorClientRow> Rows { get; set; } = [];
+    [Parameter] public bool Loading { get; set; }
     [Parameter] public bool ShowDeniedBreakdown { get; set; }
     private RadzenDataGrid<MonitorClientRow>? _grid;
 

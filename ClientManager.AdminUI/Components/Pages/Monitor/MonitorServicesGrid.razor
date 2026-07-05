@@ -2,16 +2,27 @@
 @using ClientManager.AdminUI.Models
 @using ClientManager.AdminUI.Models.Monitor
 
-<div class="cm-list-page__table-card" style="margin-top: var(--space-lg);">
+<div class="cm-list-page__table-card cm-monitor-services-grid" style="margin-top: var(--space-lg);">
     <div class="cm-dashboard__chart-header">
         <span class="cm-dashboard__chart-title">@L["Pages.Monitor.AllServicesGrid"]</span>
     </div>
+    @if (Loading)
+    {
+        <TableRowsSkeleton />
+    }
+    else
+    {
     <RadzenDataGrid @ref="_grid" Data="@Rows" TItem="ServiceSummaryRow" EmptyText="@L["DataGrid.NoRecords"]"
         AllowSorting="true" AllowPaging="true" PageSize="15"
         PagerHorizontalAlign="HorizontalAlign.Center">
         <Columns>
             <RadzenDataGridColumn TItem="ServiceSummaryRow" Property="Name" Title="@L["Columns.Service"]"
-                CssClass="cm-col-label" HeaderCssClass="cm-col-label" />
+                CssClass="cm-col-label" HeaderCssClass="cm-col-label">
+                <Template Context="row">
+                    <span class="cm-monitor-services-grid__service-name">@row.Name</span>
+                    <span class="cm-monitor-services-grid__service-id">@row.Id</span>
+                </Template>
+            </RadzenDataGridColumn>
             <RadzenDataGridColumn TItem="ServiceSummaryRow" Property="CurrentUsage" Title="@L["Columns.Usage"]"
                 CssClass="cm-col-scalar" HeaderCssClass="cm-col-scalar" />
             <RadzenDataGridColumn TItem="ServiceSummaryRow" Property="Cap" Title="@L["Columns.Cap"]"
@@ -54,10 +65,12 @@
             </RadzenDataGridColumn>
         </Columns>
     </RadzenDataGrid>
+    }
 </div>
 
 @code {
     [Parameter] public List<ServiceSummaryRow> Rows { get; set; } = [];
+    [Parameter] public bool Loading { get; set; }
     [Parameter] public bool ShowDeniedBreakdown { get; set; }
     private RadzenDataGrid<ServiceSummaryRow>? _grid;
 

@@ -2,21 +2,31 @@
 @using ClientManager.AdminUI.Models.Allocations
 @using ClientManager.AdminUI.Utils
 
-<div class="cm-list-page__table-card" style="margin-top: var(--space-lg);">
+<div class="cm-list-page__table-card cm-allocations-client-grid" style="margin-top: var(--space-lg);">
     <div class="cm-dashboard__chart-header">
         <span class="cm-dashboard__chart-title">@Title</span>
     </div>
+    @if (Loading)
+    {
+        <TableRowsSkeleton />
+    }
+    else
+    {
     <RadzenDataGrid @ref="_grid" Data="@Rows" TItem="AllocationClientRow" EmptyText="@L["DataGrid.NoRecords"]"
         AllowSorting="true" AllowPaging="true" PageSize="15"
         PagerHorizontalAlign="HorizontalAlign.Center">
         <Columns>
             <RadzenDataGridColumn TItem="AllocationClientRow" Property="ClientName" Title="@L["Columns.Client"]"
                 CssClass="@(ShowPoolColumn ? "cm-col-id" : "cm-col-label")"
-                HeaderCssClass="@(ShowPoolColumn ? "cm-col-id" : "cm-col-label")" />
+                HeaderCssClass="@(ShowPoolColumn ? "cm-col-id" : "cm-col-label")">
+                <Template Context="row">@row.ClientName</Template>
+            </RadzenDataGridColumn>
             @if (ShowPoolColumn)
             {
                 <RadzenDataGridColumn TItem="AllocationClientRow" Property="PoolName" Title="@L["Columns.Pool"]"
-                    CssClass="cm-col-name" HeaderCssClass="cm-col-name" />
+                    CssClass="cm-col-name" HeaderCssClass="cm-col-name">
+                    <Template Context="row">@row.PoolName</Template>
+                </RadzenDataGridColumn>
             }
             <RadzenDataGridColumn TItem="AllocationClientRow" Title="@(IsAccessMetric ? L["Columns.Requests"] : L["Columns.Active"])"
                 CssClass="cm-col-scalar" HeaderCssClass="cm-col-scalar">
@@ -62,10 +72,12 @@
             </RadzenDataGridColumn>
         </Columns>
     </RadzenDataGrid>
+    }
 </div>
 
 @code {
     [Parameter] public string Title { get; set; } = "";
+    [Parameter] public bool Loading { get; set; }
     [Parameter] public bool ShowPoolColumn { get; set; } = true;
     [Parameter] public List<AllocationClientRow> Rows { get; set; } = [];
     [Parameter] public bool IsAccessMetric { get; set; }

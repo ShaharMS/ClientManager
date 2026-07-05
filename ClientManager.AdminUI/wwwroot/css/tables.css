@@ -1,8 +1,27 @@
 /* Shared Radzen data-grid column layout: dynamic labels start, fixed scalars end */
 
+:root {
+    /* Reference only — @container requires literal values below. */
+    --cm-table-compact-max: 770px;  /* 3-column compact layouts */
+    --cm-table-minimal-max: 432px;  /* 2-column minimal layouts */
+}
+
+:is(.cm-list-page__table-card, .cm-dashboard__table-card) .rz-data-grid,
+:is(.cm-list-page__table-card, .cm-dashboard__table-card) .rz-data-grid-data {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+:is(.cm-list-page__table-card, .cm-dashboard__table-card) > .rz-data-grid {
+    align-self: stretch;
+}
+
 :is(.cm-list-page__table-card, .cm-dashboard__table-card) .rz-grid-table {
     table-layout: fixed;
     width: 100%;
+    min-width: 100%;
 }
 
 :is(.cm-list-page__table-card, .cm-dashboard__table-card) .rz-grid-table :is(th, td).cm-col-id {
@@ -16,6 +35,7 @@
 }
 
 :is(.cm-list-page__table-card, .cm-dashboard__table-card) .rz-grid-table :is(th, td).cm-col-label {
+    width: 99%; /* ponytail: flex column in table-layout:fixed; upgrade: colgroup rewrite if Radzen adds inline widths */
     text-align: start;
 }
 
@@ -218,4 +238,285 @@
 :is(.cm-list-page__table-card, .cm-dashboard__table-card) .rz-grid-table td.cm-col-bar .cm-list-page__utilization-bar {
     display: block;
     width: 100%;
+}
+
+.cm-allocations-pool-grid {
+    container-type: inline-size;
+    container-name: allocations-pool;
+}
+
+.cm-allocations-pool-grid__pool-id {
+    display: none;
+}
+
+@container allocations-pool (max-width: 770px) {
+    .cm-allocations-pool-grid .rz-grid-table :is(th, td):is(.cm-col-scalar, .cm-col-scalar-wide, .cm-col-status) {
+        visibility: collapse;
+        width: 0 !important;
+        max-width: 0;
+        min-width: 0;
+        padding: 0;
+        border-width: 0;
+    }
+
+    .cm-allocations-pool-grid .rz-grid-table :is(th, td).cm-col-label {
+        width: 42%;
+    }
+
+    .cm-allocations-pool-grid .rz-grid-table :is(th, td).cm-col-bar {
+        width: 58%;
+    }
+
+    .cm-allocations-pool-grid__pool-name {
+        display: none;
+    }
+
+    .cm-allocations-pool-grid__pool-id {
+        display: inline;
+    }
+
+    .cm-allocations-pool-grid .rz-data-grid-data {
+        overflow-x: hidden;
+    }
+}
+
+.cm-allocations-client-grid {
+    container-type: inline-size;
+    container-name: allocations-client;
+}
+
+@container allocations-client (max-width: 770px) {
+    .cm-allocations-client-grid .rz-grid-table :is(th, td):is(.cm-col-scalar, .cm-col-scalar-wide, .cm-col-status) {
+        visibility: collapse;
+        width: 0 !important;
+        max-width: 0;
+        min-width: 0;
+        padding: 0;
+        border-width: 0;
+    }
+
+    .cm-allocations-client-grid .rz-grid-table :is(th, td).cm-col-id,
+    .cm-allocations-client-grid .rz-grid-table :is(th, td).cm-col-name {
+        width: 28%;
+    }
+
+    .cm-allocations-client-grid .rz-grid-table :is(th, td).cm-col-bar {
+        width: 44%;
+    }
+
+    .cm-allocations-client-grid:not(:has(.cm-col-name)) .rz-grid-table :is(th, td).cm-col-label {
+        width: 42%;
+    }
+
+    .cm-allocations-client-grid:not(:has(.cm-col-name)) .rz-grid-table :is(th, td).cm-col-bar {
+        width: 58%;
+    }
+
+    .cm-allocations-client-grid .rz-data-grid-data {
+        overflow-x: hidden;
+    }
+}
+
+@container allocations-client (max-width: 432px) {
+    .cm-allocations-client-grid .rz-grid-table :is(th, td).cm-col-name {
+        visibility: collapse;
+        width: 0 !important;
+        max-width: 0;
+        min-width: 0;
+        padding: 0;
+        border-width: 0;
+    }
+
+    .cm-allocations-client-grid .rz-grid-table :is(th, td).cm-col-id,
+    .cm-allocations-client-grid .rz-grid-table :is(th, td).cm-col-label {
+        width: 38%;
+    }
+
+    .cm-allocations-client-grid .rz-grid-table :is(th, td).cm-col-bar {
+        width: 62%;
+    }
+}
+
+.cm-monitor-client-grid {
+    container-type: inline-size;
+    container-name: monitor-client;
+}
+
+@container monitor-client (max-width: 770px) {
+    .cm-monitor-client-grid .rz-grid-table :is(th, td):is(.cm-col-scalar, .cm-col-scalar-wide, .cm-col-status) {
+        visibility: collapse;
+        width: 0 !important;
+        max-width: 0;
+        min-width: 0;
+        padding: 0;
+        border-width: 0;
+    }
+
+    .cm-monitor-client-grid .rz-grid-table :is(th, td).cm-col-id,
+    .cm-monitor-client-grid .rz-grid-table :is(th, td).cm-col-name {
+        width: 28%;
+    }
+
+    .cm-monitor-client-grid .rz-grid-table :is(th, td).cm-col-bar {
+        width: 44%;
+    }
+
+    .cm-monitor-client-grid .rz-data-grid-data {
+        overflow-x: hidden;
+    }
+}
+
+@container monitor-client (max-width: 432px) {
+    .cm-monitor-client-grid .rz-grid-table :is(th, td).cm-col-name {
+        visibility: collapse;
+        width: 0 !important;
+        max-width: 0;
+        min-width: 0;
+        padding: 0;
+        border-width: 0;
+    }
+
+    .cm-monitor-client-grid .rz-grid-table :is(th, td).cm-col-id {
+        width: 38%;
+    }
+
+    .cm-monitor-client-grid .rz-grid-table :is(th, td).cm-col-bar {
+        width: 62%;
+    }
+}
+
+.cm-monitor-services-grid {
+    container-type: inline-size;
+    container-name: monitor-services;
+}
+
+.cm-monitor-services-grid__service-id {
+    display: none;
+}
+
+@container monitor-services (max-width: 770px) {
+    .cm-monitor-services-grid .rz-grid-table :is(th, td):is(.cm-col-scalar, .cm-col-scalar-wide, .cm-col-status) {
+        visibility: collapse;
+        width: 0 !important;
+        max-width: 0;
+        min-width: 0;
+        padding: 0;
+        border-width: 0;
+    }
+
+    .cm-monitor-services-grid .rz-grid-table :is(th, td).cm-col-label {
+        width: 42%;
+    }
+
+    .cm-monitor-services-grid .rz-grid-table :is(th, td).cm-col-bar {
+        width: 58%;
+    }
+
+    .cm-monitor-services-grid__service-name {
+        display: none;
+    }
+
+    .cm-monitor-services-grid__service-id {
+        display: inline;
+    }
+
+    .cm-monitor-services-grid .rz-data-grid-data {
+        overflow-x: hidden;
+    }
+}
+
+.cm-rate-limit-grid {
+    container-type: inline-size;
+    container-name: rate-limit-grid;
+}
+
+.cm-rate-limit-grid__narrow-only {
+    visibility: collapse;
+    width: 0 !important;
+    max-width: 0;
+    min-width: 0;
+    padding: 0;
+    border-width: 0;
+}
+
+@container rate-limit-grid (max-width: 770px) {
+    .cm-rate-limit-grid__wide-only {
+        visibility: collapse;
+        width: 0 !important;
+        max-width: 0;
+        min-width: 0;
+        padding: 0;
+        border-width: 0;
+    }
+
+    .cm-rate-limit-grid__narrow-only {
+        visibility: visible;
+    }
+
+    .cm-rate-limit-grid .rz-grid-table :is(th, td).cm-col-label {
+        width: 38%;
+    }
+
+    .cm-rate-limit-grid .rz-grid-table :is(th, td).cm-rate-limit-grid__narrow-only {
+        width: 34%;
+    }
+
+    .cm-rate-limit-grid .rz-grid-table :is(th, td).cm-col-actions {
+        width: 28%;
+    }
+
+    .cm-rate-limit-grid .rz-data-grid-data {
+        overflow-x: hidden;
+    }
+}
+
+.cm-entity-list-grid {
+    container-type: inline-size;
+    container-name: entity-list;
+}
+
+@container entity-list (max-width: 770px) {
+    .cm-entity-list-grid .rz-grid-table :is(th, td):is(.cm-col-status, .cm-col-scalar, .cm-col-scalar-wide, .cm-col-scalar-count) {
+        visibility: collapse;
+        width: 0 !important;
+        max-width: 0;
+        min-width: 0;
+        padding: 0;
+        border-width: 0;
+    }
+
+    .cm-entity-list-grid .rz-grid-table :is(th, td).cm-col-id {
+        width: 30%;
+    }
+
+    .cm-entity-list-grid .rz-grid-table :is(th, td).cm-col-name {
+        width: 42%;
+    }
+
+    .cm-entity-list-grid .rz-grid-table :is(th, td):is(.cm-col-actions, .cm-col-actions-wide) {
+        width: 28%;
+    }
+
+    .cm-entity-list-grid .rz-data-grid-data {
+        overflow-x: hidden;
+    }
+}
+
+@container entity-list (max-width: 432px) {
+    .cm-entity-list-grid .rz-grid-table :is(th, td).cm-col-id {
+        visibility: collapse;
+        width: 0 !important;
+        max-width: 0;
+        min-width: 0;
+        padding: 0;
+        border-width: 0;
+    }
+
+    .cm-entity-list-grid .rz-grid-table :is(th, td).cm-col-name {
+        width: 62%;
+    }
+
+    .cm-entity-list-grid .rz-grid-table :is(th, td):is(.cm-col-actions, .cm-col-actions-wide) {
+        width: 38%;
+    }
 }

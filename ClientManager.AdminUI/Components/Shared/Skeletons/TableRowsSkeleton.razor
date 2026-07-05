@@ -1,0 +1,8 @@
+@for (var i = 0; i < RowCount; i++)
+{
+    <SkeletonBlock CssClass="cm-skeleton--table-row" />
+}
+
+@code {
+    [Parameter] public int RowCount { get; set; } = 6;
+}
