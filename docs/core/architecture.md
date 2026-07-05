@@ -78,7 +78,7 @@ Registration is centralized in `StorageServicesRegistration.cs`. The split betwe
 
 Configuration, rate-limit counters, allocation documents, and usage snapshots are routed through four **storage roles** (`Configuration`, `RateLimiting`, `Allocations`, `Statistics`). Each role binds independently to JsonFile, MongoDB, Redis, or Lucene at startup.
 
-That model is documented in depth in the [Persistence guide](../persistence-guide.md). The key architectural point here: **persistence is role-based, not entity-by-entity**. If the `RateLimiting` role points at Redis, every rate-limit counter uses Redis.
+That model is documented in depth in the [Persistence overview](../persistence/index.md). The key architectural point here: **persistence is role-based, not entity-by-entity**. If the `RateLimiting` role points at Redis, every rate-limit counter uses Redis.
 
 ## Service registration pattern
 
@@ -135,4 +135,4 @@ This documentation site is built with [MkDocs](https://www.mkdocs.org/) and the 
 - [Request flow](request-flow.md) — what happens on access checks and resource acquisition
 - [Usage and observability](usage-and-observability.md) — how events become dashboard data
 - [Integration guide](../integration-guide.md) — wire ClientManager in front of your services
-- [Persistence guide](../persistence-guide.md) — configure storage backends per role
+- [Persistence overview](../persistence/index.md) — configure storage backends per role

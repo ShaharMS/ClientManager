@@ -21,7 +21,7 @@
     <File Path="docs/api-overview.md" />
     <File Path="docs/development-and-operations.md" />
     <File Path="docs/integration-guide.md" />
-    <File Path="docs/persistence-guide.md" />
+    <File Path="docs/persistence/index.md" />
     <File Path="docs/requirements.txt" />
     <File Path="mkdocs.yml" />
     <Folder Name="/_Solution Items_/Documentation/Core/">

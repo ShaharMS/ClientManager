@@ -86,6 +86,8 @@ python _scripts/seed_data.py --base-url http://localhost:5062
 
 The seed script mirrors the catalogs defined in `_scripts/configuration.py` (20 services, 10 resource pools, global limits, and several client profiles).
 
+For **catalog-only** seeding without the script, use the seed API (`GET` / `POST` / `PUT` `/api/v1/seed`) or the appsettings `Seed` section — see [Seed system](core/seed-system.md).
+
 Generate live traffic for dashboard testing:
 
 ```powershell
@@ -127,7 +129,7 @@ Read in this order if you are new:
 | 7 | [API overview](api-overview.md) | Endpoint groups beyond the four gatekeeping calls |
 | 8 | [Metrics integration guide](metrics-integration-guide.md) | Prometheus, Grafana, Jaeger, OTLP |
 | 9 | [Development and operations](development-and-operations.md) | Scripts, security, troubleshooting |
-| 10 | [Persistence guide](persistence-guide.md) | Storage roles and provider topologies |
+| 10 | [Persistence overview](persistence/index.md) | Storage roles, provider comparison, and topologies |
 
 The root [README.md](../README.md) duplicates quick-start commands and links back here.
 

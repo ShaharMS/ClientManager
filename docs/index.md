@@ -26,6 +26,7 @@ These guides explain how ClientManager works internally, how to wire it into you
 | [Domain model](core/domain-model.md) | Clients, services, resource pools, rate limits, allocations, and how settings override each other |
 | [Request flow](core/request-flow.md) | Ordered pipelines for access checks and resource acquisition, with HTTP status mapping |
 | [Usage and observability](core/usage-and-observability.md) | Usage recording, statistics API, metrics, and Admin UI dashboards |
+| [Seed system](core/seed-system.md) | Export/import catalog seed data, appsettings `Seed`, and instance copy workflows |
 
 ### Integration and operations
 
@@ -33,7 +34,7 @@ These guides explain how ClientManager works internally, how to wire it into you
 | --- | --- |
 | [Integration guide](integration-guide.md) | Put ClientManager in front of your services with nginx, identify callers, and surface denials (401, 403, 429, …) to end users |
 | [Metrics integration guide](metrics-integration-guide.md) | Plug into Prometheus, Grafana, or OTLP collectors for metrics and traces |
-| [Persistence guide](persistence-guide.md) | How storage roles map to MongoDB, Redis, and file-backed providers |
+| [Persistence overview](persistence/index.md) | How storage roles map to JsonFile, SQLite, MongoDB, Redis, and Lucene |
 
 ## Quick mental model
 

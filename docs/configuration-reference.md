@@ -20,14 +20,15 @@ Binds to `PersistenceOptions`. Controls which storage backend each **role** uses
 | `DefaultRedis` | — | Shared Redis settings when `DefaultProvider` or a role uses `Redis` |
 | `DefaultJsonFile` | `DataDirectory: "./data"` | Shared JsonFile settings |
 | `DefaultLucene` | `IndexDirectory: "./lucene-index"` | Shared Lucene settings |
+| `DefaultSqlite` | `DatabasePath: "./data/statistics.db"` | Shared SQLite settings (Statistics role) |
 | `Roles` | — | Per-role overrides (`Configuration`, `RateLimiting`, `Allocations`, `Statistics`) |
 
 Each `Roles` entry:
 
 | Property | Description |
 | --- | --- |
-| `Provider` | `JsonFile`, `MongoDb`, `Redis`, or `Lucene` |
-| `MongoDb` / `Redis` / `JsonFile` / `Lucene` | Provider-specific options for this role only |
+| `Provider` | `JsonFile`, `MongoDb`, `Redis`, `Lucene`, or `Sqlite` |
+| `MongoDb` / `Redis` / `JsonFile` / `Lucene` / `Sqlite` | Provider-specific options for this role only |
 
 **MongoDB options** (`DefaultMongoDb` or per-role `MongoDb`):
 
@@ -74,6 +75,29 @@ Each `Roles` entry:
 | --- | --- |
 | `IndexDirectory` | `./lucene-index` |
 
+**Sqlite options** (typically `Statistics` role only):
+
+| Property | Default |
+| --- | --- |
+| `DatabasePath` | `./data/statistics.db` |
+
+Example — statistics on SQLite, catalog on JsonFile:
+
+```json
+{
+  "Persistence": {
+    "DefaultProvider": "JsonFile",
+    "DefaultJsonFile": { "DataDirectory": "./data" },
+    "Roles": {
+      "Statistics": {
+        "Provider": "Sqlite",
+        "Sqlite": { "DatabasePath": "./data/statistics.db" }
+      }
+    }
+  }
+}
+```
+
 Example — mixed Redis/Mongo (common production layout):
 
 ```json
@@ -98,7 +122,7 @@ Example — mixed Redis/Mongo (common production layout):
 }
 ```
 
-See the [Persistence guide](persistence-guide.md) for topology guidance.
+See [Persistence overview](persistence/index.md) for topology guidance.
 
 Environment examples:
 
@@ -111,7 +135,7 @@ Persistence__Roles__RateLimiting__Redis__Host=redis
 
 ### `Seed`
 
-Binds to `SeedOptions`. When any list is non-empty, `DataSeedService` runs at startup and creates missing catalog entries (idempotent — existing IDs are skipped).
+Binds to `SeedOptions`. When the `Seed` section is present in configuration, `DataSeedService` runs at startup and creates missing catalog entries (idempotent — existing IDs are skipped).
 
 | Property | Type | Description |
 | --- | --- | --- |
@@ -120,7 +144,11 @@ Binds to `SeedOptions`. When any list is non-empty, `DataSeedService` runs at st
 | `ResourcePools` | `ResourcePool[]` | Pool definitions |
 | `GlobalRateLimits` | `GlobalRateLimit[]` | Global limit rules |
 
-Alternative to `Seed` config: run `python _scripts/seed_data.py` after startup.
+**Generate from a running instance:** `GET /api/v1/seed` returns JSON in this exact shape. Paste it under `Seed` in appsettings (or merge multiple exports by entity `id` before pasting). See [Seed system](core/seed-system.md).
+
+**Runtime import** (does not read appsettings): `POST` or `PUT /api/v1/seed` — see [API overview](api-overview.md#seeding).
+
+Alternatives for demo data: `python _scripts/seed_data.py` (catalog + optional usage history files).
 
 ### `StorageReadCache`
 
@@ -199,6 +227,6 @@ Override the API URL with `--base-url` on seed and traffic scripts.
 
 ## Related reading
 
-- [Persistence guide](persistence-guide.md) — what each role stores and recommended topologies
+- [Persistence overview](persistence/index.md) — what each role stores and recommended topologies
 - [Development and operations](development-and-operations.md) — observability stack and Docker
 - [Getting started](getting-started.md) — first run and seed commands

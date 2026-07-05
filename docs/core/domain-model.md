@@ -189,4 +189,4 @@ erDiagram
 - [Request flow](request-flow.md) — ordered pipeline for access checks and acquisitions
 - [Usage and observability](usage-and-observability.md) — what gets recorded when access is granted or denied
 - [Integration guide](../integration-guide.md) — HTTP status codes and integration checklist
-- [Persistence guide](../persistence-guide.md) — where each category is stored
+- [Persistence overview](../persistence/index.md) — where each category is stored

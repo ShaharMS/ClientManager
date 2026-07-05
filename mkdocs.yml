@@ -32,6 +32,13 @@ nav:
   - Localization: localization.md
   - API overview: api-overview.md
   - Development and operations: development-and-operations.md
+  - Scripts:
+    - Overview: scripts/index.md
+    - seed_data.py: scripts/seed-data.md
+    - traffic_generator.py: scripts/traffic-generator.md
+    - performance_baseline.py: scripts/performance-baseline.md
+    - launch_observability_ui.py: scripts/launch-observability-ui.md
+    - download_images.py: scripts/download-images.md
   - Core concepts:
     - Architecture overview: core/architecture.md
     - Domain model: core/domain-model.md
@@ -39,7 +46,13 @@ nav:
     - Usage and observability: core/usage-and-observability.md
   - Integration guide: integration-guide.md
   - Metrics integration guide: metrics-integration-guide.md
-  - Persistence guide: persistence-guide.md
+  - Persistence:
+    - Overview: persistence/index.md
+    - JsonFile: persistence/json-file.md
+    - SQLite: persistence/sqlite.md
+    - MongoDB: persistence/mongodb.md
+    - Redis: persistence/redis.md
+    - Lucene: persistence/lucene.md
 
 extra_javascript:
   - javascripts/mermaid.min.js

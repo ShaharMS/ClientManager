@@ -28,7 +28,8 @@ Catalog controllers share a common pattern:
 | `POST` | `/search` | `DocumentQuery` (optional) | Filtered, sorted, paginated list |
 | `GET` | `/{id}` | — | Get by ID |
 | `POST` | `/` | Entity | Create (409 if ID exists) |
-| `PUT` | `/{id}` | Entity | Update |
+| `PUT` | `/{id}` | Entity | Full document replace |
+| `PATCH` | `/` | Array of `{ id, …fields }` | Partial update (bulk or single); per-item results |
 | `DELETE` | `/{id}` | — | Delete |
 
 ### Top-level resources
@@ -53,6 +54,64 @@ Under `/api/v1/clients/{id}/`:
 | `global-rate-limit` | `GET`, `PUT`, `DELETE` | Client-wide `globalRateLimit` |
 
 The Admin UI uses these nested routes when editing individual cards on the client editor.
+
+**Bulk client permission edits** can also go through `PATCH /api/v1/clients` with `services` / `resourcePools` / `globalRateLimit` in each patch object (deep-merged by dictionary key).
+
+### PATCH semantics
+
+- Each array item must include `id` plus only the fields to change.
+- Unknown property names fail that item; `createdAt` cannot be patched.
+- Update only — missing IDs return a per-item failure (use `POST` to create).
+- Response body is always a `results` array; HTTP status reflects the batch outcome.
+
+**HTTP status codes**
+
+| Status | When |
+| --- | --- |
+| `200` | Every item in `results` has `status: updated` |
+| `207` | Mixed — at least one `updated` and at least one `failed` |
+| `422` | Every item `failed` (body still contains per-item `error` details) |
+| `400` | Body missing or not a JSON array |
+| `503` | Storage unavailable (whole request fails) |
+
+**Per-item failures** — inside `results`, failed items include `error` (`ProblemResponse`):
+
+| `error.status` | Typical cause |
+| --- | --- |
+| `404` | No entity with that `id` |
+| `400` | Unknown property, missing `id`, or non-patchable field |
+| `500` | Unexpected error applying that item |
+
+Example:
+
+```json
+PATCH /api/v1/services
+[
+  { "id": "billing-api", "name": "Billing API" }
+]
+```
+
+## Seeding
+
+Base path: `/api/v1/seed` (Swagger tag: **Seeding**). Exports and imports catalog data in the `SeedOptions` shape (compatible with appsettings `Seed`).
+
+| Method | Path | Query | Body | Purpose |
+| --- | --- | --- | --- | --- |
+| `GET` | `/api/v1/seed` | `include` (optional) | — | Export from runtime storage |
+| `POST` | `/api/v1/seed` | `include` (optional) | `SeedOptions` | Wholesale replace included collections |
+| `PUT` | `/api/v1/seed` | `include`, `strategy=skip\|replace` | `SeedOptions` | Import per ID (`skip` = create missing; `replace` = upsert) |
+
+**HTTP status codes (seed endpoints)**
+
+| Status | When |
+| --- | --- |
+| `200` | Export or import succeeded |
+| `400` | Unknown `include` collection, invalid `strategy` (PUT only), or missing/malformed body (POST/PUT) |
+| `503` | Storage unavailable |
+
+Unlike PATCH, seed import does not return per-item failures in a `200` body — a storage or validation error fails the entire request.
+
+See [Seed system](core/seed-system.md) for workflows (instance copy, appsettings saturation, combining exports).
 
 ## Statistics
 

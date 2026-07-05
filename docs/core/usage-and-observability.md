@@ -127,7 +127,7 @@ When a tenant reports unexpected `429` responses, check both per-client limits a
 
 ## Helper scripts
 
-The repository includes Python utilities for local demos:
+See **[Scripts](../scripts/index.md)** for full documentation. Quick start:
 
 ```powershell
 # Seed catalog configuration
@@ -145,4 +145,4 @@ Stop the traffic generator before shutting down the API so buffered usage events
 - [Request flow](request-flow.md) — when each event type is emitted
 - [Domain model](domain-model.md) — targets and limits that shape usage patterns
 - [Architecture overview](architecture.md) — background workers and observability endpoints
-- [Persistence guide](../persistence-guide.md) — `Statistics` storage role and snapshot layout
+- [Persistence overview](../persistence/index.md) — `Statistics` storage role and snapshot layout

@@ -139,7 +139,44 @@ These `Terms.*` keys must stay consistent wherever the concept appears (badges, 
 
 Reference `TermKeys.cs` in code instead of duplicating string literals.
 
-## Formatting
+## Hebrew terminology (`he-IL`)
+
+Hebrew copy uses **natural operator phrasing** and a fixed product glossary. English resx keys are unchanged; only `SharedResources.he-IL.resx` values differ.
+
+### Product glossary
+
+| English concept | Hebrew | Notes |
+| --- | --- | --- |
+| Resource pool / pool | **משאב** / **משאבים** | Not מאגר / מאגר משאבים |
+| Slot / max slots | **הקצאה** / **מקסימום הקצאות** | Not משבצות |
+| Pool acquisition | **הקצאות למשאב** | Stat cards, throughput to a resource |
+| Out of slots | **הקצאות למשאב מלאות** | Badge; use **המשאב מלא** only when space is tight |
+| Rate limit | **מגבלת קצב** / **מגבלות קצב** | Not הגבלת קצב; policy wording |
+| Throttled (denial) | **מגבלת קצב** | Short badge label |
+| Quota | **מכסה** / **מכסות** | Applies to a **משאב** |
+| Cap (policy) | **מגבלה** | Chart numeric ceiling may use **תקרה** when compact |
+| Strategy (algorithm) | **שיטה** / **שיטת הגבלה** | Dropdown vs column header |
+| Unauthenticated | **ללא אימות** | Security copy |
+| Save / Add / Remove (buttons) | **שמור / הוסף / הסר** | Imperative, not שמירה / הוספה |
+
+### `Terms.*` Hebrew equivalents
+
+| Key | English | Hebrew |
+| --- | --- | --- |
+| `Terms.Denied.Throttled` | Throttled | מגבלת קצב |
+| `Terms.Denied.OutOfSlots` | Out of slots | הקצאות למשאב מלאות |
+| `Terms.Denied.Blocked` | Blocked | חסום |
+| `Terms.Denied.Unauthenticated` | Unauthenticated | ללא אימות |
+| `Terms.Entity.RateLimits` | Rate limits | מגבלות קצב |
+| `Terms.Entity.Quotas` | Quotas | מכסות |
+| `Terms.Entity.MaxSlots` | Max Slots | מקסימום הקצאות |
+| `Terms.Cap.AccessCap` | Access Cap | מגבלת גישה |
+| `Terms.Cap.RateLimitCap` | Rate Limit Cap | מגבלת קצב |
+| `Terms.State.NearLimit` | Near limit | קרוב למגבלה |
+| `Terms.State.Available` | Available | זמין |
+
+When auditing Hebrew, check every string against this table and the product glossary above.
+
 
 Dates and numbers respect `CultureInfo.CurrentCulture` where explicitly wired (chart time ranges, preset labels). Invariant formatting is used only when a stable machine-readable value is required (e.g. API payloads, internal keys).
 

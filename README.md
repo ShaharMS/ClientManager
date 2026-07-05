@@ -194,7 +194,7 @@ Redis for hot runtime state, MongoDB for the rest:
 
 For certificate-backed TLS/mTLS, set `UseTls` to `true` (this also enables SSL and applies configured certificate settings). Use `useSsl` when you only need to toggle SSL on/off.
 
-Using different Redis `DatabaseIndex` values for different roles is supported. For a full explanation of what each backend actually stores, how all-Redis behaves, and how mixed Redis/Mongo or Redis/NFS splits behave, see [docs/persistence-guide.md](docs/persistence-guide.md).
+Using different Redis `DatabaseIndex` values for different roles is supported. For a full explanation of what each backend actually stores, how all-Redis behaves, and how mixed Redis/Mongo or Redis/NFS splits behave, see [docs/persistence/index.md](docs/persistence/index.md).
 
 ## Deployment guidance
 
@@ -247,6 +247,6 @@ Mermaid and fonts are bundled for offline/airgapped doc serving (vendored `docs/
 - [Development and operations](docs/development-and-operations.md) — scripts, security, troubleshooting
 - [Metrics integration guide](docs/metrics-integration-guide.md) — Prometheus, Grafana, Jaeger, OTLP scrape setup
 - [Integration guide](docs/integration-guide.md) — nginx example, client identification, propagating denials
-- [Persistence guide](docs/persistence-guide.md)
+- [Persistence overview](docs/persistence/index.md)
 - [DataAccess notes](ClientManager.DataAccess/README.md)
 - [License](LICENSE)

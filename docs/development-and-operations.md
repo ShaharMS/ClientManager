@@ -34,7 +34,11 @@ If catalogs look empty after restart, run:
 python _scripts/seed_data.py --base-url http://localhost:5062
 ```
 
-Or configure the `Seed` section — see [Configuration reference](configuration-reference.md).
+Or configure the `Seed` section — see [Configuration reference](configuration-reference.md). To copy catalog from another running instance, use `GET` then `PUT`/`POST` `/api/v1/seed` — see [Seed system](core/seed-system.md).
+
+### Bulk catalog edits
+
+Use `PATCH /api/v1/{resource}` with a JSON array of `{ "id", …partial fields }` for surgical or bulk partial updates. Use seed import for full collection copy/mirror. See [API overview](api-overview.md).
 
 ### Hot-path cache behavior
 
@@ -42,16 +46,18 @@ Configuration reads on the access-check path use `IStorageReadCache` (default ca
 
 ## Python scripts (`_scripts/`)
 
+Full per-script documentation: **[Scripts](scripts/index.md)**.
+
 | Script | Purpose |
 | --- | --- |
-| `seed_data.py` | POST demo clients, services, pools, and global limits to the catalog API |
-| `traffic_generator.py` | Continuous random access checks and acquisitions for dashboard demos |
-| `download_images.py` | Pull dependency images and/or build project Docker images |
-| `launch_observability_ui.py` | Start local Grafana, Prometheus, and Jaeger; wire OTLP |
-| `performance_baseline.py` | Deterministic load profile + latency report for before/after comparisons |
-| `configuration.py` | Shared catalogs, URLs, and paths used by the scripts above |
+| `seed_data.py` | POST demo catalog to the API; optional historical usage files |
+| `traffic_generator.py` | Continuous random access checks and acquisitions |
+| `performance_baseline.py` | Deterministic load profile + latency report |
+| `launch_observability_ui.py` | Local Grafana, Prometheus, Jaeger |
+| `download_images.py` | Pull/build Docker images |
+| `configuration.py` | Shared catalogs, URLs, paths |
 
-All scripts accept `--base-url` where relevant (default `http://localhost:5062`).
+All API-facing scripts accept `--base-url` (default `http://localhost:5062`).
 
 ### Observability stack
 
@@ -87,7 +93,7 @@ There is no automated test suite or CI workflow in the repository today. Validat
 
 Production-oriented deployments should:
 
-- Set `Persistence` to MongoDB and/or Redis (see [Persistence guide](persistence-guide.md))
+- Set `Persistence` to MongoDB and/or Redis (see [Persistence overview](persistence/index.md))
 - Mount secrets via environment variables, not committed JSON
 - Place API and Admin UI behind TLS termination
 - Restrict network access to the API
@@ -166,6 +172,6 @@ The project is licensed under **GNU GPL v3** (`LICENSE`). Relevant if you distri
 ## Related reading
 
 - [Configuration reference](configuration-reference.md)
-- [Persistence guide](persistence-guide.md)
+- [Persistence overview](persistence/index.md)
 - [Getting started](getting-started.md)
 - [Usage and observability](core/usage-and-observability.md)

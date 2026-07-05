@@ -349,5 +349,5 @@ The contract is the same everywhere: supply the required query parameters, honor
 
 - [Domain model](core/domain-model.md) — clients, services, and rate-limit configuration
 - [Request flow](core/request-flow.md) — access check pipeline and HTTP status mapping
-- [Persistence guide](persistence-guide.md) — configure shared Redis/Mongo for multi-instance deployments
+- [Persistence overview](persistence/index.md) — configure shared Redis/Mongo for multi-instance deployments
 - Repository `README.md` — run the API locally and seed demo data

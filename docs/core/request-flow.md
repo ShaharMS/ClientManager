@@ -215,4 +215,4 @@ Reads on the hot path use `IStorageReadCache` for catalog entities and global li
 - [Domain model](domain-model.md) — configuration that drives each gate
 - [Usage and observability](usage-and-observability.md) — events recorded along these paths
 - [Integration guide](../integration-guide.md) — edge integration and status reference
-- [Persistence guide](../persistence-guide.md) — where counters and allocations live
+- [Persistence overview](../persistence/index.md) — where counters and allocations live
