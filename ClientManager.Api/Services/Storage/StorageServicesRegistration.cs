@@ -59,6 +59,7 @@ public static class StorageServicesRegistration
         services.AddScoped<IServiceCatalogService, ServiceCatalogService>();
         services.AddScoped<IResourcePoolCatalogService, ResourcePoolCatalogService>();
         services.AddScoped<IGlobalRateLimitCatalogService, GlobalRateLimitCatalogService>();
+        services.AddScoped<ISeedCatalogService, SeedCatalogService>();
         RegisterBackgroundServices(services);
         RegisterSeeding(services, configuration);
         services.Configure<UsageTrackingOptions>(

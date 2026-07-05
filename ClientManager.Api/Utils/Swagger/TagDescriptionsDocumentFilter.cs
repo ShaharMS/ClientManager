@@ -19,6 +19,7 @@ public class TagDescriptionsDocumentFilter : IDocumentFilter
         ["Resource Allocation"] = "Operational endpoints for acquiring and releasing resource pool slots.",
         ["Resource Pools"] = "Manages system-wide resource pool definitions.",
         ["Services"] = "Manages system-wide service definitions.",
+        ["Seeding"] = "Export and import catalog seed data for copying permissions between instances or generating appsettings Seed configuration.",
         ["Statistics"] = "Provides human-readable statistics about system state, including client counts, service usage, and resource pool utilization."
     };
 
