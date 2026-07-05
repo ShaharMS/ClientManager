@@ -160,6 +160,30 @@ public class MongoDBDocumentStore(IMongoDatabase database) : IDocumentStore
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyDictionary<string, long>> GetCountersByPrefixAsync(
+        string keyPrefix,
+        CancellationToken cancellationToken = default)
+    {
+        var filter = Builders<BsonDocument>.Filter.Regex(
+            "_id",
+            new BsonRegularExpression($"^{System.Text.RegularExpressions.Regex.Escape(keyPrefix)}"));
+        var docs = await CounterCollection.Find(filter).ToListAsync(cancellationToken);
+        var result = new Dictionary<string, long>(docs.Count, StringComparer.Ordinal);
+
+        foreach (var document in docs)
+        {
+            var key = document["_id"].AsString;
+            var count = GetCounterCount(document);
+            if (count > 0)
+            {
+                result[key] = count;
+            }
+        }
+
+        return result;
+    }
+
+    /// <inheritdoc />
     public async Task<long> DecrementCounterAsync(string key, CancellationToken cancellationToken = default)
     {
         return await DecrementCounterByAsync(key, 1, cancellationToken);

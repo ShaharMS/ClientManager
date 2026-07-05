@@ -99,6 +99,11 @@ public sealed class InstrumentedDocumentStore : IDocumentStore
         CancellationToken cancellationToken = default) =>
         TraceAsync(CounterCollection, "counter_get_many", () => _inner.GetManyCountersAsync(keys, cancellationToken), cancellationToken);
 
+    public Task<IReadOnlyDictionary<string, long>> GetCountersByPrefixAsync(
+        string keyPrefix,
+        CancellationToken cancellationToken = default) =>
+        TraceAsync(CounterCollection, "counter_get_by_prefix", () => _inner.GetCountersByPrefixAsync(keyPrefix, cancellationToken), cancellationToken);
+
     public Task SetCounterAsync(string key, long value, TimeSpan window, CancellationToken cancellationToken = default) =>
         TraceAsync(CounterCollection, "counter_set", () => _inner.SetCounterAsync(key, value, window, cancellationToken), cancellationToken);
 

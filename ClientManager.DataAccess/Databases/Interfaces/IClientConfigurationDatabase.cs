@@ -52,6 +52,11 @@ public interface IClientConfigurationDatabase
     Task<SearchResult<ClientConfiguration>> SearchAsync(DocumentQuery query, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Counts client configurations matching the query without materializing full result pages.
+    /// </summary>
+    Task<long> CountAsync(DocumentQuery query, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Creates a new client configuration.
     /// </summary>
     /// <param name="configuration">The client configuration to create.</param>

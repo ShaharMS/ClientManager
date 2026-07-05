@@ -1,5 +1,8 @@
+using System.Text.Json;
 using ClientManager.Api.Services.Interfaces;
+using ClientManager.Api.Utils;
 using ClientManager.Shared.Models.Problems;
+using ClientManager.Shared.Models.Responses;
 using ClientManager.Shared.Models.Search;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -88,6 +91,32 @@ public abstract class CatalogCrudControllerBase<TEntity>(ICatalogCrudService<TEn
     {
         var updated = await catalog.UpdateAsync(id, entity, cancellationToken);
         return Ok(updated);
+    }
+
+    /// <summary>
+    /// Partially updates one or more catalog entries. Each array item must include <c>id</c>
+    /// and only the fields to change.
+    /// </summary>
+    /// <param name="patches">Patch objects keyed by entity <c>id</c>.</param>
+    /// <param name="cancellationToken">Token used to abort the patch before it completes.</param>
+    /// <returns>Per-item success or failure results.</returns>
+    /// <response code="200">All patch items were applied successfully.</response>
+    /// <response code="207">Mixed outcome — some items updated, some failed (see <c>results</c>).</response>
+    /// <response code="422">Every patch item failed (see <c>results</c>).</response>
+    /// <response code="400">The request body is missing or is not a JSON array.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
+    [HttpPatch]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status207MultiStatus)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> Patch(
+        [FromBody] IReadOnlyList<JsonElement> patches,
+        CancellationToken cancellationToken)
+    {
+        var results = await catalog.PatchAsync(patches, cancellationToken);
+        return BulkPatchHttpResult.FromResults(results);
     }
 
     /// <summary>

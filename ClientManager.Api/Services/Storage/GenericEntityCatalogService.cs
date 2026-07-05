@@ -1,7 +1,9 @@
 using System.Text.Json;
 using ClientManager.DataAccess.Repositories.Interfaces;
+using ClientManager.Shared.Models.Responses;
 using ClientManager.Shared.Models.Search;
 using ClientManager.Api.Services.Interfaces;
+using ClientManager.Api.Utils;
 
 namespace ClientManager.Api.Services.Storage;
 
@@ -65,6 +67,67 @@ public abstract class GenericEntityCatalogService<TEntity>(
 
         await Repository.DeleteAsync(id, cancellationToken);
         Cache.InvalidateCatalog();
+    }
+
+    public virtual async Task<IReadOnlyList<PatchItemResult<TEntity>>> PatchAsync(
+        IReadOnlyList<JsonElement> patches,
+        CancellationToken cancellationToken)
+    {
+        var results = new List<PatchItemResult<TEntity>>(patches.Count);
+        var anyUpdated = false;
+
+        foreach (var patch in patches)
+        {
+            string? id = null;
+            try
+            {
+                if (patch.ValueKind != JsonValueKind.Object
+                    || !patch.TryGetProperty("id", out var idProperty)
+                    || idProperty.ValueKind != JsonValueKind.String)
+                {
+                    throw new Models.Exceptions.BadRequestException("Each patch item must include a non-empty \"id\" property.");
+                }
+
+                id = idProperty.GetString();
+                if (string.IsNullOrWhiteSpace(id))
+                {
+                    throw new Models.Exceptions.BadRequestException("Each patch item must include a non-empty \"id\" property.");
+                }
+
+                var existing = await TryGetByIdAsync(id, cancellationToken);
+                if (existing is null)
+                {
+                    throw NotFound(id);
+                }
+
+                var merged = EntityPatchMerger.Merge(existing, patch);
+                var updated = ApplyId(merged, id);
+                await Repository.UpdateAsync(updated, cancellationToken);
+                anyUpdated = true;
+                results.Add(new PatchItemResult<TEntity>
+                {
+                    Id = id,
+                    Status = PatchItemStatus.Updated,
+                    Entity = updated
+                });
+            }
+            catch (Exception exception)
+            {
+                results.Add(new PatchItemResult<TEntity>
+                {
+                    Id = id ?? string.Empty,
+                    Status = PatchItemStatus.Failed,
+                    Error = PatchResultMapper.ToProblem(exception)
+                });
+            }
+        }
+
+        if (anyUpdated)
+        {
+            Cache.InvalidateCatalog();
+        }
+
+        return results;
     }
 
     private Task<TEntity?> TryGetByIdAsync(string id, CancellationToken cancellationToken) =>

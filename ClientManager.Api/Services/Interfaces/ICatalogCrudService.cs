@@ -1,3 +1,5 @@
+using System.Text.Json;
+using ClientManager.Shared.Models.Responses;
 using ClientManager.Shared.Models.Search;
 
 namespace ClientManager.Api.Services.Interfaces;
@@ -17,4 +19,8 @@ public interface ICatalogCrudService<TEntity> where TEntity : class
     Task<TEntity> UpdateAsync(string id, TEntity entity, CancellationToken cancellationToken = default);
 
     Task DeleteAsync(string id, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<PatchItemResult<TEntity>>> PatchAsync(
+        IReadOnlyList<JsonElement> patches,
+        CancellationToken cancellationToken = default);
 }

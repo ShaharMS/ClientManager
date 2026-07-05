@@ -28,6 +28,10 @@ public class ClientConfigurationDatabase(IDocumentStore store) : IClientConfigur
         store.SearchAsync<ClientConfiguration>(Collection, query, cancellationToken);
 
     /// <inheritdoc />
+    public Task<long> CountAsync(DocumentQuery query, CancellationToken cancellationToken = default) =>
+        store.CountAsync<ClientConfiguration>(Collection, query, cancellationToken);
+
+    /// <inheritdoc />
     public Task CreateAsync(ClientConfiguration configuration, CancellationToken cancellationToken = default) =>
         store.SetAsync(Collection, configuration.Id, configuration, cancellationToken);
 

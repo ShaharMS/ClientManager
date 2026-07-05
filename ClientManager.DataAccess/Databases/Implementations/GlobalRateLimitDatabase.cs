@@ -44,6 +44,10 @@ public class GlobalRateLimitDatabase(IDocumentStore store) : IGlobalRateLimitDat
         _repository.SearchAsync(query, cancellationToken);
 
     /// <inheritdoc />
+    public Task<long> CountAsync(DocumentQuery query, CancellationToken cancellationToken = default) =>
+        _repository.CountAsync(query, cancellationToken);
+
+    /// <inheritdoc />
     public async Task<GlobalRateLimit?> GetByTargetAsync(string targetId, TargetType targetType, CancellationToken cancellationToken = default)
     {
         var query = BuildTargetQuery(targetType, targetId).WithPagination(0, 1);

@@ -18,6 +18,7 @@ public class JsonFileDocumentStore : IDocumentStore
 {
     private const int MaxAtomicWriteAttempts = 6;
     private const int AtomicWriteRetryBaseDelayMilliseconds = 25;
+    private const int MtimeReloadDebounceMilliseconds = 400;
 
     private readonly string _dataDirectory;
     private readonly SharedStoreState _state;
@@ -245,7 +246,7 @@ public class JsonFileDocumentStore : IDocumentStore
         return Task.FromResult<IReadOnlyDictionary<string, long>>(result);
     }
 
-    /// <summary>Returns counters with non-zero values whose keys start with <paramref name="keyPrefix"/>.</summary>
+    /// <inheritdoc />
     public Task<IReadOnlyDictionary<string, long>> GetCountersByPrefixAsync(
         string keyPrefix,
         CancellationToken cancellationToken = default)
@@ -364,6 +365,39 @@ public class JsonFileDocumentStore : IDocumentStore
         string collection, DocumentQuery query,
         CancellationToken cancellationToken = default) where T : class
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (string.IsNullOrEmpty(query.TextSearch) &&
+            query.Filters.Count > 0 &&
+            query.Filters.All(filter => filter.Operator == FilterOperator.Equals))
+        {
+            var dict = GetOrLoadCollection(collection);
+            var matches = new List<T>(Math.Min(dict.Count, 256));
+            foreach (var element in dict.Values)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (!query.Filters.All(filter => JsonElementMatchesFilter(element, filter)))
+                {
+                    continue;
+                }
+
+                var item = element.Deserialize<T>(JsonOptions);
+                if (item is not null)
+                {
+                    matches.Add(item);
+                }
+            }
+
+            return InMemoryQueryEvaluator.Apply(
+                matches,
+                new DocumentQuery
+                {
+                    Sort = query.Sort,
+                    Skip = query.Skip,
+                    Take = query.Take
+                });
+        }
+
         var all = await GetAllAsync<T>(collection, cancellationToken);
         return InMemoryQueryEvaluator.Apply(all, query);
     }
@@ -377,22 +411,107 @@ public class JsonFileDocumentStore : IDocumentStore
         string collection, DocumentQuery query,
         CancellationToken cancellationToken = default) where T : class
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (IsCountOnlyQuery(query))
+        {
+            var dict = GetOrLoadCollection(collection);
+            if (query.Filters.Count == 0 && string.IsNullOrEmpty(query.TextSearch))
+            {
+                return dict.Count;
+            }
+
+            if (string.IsNullOrEmpty(query.TextSearch) && query.Filters.Count == 1)
+            {
+                return CountBySingleJsonFilter(dict, query.Filters[0], cancellationToken);
+            }
+        }
+
         var result = await SearchAsync<T>(collection, query, cancellationToken);
         return result.TotalCount;
     }
 
+    private static bool IsCountOnlyQuery(DocumentQuery query) =>
+        query.Skip is null or 0 && query.Take is null && query.Sort is null;
+
+    private static long CountBySingleJsonFilter(
+        ConcurrentDictionary<string, JsonElement> dict,
+        FilterClause filter,
+        CancellationToken cancellationToken)
+    {
+        long count = 0;
+        foreach (var element in dict.Values)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (JsonElementMatchesFilter(element, filter))
+            {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    private static bool JsonElementMatchesFilter(JsonElement element, FilterClause filter)
+    {
+        if (!element.TryGetProperty(filter.FieldName, out var property))
+        {
+            return false;
+        }
+
+        return filter.Operator switch
+        {
+            FilterOperator.Equals => JsonElementEquals(property, filter.Value),
+            _ => false
+        };
+    }
+
+    private static bool JsonElementEquals(JsonElement property, object value) => value switch
+    {
+        bool boolValue when property.ValueKind == JsonValueKind.True || property.ValueKind == JsonValueKind.False
+            => property.GetBoolean() == boolValue,
+        string stringValue when property.ValueKind == JsonValueKind.String
+            => string.Equals(property.GetString(), stringValue, StringComparison.Ordinal),
+        int intValue when property.ValueKind == JsonValueKind.Number
+            => property.TryGetInt32(out var number) && number == intValue,
+        _ => false
+    };
+
     private ConcurrentDictionary<string, JsonElement> GetOrLoadCollection(string collection)
     {
-        return _state.CollectionCache.GetOrAdd(collection, key =>
-        {
-            var path = CollectionPath(key);
-            if (!File.Exists(path))
-                return new ConcurrentDictionary<string, JsonElement>();
+        var path = CollectionPath(collection);
+        var fileMtime = File.Exists(path) ? File.GetLastWriteTimeUtc(path) : DateTime.MinValue;
 
-            var json = File.ReadAllText(path);
-            var dict = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json, JsonOptions) ?? [];
-            return new ConcurrentDictionary<string, JsonElement>(dict);
-        });
+        if (_state.CollectionLoadTimes.TryGetValue(collection, out var loadedAt)
+            && fileMtime > loadedAt
+            && ShouldReloadAfterMtimeChange(fileMtime)
+            && _state.CollectionCache.TryRemove(collection, out _))
+        {
+            _state.CollectionLoadTimes.TryRemove(collection, out _);
+        }
+
+        return _state.CollectionCache.GetOrAdd(collection, key => LoadCollectionFromDisk(key, path));
+    }
+
+    private static bool ShouldReloadAfterMtimeChange(DateTime fileModifiedUtc) =>
+        (DateTime.UtcNow - fileModifiedUtc).TotalMilliseconds >= MtimeReloadDebounceMilliseconds;
+
+    private ConcurrentDictionary<string, JsonElement> LoadCollectionFromDisk(string collection, string basePath)
+    {
+        Dictionary<string, JsonElement> dict;
+        if (!File.Exists(basePath))
+        {
+            dict = [];
+        }
+        else
+        {
+            var json = File.ReadAllText(basePath);
+            dict = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json, JsonOptions) ?? [];
+        }
+
+        var fileMtime = File.Exists(basePath) ? File.GetLastWriteTimeUtc(basePath) : DateTime.MinValue;
+        _state.CollectionLoadTimes[collection] = fileMtime;
+        return new ConcurrentDictionary<string, JsonElement>(dict);
     }
 
     private ConcurrentDictionary<string, CounterEntry> GetOrLoadCounters()
@@ -557,8 +676,10 @@ public class JsonFileDocumentStore : IDocumentStore
 
     private async Task PersistCollectionAsync(string collection, ConcurrentDictionary<string, JsonElement> dict, CancellationToken cancellationToken)
     {
+        var path = CollectionPath(collection);
         var json = JsonSerializer.Serialize(dict, JsonOptions);
-        await AtomicWriteAsync(CollectionPath(collection), json, cancellationToken);
+        await AtomicWriteAsync(path, json, cancellationToken);
+        _state.CollectionLoadTimes[collection] = File.GetLastWriteTimeUtc(path);
     }
 
     private async Task PersistCountersAsync(ConcurrentDictionary<string, CounterEntry> counters, CancellationToken cancellationToken)
@@ -633,6 +754,7 @@ public class JsonFileDocumentStore : IDocumentStore
         public SemaphoreSlim CounterWriteLock { get; } = new(1, 1);
         public object CounterCacheLock { get; } = new();
         public ConcurrentDictionary<string, ConcurrentDictionary<string, JsonElement>> CollectionCache { get; } = new();
+        public ConcurrentDictionary<string, DateTime> CollectionLoadTimes { get; } = new(StringComparer.Ordinal);
         public ConcurrentDictionary<string, SemaphoreSlim> CollectionWriteLocks { get; } = new(StringComparer.Ordinal);
         public ConcurrentDictionary<string, CounterEntry>? CounterCache { get; set; }
     }

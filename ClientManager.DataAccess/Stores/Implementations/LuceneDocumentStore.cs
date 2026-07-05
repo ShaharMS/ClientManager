@@ -341,6 +341,43 @@ public class LuceneDocumentStore : IDocumentStore, IDisposable
     }
 
     /// <inheritdoc />
+    public Task<IReadOnlyDictionary<string, long>> GetCountersByPrefixAsync(
+        string keyPrefix,
+        CancellationToken cancellationToken = default)
+    {
+        _searcherManager.MaybeRefreshBlocking();
+        var searcher = _searcherManager.Acquire();
+        try
+        {
+            var query = new BooleanQuery
+            {
+                { new TermQuery(new Term(CollectionField, CountersCollection)), Occur.MUST },
+                { new PrefixQuery(new Term(IdField, keyPrefix)), Occur.MUST }
+            };
+
+            var result = new Dictionary<string, long>(StringComparer.Ordinal);
+            var topDocs = searcher.Search(query, int.MaxValue);
+            foreach (var scoreDoc in topDocs.ScoreDocs)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var document = searcher.Doc(scoreDoc.Doc);
+                var key = document.Get(IdField);
+                var count = GetCounterCount(document);
+                if (count > 0)
+                {
+                    result[key] = count;
+                }
+            }
+
+            return Task.FromResult<IReadOnlyDictionary<string, long>>(result);
+        }
+        finally
+        {
+            _searcherManager.Release(searcher);
+        }
+    }
+
+    /// <inheritdoc />
     public async Task SetCounterAsync(string key, long value, TimeSpan window, CancellationToken cancellationToken = default)
     {
         await WaitForWriteLockAsync(cancellationToken);

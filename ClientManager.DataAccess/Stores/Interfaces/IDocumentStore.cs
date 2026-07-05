@@ -183,6 +183,13 @@ public interface IDocumentStore
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Gets non-zero counters whose keys start with <paramref name="keyPrefix"/>.
+    /// </summary>
+    Task<IReadOnlyDictionary<string, long>> GetCountersByPrefixAsync(
+        string keyPrefix,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Sets a counter to the specified value with an expiry window.
     /// </summary>
     /// <param name="key">The counter key.</param>

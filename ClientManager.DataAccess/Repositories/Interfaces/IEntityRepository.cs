@@ -62,4 +62,9 @@ public interface IEntityRepository<T> where T : class
     /// <param name="cancellationToken">Cancels the search if the store is unresponsive.</param>
     /// <returns>The matching entities and total count (ignoring pagination).</returns>
     Task<SearchResult<T>> SearchAsync(DocumentQuery query, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Counts entities matching the query without materializing full result pages.
+    /// </summary>
+    Task<long> CountAsync(DocumentQuery query, CancellationToken cancellationToken = default);
 }

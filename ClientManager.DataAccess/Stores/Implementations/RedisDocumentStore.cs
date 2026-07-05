@@ -392,6 +392,52 @@ return {1, remaining, 0}
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyDictionary<string, long>> GetCountersByPrefixAsync(
+        string keyPrefix,
+        CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithRedisContextAsync<IReadOnlyDictionary<string, long>>(
+            "counter_get_by_prefix",
+            async () =>
+            {
+                var result = new Dictionary<string, long>(StringComparer.Ordinal);
+                var pattern = PrefixKey($"{CounterPrefix}{keyPrefix}*");
+
+                foreach (var endpoint in _redis.GetEndPoints())
+                {
+                    var server = _redis.GetServer(endpoint);
+                    await foreach (var redisKey in server.KeysAsync(database: _databaseIndex, pattern: pattern))
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        var value = await Database.StringGetAsync(redisKey);
+                        if (value.IsNullOrEmpty)
+                        {
+                            continue;
+                        }
+
+                        var count = (long)value;
+                        if (count <= 0)
+                        {
+                            continue;
+                        }
+
+                        var logicalKey = redisKey.ToString();
+                        var prefixedCounter = PrefixKey(CounterPrefix);
+                        if (logicalKey.StartsWith(prefixedCounter, StringComparison.Ordinal))
+                        {
+                            logicalKey = logicalKey[prefixedCounter.Length..];
+                        }
+
+                        result[logicalKey] = count;
+                    }
+                }
+
+                return result;
+            },
+            ("Prefix", keyPrefix));
+    }
+
+    /// <inheritdoc />
     public async Task<long> DecrementCounterAsync(string key, CancellationToken cancellationToken = default)
     {
         return await ExecuteWithRedisContextAsync(

@@ -1,3 +1,4 @@
+using System.Text.Json;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Requests;
 using ClientManager.Shared.Models.Responses;
@@ -19,6 +20,10 @@ public interface IClientConfigurationCatalogService
     Task<ClientConfiguration> UpdateAsync(string clientId, ClientConfiguration configuration, CancellationToken cancellationToken = default);
 
     Task DeleteAsync(string clientId, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<PatchItemResult<ClientConfiguration>>> PatchAsync(
+        IReadOnlyList<JsonElement> patches,
+        CancellationToken cancellationToken = default);
 
     Task<PagedResponse<KeyedEntry<ServiceAccessSettings>>> GetServicesAsync(string clientId, PagedRequest paging, CancellationToken cancellationToken = default);
 

@@ -1,7 +1,7 @@
 using System.Text.Json;
 using ClientManager.Api.Models.Exceptions;
 using ClientManager.Api.Services.Interfaces;
-using ClientManager.Api.Services.Storage;
+using ClientManager.Api.Utils;
 using ClientManager.Api.Utils.Extensions;
 using ClientManager.DataAccess.Databases.Interfaces;
 using ClientManager.Shared.Models.Entities;
@@ -51,6 +51,67 @@ public class ClientConfigurationCatalogService(
     {
         _ = await GetByIdAsync(clientId, cancellationToken);
         await InvalidateAfterAsync(database.DeleteAsync(clientId, cancellationToken));
+    }
+
+    public async Task<IReadOnlyList<PatchItemResult<ClientConfiguration>>> PatchAsync(
+        IReadOnlyList<JsonElement> patches,
+        CancellationToken cancellationToken = default)
+    {
+        var results = new List<PatchItemResult<ClientConfiguration>>(patches.Count);
+        var anyUpdated = false;
+
+        foreach (var patch in patches)
+        {
+            string? id = null;
+            try
+            {
+                if (patch.ValueKind != JsonValueKind.Object
+                    || !patch.TryGetProperty("id", out var idProperty)
+                    || idProperty.ValueKind != JsonValueKind.String)
+                {
+                    throw new BadRequestException("Each patch item must include a non-empty \"id\" property.");
+                }
+
+                id = idProperty.GetString();
+                if (string.IsNullOrWhiteSpace(id))
+                {
+                    throw new BadRequestException("Each patch item must include a non-empty \"id\" property.");
+                }
+
+                var existing = await TryGetByIdAsync(id, cancellationToken);
+                if (existing is null)
+                {
+                    throw DomainErrors.Client(id);
+                }
+
+                var merged = EntityPatchMerger.Merge(existing, patch);
+                var updated = merged with { Id = id };
+                await database.UpdateAsync(updated, cancellationToken);
+                anyUpdated = true;
+                results.Add(new PatchItemResult<ClientConfiguration>
+                {
+                    Id = id,
+                    Status = PatchItemStatus.Updated,
+                    Entity = updated
+                });
+            }
+            catch (Exception exception)
+            {
+                results.Add(new PatchItemResult<ClientConfiguration>
+                {
+                    Id = id ?? string.Empty,
+                    Status = PatchItemStatus.Failed,
+                    Error = PatchResultMapper.ToProblem(exception)
+                });
+            }
+        }
+
+        if (anyUpdated)
+        {
+            cache.InvalidateCatalog();
+        }
+
+        return results;
     }
 
     public async Task<PagedResponse<KeyedEntry<ServiceAccessSettings>>> GetServicesAsync(

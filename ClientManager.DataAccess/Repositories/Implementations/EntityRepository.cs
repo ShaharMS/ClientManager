@@ -38,4 +38,8 @@ public class EntityRepository<T>(IDocumentStore store, string collection, Func<T
     /// <inheritdoc />
     public Task<SearchResult<T>> SearchAsync(DocumentQuery query, CancellationToken cancellationToken = default) =>
         store.SearchAsync<T>(collection, query, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<long> CountAsync(DocumentQuery query, CancellationToken cancellationToken = default) =>
+        store.CountAsync<T>(collection, query, cancellationToken);
 }
