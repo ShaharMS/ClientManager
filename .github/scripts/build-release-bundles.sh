@@ -11,10 +11,10 @@ git rev-parse --verify "refs/tags/${TAG}^{commit}" >/dev/null
 
 PREV=""
 while IFS= read -r candidate; do
-  if [[ "$candidate" == "$TAG" ]]; then
-    break
+  [[ "$candidate" == "$TAG" ]] && continue
+  if git merge-base --is-ancestor "refs/tags/${candidate}^{commit}" "refs/tags/${TAG}^{commit}"; then
+    PREV="$candidate"
   fi
-  PREV="$candidate"
 done < <(git tag -l --sort=v:refname)
 
 FULL="${OUT_DIR}/${REPO_NAME}-${TAG}.full.bundle"
@@ -24,10 +24,13 @@ git bundle verify "$FULL" >/dev/null
 UPLOAD_FILES=("$FULL")
 
 if [[ -n "$PREV" ]]; then
-  INC="${OUT_DIR}/${REPO_NAME}-${PREV}-to-${TAG}.bundle"
-  git bundle create "$INC" "refs/tags/${TAG}" --not "refs/tags/${PREV}"
-  git bundle verify "$INC" >/dev/null
-  UPLOAD_FILES+=("$INC")
+  COMMIT_COUNT="$(git rev-list --count "${PREV}..${TAG}")"
+  if [[ "$COMMIT_COUNT" -gt 0 ]]; then
+    INC="${OUT_DIR}/${REPO_NAME}-${PREV}-to-${TAG}.bundle"
+    git bundle create "$INC" "refs/tags/${TAG}" --not "refs/tags/${PREV}"
+    git bundle verify "$INC" >/dev/null
+    UPLOAD_FILES+=("$INC")
+  fi
 fi
 
 {
@@ -40,5 +43,5 @@ fi
 
 if [[ -z "${GITHUB_OUTPUT:-}" ]]; then
   printf 'Built %s\n' "${UPLOAD_FILES[*]}"
-  [[ -n "$PREV" ]] && printf 'Previous tag: %s\n' "$PREV"
+  [[ -n "$PREV" ]] && printf 'Previous ancestor tag: %s\n' "$PREV"
 fi
