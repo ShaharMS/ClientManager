@@ -5,9 +5,15 @@
 @inject EntityColorService Colors
 
 <ChartCard Title="@ChartTitle"
+           SkipInitialChartLoad="true"
            OnTimeRangeChanged="OnTimeRangeChanged"
            OnPollingIntervalChanged="OnPollingIntervalChanged"
-           OnAxisScaleChanged="OnAxisScaleChanged">
+           OnAxisScaleChanged="OnAxisScaleChanged"
+           InitialTimeRangeKey="@InitialTimeRangeKey"
+           InitialPollingKey="@InitialPollingKey"
+           InitialAxisScale="@InitialAxisScale"
+           InitialCustomFromUtc="@InitialCustomFromUtc"
+           InitialCustomToUtc="@InitialCustomToUtc">
     <Filters>
         <ChartCardFilter>
             <RadzenDropDown TValue="string" Value="@SelectedFilterType"
@@ -76,6 +82,11 @@
     [Parameter] public DashboardDonutData DonutData { get; set; } = new([], []);
     [Parameter] public int DonutDataGeneration { get; set; }
     [Parameter] public AxisScaleType AxisScaleType { get; set; }
+    [Parameter] public string? InitialTimeRangeKey { get; set; }
+    [Parameter] public string? InitialPollingKey { get; set; }
+    [Parameter] public AxisScaleType? InitialAxisScale { get; set; }
+    [Parameter] public DateTime? InitialCustomFromUtc { get; set; }
+    [Parameter] public DateTime? InitialCustomToUtc { get; set; }
     [Parameter] public EventCallback OnFilterChanged { get; set; }
     [Parameter] public EventCallback<ChartTimeRange> OnTimeRangeChanged { get; set; }
     [Parameter] public EventCallback<PollingIntervalPreset> OnPollingIntervalChanged { get; set; }

@@ -20,9 +20,12 @@ public partial class Dashboard : ComponentBase, IAsyncDisposable
     [Inject] private IStringLocalizer<SharedResources> Localizer { get; set; } = null!;
     [Inject] private ApiErrorLocalizer Errors { get; set; } = null!;
     [Inject] private IJSRuntime JS { get; set; } = null!;
+    [Inject] private UrlQuerySync UrlQuery { get; set; } = null!;
+    [Inject] private UserPreferencesService PreferencesService { get; set; } = null!;
 
     private bool _loading = true;
     private string? _error;
+    private string? _chartError;
     private SystemOverviewResponse? _overview;
 
     private string _globalUsage = "-";
@@ -71,11 +74,20 @@ public partial class Dashboard : ComponentBase, IAsyncDisposable
 
         try
         {
-            _overview = await StatsService.GetOverviewAsync();
+            var overviewTask = StatsService.GetOverviewAsync();
+            var servicesTask = ServiceService.GetAllAsync();
+            var poolsTask = PoolService.GetAllAsync();
+            var clientsTask = ClientService.GetAllAsync();
+            var globalUsageTask = StatsService.GetGlobalUsageStatsAsync();
+            var summariesTask = StatsService.GetClientSummariesAsync();
 
-            var services = await ServiceService.GetAllAsync();
-            var pools = await PoolService.GetAllAsync();
-            var clients = await ClientService.GetAllAsync();
+            await Task.WhenAll(overviewTask, servicesTask, poolsTask, clientsTask, globalUsageTask, summariesTask);
+
+            _overview = await overviewTask;
+
+            var services = await servicesTask;
+            var pools = await poolsTask;
+            var clients = await clientsTask;
 
             _clients = clients.Select(c => new NamedItem(c.Id, c.Name)).ToList();
             _allServices = new List<NamedItem> { new(DashboardChartLoadContext.AllTargetsId, Localizer["Pages.Dashboard.Target.AllServices"]) }
@@ -84,7 +96,7 @@ public partial class Dashboard : ComponentBase, IAsyncDisposable
                 .Concat(pools.Select(p => new NamedItem(p.Id, p.Name))).ToList();
             _filterTargets = _allServices;
 
-            var globalUsage = await StatsService.GetGlobalUsageStatsAsync();
+            var globalUsage = await globalUsageTask;
             if (globalUsage is not null)
             {
                 _globalUsage = globalUsage.RequestsPerMinute > 0
@@ -93,7 +105,7 @@ public partial class Dashboard : ComponentBase, IAsyncDisposable
                 _acquisitionPct = (int)Math.Round(globalUsage.AcquisitionPercentage);
             }
 
-            var summaries = await StatsService.GetClientSummariesAsync();
+            var summaries = await summariesTask;
             _clientSummaries = summaries.Select(r => new ClientSummaryTableRow(
                 r.ClientId, r.DisplayName, r.AccessibleServices,
                 r.TotalRateLimitRequests, r.AccessiblePools,
@@ -101,10 +113,12 @@ public partial class Dashboard : ComponentBase, IAsyncDisposable
             )).ToList();
             _filteredClientSummaries = _clientSummaries;
 
-            if (_filterTargets.Count > 0)
+            if (_filterTargets.Count > 0 && _selectedTargetId is null)
             {
                 _selectedTargetId = _filterTargets[0].Id;
             }
+
+            HydrateFromUrl();
         }
         catch (HttpRequestException ex)
         {
@@ -116,7 +130,8 @@ public partial class Dashboard : ComponentBase, IAsyncDisposable
         }
 
         _polling = new PagePollingLifecycle(JS, InvokeAsync, RefreshDataAsync);
-        _polling.Start();
+        var pollInterval = PollingIntervalPreset.FindByKey(_pollingKey)?.Interval;
+        _polling.Start(pollInterval);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -162,13 +177,16 @@ public partial class Dashboard : ComponentBase, IAsyncDisposable
 
     private Task OnPollingIntervalChanged(PollingIntervalPreset preset)
     {
+        _pollingKey = preset.Key;
         _polling?.SetInterval(preset.Interval);
+        SyncUrl();
         return Task.CompletedTask;
     }
 
     private Task OnAxisScaleChanged(AxisScaleType scale)
     {
         _axisScaleType = scale;
+        SyncUrl();
         StateHasChanged();
         return Task.CompletedTask;
     }
@@ -186,6 +204,33 @@ public partial class Dashboard : ComponentBase, IAsyncDisposable
                     || c.DisplayName.Contains(_tableSearch, StringComparison.OrdinalIgnoreCase))
                 .ToList();
         }
+
+        SyncUrlDebounced();
+    }
+
+    private Task OnFilterTypeChangedAsync(string value)
+    {
+        _selectedFilterType = value;
+        return Task.CompletedTask;
+    }
+
+    private Task OnTargetChangedAsync(string? value)
+    {
+        _selectedTargetId = value;
+        return Task.CompletedTask;
+    }
+
+    private Task OnClientsChangedAsync(IEnumerable<string>? value)
+    {
+        _selectedClientIds = value;
+        return Task.CompletedTask;
+    }
+
+    private Task OnTableSearchTextChangedAsync(string? value)
+    {
+        _tableSearch = value;
+        OnTableSearchChanged();
+        return Task.CompletedTask;
     }
 
     private async Task RefreshDataAsync()
@@ -200,11 +245,10 @@ public partial class Dashboard : ComponentBase, IAsyncDisposable
                     : "-";
                 _acquisitionPct = (int)Math.Round(globalUsage.AcquisitionPercentage);
             }
-
-            await LoadChartDataAsync();
         }
-        catch (HttpRequestException)
+        catch (HttpRequestException ex)
         {
+            _chartError = Errors.Format("Api.UnableToConnect", ex);
         }
     }
 
@@ -222,5 +266,7 @@ public partial class Dashboard : ComponentBase, IAsyncDisposable
         {
             await _polling.DisposeAsync();
         }
+
+        UrlQuery.Dispose();
     }
 }

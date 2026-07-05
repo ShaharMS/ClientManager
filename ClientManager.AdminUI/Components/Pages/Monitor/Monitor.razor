@@ -15,21 +15,26 @@
 
 <MonitorChartSection
     SelectedServiceId="@_selectedServiceId"
-    SelectedServiceIdChanged="@(v => _selectedServiceId = v)"
+    SelectedServiceIdChanged="OnServiceChangedAsync"
     SelectedClientIds="@_selectedClientIds"
-    SelectedClientIdsChanged="@(v => _selectedClientIds = v)"
+    SelectedClientIdsChanged="OnClientsChangedAsync"
     ServiceOptions="@_serviceOptions"
     ClientOptions="@_clientOptions"
     TargetCharts="@_targetCharts"
     AxisScaleType="@_axisScaleType"
+    InitialTimeRangeKey="@_initialTimeRangeKey"
+    InitialPollingKey="@_initialPollingKey"
+    InitialAxisScale="@_initialAxisScale"
+    InitialCustomFromUtc="@_initialCustomFromUtc"
+    InitialCustomToUtc="@_initialCustomToUtc"
     Loading="@_chartLoading"
     OnFilterChanged="OnFilterChanged"
     OnTimeRangeChanged="OnTimeRangeChanged"
     OnPollingIntervalChanged="OnPollingIntervalChanged"
     OnAxisScaleChanged="OnAxisScaleChanged" />
 
-<MonitorClientGrid @ref="_clientGrid" Rows="@_clientRows" ShowDeniedBreakdown="@ShowDeniedBreakdown" />
+<MonitorClientGrid @ref="_clientGrid" Rows="@_clientRows" Loading="@_chartLoading" ShowDeniedBreakdown="@ShowDeniedBreakdown" />
 
 <hr class="cm-monitor__separator" />
 
-<MonitorServicesGrid @ref="_servicesGrid" Rows="@_allServiceStats" ShowDeniedBreakdown="@ShowDeniedBreakdown" />
+<MonitorServicesGrid @ref="_servicesGrid" Rows="@_allServiceStats" Loading="@_chartLoading" ShowDeniedBreakdown="@ShowDeniedBreakdown" />

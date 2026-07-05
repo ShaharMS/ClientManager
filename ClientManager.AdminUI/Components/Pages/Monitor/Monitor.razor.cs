@@ -21,6 +21,8 @@ public partial class Monitor : ComponentBase, IAsyncDisposable
     [Inject] private ApiErrorLocalizer Errors { get; set; } = null!;
     [Inject] private DeniedBreakdownFormatter DeniedBreakdownFormatter { get; set; } = null!;
     [Inject] private IJSRuntime JS { get; set; } = null!;
+    [Inject] private UrlQuerySync UrlQuery { get; set; } = null!;
+    [Inject] private UserPreferencesService PreferencesService { get; set; } = null!;
 
     private List<Service> _allServices = [];
     private List<NamedItem> _serviceOptions = [];
@@ -61,7 +63,8 @@ public partial class Monitor : ComponentBase, IAsyncDisposable
 
             _serviceOptions = new List<NamedItem> { new(MonitorLoadContext.AllServicesId, Localizer["Pages.Monitor.Chart.AllServices"]) }
                 .Concat(_allServices.Select(s => new NamedItem(s.Id, s.Name))).ToList();
-            _selectedServiceId = MonitorLoadContext.AllServicesId;
+
+            HydrateFromUrl();
         }
         catch (HttpRequestException ex)
         {
@@ -70,7 +73,8 @@ public partial class Monitor : ComponentBase, IAsyncDisposable
         }
 
         _polling = new PagePollingLifecycle(JS, InvokeAsync, LoadDataAsync);
-        _polling.Start();
+        var pollInterval = PollingIntervalPreset.FindByKey(_pollingKey)?.Interval;
+        _polling.Start(pollInterval);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -126,14 +130,29 @@ public partial class Monitor : ComponentBase, IAsyncDisposable
 
     private Task OnPollingIntervalChanged(PollingIntervalPreset preset)
     {
+        _pollingKey = preset.Key;
         _polling?.SetInterval(preset.Interval);
+        SyncUrl();
         return Task.CompletedTask;
     }
 
     private Task OnAxisScaleChanged(AxisScaleType scale)
     {
         _axisScaleType = scale;
+        SyncUrl();
         StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private Task OnServiceChangedAsync(string value)
+    {
+        _selectedServiceId = value;
+        return Task.CompletedTask;
+    }
+
+    private Task OnClientsChangedAsync(IEnumerable<string>? value)
+    {
+        _selectedClientIds = value;
         return Task.CompletedTask;
     }
 
@@ -151,5 +170,7 @@ public partial class Monitor : ComponentBase, IAsyncDisposable
         {
             await _polling.DisposeAsync();
         }
+
+        UrlQuery.Dispose();
     }
 }

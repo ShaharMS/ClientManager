@@ -10,12 +10,21 @@ public partial class ActiveAllocations
     private async Task OnTimeRangeChanged(ChartTimeRange range)
     {
         _timeRange = range;
+        SyncUrl();
         await LoadChartDataWithSkeletonAsync();
     }
 
-    private Task OnMetricChanged() => LoadChartDataWithSkeletonAsync();
+    private async Task OnMetricChanged()
+    {
+        SyncUrl();
+        await LoadChartDataWithSkeletonAsync();
+    }
 
-    private Task OnFilterChanged() => LoadChartDataWithSkeletonAsync();
+    private async Task OnFilterChanged()
+    {
+        SyncUrl();
+        await LoadChartDataWithSkeletonAsync();
+    }
 
     private async Task LoadChartDataWithSkeletonAsync()
     {

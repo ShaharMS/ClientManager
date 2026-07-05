@@ -5,6 +5,7 @@
 @inject DialogService Dialog
 @inject ApiErrorLocalizer errors
 @inject IJSRuntime JS
+@inject UrlQuerySync UrlQuery
 @implements IAsyncDisposable
 
 <div class="cm-page-header">
@@ -27,13 +28,13 @@ else if (_error is not null)
 }
 else
 {
-    <div class="cm-list-page__table-card">
+    <div class="cm-list-page__table-card cm-rate-limit-grid">
         <div class="cm-list-page__header cm-list-page__header--quota">
             <div class="cm-list-page__search-field">
                 <RadzenTextBox Placeholder="@L["Pages.Quotas.Search"]"
                     Value="@_search"
-                    ValueChanged="@((string v) => { _search = v; StateHasChanged(); })"
-                    @oninput="@(args => { _search = args.Value?.ToString(); StateHasChanged(); })" />
+                    ValueChanged="OnSearchChanged"
+                    @oninput="OnSearchInput" />
             </div>
             <div class="cm-list-page__header-actions">
                 <span class="cm-list-page__create-btn-wrap @(_canCreateMore ? null : "cm-list-page__create-btn-wrap--disabled")"
@@ -48,6 +49,7 @@ else
 
         <RadzenDataGrid Data="@_filteredLimits" TItem="GlobalRateLimit" EmptyText="@L["DataGrid.NoRecords"]"
             AllowSorting="true" AllowPaging="true" PageSize="@_pageSize"
+            Settings="@_gridSettings" SettingsChanged="OnGridSettingsChanged"
             PagerHorizontalAlign="HorizontalAlign.Center">
             <Columns>
                 <RadzenDataGridColumn TItem="GlobalRateLimit" Title="@L["Columns.ResourcePool"]"
@@ -57,16 +59,21 @@ else
                     </Template>
                 </RadzenDataGridColumn>
                 <RadzenDataGridColumn TItem="GlobalRateLimit" Property="Strategy" Title="@L["Columns.Strategy"]"
-                    CssClass="cm-col-strategy" HeaderCssClass="cm-col-strategy">
+                    CssClass="cm-col-strategy cm-rate-limit-grid__wide-only" HeaderCssClass="cm-col-strategy cm-rate-limit-grid__wide-only">
                     <Template Context="limit">
                         <span class="@RateLimitStrategyBadge.GetCssClass(limit.Strategy)">@RateLimitStrategyLabels.GetLabel(limit.Strategy, L)</span>
                     </Template>
                 </RadzenDataGridColumn>
                 <RadzenDataGridColumn TItem="GlobalRateLimit" Property="MaxRequests" Title="@L["Columns.MaxRequests"]"
-                    CssClass="cm-col-scalar-wide" HeaderCssClass="cm-col-scalar-wide" />
+                    CssClass="cm-col-scalar-wide cm-rate-limit-grid__wide-only" HeaderCssClass="cm-col-scalar-wide cm-rate-limit-grid__wide-only" />
                 <RadzenDataGridColumn TItem="GlobalRateLimit" Title="@L["Columns.Window"]"
-                    CssClass="cm-col-scalar-narrow" HeaderCssClass="cm-col-scalar-narrow">
+                    CssClass="cm-col-scalar-narrow cm-rate-limit-grid__wide-only" HeaderCssClass="cm-col-scalar-narrow cm-rate-limit-grid__wide-only">
                     <Template Context="limit">@TimeSpanFormatter.FormatCompact(limit.Window, L)</Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="GlobalRateLimit" Title="@($"{L["Columns.MaxRequests"]} / {L["Columns.Window"]}")"
+                    Sortable="false" CssClass="cm-col-scalar-wide cm-rate-limit-grid__narrow-only"
+                    HeaderCssClass="cm-col-scalar-wide cm-rate-limit-grid__narrow-only">
+                    <Template Context="limit">@TimeSpanFormatter.FormatRequestsWindow(limit.MaxRequests, limit.Window, L)</Template>
                 </RadzenDataGridColumn>
                 <RadzenDataGridColumn TItem="GlobalRateLimit" Title="@L["Columns.Actions"]" Sortable="false"
                     CssClass="cm-col-actions" HeaderCssClass="cm-col-actions">
@@ -94,6 +101,10 @@ else
     private List<GlobalRateLimit> _limits = [];
     private Dictionary<string, string> _poolNames = new(StringComparer.OrdinalIgnoreCase);
     private int _pageSize = 10;
+    private int _urlPage = 1;
+    private string? _urlSortProperty;
+    private SortOrder? _urlSortOrder;
+    private DataGridSettings _gridSettings = new() { CurrentPage = 0 };
     private bool _canCreateMore = true;
     private string? _createDisabledTooltip;
     private IJSObjectReference? _tableJs;
@@ -106,7 +117,27 @@ else
                 l.TargetId.Contains(_search, StringComparison.OrdinalIgnoreCase) ||
                 GetPoolName(l.TargetId).Contains(_search, StringComparison.OrdinalIgnoreCase));
 
-    protected override async Task OnInitializedAsync() => await LoadAsync();
+    private ListPageUrlSupport.GridQueryState CurrentQueryState =>
+        new(
+            _search,
+            null,
+            QueryParamParsers.ReadGridPage(_gridSettings),
+            QueryParamParsers.ReadGridSort(_gridSettings).Property,
+            QueryParamParsers.ReadGridSort(_gridSettings).Order);
+
+    protected override async Task OnInitializedAsync()
+    {
+        UrlQuery.SuppressWrite = true;
+        var urlState = ListPageUrlSupport.Parse(UrlQuery.Parse(), hasEnabledFilter: false);
+        _search = urlState.Search;
+        _urlPage = urlState.Page;
+        _urlSortProperty = urlState.SortProperty;
+        _urlSortOrder = urlState.SortOrder;
+        UrlQuery.SuppressWrite = false;
+
+        await LoadAsync();
+        ApplyGridSettingsFromUrl();
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -136,6 +167,41 @@ else
             await _tableJs.DisposeAsync();
         }
         _selfRef?.Dispose();
+        UrlQuery.Dispose();
+    }
+
+    private void ApplyGridSettingsFromUrl()
+    {
+        var page = QueryParamParsers.ClampPage(_urlPage, _filteredLimits.Count(), _pageSize);
+        _gridSettings = QueryParamParsers.ApplyGridSettings(_gridSettings, page, _urlSortProperty, _urlSortOrder);
+        _gridSettings.PageSize = _pageSize;
+    }
+
+    private void SyncUrl() => ListPageUrlSupport.Sync(UrlQuery, CurrentQueryState, hasEnabledFilter: false);
+
+    private void SyncUrlDebounced() =>
+        ListPageUrlSupport.SyncDebounced(UrlQuery, CurrentQueryState, hasEnabledFilter: false, InvokeAsync);
+
+    private void OnSearchChanged(string? value)
+    {
+        _search = value;
+        _gridSettings.CurrentPage = 0;
+        SyncUrlDebounced();
+        StateHasChanged();
+    }
+
+    private void OnSearchInput(ChangeEventArgs args)
+    {
+        _search = args.Value?.ToString();
+        _gridSettings.CurrentPage = 0;
+        SyncUrlDebounced();
+        StateHasChanged();
+    }
+
+    private void OnGridSettingsChanged(DataGridSettings settings)
+    {
+        _gridSettings = settings;
+        SyncUrl();
     }
 
     private async Task LoadAsync()

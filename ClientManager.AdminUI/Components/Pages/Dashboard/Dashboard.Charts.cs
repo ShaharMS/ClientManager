@@ -11,6 +11,7 @@ public partial class Dashboard
     private async Task OnTimeRangeChanged(ChartTimeRange range)
     {
         _timeRange = range;
+        SyncUrl();
         await LoadChartDataAsync();
     }
 
@@ -23,6 +24,7 @@ public partial class Dashboard
             _selectedTargetId = _filterTargets[0].Id;
         }
 
+        SyncUrl();
         await LoadChartDataAsync();
     }
 
@@ -60,13 +62,16 @@ public partial class Dashboard
             _targetCharts = charts;
             _donutData = donut;
             _donutDataGeneration++;
+            _chartError = null;
         }
-        catch (HttpRequestException)
+        catch (HttpRequestException ex)
         {
             if (loadVersion != _chartLoadVersion)
             {
                 return;
             }
+
+            _chartError = Errors.Format("Api.UnableToConnect", ex);
         }
     }
 }

@@ -5,6 +5,7 @@
 @inject DialogService Dialog
 @inject ApiErrorLocalizer errors
 @inject IJSRuntime JS
+@inject UrlQuerySync UrlQuery
 @implements IAsyncDisposable
 
 <div class="cm-page-header">
@@ -27,7 +28,7 @@ else if (_error is not null)
 }
 else
 {
-    <div class="cm-list-page__table-card">
+    <div class="cm-list-page__table-card cm-entity-list-grid">
         <div class="cm-list-page__header cm-list-page__header--with-filter cm-list-page__header--services">
             <div class="cm-list-page__filter-field">
                 <RadzenDropDown TValue="bool?" Data="@_enabledOptions"
@@ -46,13 +47,14 @@ else
             <div class="cm-list-page__search-field">
                 <RadzenTextBox Placeholder="@L["Pages.Services.Search"]"
                     Value="@_search"
-                    ValueChanged="@((string v) => { _search = v; StateHasChanged(); })"
-                    @oninput="@(args => { _search = args.Value?.ToString(); StateHasChanged(); })" />
+                    ValueChanged="OnSearchChanged"
+                    @oninput="OnSearchInput" />
             </div>
         </div>
 
         <RadzenDataGrid Data="@_filteredServices" TItem="Service" EmptyText="@L["DataGrid.NoRecords"]"
             AllowSorting="true" AllowPaging="true" PageSize="@_pageSize"
+            Settings="@_gridSettings" SettingsChanged="OnGridSettingsChanged"
             PagerHorizontalAlign="HorizontalAlign.Center">
             <Columns>
                 <RadzenDataGridColumn TItem="Service" Property="Id" Title="@L["Columns.Id"]"
@@ -110,6 +112,10 @@ else
     private bool? _enabledFilter;
     private List<Service> _services = [];
     private int _pageSize = 10;
+    private int _urlPage = 1;
+    private string? _urlSortProperty;
+    private SortOrder? _urlSortOrder;
+    private DataGridSettings _gridSettings = new() { CurrentPage = 0 };
     private IJSObjectReference? _tableJs;
     private DotNetObjectReference<ServiceList>? _selfRef;
     private List<object> _enabledOptions = [];
@@ -121,6 +127,14 @@ else
                 s.Id.Contains(_search, StringComparison.OrdinalIgnoreCase) ||
                 s.Name.Contains(_search, StringComparison.OrdinalIgnoreCase));
 
+    private ListPageUrlSupport.GridQueryState CurrentQueryState =>
+        new(
+            _search,
+            _enabledFilter,
+            QueryParamParsers.ReadGridPage(_gridSettings),
+            QueryParamParsers.ReadGridSort(_gridSettings).Property,
+            QueryParamParsers.ReadGridSort(_gridSettings).Order);
+
     protected override async Task OnInitializedAsync()
     {
         _enabledOptions =
@@ -128,7 +142,18 @@ else
             new { Label = L["Common.Enabled"], Value = (bool?)true },
             new { Label = L["Common.Disabled"], Value = (bool?)false }
         ];
+
+        UrlQuery.SuppressWrite = true;
+        var urlState = ListPageUrlSupport.Parse(UrlQuery.Parse(), hasEnabledFilter: true);
+        _search = urlState.Search;
+        _enabledFilter = urlState.Enabled;
+        _urlPage = urlState.Page;
+        _urlSortProperty = urlState.SortProperty;
+        _urlSortOrder = urlState.SortOrder;
+        UrlQuery.SuppressWrite = false;
+
         await LoadAsync();
+        ApplyGridSettingsFromUrl();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -159,6 +184,41 @@ else
             await _tableJs.DisposeAsync();
         }
         _selfRef?.Dispose();
+        UrlQuery.Dispose();
+    }
+
+    private void ApplyGridSettingsFromUrl()
+    {
+        var page = QueryParamParsers.ClampPage(_urlPage, _filteredServices.Count(), _pageSize);
+        _gridSettings = QueryParamParsers.ApplyGridSettings(_gridSettings, page, _urlSortProperty, _urlSortOrder);
+        _gridSettings.PageSize = _pageSize;
+    }
+
+    private void SyncUrl() => ListPageUrlSupport.Sync(UrlQuery, CurrentQueryState, hasEnabledFilter: true);
+
+    private void SyncUrlDebounced() =>
+        ListPageUrlSupport.SyncDebounced(UrlQuery, CurrentQueryState, hasEnabledFilter: true, InvokeAsync);
+
+    private void OnSearchChanged(string? value)
+    {
+        _search = value;
+        _gridSettings.CurrentPage = 0;
+        SyncUrlDebounced();
+        StateHasChanged();
+    }
+
+    private void OnSearchInput(ChangeEventArgs args)
+    {
+        _search = args.Value?.ToString();
+        _gridSettings.CurrentPage = 0;
+        SyncUrlDebounced();
+        StateHasChanged();
+    }
+
+    private void OnGridSettingsChanged(DataGridSettings settings)
+    {
+        _gridSettings = settings;
+        SyncUrl();
     }
 
     private async Task LoadAsync()
@@ -191,8 +251,11 @@ else
     private async Task OnEnabledFilterChanged(bool? value)
     {
         _enabledFilter = value;
+        _gridSettings.CurrentPage = 0;
         _loading = true;
         await LoadAsync();
+        ApplyGridSettingsFromUrl();
+        SyncUrl();
     }
 
     private Task ToggleEnabledAsync(Service service) =>

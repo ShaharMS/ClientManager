@@ -1,3 +1,4 @@
+@using ClientManager.AdminUI.Utils
 @inject UserPreferencesService PreferencesService
 
 <div class="cm-chart-settings-dropdown">
@@ -40,7 +41,7 @@
                     <RadzenDatePicker TValue="DateTime?"
                                       Value="_customFromLocal"
                                       ShowTime="true"
-                                      DateFormat="MMM dd yyyy HH:mm"
+                                      DateFormat="@_pickerDateFormat"
                                       Change="@OnCustomFromChanged" />
                 </div>
                 <div class="cm-chart-settings-dropdown__calendar-field">
@@ -48,7 +49,7 @@
                     <RadzenDatePicker TValue="DateTime?"
                                       Value="_customToLocal"
                                       ShowTime="true"
-                                      DateFormat="MMM dd yyyy HH:mm"
+                                      DateFormat="@_pickerDateFormat"
                                       Change="@OnCustomToChanged" />
                 </div>
             </div>
@@ -81,6 +82,13 @@
     [Parameter] public EventCallback<PollingIntervalPreset> OnPollingIntervalChanged { get; set; }
     [Parameter] public EventCallback<AxisScaleType> OnAxisScaleChanged { get; set; }
     [Parameter] public string? InitialTimeRangeKey { get; set; }
+    [Parameter] public string? InitialPollingKey { get; set; }
+    [Parameter] public AxisScaleType? InitialAxisScale { get; set; }
+    [Parameter] public DateTime? InitialCustomFromUtc { get; set; }
+    [Parameter] public DateTime? InitialCustomToUtc { get; set; }
+    [Parameter] public bool SkipInitialChartLoad { get; set; }
+
+    private readonly string _pickerDateFormat = CultureDateFormats.ChartPicker();
 
     private bool _isOpen;
     private bool _initialized;
@@ -108,16 +116,37 @@
                 ? TimeRangePreset.FindByKey(InitialTimeRangeKey) ?? await PreferencesService.GetDefaultTimeRangeAsync()
                 : await PreferencesService.GetDefaultTimeRangeAsync();
 
-            _relativeSeconds = defaultPreset.Duration.TotalSeconds;
-            _rangeLabel = GetRangeLabel(ChartTimeRange.FromPreset(defaultPreset));
-            SetDefaultCustomRange();
+            if (string.Equals(InitialTimeRangeKey, "custom", StringComparison.OrdinalIgnoreCase)
+                && InitialCustomFromUtc is not null && InitialCustomToUtc is not null)
+            {
+                _mode = ChartTimeRangeMode.Custom;
+                _customFromLocal = InitialCustomFromUtc.Value.ToLocalTime();
+                _customToLocal = InitialCustomToUtc.Value.ToLocalTime();
+                var customRange = ChartTimeRange.FromCustom(InitialCustomFromUtc.Value, InitialCustomToUtc.Value);
+                _rangeLabel = GetRangeLabel(customRange);
+                if (!SkipInitialChartLoad)
+                {
+                    await OnTimeRangeChanged.InvokeAsync(customRange);
+                }
+            }
+            else
+            {
+                _relativeSeconds = defaultPreset.Duration.TotalSeconds;
+                _rangeLabel = GetRangeLabel(ChartTimeRange.FromPreset(defaultPreset));
+                SetDefaultCustomRange();
+                if (!SkipInitialChartLoad)
+                {
+                    await EmitRelativeRangeAsync();
+                }
+            }
 
-            var defaultPolling = await PreferencesService.GetDefaultPollingIntervalAsync();
+            var defaultPolling = InitialPollingKey is not null
+                ? PollingIntervalPreset.FindByKey(InitialPollingKey) ?? await PreferencesService.GetDefaultPollingIntervalAsync()
+                : await PreferencesService.GetDefaultPollingIntervalAsync();
             _selectedPollingKey = defaultPolling.Key;
 
-            _selectedAxisScale = await PreferencesService.GetDefaultAxisScaleAsync();
+            _selectedAxisScale = InitialAxisScale ?? await PreferencesService.GetDefaultAxisScaleAsync();
 
-            await EmitRelativeRangeAsync();
             await OnPollingIntervalChanged.InvokeAsync(defaultPolling);
             await OnAxisScaleChanged.InvokeAsync(_selectedAxisScale);
             StateHasChanged();

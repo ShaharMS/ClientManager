@@ -1,6 +1,7 @@
 namespace ClientManager.AdminUI.Models;
 
 using System.Globalization;
+using ClientManager.AdminUI.Utils;
 
 public enum ChartTimeRangeMode
 {
@@ -68,10 +69,10 @@ public sealed class ChartTimeRange
         var toLocal = CustomToUtc.ToLocalTime();
         if (fromLocal.Date == toLocal.Date)
         {
-            return $"{fromLocal.ToString("MMM d, HH:mm", culture)} – {toLocal.ToString("HH:mm", culture)}";
+            return $"{CultureDateFormats.ChartCustomRange(fromLocal, culture)} – {toLocal.ToString("HH:mm", culture)}";
         }
 
-        return $"{fromLocal.ToString("MMM d, HH:mm", culture)} – {toLocal.ToString("MMM d, HH:mm", culture)}";
+        return $"{CultureDateFormats.ChartCustomRange(fromLocal, culture)} – {CultureDateFormats.ChartCustomRange(toLocal, culture)}";
     }
 
     public string FormatTimestamp(DateTime timestamp, bool invariant = false)

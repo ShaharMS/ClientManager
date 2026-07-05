@@ -79,6 +79,7 @@ builder.Services.AddScoped<GlobalRateLimitApiService>();
 builder.Services.AddScoped<StatisticsApiService>();
 builder.Services.AddSingleton<EntityColorService>();
 builder.Services.AddScoped<UserPreferencesService>();
+builder.Services.AddScoped<UrlQuerySync>();
 builder.Services.AddScoped<CultureService>();
 builder.Services.AddScoped<ApiErrorLocalizer>();
 builder.Services.AddScoped<DeniedBreakdownFormatter>();

@@ -34,11 +34,11 @@ else
     <div class="cm-dashboard__charts">
         <DashboardChartsSection
             SelectedFilterType="@_selectedFilterType"
-            SelectedFilterTypeChanged="@(v => _selectedFilterType = v)"
+            SelectedFilterTypeChanged="OnFilterTypeChangedAsync"
             SelectedTargetId="@_selectedTargetId"
-            SelectedTargetIdChanged="@(v => _selectedTargetId = v)"
+            SelectedTargetIdChanged="OnTargetChangedAsync"
             SelectedClientIds="@_selectedClientIds"
-            SelectedClientIdsChanged="@(v => _selectedClientIds = v)"
+            SelectedClientIdsChanged="OnClientsChangedAsync"
             FilterTypes="@_filterTypes"
             FilterTargets="@_filterTargets"
             Clients="@_clients"
@@ -46,6 +46,11 @@ else
             DonutData="@_donutData"
             DonutDataGeneration="@_donutDataGeneration"
             AxisScaleType="@_axisScaleType"
+            InitialTimeRangeKey="@_initialTimeRangeKey"
+            InitialPollingKey="@_initialPollingKey"
+            InitialAxisScale="@_initialAxisScale"
+            InitialCustomFromUtc="@_initialCustomFromUtc"
+            InitialCustomToUtc="@_initialCustomToUtc"
             OnFilterChanged="OnFilterChanged"
             OnTimeRangeChanged="OnTimeRangeChanged"
             OnPollingIntervalChanged="OnPollingIntervalChanged"
@@ -56,6 +61,6 @@ else
         AllRows="@_clientSummaries"
         FilteredRows="@_filteredClientSummaries"
         SearchText="@_tableSearch"
-        SearchTextChanged="@(v => _tableSearch = v)"
+        SearchTextChanged="OnTableSearchTextChangedAsync"
         OnSearchChanged="OnTableSearchChanged" />
 }
