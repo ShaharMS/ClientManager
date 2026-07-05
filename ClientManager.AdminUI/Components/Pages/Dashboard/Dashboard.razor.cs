@@ -120,10 +120,22 @@ public partial class Dashboard : ComponentBase, IAsyncDisposable
             }
 
             HydrateFromUrl();
+
+            if (_error is null)
+            {
+                await LoadChartDataWithSkeletonAsync();
+            }
+            else
+            {
+                _chartLoading = false;
+            }
+
+            _chartInitComplete = true;
         }
         catch (HttpRequestException ex)
         {
             _error = Errors.Format("Api.UnableToConnect", ex);
+            _chartLoading = false;
         }
         finally
         {
@@ -137,25 +149,26 @@ public partial class Dashboard : ComponentBase, IAsyncDisposable
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
+        if (!firstRender)
+        {
+            return;
+        }
+
+        try
         {
             _chartJs = await JS.InvokeAsync<IJSObjectReference>("import", "./js/chart.js");
             _chartSelfRef = DotNetObjectReference.Create(this);
             await _chartJs.InvokeVoidAsync("register", _chartSelfRef);
-
-            var chartWidth = await _chartJs.InvokeAsync<int>("getChartCardWidth");
-            _chartBucketCount = ChartBucketAggregator.GetBucketCountForWidth(chartWidth);
-
-            if (_error is null)
-            {
-                await LoadChartDataAsync();
-            }
-
-            _chartLoading = false;
-            StateHasChanged();
+            await UpdateChartBucketCountAsync(reloadWhenChanged: true);
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+        catch (ObjectDisposedException)
+        {
         }
 
-        if (firstRender && _polling is not null)
+        if (_polling is not null)
         {
             await _polling.RegisterVisibilityAsync();
         }
@@ -256,6 +269,12 @@ public partial class Dashboard : ComponentBase, IAsyncDisposable
                     : "-";
                 _acquisitionPct = (int)Math.Round(globalUsage.AcquisitionPercentage);
             }
+
+            if (_chartInitComplete && _error is null)
+            {
+                await LoadChartDataAsync();
+                await InvokeAsync(StateHasChanged);
+            }
         }
         catch (HttpRequestException ex)
         {
@@ -265,6 +284,9 @@ public partial class Dashboard : ComponentBase, IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
+        _disposed = true;
+        System.Threading.Interlocked.Increment(ref _chartLoadTicket);
+
         if (_chartJs is not null)
         {
             await _chartJs.InvokeVoidAsync("unregister");

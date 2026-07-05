@@ -6,7 +6,9 @@ namespace ClientManager.AdminUI.Components.Pages.Dashboard;
 
 public partial class Dashboard
 {
-    private int _chartLoadVersion;
+    private int _chartLoadTicket;
+    private bool _chartInitComplete;
+    private bool _disposed;
 
     private async Task OnTimeRangeChanged(ChartTimeRange range)
     {
@@ -17,6 +19,11 @@ public partial class Dashboard
 
     private async Task OnFilterChanged(object? _)
     {
+        if (!_chartInitComplete)
+        {
+            return;
+        }
+
         _filterTargets = _selectedFilterType == "Service" ? _allServices : _allPools;
 
         if (_filterTargets.Count > 0 && (_selectedTargetId is null || !_filterTargets.Any(t => t.Id == _selectedTargetId)))
@@ -30,21 +37,46 @@ public partial class Dashboard
 
     private async Task LoadChartDataWithSkeletonAsync()
     {
-        _chartLoading = true;
-        StateHasChanged();
-        await LoadChartDataAsync();
-        _chartLoading = false;
-        StateHasChanged();
-    }
-
-    private async Task LoadChartDataAsync()
-    {
-        if (_selectedTargetId is null || _chartLoader is null)
+        if (_disposed)
         {
             return;
         }
 
-        var loadVersion = System.Threading.Interlocked.Increment(ref _chartLoadVersion);
+        var ticket = System.Threading.Interlocked.Increment(ref _chartLoadTicket);
+        _chartLoading = true;
+        await InvokeAsync(StateHasChanged);
+
+        try
+        {
+            await LoadChartDataCoreAsync(ticket);
+        }
+        finally
+        {
+            if (!_disposed && ticket == _chartLoadTicket)
+            {
+                _chartLoading = false;
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+    }
+
+    private Task LoadChartDataAsync()
+    {
+        if (_disposed)
+        {
+            return Task.CompletedTask;
+        }
+
+        var ticket = System.Threading.Interlocked.Increment(ref _chartLoadTicket);
+        return LoadChartDataCoreAsync(ticket);
+    }
+
+    private async Task LoadChartDataCoreAsync(int ticket)
+    {
+        if (_disposed || _selectedTargetId is null || _chartLoader is null)
+        {
+            return;
+        }
 
         try
         {
@@ -63,7 +95,7 @@ public partial class Dashboard
 
             var (charts, donut) = await _chartLoader.LoadAsync(context);
 
-            if (loadVersion != _chartLoadVersion)
+            if (_disposed || ticket != _chartLoadTicket)
             {
                 return;
             }
@@ -75,7 +107,7 @@ public partial class Dashboard
         }
         catch (HttpRequestException ex)
         {
-            if (loadVersion != _chartLoadVersion)
+            if (_disposed || ticket != _chartLoadTicket)
             {
                 return;
             }
