@@ -1,0 +1,82 @@
+name: Release bundles
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to build bundles for
+        required: false
+        type: string
+      backfill_all:
+        description: Build and upload bundles for every GitHub release
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      tags: ${{ steps.tags.outputs.tags }}
+    steps:
+      - name: Resolve release tags
+        id: tags
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_TAG: ${{ inputs.tag }}
+          BACKFILL_ALL: ${{ inputs.backfill_all }}
+        run: |
+          set -euo pipefail
+
+          tags=()
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            tags=("${{ github.event.release.tag_name }}")
+          elif [[ "$BACKFILL_ALL" == "true" ]]; then
+            mapfile -t tags < <(gh release list --limit 500 --json tagName -q '.[].tagName')
+          elif [[ -n "$INPUT_TAG" ]]; then
+            tags=("$INPUT_TAG")
+          else
+            echo "Provide tag input or set backfill_all=true." >&2
+            exit 1
+          fi
+
+          if [[ ${#tags[@]} -eq 0 ]]; then
+            echo "No release tags to process." >&2
+            exit 1
+          fi
+
+          json=$(printf '%s\n' "${tags[@]}" | jq -R . | jq -s -c .)
+          echo "tags=$json" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: plan
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        tag: ${{ fromJson(needs.plan.outputs.tags) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build git bundles
+        id: bundles
+        run: |
+          chmod +x .github/scripts/build-release-bundles.sh
+          .github/scripts/build-release-bundles.sh "${{ matrix.tag }}"
+
+      - name: Upload release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          while IFS= read -r file; do
+            [[ -n "$file" ]] || continue
+            gh release upload "${{ matrix.tag }}" "$file" --clobber
+          done <<< "${{ steps.bundles.outputs.upload_files }}"
