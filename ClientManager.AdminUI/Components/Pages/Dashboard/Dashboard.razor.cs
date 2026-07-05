@@ -24,6 +24,7 @@ public partial class Dashboard : ComponentBase, IAsyncDisposable
     [Inject] private UserPreferencesService PreferencesService { get; set; } = null!;
 
     private bool _loading = true;
+    private bool _chartLoading = true;
     private string? _error;
     private string? _chartError;
     private SystemOverviewResponse? _overview;
@@ -141,7 +142,17 @@ public partial class Dashboard : ComponentBase, IAsyncDisposable
             _chartJs = await JS.InvokeAsync<IJSObjectReference>("import", "./js/chart.js");
             _chartSelfRef = DotNetObjectReference.Create(this);
             await _chartJs.InvokeVoidAsync("register", _chartSelfRef);
-            await UpdateChartBucketCountAsync(reloadWhenChanged: true);
+
+            var chartWidth = await _chartJs.InvokeAsync<int>("getChartCardWidth");
+            _chartBucketCount = ChartBucketAggregator.GetBucketCountForWidth(chartWidth);
+
+            if (_error is null)
+            {
+                await LoadChartDataAsync();
+            }
+
+            _chartLoading = false;
+            StateHasChanged();
         }
 
         if (firstRender && _polling is not null)

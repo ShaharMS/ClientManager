@@ -12,7 +12,7 @@ public partial class Dashboard
     {
         _timeRange = range;
         SyncUrl();
-        await LoadChartDataAsync();
+        await LoadChartDataWithSkeletonAsync();
     }
 
     private async Task OnFilterChanged(object? _)
@@ -25,7 +25,16 @@ public partial class Dashboard
         }
 
         SyncUrl();
+        await LoadChartDataWithSkeletonAsync();
+    }
+
+    private async Task LoadChartDataWithSkeletonAsync()
+    {
+        _chartLoading = true;
+        StateHasChanged();
         await LoadChartDataAsync();
+        _chartLoading = false;
+        StateHasChanged();
     }
 
     private async Task LoadChartDataAsync()

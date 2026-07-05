@@ -35,7 +35,22 @@
         </ChartCardFilter>
     </Filters>
     <ChildContent>
-        <CombinedStackedUsageChart Charts="@TargetCharts" AxisScale="@AxisScaleType" />
+        @if (ChartLoading)
+        {
+            <SkeletonBlock CssClass="cm-skeleton--chart" />
+        }
+        else if (ChartError is not null)
+        {
+            <RadzenAlert AlertStyle="AlertStyle.Danger" Shade="Shade.Light">@ChartError</RadzenAlert>
+        }
+        else if (TargetCharts.Count > 0)
+        {
+            <CombinedStackedUsageChart Charts="@TargetCharts" AxisScale="@AxisScaleType" />
+        }
+        else
+        {
+            <div class="cm-chart-empty">@L["Pages.Dashboard.Chart.NoUsageData"]</div>
+        }
     </ChildContent>
 </ChartCard>
 
@@ -49,7 +64,15 @@
             }
         </div>
     </div>
-    @if (ActiveDonutData.Count > 0)
+    @if (ChartLoading)
+    {
+        <SkeletonBlock CssClass="cm-skeleton--chart" Style="height: 300px;" />
+    }
+    else if (ChartError is not null)
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Danger" Shade="Shade.Light" Style="margin: var(--space-md);">@ChartError</RadzenAlert>
+    }
+    else if (ActiveDonutData.Count > 0)
     {
         <RadzenChart Style="height: 300px;"
             SeriesClick="@OnDonutSeriesClick"
@@ -62,9 +85,7 @@
     }
     else
     {
-        <div style="height: 300px; display: flex; align-items: center; justify-content: center; color: var(--color-text-muted);">
-            @L["Pages.Dashboard.Chart.NoUsageData"]
-        </div>
+        <div class="cm-chart-empty" style="height: 300px;">@L["Pages.Dashboard.Chart.NoUsageData"]</div>
     }
 </div>
 
@@ -81,6 +102,8 @@
     [Parameter] public List<TargetChartData> TargetCharts { get; set; } = [];
     [Parameter] public DashboardDonutData DonutData { get; set; } = new([], []);
     [Parameter] public int DonutDataGeneration { get; set; }
+    [Parameter] public bool ChartLoading { get; set; }
+    [Parameter] public string? ChartError { get; set; }
     [Parameter] public AxisScaleType AxisScaleType { get; set; }
     [Parameter] public string? InitialTimeRangeKey { get; set; }
     [Parameter] public string? InitialPollingKey { get; set; }
