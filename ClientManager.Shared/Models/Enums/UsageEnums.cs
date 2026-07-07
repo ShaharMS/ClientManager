@@ -25,6 +25,11 @@ public enum BucketGranularity
     Second,
 
     /// <summary>
+    /// 1-minute buckets. Bridges second-level live data and five-minute rollups.
+    /// </summary>
+    OneMinute,
+
+    /// <summary>
     /// 5-minute buckets. Balances precision with storage cost; suitable for short-term
     /// operational dashboards.
     /// </summary>

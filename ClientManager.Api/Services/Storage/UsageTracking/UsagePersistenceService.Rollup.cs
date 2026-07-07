@@ -2,6 +2,7 @@ using ClientManager.DataAccess.Databases.Implementations;
 using ClientManager.DataAccess.Databases.Interfaces;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Enums;
+using ClientManager.Shared.Utils;
 
 namespace ClientManager.Api.Services.Storage.UsageTracking;
 
@@ -214,6 +215,7 @@ public partial class UsagePersistenceService
         var mutated = false;
 
         mutated |= await PruneGranularityAsync(database, BucketGranularity.Second, now - _options.SecondRetention, cancellationToken);
+        mutated |= await PruneGranularityAsync(database, BucketGranularity.OneMinute, now - _options.OneMinuteRetention, cancellationToken);
         mutated |= await PruneGranularityAsync(database, BucketGranularity.FiveMinute, now - _options.FiveMinuteRetention, cancellationToken);
         mutated |= await PruneGranularityAsync(database, BucketGranularity.Hour, now - _options.HourlyRetention, cancellationToken);
         mutated |= await PruneGranularityAsync(database, BucketGranularity.Day, now - _options.DailyRetention, cancellationToken);
@@ -286,20 +288,6 @@ public partial class UsagePersistenceService
                 : 0);
     }
 
-    private static DateTime RoundDownToFiveMinutes(DateTime utc)
-    {
-        return new DateTime(utc.Year, utc.Month, utc.Day, utc.Hour, utc.Minute / 5 * 5, 0, DateTimeKind.Utc);
-    }
-
-    private static DateTime RoundDownToGranularity(DateTime utc, BucketGranularity granularity)
-    {
-        return granularity switch
-        {
-            BucketGranularity.Second => RoundDownToSecond(utc),
-            BucketGranularity.FiveMinute => RoundDownToFiveMinutes(utc),
-            BucketGranularity.Hour => new DateTime(utc.Year, utc.Month, utc.Day, utc.Hour, 0, 0, DateTimeKind.Utc),
-            BucketGranularity.Day => new DateTime(utc.Year, utc.Month, utc.Day, 0, 0, 0, DateTimeKind.Utc),
-            _ => RoundDownToFiveMinutes(utc)
-        };
-    }
+    private static DateTime RoundDownToGranularity(DateTime utc, BucketGranularity granularity) =>
+        BucketGranularityHelper.RoundDown(granularity, utc);
 }

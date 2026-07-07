@@ -77,7 +77,8 @@ public partial class UsagePersistenceService : BackgroundService
                 var database = scope.ServiceProvider.GetRequiredService<IUsageSnapshotDatabase>();
                 var mutated = false;
 
-                mutated |= await RollUpAsync(database, BucketGranularity.Second, BucketGranularity.FiveMinute, TimeSpan.FromMinutes(5), stoppingToken);
+                mutated |= await RollUpAsync(database, BucketGranularity.Second, BucketGranularity.OneMinute, TimeSpan.FromMinutes(1), stoppingToken);
+                mutated |= await RollUpAsync(database, BucketGranularity.OneMinute, BucketGranularity.FiveMinute, TimeSpan.FromHours(1), stoppingToken);
                 mutated |= await RollUpAsync(database, BucketGranularity.FiveMinute, BucketGranularity.Hour, TimeSpan.FromHours(1), stoppingToken);
                 mutated |= await RollUpAsync(database, BucketGranularity.Hour, BucketGranularity.Day, TimeSpan.FromHours(24), stoppingToken);
                 mutated |= await PruneExpiredAsync(database, stoppingToken);

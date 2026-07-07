@@ -5,6 +5,7 @@ using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Enums;
 using ClientManager.Shared.Models.Responses;
 using ClientManager.Shared.Configuration.Storage;
+using ClientManager.Shared.Utils;
 using ClientManager.Api.Services.Interfaces;
 using Microsoft.Extensions.Options;
 
@@ -72,7 +73,7 @@ public partial class UsageStatisticsService : IUsageStatisticsService
                 var effectiveGranularity = granularity ?? BucketGranularity.FiveMinute;
                 var now = DateTime.UtcNow;
                 var effectiveTo = to ?? now;
-                var effectiveFrom = from ?? RoundDownToFiveMinutes(now).AddHours(-1);
+                var effectiveFrom = from ?? BucketGranularityHelper.RoundDown(BucketGranularity.FiveMinute, now).AddHours(-1);
                 var capValues = await LoadTargetCapValuesAsync(targetType, targetList, token);
                 var totalsByTarget = clientList is null
                     ? await GetContinuousBucketTotalsByTargetAsync(
@@ -155,9 +156,9 @@ public partial class UsageStatisticsService : IUsageStatisticsService
                             continue;
                         }
 
-                        var grantedCount = SumGrantedInRange(totals.Buckets, effectiveFrom, effectiveTo);
-                        var deniedCount = SumDeniedInRange(totals.Buckets, effectiveFrom, effectiveTo);
-                        var deniedBreakdown = SumDeniedBreakdownInRange(totals.Buckets, effectiveFrom, effectiveTo);
+                        var grantedCount = SumGrantedInRange(totals.Buckets, effectiveFrom, effectiveTo, totals.ActualGranularity);
+                        var deniedCount = SumDeniedInRange(totals.Buckets, effectiveFrom, effectiveTo, totals.ActualGranularity);
+                        var deniedBreakdown = SumDeniedBreakdownInRange(totals.Buckets, effectiveFrom, effectiveTo, totals.ActualGranularity);
                         var latestActiveCount = ComputeRunningActive(totals.Buckets, effectiveTo);
 
                         if (grantedCount > 0 || deniedCount > 0 || latestActiveCount > 0)
@@ -324,7 +325,7 @@ public partial class UsageStatisticsService : IUsageStatisticsService
             cancellationToken);
 
         var recentRequests = totalsByService.Values
-            .Sum(service => SumGrantedInRange(service.Buckets, recentWindowStart, now));
+            .Sum(service => SumGrantedInRange(service.Buckets, recentWindowStart, now, service.ActualGranularity));
 
         return new GlobalUsageStatsResponse(
             Math.Round(recentRequests / 5.0, 1),
@@ -465,10 +466,11 @@ public partial class UsageStatisticsService : IUsageStatisticsService
     {
         return requested switch
         {
-            BucketGranularity.Second => [BucketGranularity.Second, BucketGranularity.FiveMinute, BucketGranularity.Hour, BucketGranularity.Day],
-            BucketGranularity.FiveMinute => [BucketGranularity.FiveMinute, BucketGranularity.Second, BucketGranularity.Hour, BucketGranularity.Day],
-            BucketGranularity.Hour => [BucketGranularity.Hour, BucketGranularity.FiveMinute, BucketGranularity.Second, BucketGranularity.Day],
-            BucketGranularity.Day => [BucketGranularity.Day, BucketGranularity.Hour, BucketGranularity.FiveMinute, BucketGranularity.Second],
+            BucketGranularity.Second => [BucketGranularity.Second, BucketGranularity.OneMinute, BucketGranularity.FiveMinute, BucketGranularity.Hour, BucketGranularity.Day],
+            BucketGranularity.OneMinute => [BucketGranularity.OneMinute, BucketGranularity.Second, BucketGranularity.FiveMinute, BucketGranularity.Hour, BucketGranularity.Day],
+            BucketGranularity.FiveMinute => [BucketGranularity.FiveMinute, BucketGranularity.OneMinute, BucketGranularity.Second, BucketGranularity.Hour, BucketGranularity.Day],
+            BucketGranularity.Hour => [BucketGranularity.Hour, BucketGranularity.FiveMinute, BucketGranularity.OneMinute, BucketGranularity.Second, BucketGranularity.Day],
+            BucketGranularity.Day => [BucketGranularity.Day, BucketGranularity.Hour, BucketGranularity.FiveMinute, BucketGranularity.OneMinute, BucketGranularity.Second],
             _ => [requested]
         };
     }

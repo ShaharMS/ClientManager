@@ -2,6 +2,7 @@ using ClientManager.DataAccess.Databases.Implementations;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Enums;
 using ClientManager.Shared.Models.Responses;
+using ClientManager.Shared.Utils;
 
 namespace ClientManager.Api.Services.Storage;
 
@@ -252,9 +253,11 @@ public partial class UsageStatisticsService
         DateTime from,
         DateTime to)
     {
+        var bucketDuration = BucketGranularityHelper.GetBucketDuration(snapshot.Granularity);
+
         foreach (var bucket in snapshot.Buckets)
         {
-            if (bucket.Timestamp < from || bucket.Timestamp > to)
+            if (!BucketGranularityHelper.OverlapsRange(bucket.Timestamp, bucketDuration, from, to))
             {
                 continue;
             }
@@ -396,34 +399,42 @@ public partial class UsageStatisticsService
         return aggregated;
     }
 
-    private static TimeSpan GetBucketDuration(BucketGranularity granularity) => granularity switch
-    {
-        BucketGranularity.Second => TimeSpan.FromSeconds(1),
-        BucketGranularity.FiveMinute => TimeSpan.FromMinutes(5),
-        BucketGranularity.Hour => TimeSpan.FromHours(1),
-        BucketGranularity.Day => TimeSpan.FromDays(1),
-        _ => TimeSpan.FromMinutes(5)
-    };
+    private static TimeSpan GetBucketDuration(BucketGranularity granularity) =>
+        BucketGranularityHelper.GetBucketDuration(granularity);
 
     private static long SumGrantedInRange(
         SortedDictionary<DateTime, AggregatedBucketTotals> buckets,
         DateTime from,
-        DateTime to) =>
-        buckets.Where(kvp => kvp.Key >= from && kvp.Key <= to).Sum(kvp => kvp.Value.Granted);
+        DateTime to,
+        BucketGranularity granularity)
+    {
+        var duration = GetBucketDuration(granularity);
+        return buckets
+            .Where(kvp => BucketGranularityHelper.OverlapsRange(kvp.Key, duration, from, to))
+            .Sum(kvp => kvp.Value.Granted);
+    }
 
     private static long SumDeniedInRange(
         SortedDictionary<DateTime, AggregatedBucketTotals> buckets,
         DateTime from,
-        DateTime to) =>
-        buckets.Where(kvp => kvp.Key >= from && kvp.Key <= to).Sum(kvp => kvp.Value.Denied);
+        DateTime to,
+        BucketGranularity granularity)
+    {
+        var duration = GetBucketDuration(granularity);
+        return buckets
+            .Where(kvp => BucketGranularityHelper.OverlapsRange(kvp.Key, duration, from, to))
+            .Sum(kvp => kvp.Value.Denied);
+    }
 
     private static (long Unauth, long Blocked, long RateLimited, long Capacity) SumDeniedBreakdownInRange(
         SortedDictionary<DateTime, AggregatedBucketTotals> buckets,
         DateTime from,
-        DateTime to)
+        DateTime to,
+        BucketGranularity granularity)
     {
+        var duration = GetBucketDuration(granularity);
         long unauth = 0, blocked = 0, rateLimited = 0, capacity = 0;
-        foreach (var kvp in buckets.Where(kvp => kvp.Key >= from && kvp.Key <= to))
+        foreach (var kvp in buckets.Where(kvp => BucketGranularityHelper.OverlapsRange(kvp.Key, duration, from, to)))
         {
             unauth += kvp.Value.DeniedUnauthenticated;
             blocked += kvp.Value.DeniedBlocked;
@@ -434,17 +445,8 @@ public partial class UsageStatisticsService
         return (unauth, blocked, rateLimited, capacity);
     }
 
-    private static int GetGranularityRank(BucketGranularity granularity)
-    {
-        return granularity switch
-        {
-            BucketGranularity.Second => 0,
-            BucketGranularity.FiveMinute => 1,
-            BucketGranularity.Hour => 2,
-            BucketGranularity.Day => 3,
-            _ => int.MaxValue
-        };
-    }
+    private static int GetGranularityRank(BucketGranularity granularity) =>
+        BucketGranularityHelper.GetRank(granularity);
 
     private async Task OverlayUsageCountersByTargetAsync(
         IReadOnlyDictionary<string, ContinuousBucketState> states,
@@ -606,7 +608,8 @@ public partial class UsageStatisticsService
         }
 
         var bucketTimestamp = MapCounterTimestamp(secondTimestamp, state.ActualGranularity);
-        if (bucketTimestamp < from || bucketTimestamp > to)
+        var bucketDuration = GetBucketDuration(state.ActualGranularity);
+        if (!BucketGranularityHelper.OverlapsRange(bucketTimestamp, bucketDuration, from, to))
         {
             return;
         }
@@ -634,20 +637,8 @@ public partial class UsageStatisticsService
         state.FoundAny = true;
     }
 
-    private static DateTime MapCounterTimestamp(DateTime secondTimestamp, BucketGranularity granularity)
-    {
-        return granularity switch
-        {
-            BucketGranularity.Second => UsageSegmentHelper.RoundDownToSecond(secondTimestamp),
-            BucketGranularity.FiveMinute => RoundDownToFiveMinutes(secondTimestamp),
-            BucketGranularity.Hour => new DateTime(secondTimestamp.Year, secondTimestamp.Month, secondTimestamp.Day, secondTimestamp.Hour, 0, 0, DateTimeKind.Utc),
-            BucketGranularity.Day => new DateTime(secondTimestamp.Year, secondTimestamp.Month, secondTimestamp.Day, 0, 0, 0, DateTimeKind.Utc),
-            _ => RoundDownToFiveMinutes(secondTimestamp)
-        };
-    }
+    private static DateTime MapCounterTimestamp(DateTime secondTimestamp, BucketGranularity granularity) =>
+        BucketGranularityHelper.RoundDown(granularity, secondTimestamp);
 
     private static DateTime MaxDateTime(DateTime left, DateTime right) => left > right ? left : right;
-
-    private static DateTime RoundDownToFiveMinutes(DateTime utc) =>
-        new(utc.Year, utc.Month, utc.Day, utc.Hour, utc.Minute / 5 * 5, 0, DateTimeKind.Utc);
 }

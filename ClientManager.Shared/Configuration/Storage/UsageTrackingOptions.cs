@@ -23,6 +23,11 @@ public class UsageTrackingOptions
     public TimeSpan SecondRetention { get; set; } = TimeSpan.FromMinutes(5);
 
     /// <summary>
+    /// Retention window for one-minute buckets.
+    /// </summary>
+    public TimeSpan OneMinuteRetention { get; set; } = TimeSpan.FromHours(1);
+
+    /// <summary>
     /// Retention window for five-minute buckets.
     /// </summary>
     public TimeSpan FiveMinuteRetention { get; set; } = TimeSpan.FromHours(24);

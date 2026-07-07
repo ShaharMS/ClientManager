@@ -58,6 +58,11 @@ public static class UsageSegmentHelper
                 timestamp.Year, timestamp.Month, timestamp.Day,
                 timestamp.Hour, 0, 0, DateTimeKind.Utc),
 
+            // OneMinute-granularity segments span 1 hour (max 60 buckets).
+            BucketGranularity.OneMinute => new DateTime(
+                timestamp.Year, timestamp.Month, timestamp.Day,
+                timestamp.Hour, 0, 0, DateTimeKind.Utc),
+
             // FiveMinute-granularity segments span 1 day (max 288 buckets).
             BucketGranularity.FiveMinute => new DateTime(
                 timestamp.Year, timestamp.Month, timestamp.Day,
@@ -99,6 +104,7 @@ public static class UsageSegmentHelper
         return granularity switch
         {
             BucketGranularity.Second => segmentStart.AddHours(1),
+            BucketGranularity.OneMinute => segmentStart.AddHours(1),
             BucketGranularity.FiveMinute => segmentStart.AddDays(1),
             BucketGranularity.Hour => segmentStart.AddDays(7),
             BucketGranularity.Day => segmentStart.AddMonths(1),
