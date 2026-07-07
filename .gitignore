@@ -40,6 +40,9 @@ Thumbs.db
 ## VSCode
 .vscode/
 
+## Node (Chart.js dev dependency; vendored copy lives in wwwroot/js/vendor/)
+node_modules/
+
 ## Application data
 data/
 logs/
