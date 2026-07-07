@@ -1,29 +1,22 @@
 @using ClientManager.AdminUI.Localization
 @using ClientManager.AdminUI.Models.Allocations
+@using ClientManager.AdminUI.Utils
 
 @if (!IsAccessMetric && Row.CapValue > 0 && Row.CurrentValue >= Row.CapValue)
 {
     <StatusBadge Text="@L[TermKeys.DeniedOutOfSlots]" Variant="StatusBadgeVariant.Danger" />
 }
-else if (!IsAccessMetric && Row.DeniedLast5Min > 0)
-{
-    <StatusBadge Text="@L[TermKeys.DeniedThrottled]" Variant="StatusBadgeVariant.Warning" />
-}
-else if (IsAccessMetric && Row.DeniedLast5Min > 0 && Row.CapValue > 0 && Row.CurrentValue >= Row.CapValue * 0.9)
-{
-    <StatusBadge Text="@L[TermKeys.DeniedThrottled]" Variant="StatusBadgeVariant.Danger" />
-}
-else if (IsAccessMetric && Row.DeniedLast5Min > 0)
-{
-    <StatusBadge Text="@L[TermKeys.DeniedThrottled]" Variant="StatusBadgeVariant.Warning" />
-}
-else if (IsAccessMetric && Row.CapValue > 0 && Row.CurrentValue >= Row.CapValue * 0.9)
-{
-    <StatusBadge Text="@L[TermKeys.StateNearLimit]" Variant="StatusBadgeVariant.Warning" />
-}
 else
 {
-    <StatusBadge Text="@L[TermKeys.StateAvailable]" Variant="StatusBadgeVariant.Success" />
+    var badge = DenialStatusBadgeResolver.Resolve(
+        Row.DeniedRateLimitedCount,
+        Row.DeniedBlockedCount,
+        Row.DeniedUnauthenticatedCount,
+        Row.CurrentValue,
+        Row.CapValue,
+        includeCapacityDenials: !IsAccessMetric,
+        deniedCapacity: Row.DeniedCapacityLimitedCount);
+    <StatusBadge Text="@L[badge.TermKey]" Variant="@badge.Variant" />
 }
 
 @code {

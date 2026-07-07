@@ -1,22 +1,17 @@
 @using ClientManager.AdminUI.Localization
 @using ClientManager.AdminUI.Models.Monitor
+@using ClientManager.AdminUI.Utils
 
-@if (Row.DeniedLast5Min > 0 && Row.RateLimitCap > 0 && Row.GrantedLast5Min >= Row.RateLimitCap * 0.9)
-{
-    <StatusBadge Text="@L[TermKeys.DeniedThrottled]" Variant="StatusBadgeVariant.Danger" />
+@{
+    var badge = DenialStatusBadgeResolver.Resolve(
+        Row.DeniedRateLimitedCount,
+        Row.DeniedBlockedCount,
+        Row.DeniedUnauthenticatedCount,
+        Row.GrantedLast5Min,
+        Row.RateLimitCap);
 }
-else if (Row.DeniedLast5Min > 0)
-{
-    <StatusBadge Text="@L[TermKeys.DeniedThrottled]" Variant="StatusBadgeVariant.Warning" />
-}
-else if (Row.RateLimitCap > 0 && Row.GrantedLast5Min >= Row.RateLimitCap * 0.9)
-{
-    <StatusBadge Text="@L[TermKeys.StateNearLimit]" Variant="StatusBadgeVariant.Warning" />
-}
-else
-{
-    <StatusBadge Text="@L[TermKeys.StateAvailable]" Variant="StatusBadgeVariant.Success" />
-}
+
+<StatusBadge Text="@L[badge.TermKey]" Variant="@badge.Variant" />
 
 @code {
     [Parameter, EditorRequired] public MonitorClientRow Row { get; set; } = null!;

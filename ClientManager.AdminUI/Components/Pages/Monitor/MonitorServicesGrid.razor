@@ -1,6 +1,7 @@
 @using ClientManager.AdminUI.Localization
 @using ClientManager.AdminUI.Models
 @using ClientManager.AdminUI.Models.Monitor
+@using ClientManager.AdminUI.Utils
 
 <div class="cm-list-page__table-card cm-monitor-services-grid" style="margin-top: var(--space-lg);">
     <div class="cm-dashboard__chart-header">
@@ -25,8 +26,14 @@
             </RadzenDataGridColumn>
             <RadzenDataGridColumn TItem="ServiceSummaryRow" Property="CurrentUsage" Title="@L["Columns.Usage"]"
                 CssClass="cm-col-scalar" HeaderCssClass="cm-col-scalar" />
-            <RadzenDataGridColumn TItem="ServiceSummaryRow" Property="Cap" Title="@L["Columns.Cap"]"
+            <RadzenDataGridColumn TItem="ServiceSummaryRow" Property="OffBudgetUsage" Title="@L["Columns.OffBudget"]"
                 CssClass="cm-col-scalar" HeaderCssClass="cm-col-scalar" />
+            <RadzenDataGridColumn TItem="ServiceSummaryRow" Property="Cap" Title="@L["Columns.Cap"]"
+                CssClass="cm-col-scalar" HeaderCssClass="cm-col-scalar">
+                <Template Context="row">
+                    @(row.Cap > 0 ? row.Cap.ToString() : "—")
+                </Template>
+            </RadzenDataGridColumn>
             <RadzenDataGridColumn TItem="ServiceSummaryRow" Title="@L["Columns.Denied"]"
                 CssClass="cm-col-scalar-wide" HeaderCssClass="cm-col-scalar-wide">
                 <Template Context="row">
@@ -42,24 +49,30 @@
             <RadzenDataGridColumn TItem="ServiceSummaryRow" Title="@L["Columns.Utilization"]"
                 CssClass="cm-col-bar" HeaderCssClass="cm-col-bar">
                 <Template Context="row">
-                    @{
-                        var pct = row.Cap > 0 ? (int)(row.CurrentUsage * 100.0 / row.Cap) : 0;
+                    @if (row.Cap > 0)
+                    {
+                        var pct = (int)(row.UtilizationUsage * 100.0 / row.Cap);
+                        <UtilizationProgressBar Percent="@pct" />
                     }
-                    <UtilizationProgressBar Percent="@pct" />
+                    else
+                    {
+                        <span>—</span>
+                    }
                 </Template>
             </RadzenDataGridColumn>
             <RadzenDataGridColumn TItem="ServiceSummaryRow" Title="@L["Columns.Status"]" Sortable="false"
                 CssClass="cm-col-status" HeaderCssClass="cm-col-status">
                 <Template Context="row">
+                    @{
+                        var badge = DenialStatusBadgeResolver.Resolve(
+                            row.DeniedRateLimitedCount,
+                            row.DeniedBlockedCount,
+                            row.DeniedUnauthenticatedCount,
+                            row.UtilizationUsage,
+                            row.Cap);
+                    }
                     <div class="cm-list-page__actions-cell">
-                        @if (row.Cap > 0 && row.CurrentUsage >= row.Cap)
-                        {
-                            <StatusBadge Text="@L[TermKeys.DeniedThrottled]" Variant="StatusBadgeVariant.Danger" />
-                        }
-                        else
-                        {
-                            <StatusBadge Text="@L[TermKeys.StateAvailable]" Variant="StatusBadgeVariant.Success" />
-                        }
+                        <StatusBadge Text="@L[badge.TermKey]" Variant="@badge.Variant" />
                     </div>
                 </Template>
             </RadzenDataGridColumn>

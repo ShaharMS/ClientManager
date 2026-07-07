@@ -18,9 +18,14 @@ public record ServiceSummaryRow(
     string Id,
     string Name,
     long CurrentUsage,
+    long OffBudgetUsage,
     int Cap,
+    bool UsesGlobalCap,
     long DeniedLast5Min,
     long DeniedUnauthenticatedCount,
     long DeniedBlockedCount,
     long DeniedRateLimitedCount,
-    long DeniedCapacityLimitedCount);
+    long DeniedCapacityLimitedCount)
+{
+    public long UtilizationUsage => UsesGlobalCap ? CurrentUsage : CurrentUsage + OffBudgetUsage;
+}
