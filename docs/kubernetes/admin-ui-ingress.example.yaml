@@ -1,0 +1,85 @@
+# Example Ingress for ClientManager Admin UI (Blazor Server / SignalR).
+# Apply in your airgapped cluster and adjust host, TLS, and sticky-session settings.
+#
+# Blazor Interactive Server requires:
+#   - WebSocket upgrade on /_blazor (or working SignalR long-poll fallback)
+#   - Session affinity when running multiple UI replicas
+#   - Long proxy timeouts (circuits stay open for hours)
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: clientmanager-admin-ui
+  annotations:
+    # nginx-ingress-controller
+    nginx.ingress.kubernetes.io/affinity: "cookie"
+    nginx.ingress.kubernetes.io/affinity-mode: "persistent"
+    nginx.ingress.kubernetes.io/session-cookie-name: "cm-ui-affinity"
+    nginx.ingress.kubernetes.io/session-cookie-max-age: "86400"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
+    nginx.ingress.kubernetes.io/enable-websocket: "true"
+    nginx.ingress.kubernetes.io/upstream-hash-by: "$remote_addr"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: clientmanager.example.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: clientmanager-admin-ui
+                port:
+                  number: 5100
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: clientmanager-admin-ui
+spec:
+  selector:
+    app: clientmanager-admin-ui
+  ports:
+    - port: 5100
+      targetPort: 5100
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: clientmanager-admin-ui
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: clientmanager-admin-ui
+  template:
+    metadata:
+      labels:
+        app: clientmanager-admin-ui
+    spec:
+      containers:
+        - name: admin-ui
+          image: clientmanager-admin-ui:latest
+          ports:
+            - containerPort: 5100
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              value: Production
+            - name: ApiBaseUrl
+              value: http://clientmanager-api:5062
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 5100
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 5100
+            initialDelaySeconds: 15
+            periodSeconds: 30

@@ -32,6 +32,9 @@ nav:
   - Localization: localization.md
   - API overview: api-overview.md
   - Development and operations: development-and-operations.md
+  - Kubernetes (airgapped):
+    - Overview: kubernetes/index.md
+    - Redis tuning: kubernetes/redis-tuning-airgapped.md
   - Scripts:
     - Overview: scripts/index.md
     - seed_data.py: scripts/seed-data.md
