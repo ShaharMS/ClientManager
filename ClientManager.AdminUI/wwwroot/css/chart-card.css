@@ -7,7 +7,13 @@
     border: 1px solid var(--color-border);
     padding: var(--space-lg);
     min-width: 0;
+    overflow: visible;
+}
+
+.cm-chart-card__body {
+    min-width: 0;
     overflow: hidden;
+    border-radius: var(--radius-sm);
 }
 
 .cm-chart-card--spaced,
@@ -16,7 +22,6 @@
 }
 
 .cm-chart-card__toolbar {
-    container-type: inline-size;
     display: grid;
     grid-template-columns: 1fr auto;
     grid-template-rows: auto auto;
@@ -27,6 +32,7 @@
 }
 
 .cm-chart-card__filters {
+    container-type: inline-size;
     grid-column: 1 / -1;
     grid-row: 1;
     display: grid;

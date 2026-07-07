@@ -1,16 +1,17 @@
 @using ClientManager.AdminUI.Utils
 @inject UserPreferencesService PreferencesService
 
-<div class="cm-chart-settings-dropdown">
+<div class="cm-chart-settings-dropdown @(_isOpen ? "cm-chart-settings-dropdown--open" : null)">
     <button class="cm-chart-settings-dropdown__trigger" @onclick="ToggleFlyout" @onclick:stopPropagation="true">
         <RadzenIcon Icon="tune" class="cm-chart-settings-dropdown__icon" />
         <span class="cm-chart-settings-dropdown__label">@_rangeLabel</span>
     </button>
     @if (_isOpen)
     {
-        <div class="cm-chart-settings-dropdown__overlay" @onclick="CloseFlyout"></div>
-        <div class="cm-chart-settings-dropdown__panel" @onclick:stopPropagation="true">
-            <div class="cm-chart-settings-dropdown__relative">
+        <div class="cm-chart-settings-dropdown__layer">
+            <div class="cm-chart-settings-dropdown__scrim" @onclick="CloseFlyout"></div>
+            <div class="cm-chart-settings-dropdown__panel" @onclick:stopPropagation="true">
+                <div class="cm-chart-settings-dropdown__relative">
                 <div class="cm-chart-settings-dropdown__relative-duration">
                     <span class="cm-chart-settings-dropdown__field-label">@L["Charts.Settings.Last"]</span>
                     <DurationInput Value="_relativeSeconds"
@@ -71,6 +72,7 @@
                             @onclick="() => SelectAxisScale(AxisScaleType.Logarithmic)">
                         @L["Common.Logarithmic"]
                     </button>
+                </div>
                 </div>
             </div>
         </div>
