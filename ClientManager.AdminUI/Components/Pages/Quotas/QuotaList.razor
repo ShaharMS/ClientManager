@@ -233,7 +233,7 @@ else
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         _canCreateMore = pools.Any(p => !limitedTargets.Contains(p.Id));
-        _createDisabledTooltip = _canCreateMore ? null : L["Pages.Quotas.CreateDisabledTooltip"];
+        _createDisabledTooltip = _canCreateMore ? null : L["Pages.Quotas.CreateDisabledTooltip"].Value;
     }
 
     private string GetPoolName(string poolId) =>

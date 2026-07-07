@@ -135,7 +135,7 @@
             return;
         }
 
-        var allLimited = L["Pages.Quotas.CreateDisabledTooltip"];
+        var allLimited = L["Pages.Quotas.CreateDisabledTooltip"].Value;
         _canCreate = _poolIds.Any(id => !_limitedPoolIds.Contains(id, StringComparer.OrdinalIgnoreCase));
         _submitDisabled = !_canCreate;
         _submitTitle = _canCreate ? null : allLimited;
@@ -146,7 +146,7 @@
 
     private async Task SaveAsync()
     {
-        var allLimited = L["Pages.Quotas.CreateDisabledTooltip"];
+        var allLimited = L["Pages.Quotas.CreateDisabledTooltip"].Value;
         if (_isNew && (!_canCreate || _limitedPoolIds.Any(id => string.Equals(id, _model.TargetId, StringComparison.OrdinalIgnoreCase))))
         {
             _saveError = allLimited;

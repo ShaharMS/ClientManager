@@ -226,7 +226,7 @@ else
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         _canCreateMore = services.Any(s => !limitedTargets.Contains(s.Id));
-        _createDisabledTooltip = _canCreateMore ? null : L["Pages.RateLimits.CreateDisabledTooltip"];
+        _createDisabledTooltip = _canCreateMore ? null : L["Pages.RateLimits.CreateDisabledTooltip"].Value;
     }
 
     private Task DeleteAsync(GlobalRateLimit limit) =>

@@ -132,7 +132,7 @@
             return;
         }
 
-        var allLimited = L["Pages.RateLimits.CreateDisabledTooltip"];
+        var allLimited = L["Pages.RateLimits.CreateDisabledTooltip"].Value;
         _canCreate = _serviceIds.Any(id => !_limitedServiceIds.Contains(id, StringComparer.OrdinalIgnoreCase));
         _submitDisabled = !_canCreate;
         _submitTitle = _canCreate ? null : allLimited;
@@ -143,7 +143,7 @@
 
     private async Task SaveAsync()
     {
-        var allLimited = L["Pages.RateLimits.CreateDisabledTooltip"];
+        var allLimited = L["Pages.RateLimits.CreateDisabledTooltip"].Value;
         if (_isNew && (!_canCreate || _limitedServiceIds.Any(id => string.Equals(id, _model.TargetId, StringComparison.OrdinalIgnoreCase))))
         {
             _saveError = allLimited;
