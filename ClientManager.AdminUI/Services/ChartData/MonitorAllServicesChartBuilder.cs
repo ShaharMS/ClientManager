@@ -23,7 +23,8 @@ internal static class MonitorAllServicesChartBuilder
         DateTime now,
         List<TargetChartData> charts,
         List<MonitorClientRow> rows,
-        IStringLocalizer<SharedResources> localizer)
+        IStringLocalizer<SharedResources> localizer,
+        TimeSpan storageBucketDuration)
     {
         var totalCap = 0;
 
@@ -60,7 +61,9 @@ internal static class MonitorAllServicesChartBuilder
             from,
             now,
             context.BucketCount,
-            localizer);
+            localizer,
+            context.ShowDeniedBreakdown,
+            storageBucketDuration);
 
         var capPoints = referenceBuckets
             .Select(bucket => new ChartPoint(bucket.Label, totalCap))

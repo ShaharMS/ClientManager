@@ -12,30 +12,61 @@ namespace ClientManager.AdminUI.Services.ChartData;
 
 internal sealed class MonitorSingleServiceChartLoader
 {
-    private readonly StatisticsApiService _statsService;
     private readonly IStringLocalizer<SharedResources> _localizer;
 
     public MonitorSingleServiceChartLoader(
         StatisticsApiService statsService,
         IStringLocalizer<SharedResources> localizer)
     {
-        _statsService = statsService;
+        _ = statsService;
         _localizer = localizer;
     }
 
-    public async Task LoadAsync(
+    public void BuildFromCache(
+        MonitorLoadContext context,
+        MonitorFetchCache cache,
+        ChartBucketAggregator.AggregationResult chartTemplate,
+        TimeSpan chartBucketDuration,
+        List<TargetChartData> charts,
+        List<MonitorClientRow> rows,
+        TimeSpan storageDuration)
+    {
+        BuildCharts(
+            context,
+            cache.VisibleServices,
+            cache.Breakdowns,
+            cache.RateLimitLookup,
+            cache.ClientHistoriesByService,
+            cache.ServiceHistories,
+            chartTemplate,
+            chartBucketDuration,
+            cache.RangeDuration,
+            cache.From,
+            cache.Now,
+            charts,
+            rows,
+            storageDuration);
+    }
+
+    private void BuildCharts(
         MonitorLoadContext context,
         List<Service> visibleServices,
         IReadOnlyList<TargetClientUsageBreakdownResponse> breakdowns,
         IReadOnlyDictionary<string, GlobalRateLimit> rateLimitLookup,
+        Dictionary<string, Dictionary<string, ClientHistoricalUsageResponse>> historiesByService,
+        Dictionary<string, HistoricalUsageResponse?> serviceHistories,
         ChartBucketAggregator.AggregationResult chartTemplate,
         TimeSpan chartBucketDuration,
         TimeSpan rangeDuration,
         DateTime from,
         DateTime now,
         List<TargetChartData> charts,
-        List<MonitorClientRow> rows)
+        List<MonitorClientRow> rows,
+        TimeSpan storageDuration)
     {
+        charts.Clear();
+        rows.Clear();
+
         foreach (var service in visibleServices)
         {
             var chartCap = MonitorCapCalculator.GetScaledGlobalServiceCap(
@@ -44,14 +75,8 @@ internal sealed class MonitorSingleServiceChartLoader
             var breakdown = breakdowns.FirstOrDefault(b => b.TargetId == service.Id);
             var entries = breakdown?.Entries ?? [];
 
-            var historiesByClientId = (await _statsService.GetHistoricalUsageByClientAsync(
-                    "Service",
-                    new[] { service.Id },
-                    entries.Select(entry => entry.ClientId),
-                    from,
-                    now,
-                    context.TimeRange.Granularity))
-                .ToDictionary(history => history.ClientId);
+            historiesByService.TryGetValue(service.Id, out var historiesByClientId);
+            historiesByClientId ??= [];
 
             var clientAreas = new List<ClientAreaSeries>();
             var clientAggregations = new Dictionary<string, ChartBucketAggregator.AggregationResult>();
@@ -69,7 +94,7 @@ internal sealed class MonitorSingleServiceChartLoader
                 }
 
                 clientAggregations[entry.ClientId] = ChartBucketAggregator.Aggregate(
-                    rawPoints, from, now, context.BucketCount);
+                    rawPoints, from, now, context.BucketCount, ChartBucketAggregator.AggregationMode.Sum, storageDuration);
             }
 
             var referenceBuckets = clientAggregations.Values.FirstOrDefault()?.Buckets
@@ -115,9 +140,7 @@ internal sealed class MonitorSingleServiceChartLoader
                 a.Points.Select(p => new ChartPoint(p.Label, p.Value)).ToList()
             )).ToList();
 
-            var serviceHistory = (await _statsService.GetHistoricalUsageAsync(
-                "Service", new[] { service.Id }, null, from, now, context.TimeRange.Granularity))
-                .FirstOrDefault();
+            serviceHistories.TryGetValue(service.Id, out var serviceHistory);
             DeniedChartSeriesBuilder.AppendTripletSeries(
                 clientAreas,
                 service.Id,
@@ -126,7 +149,9 @@ internal sealed class MonitorSingleServiceChartLoader
                 from,
                 now,
                 context.BucketCount,
-                _localizer);
+                _localizer,
+                context.ShowDeniedBreakdown,
+                storageDuration);
 
             charts.Add(new TargetChartData(service.Name, clientAreas, chartCapPoints));
         }

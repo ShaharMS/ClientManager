@@ -123,13 +123,13 @@ public partial class Monitor : ComponentBase, IAsyncDisposable
         _chartBucketCount = bucketCount;
         if (reloadWhenChanged)
         {
-            await LoadDataAsync();
-            StateHasChanged();
+            await TryRebuildChartsFromCacheAsync();
         }
     }
 
     private Task OnPollingIntervalChanged(PollingIntervalPreset preset)
     {
+        _pollingOverride = true;
         _pollingKey = preset.Key;
         _polling?.SetInterval(preset.Interval);
         SyncUrl();

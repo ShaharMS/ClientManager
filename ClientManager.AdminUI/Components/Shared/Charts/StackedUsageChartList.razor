@@ -1,51 +1,13 @@
 @using ClientManager.AdminUI.Models.Charts
-@inject EntityColorService Colors
 
-@if (Loading)
-{
-    <SkeletonBlock CssClass="cm-skeleton--heading" />
-    <SkeletonBlock CssClass="cm-skeleton--chart" />
-}
-else if (Charts.Count > 0)
-{
-    @foreach (var targetChart in Charts)
-    {
-        @if (ShowTitles && !string.IsNullOrEmpty(targetChart.TargetName))
-        {
-            <span class="cm-dashboard__chart-title">@FormatTitle(targetChart)</span>
-        }
-        <RadzenChart Style="@($"height: {HeightPx}px;")">
-            @foreach (var clientArea in ChartSeriesTransform.GetChartSeries(targetChart.ClientSeries, AxisScale))
-            {
-                <RadzenStackedAreaSeries Data="@clientArea.Points"
-                    CategoryProperty="Label" ValueProperty="Value"
-                    Title="@clientArea.ClientName"
-                    Hidden="@clientArea.Hidden"
-                    Fill="@Colors.GetSeriesColor(clientArea.ClientId)"
-                    Stroke="@Colors.GetSeriesColor(clientArea.ClientId)">
-                    <TooltipTemplate Context="point">
-                        <span>@clientArea.ClientName: @(point.OriginalValue.ToString("N0"))</span>
-                    </TooltipTemplate>
-                </RadzenStackedAreaSeries>
-            }
-            <RadzenLineSeries Data="@ChartSeriesTransform.TransformPoints(targetChart.CapSeries, AxisScale)"
-                CategoryProperty="Label" ValueProperty="Value"
-                Title="@ResolvedCapLineTitle" LineType="LineType.Dashed"
-                Stroke="var(--color-text-secondary)">
-                <TooltipTemplate Context="point">
-                    <span>@ResolvedCapLineTitle: @(point.OriginalValue.ToString("N0"))</span>
-                </TooltipTemplate>
-            </RadzenLineSeries>
-            <RadzenCategoryAxis />
-            <RadzenValueAxis Formatter="@(AxisScale == AxisScaleType.Logarithmic ? LogarithmicScaleHelper.FormatAxisLabel : LogarithmicScaleHelper.FormatLinearAxisLabel)" />
-            <RadzenLegend Position="LegendPosition.Right" />
-        </RadzenChart>
-    }
-}
-else
-{
-    <div class="cm-chart-empty">@ResolvedEmptyMessage</div>
-}
+<StackedUsageChart Charts="@Charts"
+                   AxisScale="@AxisScale"
+                   HeightPx="@HeightPx"
+                   CapLineTitle="@CapLineTitle"
+                   Loading="@Loading"
+                   ShowTitles="@ShowTitles"
+                   EmptyMessage="@EmptyMessage"
+                   TitleSuffix="@TitleSuffix" />
 
 @code {
     [Parameter] public IReadOnlyList<TargetChartData> Charts { get; set; } = [];
@@ -56,10 +18,4 @@ else
     [Parameter] public bool ShowTitles { get; set; } = true;
     [Parameter] public string? EmptyMessage { get; set; }
     [Parameter] public string? TitleSuffix { get; set; }
-
-    private string ResolvedCapLineTitle => CapLineTitle ?? L["Common.Cap"];
-    private string ResolvedEmptyMessage => EmptyMessage ?? L["Charts.NoUsageData"];
-
-    private string FormatTitle(TargetChartData chart) =>
-        TitleSuffix is null ? chart.TargetName : $"{chart.TargetName} - {TitleSuffix}";
 }

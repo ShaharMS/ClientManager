@@ -9,6 +9,8 @@
            OnTimeRangeChanged="OnTimeRangeChanged"
            OnPollingIntervalChanged="OnPollingIntervalChanged"
            OnAxisScaleChanged="OnAxisScaleChanged"
+           OnShowDeniedBreakdownChanged="OnShowDeniedBreakdownChanged"
+           PollingKey="@PollingKey"
            InitialTimeRangeKey="@InitialTimeRangeKey"
            InitialPollingKey="@InitialPollingKey"
            InitialAxisScale="@InitialAxisScale"
@@ -114,6 +116,8 @@
     [Parameter] public EventCallback<ChartTimeRange> OnTimeRangeChanged { get; set; }
     [Parameter] public EventCallback<PollingIntervalPreset> OnPollingIntervalChanged { get; set; }
     [Parameter] public EventCallback<AxisScaleType> OnAxisScaleChanged { get; set; }
+    [Parameter] public EventCallback<bool> OnShowDeniedBreakdownChanged { get; set; }
+    [Parameter] public string? PollingKey { get; set; }
 
     private string ChartTitle => string.Format(CultureInfo.CurrentCulture, L["Pages.Dashboard.Chart.UsageOverTime"], SelectedTargetName);
 

@@ -73,7 +73,14 @@
                         @L["Common.Logarithmic"]
                     </button>
                 </div>
-                </div>
+            </div>
+
+            <div class="cm-chart-settings-dropdown__axis">
+                <label class="cm-chart-settings-dropdown__checkbox">
+                    <input type="checkbox" checked="@_showDeniedBreakdown" @onchange="OnShowDeniedBreakdownChangedAsync" />
+                    <span>@L["Charts.Settings.ShowDeniedBreakdown"]</span>
+                </label>
+            </div>
             </div>
         </div>
     }
@@ -83,6 +90,8 @@
     [Parameter] public EventCallback<ChartTimeRange> OnTimeRangeChanged { get; set; }
     [Parameter] public EventCallback<PollingIntervalPreset> OnPollingIntervalChanged { get; set; }
     [Parameter] public EventCallback<AxisScaleType> OnAxisScaleChanged { get; set; }
+    [Parameter] public EventCallback<bool> OnShowDeniedBreakdownChanged { get; set; }
+    [Parameter] public string? PollingKey { get; set; }
     [Parameter] public string? InitialTimeRangeKey { get; set; }
     [Parameter] public string? InitialPollingKey { get; set; }
     [Parameter] public AxisScaleType? InitialAxisScale { get; set; }
@@ -99,11 +108,20 @@
     private double _relativeSeconds = 3600;
     private string _selectedPollingKey = "10s";
     private AxisScaleType _selectedAxisScale = AxisScaleType.Linear;
+    private bool _showDeniedBreakdown;
     private DateTime? _customFromLocal;
     private DateTime? _customToLocal;
     private List<PollingOption> _pollingOptions = [];
 
     private record PollingOption(string Key, string Label);
+
+    protected override void OnParametersSet()
+    {
+        if (!string.IsNullOrEmpty(PollingKey) && PollingKey != _selectedPollingKey)
+        {
+            _selectedPollingKey = PollingKey;
+        }
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -248,5 +266,11 @@
     {
         _selectedAxisScale = scale;
         await OnAxisScaleChanged.InvokeAsync(scale);
+    }
+
+    private async Task OnShowDeniedBreakdownChangedAsync(ChangeEventArgs args)
+    {
+        _showDeniedBreakdown = args.Value is bool enabled && enabled;
+        await OnShowDeniedBreakdownChanged.InvokeAsync(_showDeniedBreakdown);
     }
 }

@@ -1,0 +1,24 @@
+@using ClientManager.AdminUI.Models.Charts
+
+@if (Loading)
+{
+    <SkeletonBlock CssClass="cm-skeleton--heading" />
+    <SkeletonBlock CssClass="cm-skeleton--chart" />
+}
+else if (Charts.Count > 0)
+{
+    @foreach (var (targetChart, index) in Charts.Select((chart, index) => (chart, index)))
+    {
+        @if (ShowTitles && !string.IsNullOrEmpty(targetChart.TargetName))
+        {
+            <span class="cm-dashboard__chart-title">@FormatTitle(targetChart)</span>
+        }
+        <div class="cm-stacked-chart" style="height: @(HeightPx)px;">
+            <canvas id="@GetCanvasId(index)"></canvas>
+        </div>
+    }
+}
+else
+{
+    <div class="cm-chart-empty">@ResolvedEmptyMessage</div>
+}

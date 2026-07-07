@@ -18,10 +18,13 @@ internal static class AggregateTargetChartSeriesBuilder
         DateTime from,
         DateTime now,
         int bucketCount,
-        IStringLocalizer<SharedResources> localizer)
+        IStringLocalizer<SharedResources> localizer,
+        bool showDenied = false,
+        TimeSpan? storageBucketDuration = null)
     {
         var targetPointLists = targetPoints.ToList();
         var usageMode = ChartValueHelper.GetAggregationMode(usageIsSummed);
+        var storageDuration = storageBucketDuration ?? TimeSpan.Zero;
         var aggregations = targetPointLists
             .Select(points => ChartBucketAggregator.Aggregate(
                 points.Select(point => new ChartBucketAggregator.RawPoint(
@@ -30,7 +33,8 @@ internal static class AggregateTargetChartSeriesBuilder
                 from,
                 now,
                 bucketCount,
-                usageMode))
+                usageMode,
+                storageDuration))
             .Where(result => result.Buckets.Count > 0)
             .ToList();
 
@@ -54,7 +58,9 @@ internal static class AggregateTargetChartSeriesBuilder
             from,
             now,
             bucketCount,
-            localizer);
+            localizer,
+            showDenied,
+            storageDuration);
 
         return (series, referenceBuckets);
     }

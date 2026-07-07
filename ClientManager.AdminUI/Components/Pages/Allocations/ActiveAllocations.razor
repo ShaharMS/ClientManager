@@ -31,12 +31,14 @@
     InitialAxisScale="@_initialAxisScale"
     InitialCustomFromUtc="@_initialCustomFromUtc"
     InitialCustomToUtc="@_initialCustomToUtc"
+    PollingKey="@_pollingKey"
     Loading="@_chartLoading"
     OnFilterChanged="OnFilterChanged"
     MetricSelectionChanged="OnMetricChanged"
     OnTimeRangeChanged="OnTimeRangeChanged"
     OnPollingIntervalChanged="OnPollingIntervalChanged"
-    OnAxisScaleChanged="OnAxisScaleChanged" />
+    OnAxisScaleChanged="OnAxisScaleChanged"
+    OnShowDeniedBreakdownChanged="OnShowDeniedBreakdownChanged" />
 
 <AllocationsClientDetailGrid @ref="_clientDetailGrid"
     Title="@ClientDetailTitle"

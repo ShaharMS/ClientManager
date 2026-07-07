@@ -6,7 +6,7 @@ namespace ClientManager.AdminUI.Services;
 /// </summary>
 public static class ChartAggregator
 {
-    public const int DefaultTopN = 10;
+    public const int DefaultTopN = 5;
     public const string OthersId = "__others__";
     public const string OthersLabel = "Others";
     public const string AggregateSeriesId = "__aggregate__";

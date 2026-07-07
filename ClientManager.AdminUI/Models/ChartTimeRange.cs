@@ -82,6 +82,7 @@ public sealed class ChartTimeRange
         return Granularity switch
         {
             "Second" => local.ToString("T", culture),
+            "OneMinute" => local.ToString("HH:mm", culture),
             "Day" => local.ToString("MMM dd", culture),
             "Hour" => local.ToString("MMM dd HH:mm", culture),
             _ => local.ToString("HH:mm", culture)
@@ -93,6 +94,11 @@ public sealed class ChartTimeRange
         if (duration.TotalMinutes <= 5)
         {
             return "Second";
+        }
+
+        if (duration.TotalMinutes <= 60)
+        {
+            return "OneMinute";
         }
 
         if (duration.TotalHours <= 6)

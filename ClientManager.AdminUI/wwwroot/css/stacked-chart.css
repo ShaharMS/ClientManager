@@ -1,0 +1,18 @@
+.cm-stacked-chart {
+    position: relative;
+    width: 100%;
+    min-width: 0;
+}
+
+.cm-stacked-chart canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.cm-duration-input .rz-spinner {
+    min-width: 4.5rem;
+}
+
+.cm-duration-input .rz-numeric input {
+    min-width: 4.5rem;
+}

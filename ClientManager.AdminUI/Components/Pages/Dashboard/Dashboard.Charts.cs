@@ -1,6 +1,7 @@
 using ClientManager.AdminUI.Models.Charts;
 using ClientManager.AdminUI.Models.Dashboard;
 using ClientManager.AdminUI.Services.ChartData;
+using ClientManager.AdminUI.Utils;
 
 namespace ClientManager.AdminUI.Components.Pages.Dashboard;
 
@@ -13,6 +14,13 @@ public partial class Dashboard
     private async Task OnTimeRangeChanged(ChartTimeRange range)
     {
         _timeRange = range;
+        if (!_pollingOverride)
+        {
+            var suggested = ChartPollingHelper.SuggestForRange(range);
+            _pollingKey = suggested.Key;
+            _polling?.SetInterval(suggested.Interval);
+        }
+
         SyncUrl();
         await LoadChartDataWithSkeletonAsync();
     }
@@ -71,6 +79,20 @@ public partial class Dashboard
         return LoadChartDataCoreAsync(ticket);
     }
 
+    private DashboardChartLoadContext CreateChartLoadContext() => new()
+    {
+        SelectedFilterType = _selectedFilterType,
+        SelectedTargetId = _selectedTargetId,
+        SelectedClientIds = _selectedClientIds,
+        TimeRange = _timeRange,
+        FilterTargets = _filterTargets,
+        AllServices = _allServices,
+        AllPools = _allPools,
+        Clients = _clients,
+        BucketCount = _chartBucketCount,
+        ShowDeniedBreakdown = _showDeniedBreakdown
+    };
+
     private async Task LoadChartDataCoreAsync(int ticket)
     {
         if (_disposed || _selectedTargetId is null || _chartLoader is null)
@@ -80,20 +102,7 @@ public partial class Dashboard
 
         try
         {
-            var context = new DashboardChartLoadContext
-            {
-                SelectedFilterType = _selectedFilterType,
-                SelectedTargetId = _selectedTargetId,
-                SelectedClientIds = _selectedClientIds,
-                TimeRange = _timeRange,
-                FilterTargets = _filterTargets,
-                AllServices = _allServices,
-                AllPools = _allPools,
-                Clients = _clients,
-                BucketCount = _chartBucketCount
-            };
-
-            var (charts, donut) = await _chartLoader.LoadAsync(context);
+            var (charts, donut) = await _chartLoader.LoadAsync(CreateChartLoadContext());
 
             if (_disposed || ticket != _chartLoadTicket)
             {

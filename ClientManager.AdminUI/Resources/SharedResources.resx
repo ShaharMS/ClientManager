@@ -95,6 +95,9 @@
   <data name="Charts.Settings.To" xml:space="preserve">
     <value>To</value>
   </data>
+  <data name="Charts.Settings.ShowDeniedBreakdown" xml:space="preserve">
+    <value>Show denied breakdown</value>
+  </data>
   <data name="Columns.Actions" xml:space="preserve">
     <value>Actions</value>
   </data>
@@ -175,6 +178,9 @@
   </data>
   <data name="Columns.Usage" xml:space="preserve">
     <value>Usage</value>
+  </data>
+  <data name="Columns.OffBudget" xml:space="preserve">
+    <value>Off-budget</value>
   </data>
   <data name="Columns.Utilization" xml:space="preserve">
     <value>Utilization</value>
@@ -880,6 +886,9 @@
   </data>
   <data name="Presets.PollingInterval.1m.Label" xml:space="preserve">
     <value>1 minute</value>
+  </data>
+  <data name="Presets.PollingInterval.2m.Label" xml:space="preserve">
+    <value>2 minutes</value>
   </data>
   <data name="Presets.PollingInterval.2s.Label" xml:space="preserve">
     <value>2 seconds</value>

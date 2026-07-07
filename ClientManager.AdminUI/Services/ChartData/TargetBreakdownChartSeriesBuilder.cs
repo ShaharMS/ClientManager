@@ -16,9 +16,12 @@ internal static class TargetBreakdownChartSeriesBuilder
         DateTime from,
         DateTime now,
         int bucketCount,
-        IStringLocalizer<SharedResources> localizer)
+        IStringLocalizer<SharedResources> localizer,
+        bool showDenied = false,
+        TimeSpan? storageBucketDuration = null)
     {
         var usageMode = ChartValueHelper.GetAggregationMode(usageIsSummed);
+        var storageDuration = storageBucketDuration ?? TimeSpan.Zero;
         var series = new List<ClientAreaSeries>();
         List<ChartBucketAggregator.AggregatedBucket>? referenceBuckets = null;
 
@@ -36,7 +39,8 @@ internal static class TargetBreakdownChartSeriesBuilder
                 from,
                 now,
                 bucketCount,
-                usageMode);
+                usageMode,
+                storageDuration);
             referenceBuckets ??= usageAgg.Buckets;
 
             var usageChartPoints = usageAgg.Buckets
@@ -48,7 +52,7 @@ internal static class TargetBreakdownChartSeriesBuilder
             }
 
             DeniedChartSeriesBuilder.AppendTripletSeries(
-                series, id, points, deniedViewMode, from, now, bucketCount, localizer);
+                series, id, points, deniedViewMode, from, now, bucketCount, localizer, showDenied, storageDuration);
         }
 
         referenceBuckets ??= ChartBucketAggregator.Aggregate([], from, now, bucketCount).Buckets;

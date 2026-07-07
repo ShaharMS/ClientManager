@@ -95,6 +95,9 @@
   <data name="Charts.Settings.To" xml:space="preserve">
     <value>עד</value>
   </data>
+  <data name="Charts.Settings.ShowDeniedBreakdown" xml:space="preserve">
+    <value>הצג פירוט דחיות</value>
+  </data>
   <data name="Columns.Actions" xml:space="preserve">
     <value>פעולות</value>
   </data>
@@ -175,6 +178,9 @@
   </data>
   <data name="Columns.Usage" xml:space="preserve">
     <value>שימוש</value>
+  </data>
+  <data name="Columns.OffBudget" xml:space="preserve">
+    <value>מחוץ לתקציב</value>
   </data>
   <data name="Columns.Utilization" xml:space="preserve">
     <value>ניצול</value>
@@ -880,6 +886,9 @@
   </data>
   <data name="Presets.PollingInterval.1m.Label" xml:space="preserve">
     <value>דקה</value>
+  </data>
+  <data name="Presets.PollingInterval.2m.Label" xml:space="preserve">
+    <value>2 דקות</value>
   </data>
   <data name="Presets.PollingInterval.2s.Label" xml:space="preserve">
     <value>2 שניות</value>

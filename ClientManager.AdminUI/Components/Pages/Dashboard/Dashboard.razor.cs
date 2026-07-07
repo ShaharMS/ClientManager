@@ -63,6 +63,8 @@ public partial class Dashboard : ComponentBase, IAsyncDisposable
     private ChartTimeRange _timeRange = ChartTimeRange.FromPreset(TimeRangePreset.Default);
     private AxisScaleType _axisScaleType = AxisScaleType.Linear;
     private int _chartBucketCount = ChartBucketAggregator.DefaultBucketCount;
+    private bool _showDeniedBreakdown;
+    private bool _pollingOverride;
     private IJSObjectReference? _chartJs;
     private DotNetObjectReference<Dashboard>? _chartSelfRef;
 
@@ -192,15 +194,31 @@ public partial class Dashboard : ComponentBase, IAsyncDisposable
         }
 
         _chartBucketCount = bucketCount;
-        if (reloadWhenChanged)
+        if (reloadWhenChanged && _chartLoader is not null)
         {
+            var context = CreateChartLoadContext();
+            if (_chartLoader.TryRebuildFromCache(context, out var charts, out var donut))
+            {
+                _targetCharts = charts;
+                _donutData = donut;
+                await InvokeAsync(StateHasChanged);
+                return;
+            }
+
             await LoadChartDataAsync();
             StateHasChanged();
         }
     }
 
+    private Task OnShowDeniedBreakdownChanged(bool value)
+    {
+        _showDeniedBreakdown = value;
+        return LoadChartDataWithSkeletonAsync();
+    }
+
     private Task OnPollingIntervalChanged(PollingIntervalPreset preset)
     {
+        _pollingOverride = true;
         _pollingKey = preset.Key;
         _polling?.SetInterval(preset.Interval);
         SyncUrl();

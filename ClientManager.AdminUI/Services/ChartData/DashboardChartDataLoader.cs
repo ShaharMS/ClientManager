@@ -13,6 +13,7 @@ public sealed class DashboardChartDataLoader
     private readonly DashboardSingleTargetChartLoader _singleTargetLoader;
     private readonly DashboardAllTargetsChartLoader _allTargetsLoader;
     private readonly IStringLocalizer<SharedResources> _localizer;
+    private List<ClientUsagePoint>? _cachedRawDonut;
 
     public DashboardChartDataLoader(
         StatisticsApiService statsService,
@@ -42,7 +43,36 @@ public sealed class DashboardChartDataLoader
             rawDonut = await _singleTargetLoader.LoadAsync(context, newCharts);
         }
 
+        _cachedRawDonut = rawDonut;
         return (newCharts, BuildDonutData(rawDonut, _localizer["Common.Others"]));
+    }
+
+    public bool TryRebuildFromCache(
+        DashboardChartLoadContext context,
+        out List<TargetChartData> charts,
+        out DashboardDonutData donut)
+    {
+        charts = new List<TargetChartData>();
+        if (context.SelectedTargetId == DashboardChartLoadContext.AllTargetsId)
+        {
+            if (!_allTargetsLoader.TryRebuildFromCache(context, charts) || _cachedRawDonut is null)
+            {
+                donut = new DashboardDonutData([], []);
+                return false;
+            }
+
+            donut = BuildDonutData(_cachedRawDonut, _localizer["Common.Others"]);
+            return true;
+        }
+
+        if (!_singleTargetLoader.TryRebuildFromCache(context, charts, out var singleDonut))
+        {
+            donut = new DashboardDonutData([], []);
+            return false;
+        }
+
+        donut = BuildDonutData(singleDonut, _localizer["Common.Others"]);
+        return true;
     }
 
     public static List<ClientUsagePoint> ToDisplaySlices(

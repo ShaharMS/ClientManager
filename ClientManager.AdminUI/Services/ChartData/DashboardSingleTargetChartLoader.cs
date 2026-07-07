@@ -5,6 +5,7 @@ using ClientManager.AdminUI.Resources;
 using ClientManager.AdminUI.Services;
 using ClientManager.AdminUI.Utils;
 using ClientManager.Shared.Models.Enums;
+using ClientManager.Shared.Models.Responses;
 using Microsoft.Extensions.Localization;
 
 namespace ClientManager.AdminUI.Services.ChartData;
@@ -15,6 +16,21 @@ internal sealed class DashboardSingleTargetChartLoader
     private readonly ResourcePoolApiService _poolService;
     private readonly GlobalRateLimitApiService _rateLimitApi;
     private readonly IStringLocalizer<SharedResources> _localizer;
+
+    private SingleTargetFetchCache? _cache;
+
+    private sealed record SingleTargetFetchCache(
+        string CacheKey,
+        Dictionary<string, ClientHistoricalUsageResponse> HistoriesByClientId,
+        HistoricalUsageResponse? TargetHistory,
+        List<NamedItem> ClientsToQuery,
+        double BaseCap,
+        TimeSpan? RateWindow,
+        string TargetName,
+        bool IsRateBased,
+        DateTime From,
+        DateTime To,
+        string Granularity);
 
     public DashboardSingleTargetChartLoader(
         StatisticsApiService statsService,
@@ -32,10 +48,30 @@ internal sealed class DashboardSingleTargetChartLoader
         DashboardChartLoadContext context,
         List<TargetChartData> charts)
     {
+        _cache = await FetchAsync(context);
+        return BuildCharts(_cache, context, charts);
+    }
+
+    public bool TryRebuildFromCache(DashboardChartLoadContext context, List<TargetChartData> charts, out List<ClientUsagePoint> donutData)
+    {
+        if (_cache is null || _cache.CacheKey != BuildCacheKey(context))
+        {
+            donutData = [];
+            return false;
+        }
+
+        donutData = BuildCharts(_cache, context, charts);
+        return true;
+    }
+
+    private static string BuildCacheKey(DashboardChartLoadContext context) =>
+        $"{context.SelectedFilterType}|{context.SelectedTargetId}|{string.Join(',', context.SelectedClientIds ?? [])}|{context.TimeRange.GetFrom():O}|{context.TimeRange.GetTo():O}|{context.TimeRange.Granularity}";
+
+    private async Task<SingleTargetFetchCache> FetchAsync(DashboardChartLoadContext context)
+    {
         var now = context.TimeRange.GetTo();
         var from = context.TimeRange.GetFrom(now);
         var isRateBased = context.SelectedFilterType == "Service";
-        var chartAggregationMode = ChartValueHelper.GetAggregationMode(isRateBased);
 
         var clientsToQuery = context.SelectedClientIds?.Any() == true
             ? context.Clients.Where(c => context.SelectedClientIds.Contains(c.Id)).ToList()
@@ -69,19 +105,53 @@ internal sealed class DashboardSingleTargetChartLoader
                 context.TimeRange.Granularity))
             .ToDictionary(history => history.ClientId);
 
+        var targetHistory = (await _statsService.GetHistoricalUsageAsync(
+            context.SelectedFilterType,
+            new[] { context.SelectedTargetId! },
+            null,
+            from,
+            now,
+            context.TimeRange.Granularity))
+            .FirstOrDefault();
+
+        var targetName = context.FilterTargets.FirstOrDefault(t => t.Id == context.SelectedTargetId)?.Name ?? "";
+
+        return new SingleTargetFetchCache(
+            BuildCacheKey(context),
+            historiesByClientId,
+            targetHistory,
+            clientsToQuery,
+            baseCap,
+            rateWindow,
+            targetName,
+            isRateBased,
+            from,
+            now,
+            context.TimeRange.Granularity);
+    }
+
+    private List<ClientUsagePoint> BuildCharts(
+        SingleTargetFetchCache cache,
+        DashboardChartLoadContext context,
+        List<TargetChartData> charts)
+    {
+        charts.Clear();
+
+        var chartAggregationMode = ChartValueHelper.GetAggregationMode(cache.IsRateBased);
+        var storageDuration = ChartGranularityHelper.GetStorageBucketDuration(cache.Granularity);
         var clientAggregations = new Dictionary<string, (NamedItem Client, ChartBucketAggregator.AggregationResult Result)>();
         var clientUsageValues = new Dictionary<string, double>();
 
-        var emptyAggregation = ChartBucketAggregator.Aggregate([], from, now, context.BucketCount, chartAggregationMode);
+        var emptyAggregation = ChartBucketAggregator.Aggregate([], cache.From, cache.To, context.BucketCount, chartAggregationMode, storageDuration);
         var bucketDuration = emptyAggregation.BucketDuration;
 
-        foreach (var client in clientsToQuery)
+        foreach (var client in cache.ClientsToQuery)
         {
-            historiesByClientId.TryGetValue(client.Id, out var clientHistory);
+            cache.HistoriesByClientId.TryGetValue(client.Id, out var clientHistory);
             var rawPoints = (clientHistory?.Points ?? [])
                 .Select(p => new ChartBucketAggregator.RawPoint(
                     p.Timestamp,
-                    ChartValueHelper.GetHistoricalPointValue(p, isRateBased)))
+                    ChartValueHelper.GetHistoricalPointValue(p, cache.IsRateBased)))
                 .ToList();
 
             if (rawPoints.Count == 0)
@@ -90,9 +160,9 @@ internal sealed class DashboardSingleTargetChartLoader
             }
 
             var aggregation = ChartBucketAggregator.Aggregate(
-                rawPoints, from, now, context.BucketCount, chartAggregationMode);
+                rawPoints, cache.From, cache.To, context.BucketCount, chartAggregationMode, storageDuration);
             clientAggregations[client.Id] = (client, aggregation);
-            clientUsageValues[client.Id] = ChartValueHelper.GetClientUsageValue(clientHistory?.Points ?? [], isRateBased);
+            clientUsageValues[client.Id] = ChartValueHelper.GetClientUsageValue(clientHistory?.Points ?? [], cache.IsRateBased);
         }
 
         var referenceBuckets = clientAggregations.Values.FirstOrDefault().Result?.Buckets
@@ -108,18 +178,16 @@ internal sealed class DashboardSingleTargetChartLoader
             clientAreas.Add(new ClientAreaSeries(clientId, client.Name, points));
         }
 
-        var scaledCap = baseCap;
-        if (isRateBased && rateWindow.HasValue && rateWindow.Value > TimeSpan.Zero && bucketDuration > TimeSpan.Zero)
+        var scaledCap = cache.BaseCap;
+        if (cache.IsRateBased && cache.RateWindow.HasValue && cache.RateWindow.Value > TimeSpan.Zero && bucketDuration > TimeSpan.Zero)
         {
-            var scaleFactor = bucketDuration.TotalSeconds / rateWindow.Value.TotalSeconds;
-            scaledCap = baseCap * scaleFactor;
+            var scaleFactor = bucketDuration.TotalSeconds / cache.RateWindow.Value.TotalSeconds;
+            scaledCap = cache.BaseCap * scaleFactor;
         }
 
         var capPoints = bucketLabels
             .Select(label => new ChartPoint(label, scaledCap))
             .ToList();
-
-        var targetName = context.FilterTargets.FirstOrDefault(t => t.Id == context.SelectedTargetId)?.Name ?? "";
 
         var donutData = new List<ClientUsagePoint>();
         foreach (var (clientId, (client, _)) in clientAggregations)
@@ -142,25 +210,19 @@ internal sealed class DashboardSingleTargetChartLoader
             a.Points.Select(p => new ChartPoint(p.Label, p.Value)).ToList()
         )).ToList();
 
-        var targetHistory = (await _statsService.GetHistoricalUsageAsync(
-            context.SelectedFilterType,
-            new[] { context.SelectedTargetId! },
-            null,
-            from,
-            now,
-            context.TimeRange.Granularity))
-            .FirstOrDefault();
         DeniedChartSeriesBuilder.AppendTripletSeries(
             clientAreas,
             context.SelectedTargetId!,
-            targetHistory?.Points ?? [],
-            isRateBased ? DeniedViewMode.RateLimitDenied : DeniedViewMode.CapacityDenied,
-            from,
-            now,
+            cache.TargetHistory?.Points ?? [],
+            cache.IsRateBased ? DeniedViewMode.RateLimitDenied : DeniedViewMode.CapacityDenied,
+            cache.From,
+            cache.To,
             context.BucketCount,
-            _localizer);
+            _localizer,
+            context.ShowDeniedBreakdown,
+            storageDuration);
 
-        charts.Add(new TargetChartData(targetName, clientAreas, capPoints));
+        charts.Add(new TargetChartData(cache.TargetName, clientAreas, capPoints));
 
         return donutData;
     }

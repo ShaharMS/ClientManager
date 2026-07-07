@@ -75,7 +75,7 @@
 
 .cm-chart-settings-dropdown__relative {
     display: grid;
-    grid-template-columns: 1fr 8.5rem;
+    grid-template-columns: minmax(0, 1fr) 10rem;
     gap: var(--space-sm);
     align-items: end;
 }
@@ -207,6 +207,15 @@
 .cm-chart-settings-dropdown__segment--active:hover {
     background: var(--color-primary);
     color: #fff;
+}
+
+.cm-chart-settings-dropdown__checkbox {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+    cursor: pointer;
 }
 
 @media (max-width: 480px) {

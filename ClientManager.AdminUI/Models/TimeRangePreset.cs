@@ -23,6 +23,7 @@ public record TimeRangePreset(string Key, string Label, string Group, TimeSpan D
         return Granularity switch
         {
             "Second" => local.ToString("T", culture),
+            "OneMinute" => local.ToString("HH:mm", culture),
             "Day" => local.ToString("MMM dd", culture),
             "Hour" => local.ToString("MMM dd HH:mm", culture),
             _ => local.ToString("HH:mm", culture)
@@ -33,8 +34,8 @@ public record TimeRangePreset(string Key, string Label, string Group, TimeSpan D
     [
         new("1m",  "Last minute",     "Minutes", TimeSpan.FromMinutes(1),  "Second"),
         new("5m",  "Last 5 minutes",  "Minutes", TimeSpan.FromMinutes(5),  "Second"),
-        new("15m", "Last 15 minutes", "Minutes", TimeSpan.FromMinutes(15), "FiveMinute"),
-        new("30m", "Last 30 minutes", "Minutes", TimeSpan.FromMinutes(30), "FiveMinute"),
+        new("15m", "Last 15 minutes", "Minutes", TimeSpan.FromMinutes(15), "OneMinute"),
+        new("30m", "Last 30 minutes", "Minutes", TimeSpan.FromMinutes(30), "OneMinute"),
         new("1h",  "Last hour",       "Hours",   TimeSpan.FromHours(1),    "FiveMinute"),
         new("3h",  "Last 3 hours",    "Hours",   TimeSpan.FromHours(3),    "FiveMinute"),
         new("6h",  "Last 6 hours",    "Hours",   TimeSpan.FromHours(6),    "FiveMinute"),

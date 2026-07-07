@@ -1,15 +1,36 @@
 using ClientManager.AdminUI.Models.Monitor;
 using ClientManager.AdminUI.Services.ChartData;
+using ClientManager.AdminUI.Utils;
 
 namespace ClientManager.AdminUI.Components.Pages.Monitor;
 
 public partial class Monitor
 {
     private int _loadVersion;
+    private bool _showDeniedBreakdown;
+    private bool _pollingOverride;
+
+    private MonitorLoadContext CreateLoadContext() => new()
+    {
+        SelectedServiceId = _selectedServiceId,
+        SelectedClientIds = _selectedClientIds,
+        TimeRange = _timeRange,
+        AllServices = _allServices,
+        AllClients = _allClients,
+        BucketCount = _chartBucketCount,
+        ShowDeniedBreakdown = _showDeniedBreakdown
+    };
 
     private async Task OnTimeRangeChanged(ChartTimeRange range)
     {
         _timeRange = range;
+        if (!_pollingOverride)
+        {
+            var suggested = ChartPollingHelper.SuggestForRange(range);
+            _pollingKey = suggested.Key;
+            _polling?.SetInterval(suggested.Interval);
+        }
+
         SyncUrl();
         await LoadChartDataWithSkeletonAsync();
     }
@@ -18,6 +39,12 @@ public partial class Monitor
     {
         SyncUrl();
         await LoadChartDataWithSkeletonAsync();
+    }
+
+    private Task OnShowDeniedBreakdownChanged(bool value)
+    {
+        _showDeniedBreakdown = value;
+        return TryRebuildChartsFromCacheAsync();
     }
 
     private async Task LoadChartDataWithSkeletonAsync()
@@ -40,37 +67,14 @@ public partial class Monitor
 
         try
         {
-            var context = new MonitorLoadContext
-            {
-                SelectedServiceId = _selectedServiceId,
-                SelectedClientIds = _selectedClientIds,
-                TimeRange = _timeRange,
-                AllServices = _allServices,
-                AllClients = _allClients,
-                BucketCount = _chartBucketCount
-            };
-
-            var result = await _dataLoader.LoadAsync(context);
+            var result = await _dataLoader.LoadAsync(CreateLoadContext());
 
             if (loadVersion != _loadVersion)
             {
                 return;
             }
 
-            _targetCharts = result.Charts;
-            _clientRows = result.ClientRows;
-            _allServiceStats = result.ServiceStats;
-
-            if (_clientGrid is not null)
-            {
-                await _clientGrid.ReloadAsync(InvokeAsync);
-            }
-
-            if (_servicesGrid is not null)
-            {
-                await _servicesGrid.ReloadAsync(InvokeAsync);
-            }
-
+            await ApplyLoadResult(result);
             _error = null;
         }
         catch (Exception ex)
@@ -83,6 +87,40 @@ public partial class Monitor
             _error = ex is HttpRequestException http
                 ? $"Unable to load data: {http.Message}"
                 : $"Unable to load data: {ex.Message}";
+        }
+    }
+
+    private async Task TryRebuildChartsFromCacheAsync()
+    {
+        if (_dataLoader is null)
+        {
+            return;
+        }
+
+        if (!_dataLoader.TryRebuildFromCache(CreateLoadContext(), out var result))
+        {
+            await LoadDataAsync();
+            return;
+        }
+
+        await ApplyLoadResult(result);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ApplyLoadResult(MonitorLoadResult result)
+    {
+        _targetCharts = result.Charts;
+        _clientRows = result.ClientRows;
+        _allServiceStats = result.ServiceStats;
+
+        if (_clientGrid is not null)
+        {
+            await _clientGrid.ReloadAsync(InvokeAsync);
+        }
+
+        if (_servicesGrid is not null)
+        {
+            await _servicesGrid.ReloadAsync(InvokeAsync);
         }
     }
 }

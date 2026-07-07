@@ -14,6 +14,7 @@ public record PollingIntervalPreset(string Key, string Label, TimeSpan Interval)
         new("10s", "10 seconds", TimeSpan.FromSeconds(10)),
         new("30s", "30 seconds", TimeSpan.FromSeconds(30)),
         new("1m",  "1 minute",   TimeSpan.FromMinutes(1)),
+        new("2m",  "2 minutes",  TimeSpan.FromMinutes(2)),
         new("5m",  "5 minutes",  TimeSpan.FromMinutes(5)),
     ];
 

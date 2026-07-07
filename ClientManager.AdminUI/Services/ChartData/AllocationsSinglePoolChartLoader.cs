@@ -12,49 +12,38 @@ namespace ClientManager.AdminUI.Services.ChartData;
 
 internal sealed class AllocationsSinglePoolChartLoader
 {
-    private readonly StatisticsApiService _statsService;
     private readonly IStringLocalizer<SharedResources> _localizer;
 
     public AllocationsSinglePoolChartLoader(
         StatisticsApiService statsService,
         IStringLocalizer<SharedResources> localizer)
     {
-        _statsService = statsService;
+        _ = statsService;
         _localizer = localizer;
     }
 
-    public async Task<(List<TargetChartData> Charts, List<AllocationClientRow> Rows)> LoadAsync(
+    public (List<TargetChartData> Charts, List<AllocationClientRow> Rows) BuildFromCache(
         AllocationsLoadContext context,
-        List<ResourcePoolStatisticsResponse> visiblePools,
-        IReadOnlyList<TargetClientUsageBreakdownResponse> breakdowns,
-        IReadOnlyList<TargetClientUsageBreakdownResponse> recentBreakdowns,
-        IReadOnlyDictionary<string, GlobalRateLimit> rateLimitLookup,
+        AllocationsFetchCache cache,
         ChartBucketAggregator.AggregationMode chartAggregationMode,
         ChartBucketAggregator.AggregationResult chartTemplate,
         TimeSpan chartBucketDuration,
-        DateTime from,
-        DateTime now)
+        TimeSpan storageDuration)
     {
         var charts = new List<TargetChartData>();
         var rows = new List<AllocationClientRow>();
 
-        foreach (var pool in visiblePools)
+        foreach (var pool in cache.VisiblePools)
         {
-            var breakdown = breakdowns.FirstOrDefault(b => b.TargetId == pool.ResourcePoolId);
-            var recentEntries = recentBreakdowns
+            var breakdown = cache.Breakdowns.FirstOrDefault(b => b.TargetId == pool.ResourcePoolId);
+            var recentEntries = cache.RecentBreakdowns
                 .FirstOrDefault(b => b.TargetId == pool.ResourcePoolId)?.Entries ?? [];
             var entries = breakdown?.Entries ?? [];
             var chartCap = AllocationsCapCalculator.GetPoolChartCap(
-                pool, context.IsAccessMetric, rateLimitLookup, chartBucketDuration);
+                pool, context.IsAccessMetric, cache.RateLimitLookup, chartBucketDuration);
 
-            var historiesByClientId = (await _statsService.GetHistoricalUsageByClientAsync(
-                    "ResourcePool",
-                    new[] { pool.ResourcePoolId },
-                    entries.Select(entry => entry.ClientId),
-                    from,
-                    now,
-                    context.TimeRange.Granularity))
-                .ToDictionary(history => history.ClientId);
+            cache.ClientHistoriesByPool.TryGetValue(pool.ResourcePoolId, out var historiesByClientId);
+            historiesByClientId ??= [];
 
             var clientAreas = new List<ClientAreaSeries>();
             var clientAggregations = new Dictionary<string, ChartBucketAggregator.AggregationResult>();
@@ -74,7 +63,7 @@ internal sealed class AllocationsSinglePoolChartLoader
                 }
 
                 clientAggregations[entry.ClientId] = ChartBucketAggregator.Aggregate(
-                    rawPoints, from, now, context.BucketCount, chartAggregationMode);
+                    rawPoints, cache.From, cache.Now, context.BucketCount, chartAggregationMode, storageDuration);
             }
 
             var referenceBuckets = clientAggregations.Values.FirstOrDefault()?.Buckets ?? chartTemplate.Buckets;
@@ -94,7 +83,7 @@ internal sealed class AllocationsSinglePoolChartLoader
 
                 var recentEntry = recentEntries.FirstOrDefault(e => e.ClientId == entry.ClientId);
                 rows.Add(AllocationsClientRowFactory.Create(
-                    context, entry.ClientId, entry.ClientName, pool, recentEntry, rateLimitLookup));
+                    context, entry.ClientId, entry.ClientName, pool, recentEntry, cache.RateLimitLookup));
             }
 
             var capPoints = referenceBuckets
@@ -112,18 +101,18 @@ internal sealed class AllocationsSinglePoolChartLoader
                 a.Points.Select(p => new ChartPoint(p.Label, p.Value)).ToList()
             )).ToList();
 
-            var poolHistory = (await _statsService.GetHistoricalUsageAsync(
-                "ResourcePool", new[] { pool.ResourcePoolId }, null, from, now, context.TimeRange.Granularity))
-                .FirstOrDefault();
+            cache.PoolHistories.TryGetValue(pool.ResourcePoolId, out var poolHistory);
             DeniedChartSeriesBuilder.AppendTripletSeries(
                 clientAreas,
                 pool.ResourcePoolId,
                 poolHistory?.Points ?? [],
                 context.IsAccessMetric ? DeniedViewMode.RateLimitDenied : DeniedViewMode.CapacityDenied,
-                from,
-                now,
+                cache.From,
+                cache.Now,
                 context.BucketCount,
-                _localizer);
+                _localizer,
+                context.ShowDeniedBreakdown,
+                storageDuration);
 
             charts.Add(new TargetChartData(pool.Name, clientAreas, capPoints));
         }

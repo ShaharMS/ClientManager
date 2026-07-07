@@ -119,6 +119,7 @@ app.MapRazorComponents<App>()
 
 if (app.Environment.IsDevelopment())
 {
+    ChartBucketAggregatorSelfCheck.Run();
     app.MapGet("/_dev/culture", (HttpContext ctx, IStringLocalizer<SharedResources> localizer) =>
         Results.Json(new
         {

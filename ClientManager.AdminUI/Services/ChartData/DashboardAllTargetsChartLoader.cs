@@ -17,6 +17,19 @@ internal sealed class DashboardAllTargetsChartLoader
     private readonly GlobalRateLimitApiService _rateLimitApi;
     private readonly IStringLocalizer<SharedResources> _localizer;
 
+    private AllTargetsFetchCache? _cache;
+
+    private sealed record AllTargetsFetchCache(
+        string CacheKey,
+        List<HistoricalUsageResponse> Histories,
+        List<NamedItem> Targets,
+        double ScaledCap,
+        string AggregateLabel,
+        bool IsRateBased,
+        DateTime From,
+        DateTime To,
+        string Granularity);
+
     public DashboardAllTargetsChartLoader(
         StatisticsApiService statsService,
         ResourcePoolApiService poolService,
@@ -31,11 +44,32 @@ internal sealed class DashboardAllTargetsChartLoader
 
     public async Task LoadAsync(DashboardChartLoadContext context, List<TargetChartData> charts)
     {
+        _cache = await FetchAsync(context);
+        BuildCharts(_cache, context, charts);
+    }
+
+    public bool TryRebuildFromCache(DashboardChartLoadContext context, List<TargetChartData> charts)
+    {
+        if (_cache is null || _cache.CacheKey != BuildCacheKey(context))
+        {
+            return false;
+        }
+
+        BuildCharts(_cache, context, charts);
+        return true;
+    }
+
+    private static string BuildCacheKey(DashboardChartLoadContext context) =>
+        $"{context.SelectedFilterType}|all|{context.TimeRange.GetFrom():O}|{context.TimeRange.GetTo():O}|{context.TimeRange.Granularity}";
+
+    private async Task<AllTargetsFetchCache> FetchAsync(DashboardChartLoadContext context)
+    {
         var now = context.TimeRange.GetTo();
         var from = context.TimeRange.GetFrom(now);
         var isRateBased = context.SelectedFilterType == "Service";
         var chartAggregationMode = ChartValueHelper.GetAggregationMode(isRateBased);
-        var emptyAggregation = ChartBucketAggregator.Aggregate([], from, now, context.BucketCount, chartAggregationMode);
+        var storageDuration = ChartGranularityHelper.GetStorageBucketDuration(context.TimeRange.Granularity);
+        var emptyAggregation = ChartBucketAggregator.Aggregate([], from, now, context.BucketCount, chartAggregationMode, storageDuration);
 
         var targets = (context.SelectedFilterType == "Service"
             ? context.AllServices
@@ -75,22 +109,41 @@ internal sealed class DashboardAllTargetsChartLoader
         var aggregateLabel = isRateBased
             ? _localizer["Pages.Dashboard.Target.AllServices"]
             : _localizer["Pages.Dashboard.Target.AllResourcePools"];
-        var targetPointLists = targets
-            .Select(target => (IReadOnlyList<HistoricalUsagePoint>)(histories.FirstOrDefault(h => h.TargetId == target.Id)?.Points ?? []));
-        var (clientAreas, referenceBuckets) = AggregateTargetChartSeriesBuilder.Build(
-            targetPointLists,
-            isRateBased,
+
+        return new AllTargetsFetchCache(
+            BuildCacheKey(context),
+            histories,
+            targets,
+            scaledCap,
             aggregateLabel,
-            isRateBased ? DeniedViewMode.RateLimitDenied : DeniedViewMode.CapacityDenied,
+            isRateBased,
             from,
             now,
+            context.TimeRange.Granularity);
+    }
+
+    private void BuildCharts(AllTargetsFetchCache cache, DashboardChartLoadContext context, List<TargetChartData> charts)
+    {
+        charts.Clear();
+        var storageDuration = ChartGranularityHelper.GetStorageBucketDuration(cache.Granularity);
+        var targetPointLists = cache.Targets
+            .Select(target => (IReadOnlyList<HistoricalUsagePoint>)(cache.Histories.FirstOrDefault(h => h.TargetId == target.Id)?.Points ?? []));
+        var (clientAreas, referenceBuckets) = AggregateTargetChartSeriesBuilder.Build(
+            targetPointLists,
+            cache.IsRateBased,
+            cache.AggregateLabel,
+            cache.IsRateBased ? DeniedViewMode.RateLimitDenied : DeniedViewMode.CapacityDenied,
+            cache.From,
+            cache.To,
             context.BucketCount,
-            _localizer);
+            _localizer,
+            context.ShowDeniedBreakdown,
+            storageDuration);
 
         var capPoints = referenceBuckets
-            .Select(bucket => new ChartPoint(bucket.Label, scaledCap))
+            .Select(bucket => new ChartPoint(bucket.Label, cache.ScaledCap))
             .ToList();
 
-        charts.Add(new TargetChartData(aggregateLabel, clientAreas, capPoints));
+        charts.Add(new TargetChartData(cache.AggregateLabel, clientAreas, capPoints));
     }
 }

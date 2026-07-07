@@ -18,8 +18,15 @@ internal static class DeniedChartSeriesBuilder
         DateTime from,
         DateTime now,
         int bucketCount,
-        IStringLocalizer<SharedResources> localizer)
+        IStringLocalizer<SharedResources> localizer,
+        bool showDenied = false,
+        TimeSpan? storageBucketDuration = null)
     {
+        if (!showDenied)
+        {
+            return;
+        }
+
         foreach (var (suffix, label) in GetTripletDefinitions(mode, localizer))
         {
             var deniedAgg = ChartBucketAggregator.Aggregate(
@@ -29,7 +36,8 @@ internal static class DeniedChartSeriesBuilder
                 from,
                 now,
                 bucketCount,
-                ChartBucketAggregator.AggregationMode.Sum);
+                ChartBucketAggregator.AggregationMode.Sum,
+                storageBucketDuration);
 
             var deniedChartPoints = deniedAgg.Buckets
                 .Select(bucket => new ChartPoint(bucket.Label, bucket.Value))
