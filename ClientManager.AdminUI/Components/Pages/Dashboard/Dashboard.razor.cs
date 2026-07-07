@@ -121,16 +121,16 @@ public partial class Dashboard : ComponentBase, IAsyncDisposable
 
             HydrateFromUrl();
 
+            _chartInitComplete = true;
+
             if (_error is null)
             {
-                await LoadChartDataWithSkeletonAsync();
+                _ = BeginInitialChartLoadAsync();
             }
             else
             {
                 _chartLoading = false;
             }
-
-            _chartInitComplete = true;
         }
         catch (HttpRequestException ex)
         {
@@ -159,7 +159,7 @@ public partial class Dashboard : ComponentBase, IAsyncDisposable
             _chartJs = await JS.InvokeAsync<IJSObjectReference>("import", "./js/chart.js");
             _chartSelfRef = DotNetObjectReference.Create(this);
             await _chartJs.InvokeVoidAsync("register", _chartSelfRef);
-            await UpdateChartBucketCountAsync(reloadWhenChanged: true);
+            await UpdateChartBucketCountAsync(reloadWhenChanged: false);
         }
         catch (JSDisconnectedException)
         {
@@ -255,6 +255,19 @@ public partial class Dashboard : ComponentBase, IAsyncDisposable
         _tableSearch = value;
         OnTableSearchChanged();
         return Task.CompletedTask;
+    }
+
+    private async Task BeginInitialChartLoadAsync()
+    {
+        try
+        {
+            await LoadChartDataWithSkeletonAsync();
+        }
+        catch (HttpRequestException ex)
+        {
+            _chartError = Errors.Format("Api.UnableToConnect", ex);
+            await InvokeAsync(StateHasChanged);
+        }
     }
 
     private async Task RefreshDataAsync()

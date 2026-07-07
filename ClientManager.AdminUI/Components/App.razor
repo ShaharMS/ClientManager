@@ -25,10 +25,10 @@
     <title>ClientManager</title>
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
     <CultureBoot />
-    <HeadOutlet @rendermode="InteractiveServer" />
+    <HeadOutlet @rendermode="@(new InteractiveServerRenderMode(prerender: true))" />
 </head>
 <body>
-    <Routes @rendermode="InteractiveServer" />
+    <Routes @rendermode="@(new InteractiveServerRenderMode(prerender: true))" />
     <ReconnectModal />
     <script src="_content/Radzen.Blazor/Radzen.Blazor.js"></script>
     <script src="js/reconnect-modal.js"></script>

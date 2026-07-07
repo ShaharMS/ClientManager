@@ -105,10 +105,14 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseMiddleware<RequestTrackingMiddleware>();
 app.UseRequestLocalization(localizationOptions);
 app.UseStaticFiles();
 app.UseAntiforgery();
 app.MapStaticAssets();
+
+app.MapGet("/health/live", () => Results.Ok(new { status = "live" }));
+app.MapGet("/health/ready", () => Results.Ok(new { status = "ready" }));
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
