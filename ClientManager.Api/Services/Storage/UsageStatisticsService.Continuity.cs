@@ -10,6 +10,10 @@ namespace ClientManager.Api.Services.Storage;
 /// </summary>
 public partial class UsageStatisticsService
 {
+    // ponytail: above this many clients/states, indexed full-prefix overlay beats N narrow scans
+    private const int NarrowOverlayClientLimit = 32;
+    private const int NarrowOverlayStateLimit = 32;
+
     private readonly record struct AggregatedBucketTotals(
         long Granted,
         long DeniedUnauthenticated,
@@ -457,6 +461,37 @@ public partial class UsageStatisticsService
         }
 
         var clientIdSet = clientIds.ToHashSet(StringComparer.Ordinal);
+
+        if (states.Count == 1 && clientIdSet.Count > 0 && clientIdSet.Count <= NarrowOverlayClientLimit)
+        {
+            var targetId = states.Keys.First();
+            if (states.TryGetValue(targetId, out var narrowState))
+            {
+                foreach (var clientId in clientIdSet)
+                {
+                    var narrowCounters = await _usageSnapshotDatabase.GetPendingCountersInRangeAsync(
+                        clientId,
+                        targetType,
+                        targetId,
+                        overlayFrom,
+                        to,
+                        cancellationToken);
+
+                    foreach (var (storageKey, value) in narrowCounters)
+                    {
+                        if (value <= 0)
+                        {
+                            continue;
+                        }
+
+                        ApplyOverlayCounterValue(storageKey, value, narrowState, from, to);
+                    }
+                }
+            }
+
+            return;
+        }
+
         var counters = await _usageSnapshotDatabase.GetPendingCounterValuesByPrefixAsync("usage:", cancellationToken);
 
         foreach (var (storageKey, value) in counters)
@@ -492,6 +527,32 @@ public partial class UsageStatisticsService
         var overlayFrom = MaxDateTime(from, DateTime.UtcNow - _usageTrackingOptions.SecondRetention);
         if (overlayFrom > to)
         {
+            return;
+        }
+
+        if (states.Count > 0 && states.Count <= NarrowOverlayStateLimit)
+        {
+            foreach (var ((targetId, clientId), state) in states)
+            {
+                var narrowCounters = await _usageSnapshotDatabase.GetPendingCountersInRangeAsync(
+                    clientId,
+                    targetType,
+                    targetId,
+                    overlayFrom,
+                    to,
+                    cancellationToken);
+
+                foreach (var (storageKey, value) in narrowCounters)
+                {
+                    if (value <= 0)
+                    {
+                        continue;
+                    }
+
+                    ApplyOverlayCounterValue(storageKey, value, state, from, to);
+                }
+            }
+
             return;
         }
 

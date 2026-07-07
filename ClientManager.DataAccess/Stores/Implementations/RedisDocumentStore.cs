@@ -45,6 +45,8 @@ public class RedisDocumentStore : IDocumentStore
     private IDatabase Database => _redis.GetDatabase(_databaseIndex);
 
     private const string CounterPrefix = "counter:";
+    private const string UsageCounterIndexKeySuffix = "counter:index:usage";
+    private const int CounterScanPageSize = 250;
     private const string JsonRootPath = "$";
     private const string DecrementCounterScript = """
 local ttl = redis.call('PTTL', KEYS[1])
@@ -122,6 +124,11 @@ return {1, remaining, 0}
     private string IndexName(string collection) => PrefixKey($"idx:{collection}");
 
     private RedisKey CounterKey(string key) => PrefixKey($"{CounterPrefix}{key}");
+
+    private RedisKey UsageCounterIndexKey() => PrefixKey(UsageCounterIndexKeySuffix);
+
+    private static bool IsUsageCounterKey(string key) =>
+        key.StartsWith("usage:", StringComparison.Ordinal);
 
     private string PrefixKey(string key) => string.IsNullOrEmpty(_globalKeyPrefix)
         ? key
@@ -326,6 +333,11 @@ return {1, remaining, 0}
                     await db.KeyExpireAsync(redisKey, window);
                 }
 
+                if (IsUsageCounterKey(key))
+                {
+                    await db.SetAddAsync(UsageCounterIndexKey(), key);
+                }
+
                 return count;
             },
             DescribeCounterContext(key, window));
@@ -400,41 +412,139 @@ return {1, remaining, 0}
             "counter_get_by_prefix",
             async () =>
             {
-                var result = new Dictionary<string, long>(StringComparer.Ordinal);
-                var pattern = PrefixKey($"{CounterPrefix}{keyPrefix}*");
-
-                foreach (var endpoint in _redis.GetEndPoints())
+                if (keyPrefix.StartsWith("usage", StringComparison.Ordinal))
                 {
-                    var server = _redis.GetServer(endpoint);
-                    await foreach (var redisKey in server.KeysAsync(database: _databaseIndex, pattern: pattern))
+                    var indexMembers = await Database.SetMembersAsync(UsageCounterIndexKey());
+                    if (indexMembers.Length > 0)
                     {
-                        cancellationToken.ThrowIfCancellationRequested();
-                        var value = await Database.StringGetAsync(redisKey);
-                        if (value.IsNullOrEmpty)
-                        {
-                            continue;
-                        }
-
-                        var count = (long)value;
-                        if (count <= 0)
-                        {
-                            continue;
-                        }
-
-                        var logicalKey = redisKey.ToString();
-                        var prefixedCounter = PrefixKey(CounterPrefix);
-                        if (logicalKey.StartsWith(prefixedCounter, StringComparison.Ordinal))
-                        {
-                            logicalKey = logicalKey[prefixedCounter.Length..];
-                        }
-
-                        result[logicalKey] = count;
+                        return await ReadUsageCountersFromIndexMembersAsync(
+                            keyPrefix,
+                            indexMembers,
+                            cancellationToken);
                     }
                 }
 
-                return result;
+                return await ScanCountersByPrefixAsync(keyPrefix, populateUsageIndex: true, cancellationToken);
             },
             ("Prefix", keyPrefix));
+    }
+
+    private async Task<IReadOnlyDictionary<string, long>> ReadUsageCountersFromIndexMembersAsync(
+        string keyPrefix,
+        RedisValue[] members,
+        CancellationToken cancellationToken)
+    {
+        var logicalKeys = new List<string>(members.Length);
+        foreach (var member in members)
+        {
+            if (member.IsNullOrEmpty)
+            {
+                continue;
+            }
+
+            var logicalKey = member.ToString();
+            if (logicalKey.StartsWith(keyPrefix, StringComparison.Ordinal))
+            {
+                logicalKeys.Add(logicalKey);
+            }
+        }
+
+        if (logicalKeys.Count == 0)
+        {
+            return new Dictionary<string, long>(StringComparer.Ordinal);
+        }
+
+        return await ReadCounterValuesWithIndexCleanupAsync(
+            logicalKeys,
+            UsageCounterIndexKey(),
+            cancellationToken);
+    }
+
+    private async Task<IReadOnlyDictionary<string, long>> ScanCountersByPrefixAsync(
+        string keyPrefix,
+        bool populateUsageIndex,
+        CancellationToken cancellationToken)
+    {
+        var result = new Dictionary<string, long>(StringComparer.Ordinal);
+        var pattern = PrefixKey($"{CounterPrefix}{keyPrefix}*");
+        var prefixedCounter = PrefixKey(CounterPrefix);
+        var indexKey = UsageCounterIndexKey();
+        var indexAdds = populateUsageIndex && keyPrefix.StartsWith("usage", StringComparison.Ordinal)
+            ? new List<RedisValue>()
+            : null;
+
+        foreach (var endpoint in _redis.GetEndPoints())
+        {
+            var server = _redis.GetServer(endpoint);
+            await foreach (var redisKey in server.KeysAsync(
+                               database: _databaseIndex,
+                               pattern: pattern,
+                               pageSize: CounterScanPageSize))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var value = await Database.StringGetAsync(redisKey);
+                if (value.IsNullOrEmpty)
+                {
+                    continue;
+                }
+
+                var count = (long)value;
+                if (count <= 0)
+                {
+                    continue;
+                }
+
+                var logicalKey = redisKey.ToString();
+                if (logicalKey.StartsWith(prefixedCounter, StringComparison.Ordinal))
+                {
+                    logicalKey = logicalKey[prefixedCounter.Length..];
+                }
+
+                result[logicalKey] = count;
+                indexAdds?.Add(logicalKey);
+            }
+        }
+
+        if (indexAdds is { Count: > 0 })
+        {
+            await Database.SetAddAsync(indexKey, indexAdds.ToArray());
+        }
+
+        return result;
+    }
+
+    private async Task<IReadOnlyDictionary<string, long>> ReadCounterValuesWithIndexCleanupAsync(
+        IReadOnlyList<string> logicalKeys,
+        RedisKey indexKey,
+        CancellationToken cancellationToken)
+    {
+        var result = new Dictionary<string, long>(logicalKeys.Count, StringComparer.Ordinal);
+        var staleMembers = new List<RedisValue>();
+
+        var redisKeys = logicalKeys.Select(CounterKey).ToArray();
+        var values = await Database.StringGetAsync(redisKeys);
+
+        for (var index = 0; index < logicalKeys.Count; index++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var logicalKey = logicalKeys[index];
+            var value = values[index];
+            if (value.IsNullOrEmpty || (long)value <= 0)
+            {
+                staleMembers.Add(logicalKey);
+                continue;
+            }
+
+            result[logicalKey] = (long)value;
+        }
+
+        if (staleMembers.Count > 0)
+        {
+            // ponytail: lazy index cleanup when TTL expires counters before SREM on decrement
+            await Database.SetRemoveAsync(indexKey, staleMembers.ToArray());
+        }
+
+        return result;
     }
 
     /// <inheritdoc />
@@ -949,15 +1059,27 @@ return {1, remaining, 0}
     {
         var result = new Dictionary<string, long>(entries.Count, StringComparer.Ordinal);
         var expiryTasks = new List<Task>(entries.Count);
+        var usageIndexAdds = new List<string>();
 
         foreach (var (key, task) in tasks)
         {
             var count = await task;
             result[key] = count;
             AddExpiryIfNewCounter(entries, key, count, expiryTasks);
+            if (IsUsageCounterKey(key) && count > 0)
+            {
+                usageIndexAdds.Add(key);
+            }
         }
 
         cancellationToken.ThrowIfCancellationRequested();
+        if (usageIndexAdds.Count > 0)
+        {
+            await Database.SetAddAsync(
+                UsageCounterIndexKey(),
+                usageIndexAdds.Select(static key => (RedisValue)key).ToArray());
+        }
+
         await Task.WhenAll(expiryTasks);
         return result;
     }

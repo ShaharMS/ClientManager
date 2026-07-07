@@ -15,6 +15,10 @@ public class UsageSnapshotDatabase : IUsageSnapshotDatabase
 {
     private readonly IDocumentStore _store;
     private readonly IClientConfigurationDatabase _clientConfigDatabase;
+    private readonly SemaphoreSlim _usageOverlayLock = new(1, 1);
+    private IReadOnlyDictionary<string, long>? _cachedUsageOverlay;
+    private long _cachedUsageOverlayTicks;
+    private static readonly TimeSpan UsageOverlayDedupeWindow = TimeSpan.FromSeconds(2);
     private const string Collection = "UsageSnapshots";
 
     /// <summary>
@@ -219,10 +223,42 @@ public class UsageSnapshotDatabase : IUsageSnapshotDatabase
         _store.GetManyCountersAsync(keys, cancellationToken);
 
     /// <inheritdoc />
-    public Task<IReadOnlyDictionary<string, long>> GetPendingCounterValuesByPrefixAsync(
+    public async Task<IReadOnlyDictionary<string, long>> GetPendingCounterValuesByPrefixAsync(
         string keyPrefix,
-        CancellationToken cancellationToken = default) =>
-        _store.GetCountersByPrefixAsync(keyPrefix, cancellationToken);
+        CancellationToken cancellationToken = default)
+    {
+        if (!string.Equals(keyPrefix, "usage:", StringComparison.Ordinal))
+        {
+            return await _store.GetCountersByPrefixAsync(keyPrefix, cancellationToken);
+        }
+
+        var now = Environment.TickCount64;
+        var cached = _cachedUsageOverlay;
+        if (cached is not null && now - _cachedUsageOverlayTicks < UsageOverlayDedupeWindow.TotalMilliseconds)
+        {
+            return cached;
+        }
+
+        await _usageOverlayLock.WaitAsync(cancellationToken);
+        try
+        {
+            now = Environment.TickCount64;
+            cached = _cachedUsageOverlay;
+            if (cached is not null && now - _cachedUsageOverlayTicks < UsageOverlayDedupeWindow.TotalMilliseconds)
+            {
+                return cached;
+            }
+
+            var counters = await _store.GetCountersByPrefixAsync(keyPrefix, cancellationToken);
+            _cachedUsageOverlay = counters;
+            _cachedUsageOverlayTicks = Environment.TickCount64;
+            return counters;
+        }
+        finally
+        {
+            _usageOverlayLock.Release();
+        }
+    }
 
     public async Task<IReadOnlyDictionary<string, long>> GetPendingCountersInRangeAsync(
         string clientId,

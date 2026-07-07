@@ -84,6 +84,20 @@ public interface IResourceAllocationDatabase
     Task<Dictionary<(string PoolId, string ClientId), int>> GetActiveCountsByPoolAndClientAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Gets active allocation counts for the given pool IDs using counter MGET (no collection scan).
+    /// </summary>
+    Task<IReadOnlyDictionary<string, int>> GetActiveCountsForPoolsAsync(
+        IReadOnlyCollection<string> resourcePoolIds,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets active allocation counts for the given pool/client pairs using counter MGET.
+    /// </summary>
+    Task<IReadOnlyDictionary<(string PoolId, string ClientId), int>> GetActiveCountsForPoolClientsAsync(
+        IReadOnlyCollection<(string PoolId, string ClientId)> keys,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Creates a new resource allocation.
     /// </summary>
     /// <param name="allocation">The allocation to create.</param>

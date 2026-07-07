@@ -58,6 +58,65 @@ public class ResourceAllocationDatabase : IResourceAllocationDatabase
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyDictionary<string, int>> GetActiveCountsForPoolsAsync(
+        IReadOnlyCollection<string> resourcePoolIds,
+        CancellationToken cancellationToken = default)
+    {
+        if (resourcePoolIds.Count == 0)
+        {
+            return new Dictionary<string, int>(StringComparer.Ordinal);
+        }
+
+        var keys = resourcePoolIds
+            .Where(static id => !string.IsNullOrWhiteSpace(id))
+            .Distinct(StringComparer.Ordinal)
+            .Select(PoolCounterKey)
+            .ToArray();
+        var counts = await _store.GetManyCountersAsync(keys, cancellationToken);
+
+        var result = new Dictionary<string, int>(keys.Length, StringComparer.Ordinal);
+        foreach (var poolId in resourcePoolIds)
+        {
+            if (string.IsNullOrWhiteSpace(poolId))
+            {
+                continue;
+            }
+
+            result[poolId] = NormalizeCount(GetCount(counts, PoolCounterKey(poolId)));
+        }
+
+        return result;
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyDictionary<(string PoolId, string ClientId), int>> GetActiveCountsForPoolClientsAsync(
+        IReadOnlyCollection<(string PoolId, string ClientId)> keys,
+        CancellationToken cancellationToken = default)
+    {
+        if (keys.Count == 0)
+        {
+            return new Dictionary<(string PoolId, string ClientId), int>();
+        }
+
+        var distinctKeys = keys
+            .Where(static key => !string.IsNullOrWhiteSpace(key.PoolId) && !string.IsNullOrWhiteSpace(key.ClientId))
+            .Distinct()
+            .ToArray();
+        var counterKeys = distinctKeys
+            .Select(static key => ClientCounterKey(key.PoolId, key.ClientId))
+            .ToArray();
+        var counts = await _store.GetManyCountersAsync(counterKeys, cancellationToken);
+
+        var result = new Dictionary<(string PoolId, string ClientId), int>(distinctKeys.Length);
+        foreach (var key in distinctKeys)
+        {
+            result[key] = NormalizeCount(GetCount(counts, ClientCounterKey(key.PoolId, key.ClientId)));
+        }
+
+        return result;
+    }
+
+    /// <inheritdoc />
     public async Task<Dictionary<string, int>> GetActiveCountsByPoolAsync(CancellationToken cancellationToken = default)
     {
         var query = new DocumentQuery()

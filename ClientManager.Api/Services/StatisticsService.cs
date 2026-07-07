@@ -59,11 +59,9 @@ public class StatisticsService : IStatisticsService
             cancellationToken);
         var allPools = await _resourcePoolRepository.SearchAsync(DocumentQuery.All, cancellationToken);
 
-        var activeAllocations = 0;
-        foreach (var pool in allPools.Items)
-        {
-            activeAllocations += await _allocationDatabase.GetActiveCountAsync(pool.Id, cancellationToken);
-        }
+        var poolIds = allPools.Items.Select(static pool => pool.Id).ToArray();
+        var poolCounts = await _allocationDatabase.GetActiveCountsForPoolsAsync(poolIds, cancellationToken);
+        var activeAllocations = poolIds.Sum(poolId => poolCounts.GetValueOrDefault(poolId));
 
         return new SystemOverviewResponse(
             (int)allClientsCount,

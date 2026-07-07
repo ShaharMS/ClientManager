@@ -296,10 +296,13 @@ public partial class UsageStatisticsService : IUsageStatisticsService
         var totalSlots = 0;
         var acquiredSlots = 0;
 
+        var poolIds = pools.Select(static pool => pool.Id).ToArray();
+        var poolCounts = await _allocationDatabase.GetActiveCountsForPoolsAsync(poolIds, cancellationToken);
+
         foreach (var pool in pools)
         {
             totalSlots += (int)pool.MaxSlots;
-            acquiredSlots += await _allocationDatabase.GetActiveCountAsync(pool.Id, cancellationToken);
+            acquiredSlots += poolCounts.GetValueOrDefault(pool.Id);
         }
 
         var acquisitionPercentage = totalSlots > 0
@@ -333,6 +336,13 @@ public partial class UsageStatisticsService : IUsageStatisticsService
     private async Task<ClientSummariesResponse> ComputeClientSummariesAsync(CancellationToken cancellationToken)
     {
         var clients = await _clientConfigDatabase.GetAllAsync(cancellationToken);
+        var allocationKeys = clients
+            .SelectMany(client => client.ResourcePools.Keys.Select(poolId => (PoolId: poolId, ClientId: client.Id)))
+            .ToArray();
+        var allocationCounts = await _allocationDatabase.GetActiveCountsForPoolClientsAsync(
+            allocationKeys,
+            cancellationToken);
+
         var rows = new List<ClientSummaryRow>();
 
         foreach (var client in clients)
@@ -346,7 +356,7 @@ public partial class UsageStatisticsService : IUsageStatisticsService
             foreach (var (poolId, poolSettings) in client.ResourcePools)
             {
                 totalAccessibleSlots += (int)poolSettings.MaxSlots;
-                usedSlots += await _allocationDatabase.GetActiveCountByClientAsync(poolId, client.Id, cancellationToken);
+                usedSlots += allocationCounts.GetValueOrDefault((poolId, client.Id));
             }
 
             rows.Add(new ClientSummaryRow(
