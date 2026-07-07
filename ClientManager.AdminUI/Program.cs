@@ -1,12 +1,12 @@
 using System.Globalization;
+using ClientManager.AdminUI;
 using ClientManager.AdminUI.Components;
+using ClientManager.AdminUI.Http;
 using ClientManager.AdminUI.Localization;
 using ClientManager.AdminUI.Resources;
 using ClientManager.AdminUI.Services;
 using ClientManager.AdminUI.Utils;
 using ClientManager.Shared.Logging;
-using Microsoft.AspNetCore.Hosting.Server;
-using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.Extensions.Localization;
 using NLog;
@@ -56,11 +56,14 @@ if (builder.Environment.IsDevelopment())
         options => options.DetailedErrors = true);
 }
 
+builder.Services.AddTransient<OutboundHttpLoggingHandler>();
+
 builder.Services.AddHttpClient("ClientManagerApi", client =>
 {
     client.BaseAddress = new Uri(
         builder.Configuration["ApiBaseUrl"] ?? "http://localhost:5062");
 })
+.AddHttpMessageHandler<OutboundHttpLoggingHandler>()
 .ConfigurePrimaryHttpMessageHandler(() =>
 {
     var handler = new HttpClientHandler();
@@ -124,20 +127,24 @@ if (app.Environment.IsDevelopment())
 
 app.Lifetime.ApplicationStarted.Register(() =>
 {
-    var appLogger = app.Services.GetRequiredService<IAppLogger<Program>>();
-    var addresses = app.Services.GetRequiredService<IServer>()
-        .Features.Get<IServerAddressesFeature>()?.Addresses;
+    var appLogger = app.Services.GetRequiredService<IAppLogger<StartupLogger>>();
+    var environment = app.Environment;
 
-    if (addresses is null || addresses.Count == 0)
+    foreach (var url in app.Urls)
     {
-        appLogger.Info("Admin UI started");
-        return;
+        appLogger.Info("User interface bound to address", new { Url = url });
     }
 
-    foreach (var url in addresses)
+    if (string.IsNullOrWhiteSpace(environment.EnvironmentName))
     {
-        appLogger.Info("Admin UI listening", new { Url = url });
+        appLogger.Warn("Failed to detect hosting environment, falling back to default", new { Environment = Environments.Production });
     }
+    else
+    {
+        appLogger.Info("Hosting environment detected successfully", new { Environment = environment.EnvironmentName });
+    }
+
+    appLogger.Info("Serving content from root path", new { ContentRoot = environment.ContentRootPath });
 });
 
 app.Run();

@@ -151,12 +151,24 @@ try
     app.Lifetime.ApplicationStarted.Register(() =>
     {
         var appLogger = app.Services.GetRequiredService<IAppLogger<Program>>();
-        var urls = app.Urls;
-        foreach (var url in urls)
+        var environment = app.Environment;
+
+        foreach (var url in app.Urls)
         {
-            appLogger.Info("API listening", new { Url = url });
+            appLogger.Info("API bound to address", new { Url = url });
             appLogger.Info("Swagger docs available", new { DocsUrl = $"{url}/docs" });
         }
+
+        if (string.IsNullOrWhiteSpace(environment.EnvironmentName))
+        {
+            appLogger.Warn("Failed to detect hosting environment, falling back to default", new { Environment = Environments.Production });
+        }
+        else
+        {
+            appLogger.Info("Hosting environment detected successfully", new { Environment = environment.EnvironmentName });
+        }
+
+        appLogger.Info("Serving content from root path", new { ContentRoot = environment.ContentRootPath });
     });
 
     app.Run();
