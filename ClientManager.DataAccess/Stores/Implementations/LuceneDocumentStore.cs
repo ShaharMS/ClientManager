@@ -456,10 +456,26 @@ public class LuceneDocumentStore : IDocumentStore, IDisposable
     /// <inheritdoc />
     public async Task ResetCounterAsync(string key, CancellationToken cancellationToken = default)
     {
+        await ResetManyCountersAsync([key], cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task ResetManyCountersAsync(IReadOnlyCollection<string> keys, CancellationToken cancellationToken = default)
+    {
+        if (keys.Count == 0)
+        {
+            return;
+        }
+
         await WaitForWriteLockAsync(cancellationToken);
         try
         {
-            DeleteByCollectionAndId(CountersCollection, key);
+            foreach (var key in keys)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                DeleteByCollectionAndId(CountersCollection, key);
+            }
+
             _writer.Commit();
         }
         finally

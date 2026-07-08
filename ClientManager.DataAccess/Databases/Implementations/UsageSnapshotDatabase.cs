@@ -307,9 +307,13 @@ public class UsageSnapshotDatabase : IUsageSnapshotDatabase
         IEnumerable<string> keys,
         CancellationToken cancellationToken = default)
     {
-        foreach (var key in keys.Distinct(StringComparer.Ordinal))
+        var distinct = keys.Distinct(StringComparer.Ordinal).ToArray();
+        if (distinct.Length == 0)
         {
-            await _store.ResetCounterAsync(key, cancellationToken);
+            return;
         }
+
+        await _store.ResetManyCountersAsync(distinct, cancellationToken);
+        _cachedUsageOverlay = null;
     }
 }

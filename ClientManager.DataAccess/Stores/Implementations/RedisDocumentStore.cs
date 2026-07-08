@@ -587,14 +587,25 @@ return {1, remaining, 0}
     /// <inheritdoc />
     public async Task ResetCounterAsync(string key, CancellationToken cancellationToken = default)
     {
+        await ResetManyCountersAsync([key], cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task ResetManyCountersAsync(IReadOnlyCollection<string> keys, CancellationToken cancellationToken = default)
+    {
+        if (keys.Count == 0)
+        {
+            return;
+        }
+
         await ExecuteWithRedisContextAsync(
-            "counter_reset",
+            "counter_reset_many",
             async () =>
             {
-                var redisKey = CounterKey(key);
-                await Database.KeyDeleteAsync(redisKey);
+                var redisKeys = keys.Select(CounterKey).ToArray();
+                await Database.KeyDeleteAsync(redisKeys);
             },
-            DescribeCounterContext(key));
+            DescribeCounterBatchContext(keys));
     }
 
     /// <inheritdoc />

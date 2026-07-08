@@ -302,11 +302,29 @@ public class JsonFileDocumentStore : IDocumentStore
     /// <inheritdoc />
     public async Task ResetCounterAsync(string key, CancellationToken cancellationToken = default)
     {
+        await ResetManyCountersAsync([key], cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task ResetManyCountersAsync(
+        IReadOnlyCollection<string> keys,
+        CancellationToken cancellationToken = default)
+    {
+        if (keys.Count == 0)
+        {
+            return;
+        }
+
         await WaitForWriteLockAsync(_state.CounterWriteLock, cancellationToken);
         try
         {
             var counters = GetOrLoadCounters();
-            counters.TryRemove(key, out _);
+            foreach (var key in keys)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                counters.TryRemove(key, out _);
+            }
+
             await PersistCountersAsync(counters, cancellationToken);
         }
         finally

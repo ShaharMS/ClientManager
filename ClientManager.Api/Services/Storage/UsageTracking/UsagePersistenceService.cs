@@ -53,6 +53,10 @@ public partial class UsagePersistenceService : BackgroundService
                 using var scope = _scopeFactory.CreateScope();
                 var database = scope.ServiceProvider.GetRequiredService<IUsageSnapshotDatabase>();
                 await FlushBufferAsync(database, stoppingToken);
+                if (await MaterializeLatestSecondAsync(database, stoppingToken))
+                {
+                    _cache.InvalidateStatistics();
+                }
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -77,6 +81,7 @@ public partial class UsagePersistenceService : BackgroundService
                 var database = scope.ServiceProvider.GetRequiredService<IUsageSnapshotDatabase>();
                 var mutated = false;
 
+                mutated |= await MaterializePendingCountersAsync(database, stoppingToken);
                 mutated |= await RollUpAsync(database, BucketGranularity.Second, BucketGranularity.OneMinute, TimeSpan.FromMinutes(1), stoppingToken);
                 mutated |= await RollUpAsync(database, BucketGranularity.OneMinute, BucketGranularity.FiveMinute, TimeSpan.FromHours(1), stoppingToken);
                 mutated |= await RollUpAsync(database, BucketGranularity.FiveMinute, BucketGranularity.Hour, TimeSpan.FromHours(1), stoppingToken);

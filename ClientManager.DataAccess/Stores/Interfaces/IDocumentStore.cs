@@ -215,6 +215,13 @@ public interface IDocumentStore
     Task ResetCounterAsync(string key, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Resets multiple counters in one batch (one persist on file-backed stores).
+    /// </summary>
+    Task ResetManyCountersAsync(
+        IReadOnlyCollection<string> keys,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Searches for documents matching the given query. Stores may implement native query
     /// translation (e.g. Lucene, MongoDB filters, RediSearch) or fall back to loading all
     /// documents and filtering in memory via <see cref="InMemoryQueryEvaluator"/>.

@@ -115,6 +115,9 @@ public sealed class InstrumentedDocumentStore : IDocumentStore
     public Task ResetCounterAsync(string key, CancellationToken cancellationToken = default) =>
         TraceAsync(CounterCollection, "counter_reset", () => _inner.ResetCounterAsync(key, cancellationToken), cancellationToken);
 
+    public Task ResetManyCountersAsync(IReadOnlyCollection<string> keys, CancellationToken cancellationToken = default) =>
+        TraceAsync(CounterCollection, "counter_reset_many", () => _inner.ResetManyCountersAsync(keys, cancellationToken), cancellationToken);
+
     public Task<SearchResult<T>> SearchAsync<T>(
         string collection,
         DocumentQuery query,

@@ -208,8 +208,19 @@ public class MongoDBDocumentStore(IMongoDatabase database) : IDocumentStore
     /// <inheritdoc />
     public async Task ResetCounterAsync(string key, CancellationToken cancellationToken = default)
     {
-        var filter = Builders<BsonDocument>.Filter.Eq("_id", key);
-        await CounterCollection.DeleteOneAsync(filter, cancellationToken);
+        await ResetManyCountersAsync([key], cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task ResetManyCountersAsync(IReadOnlyCollection<string> keys, CancellationToken cancellationToken = default)
+    {
+        if (keys.Count == 0)
+        {
+            return;
+        }
+
+        var filter = Builders<BsonDocument>.Filter.In("_id", keys);
+        await CounterCollection.DeleteManyAsync(filter, cancellationToken);
     }
 
     /// <inheritdoc />
