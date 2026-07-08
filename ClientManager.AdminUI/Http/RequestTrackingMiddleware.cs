@@ -23,12 +23,8 @@ public sealed class RequestTrackingMiddleware
     public async Task InvokeAsync(HttpContext context)
     {
         var path = context.Request.Path.Value ?? "/";
-        if (path.StartsWith("/_framework", StringComparison.OrdinalIgnoreCase)
-            || path.StartsWith("/_content", StringComparison.OrdinalIgnoreCase)
-            || path.StartsWith("/css", StringComparison.OrdinalIgnoreCase)
-            || path.StartsWith("/js", StringComparison.OrdinalIgnoreCase)
-            || path.StartsWith("/fonts", StringComparison.OrdinalIgnoreCase)
-            || path.StartsWith("/bootstrap", StringComparison.OrdinalIgnoreCase))
+        // ponytail: Blazor/SignalR circuits are long-lived; wall-clock duration is not a slow-request signal.
+        if (ShouldSkipRequestTracking(context, path))
         {
             await _next(context);
             return;
@@ -68,4 +64,14 @@ public sealed class RequestTrackingMiddleware
             }
         }
     }
+
+    private static bool ShouldSkipRequestTracking(HttpContext context, string path) =>
+        path.StartsWith("/_blazor", StringComparison.OrdinalIgnoreCase)
+        || context.WebSockets.IsWebSocketRequest
+        || path.StartsWith("/_framework", StringComparison.OrdinalIgnoreCase)
+        || path.StartsWith("/_content", StringComparison.OrdinalIgnoreCase)
+        || path.StartsWith("/css", StringComparison.OrdinalIgnoreCase)
+        || path.StartsWith("/js", StringComparison.OrdinalIgnoreCase)
+        || path.StartsWith("/fonts", StringComparison.OrdinalIgnoreCase)
+        || path.StartsWith("/bootstrap", StringComparison.OrdinalIgnoreCase);
 }
