@@ -77,6 +77,30 @@
   <data name="Charts.NoUsageData" xml:space="preserve">
     <value>אין נתוני שימוש זמינים</value>
   </data>
+  <data name="Charts.TimeRange.LastDay" xml:space="preserve">
+    <value>יום אחרון</value>
+  </data>
+  <data name="Charts.TimeRange.LastDays" xml:space="preserve">
+    <value>{0} ימים אחרונים</value>
+  </data>
+  <data name="Charts.TimeRange.LastHour" xml:space="preserve">
+    <value>שעה אחרונה</value>
+  </data>
+  <data name="Charts.TimeRange.LastHours" xml:space="preserve">
+    <value>{0} שעות אחרונות</value>
+  </data>
+  <data name="Charts.TimeRange.LastMinute" xml:space="preserve">
+    <value>דקה אחרונה</value>
+  </data>
+  <data name="Charts.TimeRange.LastMinutes" xml:space="preserve">
+    <value>{0} דקות אחרונות</value>
+  </data>
+  <data name="Charts.TimeRange.LastSecond" xml:space="preserve">
+    <value>שנייה אחרונה</value>
+  </data>
+  <data name="Charts.TimeRange.LastSeconds" xml:space="preserve">
+    <value>{0} שניות אחרונות</value>
+  </data>
   <data name="Charts.Settings.AxisType" xml:space="preserve">
     <value>סוג ציר</value>
   </data>

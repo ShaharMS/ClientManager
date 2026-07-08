@@ -77,6 +77,30 @@
   <data name="Charts.NoUsageData" xml:space="preserve">
     <value>No usage data available</value>
   </data>
+  <data name="Charts.TimeRange.LastDay" xml:space="preserve">
+    <value>Last day</value>
+  </data>
+  <data name="Charts.TimeRange.LastDays" xml:space="preserve">
+    <value>Last {0} days</value>
+  </data>
+  <data name="Charts.TimeRange.LastHour" xml:space="preserve">
+    <value>Last hour</value>
+  </data>
+  <data name="Charts.TimeRange.LastHours" xml:space="preserve">
+    <value>Last {0} hours</value>
+  </data>
+  <data name="Charts.TimeRange.LastMinute" xml:space="preserve">
+    <value>Last minute</value>
+  </data>
+  <data name="Charts.TimeRange.LastMinutes" xml:space="preserve">
+    <value>Last {0} minutes</value>
+  </data>
+  <data name="Charts.TimeRange.LastSecond" xml:space="preserve">
+    <value>Last second</value>
+  </data>
+  <data name="Charts.TimeRange.LastSeconds" xml:space="preserve">
+    <value>Last {0} seconds</value>
+  </data>
   <data name="Charts.Settings.AxisType" xml:space="preserve">
     <value>Axis Type</value>
   </data>

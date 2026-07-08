@@ -43,7 +43,7 @@ public partial class StackedUsageChart : ComponentBase, IAsyncDisposable
             return;
         }
 
-        _module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/stacked-chart.js");
+        _module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/stacked-chart.js?v=7");
         await RenderChartsAsync();
         _pendingUpdate = false;
     }
@@ -75,14 +75,12 @@ public partial class StackedUsageChart : ComponentBase, IAsyncDisposable
 
     private object BuildConfig(TargetChartData targetChart)
     {
-        var visibleSeries = ChartSeriesTransform.GetChartSeries(targetChart.ClientSeries, AxisScale)
-            .Where(series => !series.Hidden)
-            .ToList();
+        var allSeries = ChartSeriesTransform.GetChartSeries(targetChart.ClientSeries, AxisScale).ToList();
 
-        var labels = visibleSeries.FirstOrDefault()?.Points.Select(point => point.Label).ToArray()
+        var labels = allSeries.FirstOrDefault(s => s.Points.Count > 0)?.Points.Select(point => point.Label).ToArray()
             ?? targetChart.CapSeries.Select(point => point.Label).ToArray();
 
-        var series = visibleSeries.Select(clientArea =>
+        var series = allSeries.Select(clientArea =>
         {
             var color = Colors.GetSeriesColor(clientArea.ClientId);
             return new
@@ -92,7 +90,7 @@ public partial class StackedUsageChart : ComponentBase, IAsyncDisposable
                 originalValues = clientArea.Points.Select(point => point.OriginalValue != 0 ? point.OriginalValue : point.Value).ToArray(),
                 fillColor = color,
                 strokeColor = color,
-                hidden = false
+                hidden = clientArea.Hidden
             };
         }).ToArray();
 
@@ -114,6 +112,8 @@ public partial class StackedUsageChart : ComponentBase, IAsyncDisposable
     }
 
     private string GetCanvasId(int index) => $"stacked-chart-{_renderToken}-{index}";
+
+    private string GetLegendId(int index) => $"{GetCanvasId(index)}-legend";
 
     private string FormatTitle(TargetChartData chart) =>
         TitleSuffix is null ? chart.TargetName : $"{chart.TargetName} - {TitleSuffix}";

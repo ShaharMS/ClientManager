@@ -75,7 +75,7 @@
 
 .cm-chart-settings-dropdown__relative {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 10rem;
+    grid-template-columns: minmax(0, 1fr) 7.5rem;
     gap: var(--space-sm);
     align-items: end;
 }
@@ -91,6 +91,31 @@
 .cm-chart-settings-dropdown__relative .rz-dropdown,
 .cm-chart-settings-dropdown__relative .cm-duration-input {
     width: 100%;
+}
+
+.cm-chart-settings-dropdown__relative .cm-duration-input .rz-spinner {
+    flex: 1 1 4rem;
+    min-width: 0;
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+}
+
+html[data-theme="dark"] .cm-chart-settings-dropdown__relative .cm-duration-input .rz-spinner {
+    background: var(--color-bg);
+}
+
+.cm-chart-settings-dropdown__relative .cm-duration-input .rz-numeric-input.rz-inputtext {
+    min-width: 0;
+    width: 100%;
+    padding-block: 4px;
+    padding-inline-start: 4px;
+    padding-inline-end: 1.5rem;
+    text-align: center;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    color: var(--color-text-primary);
 }
 
 .cm-chart-settings-dropdown__relative .cm-duration-input .rz-dropdown {

@@ -5,6 +5,7 @@ using ClientManager.AdminUI.Http;
 using ClientManager.AdminUI.Localization;
 using ClientManager.AdminUI.Resources;
 using ClientManager.AdminUI.Services;
+using ClientManager.AdminUI.Services.ChartData;
 using ClientManager.AdminUI.Utils;
 using ClientManager.Shared.Logging;
 using Microsoft.AspNetCore.Localization;
@@ -120,6 +121,7 @@ app.MapRazorComponents<App>()
 if (app.Environment.IsDevelopment())
 {
     ChartBucketAggregatorSelfCheck.Run();
+    DashboardDonutDrillSelfCheck.Run();
     app.MapGet("/_dev/culture", (HttpContext ctx, IStringLocalizer<SharedResources> localizer) =>
         Results.Json(new
         {

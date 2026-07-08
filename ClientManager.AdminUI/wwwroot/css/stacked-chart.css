@@ -1,18 +1,85 @@
-.cm-stacked-chart {
-    position: relative;
-    width: 100%;
-    min-width: 0;
+.cm-chart-card__body:has(.cm-stacked-chart) {
+    overflow: visible;
 }
 
-.cm-stacked-chart canvas {
+.cm-stacked-chart {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 207px;
+    width: 100%;
+    min-width: 0;
+    align-items: stretch;
+}
+
+.cm-stacked-chart__plot {
+    position: relative;
+    min-width: 0;
+    height: 100%;
+}
+
+.cm-stacked-chart__plot canvas {
+    display: block;
     width: 100% !important;
     height: 100% !important;
 }
 
-.cm-duration-input .rz-spinner {
-    min-width: 4.5rem;
+.cm-stacked-chart__legend {
+    list-style: none;
+    margin: 0;
+    padding: 0 0 0 8px;
+    width: 207px;
+    min-width: 207px;
+    max-width: 207px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 8px;
+    box-sizing: border-box;
 }
 
-.cm-duration-input .rz-numeric input {
-    min-width: 4.5rem;
+.cm-stacked-chart__legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    min-width: 0;
+}
+
+.cm-stacked-chart__legend-item--hidden .cm-stacked-chart__legend-label {
+    text-decoration: line-through;
+    opacity: 0.45;
+}
+
+.cm-stacked-chart__legend-swatch {
+    flex-shrink: 0;
+    width: 10px;
+    height: 10px;
+    border: 1px solid transparent;
+    box-sizing: border-box;
+}
+
+.cm-stacked-chart__legend-swatch--line {
+    border-width: 2px;
+    border-style: solid;
+    background: transparent !important;
+}
+
+.cm-stacked-chart__legend-label {
+    font-size: var(--font-size-sm, 0.875rem);
+    font-family: var(--font-family, 'Heebo', system-ui, sans-serif);
+    color: var(--color-text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Keep Radzen donut charts aligned when shown beside Chart.js cards */
+.cm-chart-card .rz-chart .rz-legend {
+    width: 207px;
+    min-width: 207px;
+    max-width: 207px;
+    flex-shrink: 0;
+}
+
+.cm-chart-card .rz-chart .rz-legend-items {
+    width: 200px;
 }

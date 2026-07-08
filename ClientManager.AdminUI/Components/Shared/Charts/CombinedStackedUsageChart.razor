@@ -3,11 +3,13 @@
 <StackedUsageChart Charts="@Charts"
                    AxisScale="@AxisScale"
                    HeightPx="@HeightPx"
-                   CapLineTitle="@CapLineTitle" />
+                   CapLineTitle="@CapLineTitle"
+                   ShowTitles="@ShowTitles" />
 
 @code {
     [Parameter] public IReadOnlyList<TargetChartData> Charts { get; set; } = [];
     [Parameter] public AxisScaleType AxisScale { get; set; }
     [Parameter] public int HeightPx { get; set; } = 400;
     [Parameter] public string? CapLineTitle { get; set; }
+    [Parameter] public bool ShowTitles { get; set; }
 }

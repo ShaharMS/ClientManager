@@ -9,7 +9,6 @@
            OnTimeRangeChanged="OnTimeRangeChanged"
            OnPollingIntervalChanged="OnPollingIntervalChanged"
            OnAxisScaleChanged="OnAxisScaleChanged"
-           OnShowDeniedBreakdownChanged="OnShowDeniedBreakdownChanged"
            PollingKey="@PollingKey"
            InitialTimeRangeKey="@InitialTimeRangeKey"
            InitialPollingKey="@InitialPollingKey"
@@ -60,7 +59,7 @@
     <div class="cm-chart-card__header">
         <div class="cm-donut-chart-heading">
             <span class="cm-chart-card__title cm-chart-card__title--plain">@DonutTitle</span>
-            @if (_drillDownStack.Count > 0)
+            @if (_drillDepth > 0)
             {
                 <button type="button" class="cm-editor-back cm-editor-back--danger" @onclick="OnDonutBack">@L["Common.Back"]</button>
             }
@@ -116,29 +115,41 @@
     [Parameter] public EventCallback<ChartTimeRange> OnTimeRangeChanged { get; set; }
     [Parameter] public EventCallback<PollingIntervalPreset> OnPollingIntervalChanged { get; set; }
     [Parameter] public EventCallback<AxisScaleType> OnAxisScaleChanged { get; set; }
-    [Parameter] public EventCallback<bool> OnShowDeniedBreakdownChanged { get; set; }
     [Parameter] public string? PollingKey { get; set; }
 
     private string ChartTitle => string.Format(CultureInfo.CurrentCulture, L["Pages.Dashboard.Chart.UsageOverTime"], SelectedTargetName);
 
-    private readonly Stack<List<ClientUsagePoint>> _drillDownStack = new();
+    private int _drillDepth;
+    private string? _drillContextKey;
     private int _seenDonutDataGeneration = -1;
 
-    private string DonutTitle => _drillDownStack.Count > 0
+    private string DonutTitle => _drillDepth > 0
         ? $"{L["Common.Others"]} - {L["Pages.Dashboard.ClientOverview"]}"
         : L["Pages.Dashboard.ClientOverview"];
 
     private IReadOnlyList<ClientUsagePoint> ActiveDonutData =>
-        _drillDownStack.Count > 0
-            ? DashboardChartDataLoader.ToDisplaySlices(_drillDownStack.Peek(), L["Common.Others"])
-            : DonutData.Slices;
+        _drillDepth == 0
+            ? DonutData.Slices
+            : DashboardChartDataLoader.ToDisplaySlices(
+                DashboardChartDataLoader.GetPoolAtDrillDepth(DonutData, _drillDepth),
+                L["Common.Others"]);
 
     protected override void OnParametersSet()
     {
+        var contextKey = $"{SelectedFilterType}|{SelectedTargetId}|{string.Join(',', SelectedClientIds ?? [])}";
+        if (contextKey != _drillContextKey)
+        {
+            _drillContextKey = contextKey;
+            _drillDepth = 0;
+            _seenDonutDataGeneration = DonutDataGeneration;
+            return;
+        }
+
         if (DonutDataGeneration != _seenDonutDataGeneration)
         {
             _seenDonutDataGeneration = DonutDataGeneration;
-            _drillDownStack.Clear();
+            _drillDepth = DashboardChartDataLoader.ReconcileDrillDepth(
+                DonutData, _drillDepth, L["Common.Others"]);
         }
     }
 
@@ -168,30 +179,24 @@
 
     private void OnDonutBack()
     {
-        if (_drillDownStack.Count > 0)
+        if (_drillDepth > 0)
         {
-            _drillDownStack.Pop();
+            _drillDepth--;
         }
     }
 
     private void DrillIntoOthers()
     {
-        var nextPool = _drillDownStack.Count == 0
-            ? DonutData.OthersBreakdown.OrderByDescending(p => p.Value).ToList()
-            : DashboardChartDataLoader.GetOthersRestPool(_drillDownStack.Peek());
-
-        if (nextPool.Count == 0)
+        if (!DashboardChartDataLoader.CanDrillIntoOthers(DonutData, _drillDepth))
         {
             return;
         }
 
-        _drillDownStack.Push(nextPool);
+        _drillDepth++;
     }
 
     private bool CanDrillIntoOthers() =>
-        _drillDownStack.Count == 0
-            ? DonutData.OthersBreakdown.Count > 0
-            : _drillDownStack.Peek().Count > ChartAggregator.DefaultTopN;
+        DashboardChartDataLoader.CanDrillIntoOthers(DonutData, _drillDepth);
 
     private void OnDonutSeriesClick(SeriesClickEventArgs args)
     {

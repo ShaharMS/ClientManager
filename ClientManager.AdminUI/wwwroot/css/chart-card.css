@@ -29,30 +29,37 @@
     row-gap: calc(var(--space-sm) + 4px);
     margin-bottom: var(--space-md);
     align-items: center;
+    container-type: inline-size;
 }
 
 .cm-chart-card__filters {
-    container-type: inline-size;
     grid-column: 1 / -1;
     grid-row: 1;
     display: grid;
     gap: var(--space-sm);
     align-items: center;
+    justify-items: stretch;
+    width: 100%;
     min-width: 0;
     margin-bottom: 0;
 }
 
 .cm-chart-card__filter {
     min-width: 0;
-}
-
-.cm-chart-card__filter > .rz-dropdown {
     width: 100%;
 }
 
-/* Two pickers: fixed service + flexible clients */
+.cm-chart-card__filter > .rz-dropdown {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+/* Two pickers: fixed target + flexible clients on one row */
 .cm-chart-card__filters:has(> .cm-chart-card__filter:nth-child(2):last-child) {
-    grid-template-columns: 200px minmax(12rem, 1fr);
+    grid-template-columns: minmax(10rem, 1fr) minmax(12rem, 2fr);
 }
 
 @container (max-width: 28rem) {
@@ -61,37 +68,23 @@
     }
 }
 
-@container (min-width: 28.01rem) {
-    .cm-chart-card__filters:has(> .cm-chart-card__filter:nth-child(2):last-child) .cm-chart-card__filter--fixed > .rz-dropdown {
-        width: 200px;
-        max-width: 200px;
-    }
-}
-
-/* Three pickers: two fixed + flexible clients */
+/* Three pickers: two equal on row 1, clients full width on row 2 */
 .cm-chart-card__filters:has(> .cm-chart-card__filter:nth-child(3)) {
-    grid-template-columns: 200px 200px minmax(12rem, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-@container (max-width: 38rem) {
-    .cm-chart-card__filters:has(> .cm-chart-card__filter:nth-child(3)) {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
+.cm-chart-card__filters:has(> .cm-chart-card__filter:nth-child(3)) .cm-chart-card__filter--clients {
+    grid-column: 1 / -1;
+    overflow: hidden;
+}
 
-    .cm-chart-card__filters:has(> .cm-chart-card__filter:nth-child(3)) .cm-chart-card__filter--fixed > .rz-dropdown {
-        width: 100%;
-        max-width: none;
+@container (min-width: 40rem) {
+    .cm-chart-card__filters:has(> .cm-chart-card__filter:nth-child(3)) {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.4fr);
     }
 
     .cm-chart-card__filters:has(> .cm-chart-card__filter:nth-child(3)) .cm-chart-card__filter--clients {
-        grid-column: 1 / -1;
-    }
-}
-
-@container (min-width: 38.01rem) {
-    .cm-chart-card__filters:has(> .cm-chart-card__filter:nth-child(3)) .cm-chart-card__filter--fixed > .rz-dropdown {
-        width: 200px;
-        max-width: 200px;
+        grid-column: auto;
     }
 }
 

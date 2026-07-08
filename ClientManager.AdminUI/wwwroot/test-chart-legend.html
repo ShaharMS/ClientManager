@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="utf-8" />
+    <title>Chart legend overlap check</title>
+    <link rel="stylesheet" href="css/theme.css">
+    <link rel="stylesheet" href="css/theme-dark.css">
+    <link rel="stylesheet" href="css/stacked-chart.css">
+    <script src="js/vendor/chart.umd.js"></script>
+</head>
+<body>
+    <style>
+        body { margin: 16px; background: var(--color-bg); }
+        .wrap { width: 787px; }
+        #result { margin-top: 12px; font-family: monospace; white-space: pre-wrap; }
+    </style>
+    <div class="wrap">
+        <div class="cm-stacked-chart" style="height:400px">
+            <div class="cm-stacked-chart__plot">
+                <canvas id="chart"></canvas>
+            </div>
+            <ul class="cm-stacked-chart__legend" id="chart-legend"></ul>
+        </div>
+        <div id="result">running…</div>
+    </div>
+    <script type="module">
+        import { createOrUpdate } from './js/stacked-chart.js?v=7';
+
+        const labels = Array.from({ length: 12 }, (_, i) => `11:${10 + i}`);
+        const points = labels.map((_, i) => 1000 - i * 50);
+        createOrUpdate('chart', {
+            axisScale: 'linear',
+            animate: false,
+            labels,
+            series: [
+                { name: 'All Services', points, fillColor: 'rgba(99,102,241,0.7)', strokeColor: 'rgb(99,102,241)', hidden: false },
+                { name: 'Unauthenticated', points: points.map(v => v * 0.1), fillColor: 'rgba(239,68,68,0.7)', strokeColor: 'rgb(239,68,68)', hidden: false },
+                { name: 'Access Blocked', points: points.map(v => v * 0.05), fillColor: 'rgba(148,163,184,0.7)', strokeColor: 'rgb(148,163,184)', hidden: false }
+            ],
+            capLine: { title: 'Cap', points: labels.map(() => 900) }
+        });
+
+        requestAnimationFrame(() => {
+            const chart = Chart.getChart('chart');
+            const plotCanvas = chart.canvas;
+            const legend = document.getElementById('chart-legend');
+            const plotRect = plotCanvas.getBoundingClientRect();
+            const legendRect = legend.getBoundingClientRect();
+            const probeX = Math.floor(plotRect.right - 2);
+            const probeY = Math.floor(plotRect.top + plotRect.height / 2);
+            const probe = chart.ctx.getImageData(probeX - plotCanvas.getBoundingClientRect().left, probeY - plotRect.top, 1, 1).data;
+            const legendProbe = chart.ctx.getImageData(plotCanvas.width - 1, Math.floor(plotCanvas.height / 2), 1, 1).data;
+            const pass = chart.options.plugins.legend.display === false
+                && legend.children.length === 4
+                && Math.abs(legendRect.left - plotRect.right) < 2;
+            const result = document.getElementById('result');
+            result.textContent = [
+                `PASS: ${pass}`,
+                `canvasLegend=${chart.options.plugins.legend.display}`,
+                `htmlLegendItems=${legend.children.length}`,
+                `plot.right=${plotRect.right.toFixed(1)} legend.left=${legendRect.left.toFixed(1)}`,
+                `plotEdgeAlpha=${probe[3]} canvasRightEdgeAlpha=${legendProbe[3]}`
+            ].join('\n');
+            result.style.color = pass ? '#4ade80' : '#f87171';
+        });
+    </script>
+</body>
+</html>

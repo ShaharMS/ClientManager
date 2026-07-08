@@ -16,7 +16,6 @@
                     <ChartSettingsDropdown OnTimeRangeChanged="OnTimeRangeChanged"
                                            OnPollingIntervalChanged="OnPollingIntervalChanged"
                                            OnAxisScaleChanged="OnAxisScaleChanged"
-                                           OnShowDeniedBreakdownChanged="OnShowDeniedBreakdownChanged"
                                            PollingKey="@PollingKey"
                                            SkipInitialChartLoad="@SkipInitialChartLoad"
                                            InitialTimeRangeKey="@InitialTimeRangeKey"
@@ -47,6 +46,5 @@
     [Parameter] public EventCallback<ChartTimeRange> OnTimeRangeChanged { get; set; }
     [Parameter] public EventCallback<PollingIntervalPreset> OnPollingIntervalChanged { get; set; }
     [Parameter] public EventCallback<AxisScaleType> OnAxisScaleChanged { get; set; }
-    [Parameter] public EventCallback<bool> OnShowDeniedBreakdownChanged { get; set; }
     [Parameter] public string? PollingKey { get; set; }
 }

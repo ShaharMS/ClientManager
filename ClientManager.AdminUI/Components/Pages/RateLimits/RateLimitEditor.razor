@@ -18,14 +18,17 @@
     {
         <div class="alert alert-danger" style="margin-bottom: var(--space-md);">@_saveError</div>
     }
-    <div class="cm-editor__field">
-        <label>@L["Columns.Service"]</label>
-        <EntityIdInput @bind-Value="_model.TargetId" Suggestions="_serviceIds"
-            DisabledSuggestions="@_limitedServiceIds"
-            DisabledSuggestionMessage="@L["Pages.RateLimits.AlreadyHasRateLimit"]"
-            Mode="EntityIdInputMode.Reference" EntityName="@L["Dialog.EntityLabel.Service"]"
-            Disabled="@(_isNew && !_canCreate)" />
-    </div>
+    @if (_isNew)
+    {
+        <div class="cm-editor__field">
+            <label>@L["Columns.Service"]</label>
+            <EntityIdInput @bind-Value="_model.TargetId" Suggestions="_serviceIds"
+                DisabledSuggestions="@_limitedServiceIds"
+                DisabledSuggestionMessage="@L["Pages.RateLimits.AlreadyHasRateLimit"]"
+                Mode="EntityIdInputMode.Reference" EntityName="@L["Dialog.EntityLabel.Service"]"
+                Disabled="@(!_canCreate)" />
+        </div>
+    }
     <div class="cm-editor__field">
         <label>@L["Columns.Strategy"]</label>
         <RadzenDropDown TValue="RateLimitStrategy" @bind-Value="_model.Strategy"

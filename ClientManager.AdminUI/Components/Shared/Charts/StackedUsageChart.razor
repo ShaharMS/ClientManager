@@ -14,7 +14,10 @@ else if (Charts.Count > 0)
             <span class="cm-dashboard__chart-title">@FormatTitle(targetChart)</span>
         }
         <div class="cm-stacked-chart" style="height: @(HeightPx)px;">
-            <canvas id="@GetCanvasId(index)"></canvas>
+            <div class="cm-stacked-chart__plot">
+                <canvas id="@GetCanvasId(index)"></canvas>
+            </div>
+            <ul class="cm-stacked-chart__legend" id="@GetLegendId(index)"></ul>
         </div>
     }
 }
