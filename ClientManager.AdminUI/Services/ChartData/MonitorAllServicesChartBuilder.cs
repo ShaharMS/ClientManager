@@ -62,7 +62,6 @@ internal static class MonitorAllServicesChartBuilder
             now,
             context.BucketCount,
             localizer,
-            context.ShowDeniedBreakdown,
             storageBucketDuration);
 
         var capPoints = referenceBuckets

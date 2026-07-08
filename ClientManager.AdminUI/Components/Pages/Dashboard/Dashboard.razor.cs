@@ -63,7 +63,6 @@ public partial class Dashboard : ComponentBase, IAsyncDisposable
     private ChartTimeRange _timeRange = ChartTimeRange.FromPreset(TimeRangePreset.Default);
     private AxisScaleType _axisScaleType = AxisScaleType.Linear;
     private int _chartBucketCount = ChartBucketAggregator.DefaultBucketCount;
-    private bool _showDeniedBreakdown;
     private bool _pollingOverride;
     private IJSObjectReference? _chartJs;
     private DotNetObjectReference<Dashboard>? _chartSelfRef;
@@ -208,12 +207,6 @@ public partial class Dashboard : ComponentBase, IAsyncDisposable
             await LoadChartDataAsync();
             StateHasChanged();
         }
-    }
-
-    private Task OnShowDeniedBreakdownChanged(bool value)
-    {
-        _showDeniedBreakdown = value;
-        return LoadChartDataWithSkeletonAsync();
     }
 
     private Task OnPollingIntervalChanged(PollingIntervalPreset preset)

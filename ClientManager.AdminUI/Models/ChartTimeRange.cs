@@ -1,7 +1,9 @@
 namespace ClientManager.AdminUI.Models;
 
 using System.Globalization;
+using ClientManager.AdminUI.Resources;
 using ClientManager.AdminUI.Utils;
+using Microsoft.Extensions.Localization;
 
 public enum ChartTimeRangeMode
 {
@@ -64,6 +66,21 @@ public sealed class ChartTimeRange
             return FormatRelativeLabel(RelativeDuration);
         }
 
+        return FormatCustomLabel();
+    }
+
+    public string GetLocalizedDisplayLabel(IStringLocalizer<SharedResources> localizer)
+    {
+        if (Mode == ChartTimeRangeMode.Relative)
+        {
+            return FormatRelativeLabel(RelativeDuration, localizer);
+        }
+
+        return FormatCustomLabel();
+    }
+
+    private string FormatCustomLabel()
+    {
         var culture = CultureInfo.CurrentCulture;
         var fromLocal = CustomFromUtc.ToLocalTime();
         var toLocal = CustomToUtc.ToLocalTime();
@@ -114,27 +131,60 @@ public sealed class ChartTimeRange
         return "Day";
     }
 
-    private static string FormatRelativeLabel(TimeSpan duration)
+    private static string FormatRelativeLabel(TimeSpan duration) =>
+        FormatRelativeLabel(duration, null);
+
+    private static string FormatRelativeLabel(TimeSpan duration, IStringLocalizer<SharedResources>? localizer)
     {
+        var culture = CultureInfo.CurrentCulture;
+
         if (duration.TotalDays >= 1 && duration.TotalDays % 1 == 0)
         {
             var days = (int)duration.TotalDays;
-            return $"Last {days} day{(days == 1 ? "" : "s")}";
+            if (localizer is null)
+            {
+                return $"Last {days} day{(days == 1 ? "" : "s")}";
+            }
+
+            return days == 1
+                ? localizer["Charts.TimeRange.LastDay"]
+                : string.Format(culture, localizer["Charts.TimeRange.LastDays"], days);
         }
 
         if (duration.TotalHours >= 1 && duration.TotalHours % 1 == 0)
         {
             var hours = (int)duration.TotalHours;
-            return $"Last {hours} hour{(hours == 1 ? "" : "s")}";
+            if (localizer is null)
+            {
+                return $"Last {hours} hour{(hours == 1 ? "" : "s")}";
+            }
+
+            return hours == 1
+                ? localizer["Charts.TimeRange.LastHour"]
+                : string.Format(culture, localizer["Charts.TimeRange.LastHours"], hours);
         }
 
         if (duration.TotalMinutes >= 1 && duration.TotalMinutes % 1 == 0)
         {
             var minutes = (int)duration.TotalMinutes;
-            return $"Last {minutes} minute{(minutes == 1 ? "" : "s")}";
+            if (localizer is null)
+            {
+                return $"Last {minutes} minute{(minutes == 1 ? "" : "s")}";
+            }
+
+            return minutes == 1
+                ? localizer["Charts.TimeRange.LastMinute"]
+                : string.Format(culture, localizer["Charts.TimeRange.LastMinutes"], minutes);
         }
 
         var seconds = (int)duration.TotalSeconds;
-        return $"Last {seconds} second{(seconds == 1 ? "" : "s")}";
+        if (localizer is null)
+        {
+            return $"Last {seconds} second{(seconds == 1 ? "" : "s")}";
+        }
+
+        return seconds == 1
+            ? localizer["Charts.TimeRange.LastSecond"]
+            : string.Format(culture, localizer["Charts.TimeRange.LastSeconds"], seconds);
     }
 }

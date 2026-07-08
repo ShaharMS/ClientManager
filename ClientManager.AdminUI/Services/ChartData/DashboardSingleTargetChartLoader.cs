@@ -219,7 +219,6 @@ internal sealed class DashboardSingleTargetChartLoader
             cache.To,
             context.BucketCount,
             _localizer,
-            context.ShowDeniedBreakdown,
             storageDuration);
 
         charts.Add(new TargetChartData(cache.TargetName, clientAreas, capPoints));

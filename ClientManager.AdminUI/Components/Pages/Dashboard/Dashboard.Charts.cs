@@ -89,8 +89,7 @@ public partial class Dashboard
         AllServices = _allServices,
         AllPools = _allPools,
         Clients = _clients,
-        BucketCount = _chartBucketCount,
-        ShowDeniedBreakdown = _showDeniedBreakdown
+        BucketCount = _chartBucketCount
     };
 
     private async Task LoadChartDataCoreAsync(int ticket)

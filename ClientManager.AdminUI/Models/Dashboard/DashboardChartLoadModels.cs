@@ -16,5 +16,4 @@ public sealed class DashboardChartLoadContext
     public required List<NamedItem> AllPools { get; init; }
     public required List<NamedItem> Clients { get; init; }
     public int BucketCount { get; init; } = ChartBucketAggregator.DefaultBucketCount;
-    public bool ShowDeniedBreakdown { get; init; }
 }

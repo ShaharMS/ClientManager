@@ -19,14 +19,8 @@ internal static class DeniedChartSeriesBuilder
         DateTime now,
         int bucketCount,
         IStringLocalizer<SharedResources> localizer,
-        bool showDenied = false,
         TimeSpan? storageBucketDuration = null)
     {
-        if (!showDenied)
-        {
-            return;
-        }
-
         foreach (var (suffix, label) in GetTripletDefinitions(mode, localizer))
         {
             var deniedAgg = ChartBucketAggregator.Aggregate(

@@ -63,7 +63,6 @@ internal sealed class AllocationsAllPoolsChartLoader
             cache.Now,
             context.BucketCount,
             _localizer,
-            context.ShowDeniedBreakdown,
             storageDuration);
 
         var capPoints = referenceBuckets

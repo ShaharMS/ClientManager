@@ -19,7 +19,6 @@ internal static class AggregateTargetChartSeriesBuilder
         DateTime now,
         int bucketCount,
         IStringLocalizer<SharedResources> localizer,
-        bool showDenied = false,
         TimeSpan? storageBucketDuration = null)
     {
         var targetPointLists = targetPoints.ToList();
@@ -59,7 +58,6 @@ internal static class AggregateTargetChartSeriesBuilder
             now,
             bucketCount,
             localizer,
-            showDenied,
             storageDuration);
 
         return (series, referenceBuckets);

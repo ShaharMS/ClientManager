@@ -137,7 +137,6 @@ internal sealed class DashboardAllTargetsChartLoader
             cache.To,
             context.BucketCount,
             _localizer,
-            context.ShowDeniedBreakdown,
             storageDuration);
 
         var capPoints = referenceBuckets

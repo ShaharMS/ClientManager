@@ -103,6 +103,67 @@ public sealed class DashboardChartDataLoader
                 .Where(p => p.Value > 0)
                 .ToList();
 
+    public static List<ClientUsagePoint> GetPoolAtDrillDepth(DashboardDonutData donut, int depth)
+    {
+        if (depth < 1)
+        {
+            return [];
+        }
+
+        var pool = donut.OthersBreakdown;
+        for (var i = 1; i < depth; i++)
+        {
+            pool = GetOthersRestPool(pool);
+            if (pool.Count == 0)
+            {
+                return [];
+            }
+        }
+
+        return pool;
+    }
+
+    // ponytail: O(depth * n); depth is tiny (≤4), n is client count
+    public static int ReconcileDrillDepth(DashboardDonutData donut, int depth, string othersLabel)
+    {
+        while (depth > 0)
+        {
+            var pool = GetPoolAtDrillDepth(donut, depth);
+            if (pool.Count == 0)
+            {
+                depth--;
+                continue;
+            }
+
+            if (depth == 1)
+            {
+                if (!donut.Slices.Any(p => p.ClientId == ChartAggregator.OthersId)
+                    || donut.OthersBreakdown.Count == 0)
+                {
+                    return 0;
+                }
+            }
+            else
+            {
+                var parentDisplay = ToDisplaySlices(GetPoolAtDrillDepth(donut, depth - 1), othersLabel);
+                if (!parentDisplay.Any(p => p.ClientId == ChartAggregator.OthersId))
+                {
+                    depth--;
+                    continue;
+                }
+            }
+
+            return depth;
+        }
+
+        return 0;
+    }
+
+    public static bool CanDrillIntoOthers(DashboardDonutData donut, int depth) =>
+        depth == 0
+            ? donut.OthersBreakdown.Count > 0
+            : GetPoolAtDrillDepth(donut, depth).Count > ChartAggregator.DefaultTopN;
+
     private static DashboardDonutData BuildDonutData(List<ClientUsagePoint> points, string othersLabel) =>
         new(ToDisplaySlices(points, othersLabel), GetOthersRestPool(points));
 }

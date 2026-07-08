@@ -7,7 +7,6 @@ namespace ClientManager.AdminUI.Components.Pages.Monitor;
 public partial class Monitor
 {
     private int _loadVersion;
-    private bool _showDeniedBreakdown;
     private bool _pollingOverride;
 
     private MonitorLoadContext CreateLoadContext() => new()
@@ -17,8 +16,7 @@ public partial class Monitor
         TimeRange = _timeRange,
         AllServices = _allServices,
         AllClients = _allClients,
-        BucketCount = _chartBucketCount,
-        ShowDeniedBreakdown = _showDeniedBreakdown
+        BucketCount = _chartBucketCount
     };
 
     private async Task OnTimeRangeChanged(ChartTimeRange range)
@@ -39,12 +37,6 @@ public partial class Monitor
     {
         SyncUrl();
         await LoadChartDataWithSkeletonAsync();
-    }
-
-    private Task OnShowDeniedBreakdownChanged(bool value)
-    {
-        _showDeniedBreakdown = value;
-        return TryRebuildChartsFromCacheAsync();
     }
 
     private async Task LoadChartDataWithSkeletonAsync()

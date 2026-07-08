@@ -7,7 +7,6 @@ namespace ClientManager.AdminUI.Components.Pages.Allocations;
 public partial class ActiveAllocations
 {
     private int _loadVersion;
-    private bool _showDeniedBreakdown;
     private bool _pollingOverride;
 
     private AllocationsLoadContext CreateLoadContext() => new()
@@ -17,8 +16,7 @@ public partial class ActiveAllocations
         TimeRange = _timeRange,
         IsAccessMetric = IsAccessMetric,
         AllClients = _allClients,
-        BucketCount = _chartBucketCount,
-        ShowDeniedBreakdown = _showDeniedBreakdown
+        BucketCount = _chartBucketCount
     };
 
     private async Task OnTimeRangeChanged(ChartTimeRange range)
@@ -44,19 +42,6 @@ public partial class ActiveAllocations
     private async Task OnFilterChanged()
     {
         SyncUrl();
-        await LoadChartDataWithSkeletonAsync();
-    }
-
-    private async Task OnShowDeniedBreakdownChanged(bool value)
-    {
-        _showDeniedBreakdown = value;
-        if (_dataLoader?.TryRebuildFromCache(CreateLoadContext(), out var result) == true)
-        {
-            await ApplyLoadResult(result);
-            await InvokeAsync(StateHasChanged);
-            return;
-        }
-
         await LoadChartDataWithSkeletonAsync();
     }
 

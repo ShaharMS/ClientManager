@@ -16,7 +16,6 @@ public sealed class AllocationsLoadContext
     public required bool IsAccessMetric { get; init; }
     public required List<ClientConfiguration> AllClients { get; init; }
     public int BucketCount { get; init; } = ChartBucketAggregator.DefaultBucketCount;
-    public bool ShowDeniedBreakdown { get; init; }
 }
 
 public sealed record AllocationsLoadResult(

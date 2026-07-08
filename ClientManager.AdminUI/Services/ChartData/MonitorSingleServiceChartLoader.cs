@@ -150,7 +150,6 @@ internal sealed class MonitorSingleServiceChartLoader
                 now,
                 context.BucketCount,
                 _localizer,
-                context.ShowDeniedBreakdown,
                 storageDuration);
 
             charts.Add(new TargetChartData(service.Name, clientAreas, chartCapPoints));

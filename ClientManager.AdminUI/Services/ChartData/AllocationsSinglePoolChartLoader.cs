@@ -111,7 +111,6 @@ internal sealed class AllocationsSinglePoolChartLoader
                 cache.Now,
                 context.BucketCount,
                 _localizer,
-                context.ShowDeniedBreakdown,
                 storageDuration);
 
             charts.Add(new TargetChartData(pool.Name, clientAreas, capPoints));
