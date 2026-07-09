@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using ClientManager.AdminUI.Utils;
 using ClientManager.Shared.Models.Entities;
+using ClientManager.Shared.Models.Enums;
 using ClientManager.Shared.Models.Responses;
 
 namespace ClientManager.AdminUI.Services.ChartData;
@@ -28,7 +29,8 @@ public static class MonitorCapCalculator
             caps.Add(RateLimitCapScaler.ScaleRateLimitCap(
                 serviceSettings.RateLimit.MaxRequests,
                 serviceSettings.RateLimit.Window,
-                comparisonWindow));
+                comparisonWindow,
+                serviceSettings.RateLimit.Strategy));
         }
 
         if (client.GlobalRateLimit is not null)
@@ -36,7 +38,8 @@ public static class MonitorCapCalculator
             caps.Add(RateLimitCapScaler.ScaleRateLimitCap(
                 client.GlobalRateLimit.MaxRequests,
                 client.GlobalRateLimit.Window,
-                comparisonWindow));
+                comparisonWindow,
+                client.GlobalRateLimit.Strategy));
         }
 
         var exemptFromServiceGlobal = serviceSettings?.ExemptFromGlobalLimit ?? client.ExemptFromGlobalLimits;
@@ -58,8 +61,20 @@ public static class MonitorCapCalculator
         TimeSpan comparisonWindow)
     {
         return globalLimitsByService.TryGetValue(serviceId, out var globalLimit)
-            ? RateLimitCapScaler.ScaleRateLimitCap(globalLimit.MaxRequests, globalLimit.Window, comparisonWindow)
+            ? RateLimitCapScaler.ScaleRateLimitCap(
+                globalLimit.MaxRequests,
+                globalLimit.Window,
+                comparisonWindow,
+                globalLimit.Strategy)
             : 0;
+    }
+
+    public static bool ContributesToGlobalPoolLimit(
+        string clientId,
+        IReadOnlyList<ClientConfiguration> allClients)
+    {
+        var client = allClients.FirstOrDefault(c => c.Id == clientId);
+        return client?.ContributesToGlobalLimits ?? true;
     }
 
     public static bool ContributesToGlobalServiceLimit(
@@ -257,5 +272,32 @@ public static class MonitorCapCalculator
 
         var (aggCap, aggGlobal) = GetServiceSummaryCap("svc2", mixedEntries, cappedClients, globalLimits, window);
         Debug.Assert(!aggGlobal && aggCap == 750);
+
+        var tokenBucketLimits = new Dictionary<string, GlobalRateLimit>
+        {
+            ["tb"] = new()
+            {
+                Id = "tb1",
+                TargetId = "tb",
+                MaxRequests = 100,
+                Window = TimeSpan.FromMinutes(1),
+                Strategy = RateLimitStrategy.TokenBucket
+            }
+        };
+
+        var tokenBucketCap = GetScaledGlobalServiceCap("tb", tokenBucketLimits, TimeSpan.FromMinutes(5));
+        Debug.Assert(tokenBucketCap == 100);
+
+        var partialServices = new List<Service>
+        {
+            new() { Id = "limited", Name = "Limited" },
+            new() { Id = "open", Name = "Open" }
+        };
+        var partialLookup = new Dictionary<string, GlobalRateLimit>
+        {
+            ["limited"] = globalLimits["svc"]
+        };
+        Debug.Assert(ChartCapResolver.ResolveAllServicesChartCap(
+            partialServices, partialLookup, window) == 0);
     }
 }

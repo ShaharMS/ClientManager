@@ -1,5 +1,6 @@
 using ClientManager.AdminUI.Models.Charts;
 using ClientManager.AdminUI.Services;
+using ClientManager.Shared.Models.Entities;
 
 namespace ClientManager.AdminUI.Models.Dashboard;
 
@@ -15,5 +16,6 @@ public sealed class DashboardChartLoadContext
     public required List<NamedItem> AllServices { get; init; }
     public required List<NamedItem> AllPools { get; init; }
     public required List<NamedItem> Clients { get; init; }
+    public required List<ClientConfiguration> AllClients { get; init; }
     public int BucketCount { get; init; } = ChartBucketAggregator.DefaultBucketCount;
 }

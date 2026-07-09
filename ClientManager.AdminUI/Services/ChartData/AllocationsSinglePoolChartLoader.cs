@@ -39,8 +39,10 @@ internal sealed class AllocationsSinglePoolChartLoader
             var recentEntries = cache.RecentBreakdowns
                 .FirstOrDefault(b => b.TargetId == pool.ResourcePoolId)?.Entries ?? [];
             var entries = breakdown?.Entries ?? [];
-            var chartCap = AllocationsCapCalculator.GetPoolChartCap(
-                pool, context.IsAccessMetric, cache.RateLimitLookup, chartBucketDuration);
+            var chartCap = context.IsAccessMetric
+                ? ChartCapResolver.ResolvePoolAccessChartCap(
+                    pool.ResourcePoolId, entries, context.AllClients, cache.RateLimitLookup, chartBucketDuration)
+                : ChartCapResolver.ResolvePoolSlotCap(pool.MaxSlots);
 
             cache.ClientHistoriesByPool.TryGetValue(pool.ResourcePoolId, out var historiesByClientId);
             historiesByClientId ??= [];
@@ -75,6 +77,12 @@ internal sealed class AllocationsSinglePoolChartLoader
                     continue;
                 }
 
+                if (context.IsAccessMetric
+                    && !MonitorCapCalculator.ContributesToGlobalPoolLimit(entry.ClientId, context.AllClients))
+                {
+                    continue;
+                }
+
                 var points = aggregation.Buckets
                     .Select(bucket => new ChartPoint(bucket.Label, bucket.Value))
                     .ToList();
@@ -86,9 +94,7 @@ internal sealed class AllocationsSinglePoolChartLoader
                     context, entry.ClientId, entry.ClientName, pool, recentEntry, cache.RateLimitLookup));
             }
 
-            var capPoints = referenceBuckets
-                .Select(bucket => new ChartPoint(bucket.Label, chartCap))
-                .ToList();
+            var capPoints = ChartCapResolver.BuildCapSeries(referenceBuckets, chartCap);
 
             var aggregatedAreas = ChartAggregator.Aggregate(
                 clientAreas.Select(c => new ChartAggregator.AggregatedSeries(
@@ -112,6 +118,14 @@ internal sealed class AllocationsSinglePoolChartLoader
                 context.BucketCount,
                 _localizer,
                 storageDuration);
+
+            if (context.IsAccessMetric)
+            {
+                var offBudgetPoints = OffBudgetChartSeriesBuilder.SumOffBudgetPoolPoints(
+                    entries, context.AllClients, clientAggregations, referenceBuckets);
+                OffBudgetChartSeriesBuilder.AppendSeries(
+                    clientAreas, pool.ResourcePoolId, offBudgetPoints, _localizer);
+            }
 
             charts.Add(new TargetChartData(pool.Name, clientAreas, capPoints));
         }

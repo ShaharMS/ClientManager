@@ -3,6 +3,7 @@ using ClientManager.AdminUI.Models.Dashboard;
 using ClientManager.AdminUI.Resources;
 using ClientManager.AdminUI.Services;
 using ClientManager.AdminUI.Services.ChartData;
+using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Responses;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Localization;
@@ -55,6 +56,7 @@ public partial class Dashboard : ComponentBase, IAsyncDisposable
     private List<NamedItem> _allServices = [];
     private List<NamedItem> _allPools = [];
     private List<NamedItem> _clients = [];
+    private List<ClientConfiguration> _allClients = [];
 
     private List<TargetChartData> _targetCharts = [];
     private DashboardDonutData _donutData = new([], []);
@@ -91,6 +93,7 @@ public partial class Dashboard : ComponentBase, IAsyncDisposable
             var pools = await poolsTask;
             var clients = await clientsTask;
 
+            _allClients = clients;
             _clients = clients.Select(c => new NamedItem(c.Id, c.Name)).ToList();
             _allServices = new List<NamedItem> { new(DashboardChartLoadContext.AllTargetsId, Localizer["Pages.Dashboard.Target.AllServices"]) }
                 .Concat(services.Select(s => new NamedItem(s.Id, s.Name))).ToList();

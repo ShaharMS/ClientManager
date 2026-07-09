@@ -5,6 +5,7 @@ using ClientManager.AdminUI.Resources;
 using ClientManager.AdminUI.Services;
 using ClientManager.AdminUI.Utils;
 using ClientManager.Shared.Models.Enums;
+using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Responses;
 using Microsoft.Extensions.Localization;
 
@@ -25,7 +26,7 @@ internal sealed class DashboardSingleTargetChartLoader
         HistoricalUsageResponse? TargetHistory,
         List<NamedItem> ClientsToQuery,
         double BaseCap,
-        TimeSpan? RateWindow,
+        Dictionary<string, GlobalRateLimit> RateLimitLookup,
         string TargetName,
         bool IsRateBased,
         DateTime From,
@@ -78,7 +79,7 @@ internal sealed class DashboardSingleTargetChartLoader
             : context.Clients;
 
         double baseCap = 0;
-        TimeSpan? rateWindow = null;
+        var rateLimitLookup = new Dictionary<string, GlobalRateLimit>(StringComparer.Ordinal);
 
         if (isRateBased)
         {
@@ -87,7 +88,7 @@ internal sealed class DashboardSingleTargetChartLoader
             if (limit is not null)
             {
                 baseCap = limit.MaxRequests;
-                rateWindow = limit.Window;
+                rateLimitLookup[limit.TargetId] = limit;
             }
         }
         else
@@ -122,7 +123,7 @@ internal sealed class DashboardSingleTargetChartLoader
             targetHistory,
             clientsToQuery,
             baseCap,
-            rateWindow,
+            rateLimitLookup,
             targetName,
             isRateBased,
             from,
@@ -167,27 +168,40 @@ internal sealed class DashboardSingleTargetChartLoader
 
         var referenceBuckets = clientAggregations.Values.FirstOrDefault().Result?.Buckets
             ?? emptyAggregation.Buckets;
-        var bucketLabels = referenceBuckets.Select(b => b.Label).ToList();
 
         var clientAreas = new List<ClientAreaSeries>();
         foreach (var (clientId, (client, agg)) in clientAggregations)
         {
+            if (cache.IsRateBased
+                && !MonitorCapCalculator.ContributesToGlobalServiceLimit(
+                    clientId, context.SelectedTargetId!, context.AllClients))
+            {
+                continue;
+            }
+
             var points = agg.Buckets
                 .Select(b => new ChartPoint(b.Label, b.Value))
                 .ToList();
             clientAreas.Add(new ClientAreaSeries(clientId, client.Name, points));
         }
 
-        var scaledCap = cache.BaseCap;
-        if (cache.IsRateBased && cache.RateWindow.HasValue && cache.RateWindow.Value > TimeSpan.Zero && bucketDuration > TimeSpan.Zero)
-        {
-            var scaleFactor = bucketDuration.TotalSeconds / cache.RateWindow.Value.TotalSeconds;
-            scaledCap = cache.BaseCap * scaleFactor;
-        }
-
-        var capPoints = bucketLabels
-            .Select(label => new ChartPoint(label, scaledCap))
+        var entries = clientAggregations.Keys
+            .Select(clientId => new ClientUsageEntry(
+                clientId,
+                clientAggregations[clientId].Client.Name,
+                0, 0, 0, 0, 0, 0, 0))
             .ToList();
+
+        var chartCap = cache.IsRateBased
+            ? ChartCapResolver.ResolveServiceChartCap(
+                context.SelectedTargetId!,
+                entries,
+                context.AllClients,
+                cache.RateLimitLookup,
+                bucketDuration)
+            : ChartCapResolver.ResolvePoolSlotCap((int)cache.BaseCap);
+
+        var capPoints = ChartCapResolver.BuildCapSeries(referenceBuckets, chartCap);
 
         var donutData = new List<ClientUsagePoint>();
         foreach (var (clientId, (client, _)) in clientAggregations)
@@ -220,6 +234,21 @@ internal sealed class DashboardSingleTargetChartLoader
             context.BucketCount,
             _localizer,
             storageDuration);
+
+        if (cache.IsRateBased)
+        {
+            var aggregationByClientId = clientAggregations.ToDictionary(
+                kvp => kvp.Key,
+                kvp => kvp.Value.Result);
+            var offBudgetPoints = OffBudgetChartSeriesBuilder.SumOffBudgetPoints(
+                entries,
+                context.SelectedTargetId!,
+                context.AllClients,
+                aggregationByClientId,
+                referenceBuckets);
+            OffBudgetChartSeriesBuilder.AppendSeries(
+                clientAreas, context.SelectedTargetId!, offBudgetPoints, _localizer);
+        }
 
         charts.Add(new TargetChartData(cache.TargetName, clientAreas, capPoints));
 

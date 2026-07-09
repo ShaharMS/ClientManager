@@ -86,21 +86,24 @@ public sealed class MonitorDataLoader
         var clientHistoriesByService = new Dictionary<string, Dictionary<string, ClientHistoricalUsageResponse>>(StringComparer.Ordinal);
         var serviceHistories = new Dictionary<string, HistoricalUsageResponse?>(StringComparer.Ordinal);
 
-        if (context.SelectedServiceId != MonitorLoadContext.AllServicesId)
+        foreach (var service in visibleServices)
         {
-            foreach (var service in visibleServices)
+            var breakdown = breakdowns.FirstOrDefault(b => b.TargetId == service.Id);
+            var entries = breakdown?.Entries ?? [];
+            var historiesByClientId = entries.Count > 0
+                ? (await _statsService.GetHistoricalUsageByClientAsync(
+                    "Service",
+                    new[] { service.Id },
+                    entries.Select(entry => entry.ClientId),
+                    from,
+                    now,
+                    context.TimeRange.Granularity))
+                .ToDictionary(history => history.ClientId)
+                : new Dictionary<string, ClientHistoricalUsageResponse>(StringComparer.Ordinal);
+            clientHistoriesByService[service.Id] = historiesByClientId;
+
+            if (context.SelectedServiceId != MonitorLoadContext.AllServicesId)
             {
-                var breakdown = breakdowns.FirstOrDefault(b => b.TargetId == service.Id);
-                var entries = breakdown?.Entries ?? [];
-                var historiesByClientId = (await _statsService.GetHistoricalUsageByClientAsync(
-                        "Service",
-                        new[] { service.Id },
-                        entries.Select(entry => entry.ClientId),
-                        from,
-                        now,
-                        context.TimeRange.Granularity))
-                    .ToDictionary(history => history.ClientId);
-                clientHistoriesByService[service.Id] = historiesByClientId;
                 serviceHistories[service.Id] = allHistories.FirstOrDefault(h => h.TargetId == service.Id);
             }
         }
@@ -170,7 +173,8 @@ public sealed class MonitorDataLoader
         {
             MonitorAllServicesChartBuilder.Build(
                 context, _cache.VisibleServices, _cache.Breakdowns,
-                _cache.AllHistories, _cache.RateLimitLookup, chartBucketDuration, _cache.RangeDuration,
+                _cache.AllHistories, _cache.ClientHistoriesByService, _cache.RateLimitLookup,
+                chartBucketDuration, _cache.RangeDuration,
                 _cache.From, _cache.Now, charts, rows, _localizer, storageDuration);
         }
         else

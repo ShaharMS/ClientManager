@@ -56,6 +56,11 @@ public class EntityColorService
             return "rgba(249, 115, 22, 0.45)";
         }
 
+        if (seriesId.EndsWith(ChartAggregator.OffBudgetSuffix, StringComparison.Ordinal))
+        {
+            return "rgba(148, 163, 184, 0.45)";
+        }
+
         if (seriesId.EndsWith(ChartAggregator.DeniedSeriesIdSuffix, StringComparison.Ordinal))
         {
             var baseId = seriesId[..^ChartAggregator.DeniedSeriesIdSuffix.Length];

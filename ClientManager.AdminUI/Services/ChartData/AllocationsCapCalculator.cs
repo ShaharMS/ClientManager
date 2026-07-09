@@ -41,7 +41,8 @@ public static class AllocationsCapCalculator
             caps.Add(RateLimitCapScaler.ScaleRateLimitCap(
                 client.GlobalRateLimit.MaxRequests,
                 client.GlobalRateLimit.Window,
-                comparisonWindow));
+                comparisonWindow,
+                client.GlobalRateLimit.Strategy));
         }
 
         if (!client.ExemptFromGlobalLimits)
@@ -62,16 +63,20 @@ public static class AllocationsCapCalculator
         TimeSpan comparisonWindow)
     {
         return globalLimitsByPool.TryGetValue(poolId, out var globalLimit)
-            ? RateLimitCapScaler.ScaleRateLimitCap(globalLimit.MaxRequests, globalLimit.Window, comparisonWindow)
+            ? RateLimitCapScaler.ScaleRateLimitCap(
+                globalLimit.MaxRequests,
+                globalLimit.Window,
+                comparisonWindow,
+                globalLimit.Strategy)
             : 0;
     }
 
-    public static int GetPoolChartCap(
-        ResourcePoolStatisticsResponse pool,
-        bool isAccessMetric,
-        IReadOnlyDictionary<string, GlobalRateLimit> rateLimitLookup,
-        TimeSpan comparisonWindow)
-        => isAccessMetric
-            ? GetScaledGlobalPoolCap(pool.ResourcePoolId, rateLimitLookup, comparisonWindow)
-            : pool.MaxSlots;
+    internal static bool ClientHasGlobalRateLimit(
+        string clientId,
+        IReadOnlyList<ClientConfiguration> allClients)
+    {
+        var client = allClients.FirstOrDefault(c => c.Id == clientId);
+        return client?.GlobalRateLimit is not null;
+    }
 }
+

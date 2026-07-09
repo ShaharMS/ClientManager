@@ -69,11 +69,10 @@ internal sealed class MonitorSingleServiceChartLoader
 
         foreach (var service in visibleServices)
         {
-            var chartCap = MonitorCapCalculator.GetScaledGlobalServiceCap(
-                service.Id, rateLimitLookup, chartBucketDuration);
-
             var breakdown = breakdowns.FirstOrDefault(b => b.TargetId == service.Id);
             var entries = breakdown?.Entries ?? [];
+            var chartCap = ChartCapResolver.ResolveServiceChartCap(
+                service.Id, entries, context.AllClients, rateLimitLookup, chartBucketDuration);
 
             historiesByService.TryGetValue(service.Id, out var historiesByClientId);
             historiesByClientId ??= [];
@@ -102,16 +101,10 @@ internal sealed class MonitorSingleServiceChartLoader
 
             foreach (var entry in entries)
             {
-                if (!clientAggregations.TryGetValue(entry.ClientId, out var aggregation))
+                if (!clientAggregations.ContainsKey(entry.ClientId))
                 {
                     continue;
                 }
-
-                var points = aggregation.Buckets
-                    .Select(bucket => new ChartPoint(bucket.Label, bucket.Value))
-                    .ToList();
-
-                clientAreas.Add(new ClientAreaSeries(entry.ClientId, entry.ClientName, points));
 
                 rows.Add(new MonitorClientRow(
                     entry.ClientId, entry.ClientName, service.Name,
@@ -125,9 +118,27 @@ internal sealed class MonitorSingleServiceChartLoader
                         entry.ClientId, service.Id, context.AllClients, rateLimitLookup, rangeDuration)));
             }
 
-            var chartCapPoints = referenceBuckets
-                .Select(bucket => new ChartPoint(bucket.Label, chartCap))
-                .ToList();
+            foreach (var entry in entries)
+            {
+                if (!clientAggregations.TryGetValue(entry.ClientId, out var aggregation))
+                {
+                    continue;
+                }
+
+                if (!MonitorCapCalculator.ContributesToGlobalServiceLimit(
+                        entry.ClientId, service.Id, context.AllClients))
+                {
+                    continue;
+                }
+
+                var points = aggregation.Buckets
+                    .Select(bucket => new ChartPoint(bucket.Label, bucket.Value))
+                    .ToList();
+
+                clientAreas.Add(new ClientAreaSeries(entry.ClientId, entry.ClientName, points));
+            }
+
+            var chartCapPoints = ChartCapResolver.BuildCapSeries(referenceBuckets, chartCap);
 
             var aggregated = ChartAggregator.Aggregate(
                 clientAreas.Select(c => new ChartAggregator.AggregatedSeries(
@@ -151,6 +162,10 @@ internal sealed class MonitorSingleServiceChartLoader
                 context.BucketCount,
                 _localizer,
                 storageDuration);
+
+            var offBudgetPoints = OffBudgetChartSeriesBuilder.SumOffBudgetPoints(
+                entries, service.Id, context.AllClients, clientAggregations, referenceBuckets);
+            OffBudgetChartSeriesBuilder.AppendSeries(clientAreas, service.Id, offBudgetPoints, _localizer);
 
             charts.Add(new TargetChartData(service.Name, clientAreas, chartCapPoints));
         }

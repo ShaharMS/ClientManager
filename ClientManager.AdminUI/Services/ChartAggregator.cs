@@ -15,6 +15,7 @@ public static class ChartAggregator
     public const string DeniedBlockedSuffix = "|denied|blocked";
     public const string DeniedRateLimitedSuffix = "|denied|ratelimited";
     public const string DeniedCapacitySuffix = "|denied|capacity";
+    public const string OffBudgetSuffix = "|offbudget";
 
     public record AggregatedPoint(string Label, double Value);
     public record AggregatedSeries(string Id, string Name, List<AggregatedPoint> Points);
