@@ -16,7 +16,8 @@ public partial class ActiveAllocations
         TimeRange = _timeRange,
         IsAccessMetric = IsAccessMetric,
         AllClients = _allClients,
-        BucketCount = _chartBucketCount
+        BucketCount = _chartBucketCount,
+        KnownPools = _pools
     };
 
     private async Task OnTimeRangeChanged(ChartTimeRange range)

@@ -84,8 +84,11 @@ public partial class ActiveAllocations : ComponentBase, IAsyncDisposable
 
         try
         {
-            _pools = await StatsService.GetResourcePoolStatsAsync();
-            var clients = await ClientService.GetAllAsync();
+            var poolsTask = StatsService.GetResourcePoolStatsAsync();
+            var clientsTask = ClientService.GetAllAsync();
+            await Task.WhenAll(poolsTask, clientsTask);
+            _pools = await poolsTask;
+            var clients = await clientsTask;
             _allClients = clients;
             _clientOptions = clients.Select(c => new NamedItem(c.Id, c.Name)).ToList();
 

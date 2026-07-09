@@ -53,48 +53,85 @@ public sealed class AllocationsDataLoader
 
     private async Task<AllocationsFetchCache> FetchAsync(AllocationsLoadContext context)
     {
-        var newPools = await _statsService.GetResourcePoolStatsAsync();
+        var newPoolsTask = _statsService.GetResourcePoolStatsAsync();
+        var poolsForFilter = context.KnownPools is { Count: > 0 }
+            ? context.KnownPools
+            : await newPoolsTask;
+
         var now = context.TimeRange.GetTo();
         var from = context.TimeRange.GetFrom(now);
         var granularity = context.TimeRange.Granularity;
         var recentFrom = now.Subtract(AllocationsLoadContext.RecentWindow);
         var recentTo = now;
 
-        IReadOnlyDictionary<string, GlobalRateLimit> rateLimitLookup = new Dictionary<string, GlobalRateLimit>();
-        if (context.IsAccessMetric)
-        {
-            rateLimitLookup = (await _rateLimitApi.GetByTargetTypeAsync(TargetType.ResourcePool))
-                .ToDictionary(limit => limit.TargetId);
-        }
-
         var visiblePools = context.SelectedPoolId == AllocationsLoadContext.AllPoolsId
-            ? newPools
-            : newPools.Where(p => p.ResourcePoolId == context.SelectedPoolId).ToList();
+            ? poolsForFilter.ToList()
+            : poolsForFilter.Where(p => p.ResourcePoolId == context.SelectedPoolId).ToList();
 
         var visiblePoolIds = visiblePools.Select(p => p.ResourcePoolId).ToList();
         var isAllPools = context.SelectedPoolId == AllocationsLoadContext.AllPoolsId;
 
-        List<TargetClientUsageBreakdownResponse> breakdowns = [];
-        List<TargetClientUsageBreakdownResponse> recentBreakdowns = [];
-        List<HistoricalUsageResponse> allHistories = [];
+        var rateLimitTask = context.IsAccessMetric
+            ? _rateLimitApi.GetByTargetTypeAsync(TargetType.ResourcePool)
+            : Task.FromResult<List<GlobalRateLimit>>([]);
+
+        var breakdownsTask = visiblePoolIds.Count > 0
+            ? _statsService.GetClientUsageBreakdownAsync(
+                "ResourcePool", visiblePoolIds, context.SelectedClientIds, from, now, granularity)
+            : Task.FromResult<List<TargetClientUsageBreakdownResponse>>([]);
+
+        var recentBreakdownsTask = visiblePoolIds.Count > 0
+            ? _statsService.GetClientUsageBreakdownAsync(
+                "ResourcePool", visiblePoolIds, context.SelectedClientIds, recentFrom, recentTo, "FiveMinute")
+            : Task.FromResult<List<TargetClientUsageBreakdownResponse>>([]);
+
+        var allHistoriesTask = isAllPools && visiblePoolIds.Count > 0
+            ? _statsService.GetHistoricalUsageAsync(
+                "ResourcePool", visiblePoolIds, null, from, now, granularity)
+            : Task.FromResult<List<HistoricalUsageResponse>>([]);
+
+        var summaryRecentTask = context.IsAccessMetric && !isAllPools && poolsForFilter.Count > 0
+            ? _statsService.GetClientUsageBreakdownAsync(
+                "ResourcePool",
+                poolsForFilter.Select(pool => pool.ResourcePoolId),
+                context.SelectedClientIds,
+                recentFrom,
+                recentTo,
+                "FiveMinute")
+            : Task.FromResult<List<TargetClientUsageBreakdownResponse>>([]);
+
+        await Task.WhenAll(rateLimitTask, breakdownsTask, recentBreakdownsTask, allHistoriesTask, summaryRecentTask);
+
+        var breakdowns = await breakdownsTask;
+        var recentBreakdowns = await recentBreakdownsTask;
+        var allHistories = await allHistoriesTask;
+        var rateLimitLookup = (await rateLimitTask).ToDictionary(limit => limit.TargetId);
+
         var clientHistoriesByPool = new Dictionary<string, Dictionary<string, ClientHistoricalUsageResponse>>(StringComparer.Ordinal);
         var poolHistories = new Dictionary<string, HistoricalUsageResponse?>(StringComparer.Ordinal);
 
         if (visiblePoolIds.Count > 0)
         {
-            breakdowns = await _statsService.GetClientUsageBreakdownAsync(
-                "ResourcePool", visiblePoolIds, context.SelectedClientIds, from, now, granularity);
-            recentBreakdowns = await _statsService.GetClientUsageBreakdownAsync(
-                "ResourcePool", visiblePoolIds, context.SelectedClientIds, recentFrom, recentTo, "FiveMinute");
-
-            if (isAllPools)
-            {
-                allHistories = await _statsService.GetHistoricalUsageAsync(
-                    "ResourcePool", visiblePoolIds, null, from, now, granularity);
-            }
-            else
+            if (isAllPools && context.IsAccessMetric)
             {
                 foreach (var pool in visiblePools)
+                {
+                    var entries = breakdowns.FirstOrDefault(b => b.TargetId == pool.ResourcePoolId)?.Entries ?? [];
+                    clientHistoriesByPool[pool.ResourcePoolId] = entries.Count > 0
+                        ? (await _statsService.GetHistoricalUsageByClientAsync(
+                            "ResourcePool",
+                            new[] { pool.ResourcePoolId },
+                            entries.Select(entry => entry.ClientId),
+                            from,
+                            now,
+                            granularity))
+                        .ToDictionary(history => history.ClientId)
+                        : [];
+                }
+            }
+            else if (!isAllPools)
+            {
+                var poolResults = await Task.WhenAll(visiblePools.Select(async pool =>
                 {
                     var breakdown = breakdowns.FirstOrDefault(b => b.TargetId == pool.ResourcePoolId);
                     var entries = breakdown?.Entries ?? [];
@@ -106,25 +143,25 @@ public sealed class AllocationsDataLoader
                             now,
                             granularity))
                         .ToDictionary(history => history.ClientId);
-                    clientHistoriesByPool[pool.ResourcePoolId] = historiesByClientId;
-                    poolHistories[pool.ResourcePoolId] = (await _statsService.GetHistoricalUsageAsync(
-                        "ResourcePool", new[] { pool.ResourcePoolId }, null, from, now, granularity))
+                    var poolHistory = (await _statsService.GetHistoricalUsageAsync(
+                            "ResourcePool", new[] { pool.ResourcePoolId }, null, from, now, granularity))
                         .FirstOrDefault();
+                    return (pool.ResourcePoolId, historiesByClientId, poolHistory);
+                }));
+
+                foreach (var (poolId, historiesByClientId, poolHistory) in poolResults)
+                {
+                    clientHistoriesByPool[poolId] = historiesByClientId;
+                    poolHistories[poolId] = poolHistory;
                 }
             }
         }
 
-        var summaryRecentBreakdowns = recentBreakdowns;
-        if (context.IsAccessMetric && !isAllPools)
-        {
-            summaryRecentBreakdowns = await _statsService.GetClientUsageBreakdownAsync(
-                "ResourcePool",
-                newPools.Select(pool => pool.ResourcePoolId),
-                context.SelectedClientIds,
-                recentFrom,
-                recentTo,
-                "FiveMinute");
-        }
+        var summaryRecentBreakdowns = context.IsAccessMetric && !isAllPools
+            ? await summaryRecentTask
+            : recentBreakdowns;
+
+        var newPools = await newPoolsTask;
 
         return new AllocationsFetchCache(
             BuildCacheKey(context),
