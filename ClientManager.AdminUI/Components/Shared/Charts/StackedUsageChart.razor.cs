@@ -25,15 +25,46 @@ public partial class StackedUsageChart : ComponentBase, IAsyncDisposable
     [Parameter] public string? TitleSuffix { get; set; }
 
     private IJSObjectReference? _module;
+    private DotNetObjectReference<StackedUsageChart>? _resizeRef;
     private string _renderToken = Guid.NewGuid().ToString("N");
     private bool _pendingUpdate;
+    private bool _destroyPending;
+    private bool _resizing;
+    private bool _resizeRegistered;
+    private bool _disposed;
 
     private string ResolvedCapLineTitle => CapLineTitle ?? Localizer["Common.Cap"];
     private string ResolvedEmptyMessage => EmptyMessage ?? Localizer["Charts.NoUsageData"];
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (_disposed)
+        {
+            return;
+        }
+
+        if (_destroyPending)
+        {
+            _destroyPending = false;
+            await DestroyChartsAsync();
+            return;
+        }
+
         if (Loading || Charts.Count == 0)
+        {
+            return;
+        }
+
+        _module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/stacked-chart.js?v=11");
+
+        if (!_resizeRegistered)
+        {
+            _resizeRef ??= DotNetObjectReference.Create(this);
+            await _module.InvokeVoidAsync("registerResize", _resizeRef);
+            _resizeRegistered = true;
+        }
+
+        if (_resizing)
         {
             return;
         }
@@ -43,14 +74,19 @@ public partial class StackedUsageChart : ComponentBase, IAsyncDisposable
             return;
         }
 
-        _module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/stacked-chart.js?v=7");
         await RenderChartsAsync();
         _pendingUpdate = false;
     }
 
     protected override void OnParametersSet()
     {
-        if (!Loading && Charts.Count > 0)
+        if (Loading)
+        {
+            _destroyPending = true;
+            return;
+        }
+
+        if (Charts.Count > 0)
         {
             _pendingUpdate = true;
         }
@@ -95,17 +131,20 @@ public partial class StackedUsageChart : ComponentBase, IAsyncDisposable
         }).ToArray();
 
         var capPoints = ChartSeriesTransform.TransformPoints(targetChart.CapSeries, AxisScale);
+        var showCapLine = capPoints.Any(point => point.Value > 0);
 
         return new
         {
             labels,
             series,
-            capLine = new
-            {
-                title = ResolvedCapLineTitle,
-                points = capPoints.Select(point => point.Value).ToArray(),
-                originalValues = capPoints.Select(point => point.OriginalValue != 0 ? point.OriginalValue : point.Value).ToArray()
-            },
+            capLine = showCapLine
+                ? new
+                {
+                    title = ResolvedCapLineTitle,
+                    points = capPoints.Select(point => point.Value).ToArray(),
+                    originalValues = capPoints.Select(point => point.OriginalValue != 0 ? point.OriginalValue : point.Value).ToArray()
+                }
+                : null,
             axisScale = AxisScale == AxisScaleType.Logarithmic ? "logarithmic" : "linear",
             animate = false
         };
@@ -118,16 +157,60 @@ public partial class StackedUsageChart : ComponentBase, IAsyncDisposable
     private string FormatTitle(TargetChartData chart) =>
         TitleSuffix is null ? chart.TargetName : $"{chart.TargetName} - {TitleSuffix}";
 
+    [JSInvokable]
+    public async Task OnChartResizeStart()
+    {
+        if (_disposed || _resizing || Loading || Charts.Count == 0)
+        {
+            return;
+        }
+
+        _resizing = true;
+        await DestroyChartsAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public async Task OnChartResizeEnd()
+    {
+        if (_disposed || !_resizing)
+        {
+            return;
+        }
+
+        _resizing = false;
+        _pendingUpdate = true;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task DestroyChartsAsync()
+    {
+        if (_module is null)
+        {
+            return;
+        }
+
+        for (var i = 0; i < Charts.Count; i++)
+        {
+            await _module.InvokeVoidAsync("destroy", GetCanvasId(i));
+        }
+    }
+
     public async ValueTask DisposeAsync()
     {
+        _disposed = true;
+
         if (_module is not null)
         {
-            for (var i = 0; i < Charts.Count; i++)
+            if (_resizeRegistered && _resizeRef is not null)
             {
-                await _module.InvokeVoidAsync("destroy", GetCanvasId(i));
+                await _module.InvokeVoidAsync("unregisterResize", _resizeRef);
             }
 
+            await DestroyChartsAsync();
             await _module.DisposeAsync();
         }
+
+        _resizeRef?.Dispose();
     }
 }

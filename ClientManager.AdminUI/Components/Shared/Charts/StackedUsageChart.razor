@@ -13,12 +13,19 @@ else if (Charts.Count > 0)
         {
             <span class="cm-dashboard__chart-title">@FormatTitle(targetChart)</span>
         }
-        <div class="cm-stacked-chart" style="height: @(HeightPx)px;">
-            <div class="cm-stacked-chart__plot">
-                <canvas id="@GetCanvasId(index)"></canvas>
+        @if (_resizing)
+        {
+            <SkeletonBlock CssClass="cm-skeleton--chart" Style="@($"height: {HeightPx}px;")" />
+        }
+        else
+        {
+            <div class="cm-stacked-chart" style="height: @(HeightPx)px;">
+                <div class="cm-stacked-chart__plot">
+                    <canvas id="@GetCanvasId(index)"></canvas>
+                </div>
+                <ul class="cm-stacked-chart__legend" id="@GetLegendId(index)"></ul>
             </div>
-            <ul class="cm-stacked-chart__legend" id="@GetLegendId(index)"></ul>
-        </div>
+        }
     }
 }
 else

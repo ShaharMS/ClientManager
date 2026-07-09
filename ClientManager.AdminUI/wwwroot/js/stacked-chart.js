@@ -1,4 +1,121 @@
 const charts = new Map();
+const legendHidden = new Map();
+const resizeRefs = new Set();
+const resizeObservers = new Map();
+let resizeTimer = null;
+let resizeActive = false;
+
+function bindResize() {
+    if (bindResize._bound) {
+        return;
+    }
+    bindResize._bound = true;
+    window.addEventListener('resize', handleResize);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+}
+
+function unbindResize() {
+    if (!bindResize._bound) {
+        return;
+    }
+    bindResize._bound = false;
+    window.removeEventListener('resize', handleResize);
+    document.removeEventListener('visibilitychange', handleVisibilityChange);
+    clearTimeout(resizeTimer);
+    resizeTimer = null;
+    resizeActive = false;
+}
+
+function handleResize() {
+    if (!resizeActive) {
+        resizeActive = true;
+        notifyResize('OnChartResizeStart');
+    }
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+        resizeActive = false;
+        notifyResize('OnChartResizeEnd');
+    }, 150);
+}
+
+function handleVisibilityChange() {
+    if (document.hidden) {
+        clearTimeout(resizeTimer);
+        resizeActive = false;
+        notifyResize('OnChartResizeStart');
+        return;
+    }
+
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => notifyResize('OnChartResizeEnd'));
+    });
+}
+
+function notifyResize(method) {
+    for (const ref of resizeRefs) {
+        ref.invokeMethodAsync(method).catch(() => {});
+    }
+}
+
+export function registerResize(dotNetRef) {
+    bindResize();
+    resizeRefs.add(dotNetRef);
+}
+
+export function unregisterResize(dotNetRef) {
+    resizeRefs.delete(dotNetRef);
+    if (resizeRefs.size === 0) {
+        unbindResize();
+    }
+}
+
+function hasValidDimensions(canvas) {
+    const plot = canvas?.closest('.cm-stacked-chart__plot');
+    if (!plot) {
+        return false;
+    }
+    const { width, height } = plot.getBoundingClientRect();
+    return width > 1 && height > 1;
+}
+
+function scheduleCreateOrUpdate(canvasId, config, attempt = 0) {
+    if (attempt > 10 || document.hidden) {
+        return;
+    }
+    requestAnimationFrame(() => {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) {
+            return;
+        }
+        if (!hasValidDimensions(canvas)) {
+            scheduleCreateOrUpdate(canvasId, config, attempt + 1);
+            return;
+        }
+        doCreateOrUpdate(canvasId, config);
+    });
+}
+
+function attachResizeObserver(canvasId, canvas) {
+    if (resizeObservers.has(canvasId)) {
+        return;
+    }
+    const plot = canvas.closest('.cm-stacked-chart__plot');
+    if (!plot) {
+        return;
+    }
+    const observer = new ResizeObserver(() => {
+        const chart = charts.get(canvasId);
+        if (!chart || document.hidden) {
+            return;
+        }
+        if (!hasValidDimensions(canvas)) {
+            return;
+        }
+        chart.resize();
+    });
+    observer.observe(plot);
+    resizeObservers.set(canvasId, observer);
+}
 
 function cssVar(name, fallback) {
     const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -57,6 +174,33 @@ function formatLinearAxis(value) {
     return `${formatCompact(d / 1_000_000)}M`;
 }
 
+function isDatasetHidden(chart, index) {
+    const ds = chart.data.datasets[index];
+    const meta = chart.getDatasetMeta(index);
+    return meta.hidden !== null && meta.hidden !== undefined ? meta.hidden : !!ds.hidden;
+}
+
+function saveHiddenState(canvasId, chart) {
+    const state = new Map();
+    for (let i = 0; i < chart.data.datasets.length; i++) {
+        state.set(chart.data.datasets[i].label, isDatasetHidden(chart, i));
+    }
+    legendHidden.set(canvasId, state);
+}
+
+function applyHiddenState(canvasId, chart) {
+    const state = legendHidden.get(canvasId);
+    if (!state) {
+        return;
+    }
+    for (let i = 0; i < chart.data.datasets.length; i++) {
+        const label = chart.data.datasets[i].label;
+        if (state.has(label)) {
+            chart.getDatasetMeta(i).hidden = state.get(label);
+        }
+    }
+}
+
 function legendSwatchColor(color) {
     if (typeof color !== 'string') {
         return color;
@@ -92,7 +236,7 @@ function buildDatasets(config) {
         datasets.push(dataset);
     }
 
-    if (config.capLine?.points?.length) {
+    if (config.capLine?.points?.length && Math.max(...config.capLine.points) > 0) {
         const capDataset = {
             label: config.capLine.title,
             data: config.capLine.points,
@@ -187,7 +331,7 @@ function renderHtmlLegend(chart) {
         const ds = chart.data.datasets[i];
         const meta = chart.getDatasetMeta(i);
         const isLine = ds.type === 'line';
-        const hidden = meta.hidden === true;
+        const hidden = isDatasetHidden(chart, i);
 
         const item = document.createElement('li');
         item.className = 'cm-stacked-chart__legend-item' + (hidden ? ' cm-stacked-chart__legend-item--hidden' : '');
@@ -210,7 +354,8 @@ function renderHtmlLegend(chart) {
 
         item.append(swatch, label);
         item.addEventListener('click', () => {
-            meta.hidden = meta.hidden === null ? !ds.hidden : null;
+            meta.hidden = !isDatasetHidden(chart, i);
+            saveHiddenState(chart.canvas.id, chart);
             chart.update();
             renderHtmlLegend(chart);
         });
@@ -219,7 +364,7 @@ function renderHtmlLegend(chart) {
     }
 }
 
-export function createOrUpdate(canvasId, config) {
+function doCreateOrUpdate(canvasId, config) {
     const canvas = document.getElementById(canvasId);
     if (!canvas || typeof Chart === 'undefined') {
         return;
@@ -230,11 +375,14 @@ export function createOrUpdate(canvasId, config) {
 
     const existing = charts.get(canvasId);
     if (existing) {
+        saveHiddenState(canvasId, existing);
         existing.data.labels = config.labels;
         existing.data.datasets = datasets;
         existing.options = options;
+        applyHiddenState(canvasId, existing);
         existing.update(config.animate === false ? 'none' : 'active');
         renderHtmlLegend(existing);
+        attachResizeObserver(canvasId, canvas);
         return;
     }
 
@@ -245,15 +393,34 @@ export function createOrUpdate(canvasId, config) {
     });
 
     charts.set(canvasId, chart);
+    applyHiddenState(canvasId, chart);
+    saveHiddenState(canvasId, chart);
     renderHtmlLegend(chart);
+    attachResizeObserver(canvasId, canvas);
+}
+
+export function createOrUpdate(canvasId, config) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas || typeof Chart === 'undefined') {
+        return;
+    }
+    if (!hasValidDimensions(canvas)) {
+        scheduleCreateOrUpdate(canvasId, config);
+        return;
+    }
+    doCreateOrUpdate(canvasId, config);
 }
 
 export function destroy(canvasId) {
+    resizeObservers.get(canvasId)?.disconnect();
+    resizeObservers.delete(canvasId);
+
     const chart = charts.get(canvasId);
     if (chart) {
         chart.destroy();
         charts.delete(canvasId);
     }
+    legendHidden.delete(canvasId);
 
     const legendEl = document.getElementById(legendIdFor(canvasId));
     legendEl?.replaceChildren();
