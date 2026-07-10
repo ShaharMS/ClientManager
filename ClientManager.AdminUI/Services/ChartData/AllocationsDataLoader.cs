@@ -1,5 +1,6 @@
 using ClientManager.AdminUI.Models;
 using ClientManager.AdminUI.Models.Allocations;
+using ClientManager.AdminUI.Models.Charts;
 using ClientManager.AdminUI.Resources;
 using ClientManager.AdminUI.Services;
 using ClientManager.AdminUI.Utils;
@@ -14,10 +15,7 @@ public sealed class AllocationsDataLoader
 {
     private readonly StatisticsApiService _statsService;
     private readonly GlobalRateLimitApiService _rateLimitApi;
-    private readonly AllocationsAllPoolsChartLoader _allPoolsLoader;
-    private readonly AllocationsSinglePoolChartLoader _singlePoolLoader;
-
-    private AllocationsFetchCache? _cache;
+    private readonly IStringLocalizer<SharedResources> _localizer;
 
     public AllocationsDataLoader(
         StatisticsApiService statsService,
@@ -26,193 +24,178 @@ public sealed class AllocationsDataLoader
     {
         _statsService = statsService;
         _rateLimitApi = rateLimitApi;
-        _allPoolsLoader = new AllocationsAllPoolsChartLoader(statsService, localizer);
-        _singlePoolLoader = new AllocationsSinglePoolChartLoader(statsService, localizer);
+        _localizer = localizer;
     }
 
     public async Task<AllocationsLoadResult> LoadAsync(AllocationsLoadContext context)
     {
-        _cache = await FetchAsync(context);
-        return BuildFromCache(context);
+        var pools = context.KnownPools ?? [];
+        var now = context.TimeRange.GetTo();
+        var from = context.TimeRange.GetFrom(now);
+        var visiblePools = context.SelectedPoolId == AllocationsLoadContext.AllPoolsId
+            ? pools
+            : pools.Where(pool => pool.ResourcePoolId == context.SelectedPoolId).ToList();
+        var visiblePoolIds = visiblePools.Select(pool => pool.ResourcePoolId).ToList();
+
+        var chartResponse = visiblePoolIds.Count == 0
+            ? null
+            : await TimeseriesChartBuilder.FetchAllocationsAsync(
+                _statsService,
+                visiblePoolIds,
+                context.SelectedClientIds,
+                context.AllClients,
+                from,
+                now,
+                context.BucketCount,
+                context.IsAccessMetric);
+
+        var recentFrom = now.Subtract(AllocationsLoadContext.RecentWindow);
+        var recentResponse = pools.Count == 0
+            ? null
+            : await TimeseriesChartBuilder.FetchAllocationsAsync(
+                _statsService,
+                pools.Select(pool => pool.ResourcePoolId),
+                context.SelectedClientIds,
+                context.AllClients,
+                recentFrom,
+                now,
+                5,
+                context.IsAccessMetric);
+
+        var rateLimitLookup = context.IsAccessMetric
+            ? (await _rateLimitApi.GetByTargetTypeAsync(TargetType.ResourcePool)).ToDictionary(limit => limit.TargetId)
+            : new Dictionary<string, GlobalRateLimit>(StringComparer.Ordinal);
+
+        var charts = chartResponse?.Targets
+            .Select(target => TimeseriesChartBuilder.BuildTargetChart(
+                target,
+                isRateBased: context.IsAccessMetric,
+                context.AllClients,
+                _localizer).Chart)
+            .ToList() ?? [];
+
+        var clientRows = BuildClientRows(recentResponse, visiblePools, context.IsAccessMetric, rateLimitLookup, context.AllClients);
+        var poolRows = BuildPoolRows(pools, recentResponse, rateLimitLookup, context.IsAccessMetric);
+
+        return new AllocationsLoadResult(charts, clientRows, pools.ToList(), poolRows);
     }
 
     public bool TryRebuildFromCache(AllocationsLoadContext context, out AllocationsLoadResult result)
     {
-        if (_cache is null || _cache.CacheKey != BuildCacheKey(context))
-        {
-            result = new AllocationsLoadResult([], [], [], []);
-            return false;
-        }
-
-        result = BuildFromCache(context);
-        return true;
+        result = new AllocationsLoadResult([], [], [], []);
+        return false;
     }
 
-    private static string BuildCacheKey(AllocationsLoadContext context) =>
-        $"{context.SelectedPoolId}|{string.Join(',', context.SelectedClientIds ?? [])}|{context.TimeRange.GetFrom():O}|{context.TimeRange.GetTo():O}|{context.TimeRange.Granularity}|{context.IsAccessMetric}";
-
-    private async Task<AllocationsFetchCache> FetchAsync(AllocationsLoadContext context)
+    private static List<AllocationClientRow> BuildClientRows(
+        TimeseriesSearchResponse? response,
+        IReadOnlyList<ResourcePoolStatisticsResponse> visiblePools,
+        bool isAccessMetric,
+        IReadOnlyDictionary<string, GlobalRateLimit> rateLimitLookup,
+        IReadOnlyList<ClientConfiguration> allClients)
     {
-        var newPoolsTask = _statsService.GetResourcePoolStatsAsync();
-        var poolsForFilter = context.KnownPools is { Count: > 0 }
-            ? context.KnownPools
-            : await newPoolsTask;
-
-        var now = context.TimeRange.GetTo();
-        var from = context.TimeRange.GetFrom(now);
-        var granularity = context.TimeRange.Granularity;
-        var recentFrom = now.Subtract(AllocationsLoadContext.RecentWindow);
-        var recentTo = now;
-
-        var visiblePools = context.SelectedPoolId == AllocationsLoadContext.AllPoolsId
-            ? poolsForFilter.ToList()
-            : poolsForFilter.Where(p => p.ResourcePoolId == context.SelectedPoolId).ToList();
-
-        var visiblePoolIds = visiblePools.Select(p => p.ResourcePoolId).ToList();
-        var isAllPools = context.SelectedPoolId == AllocationsLoadContext.AllPoolsId;
-
-        var rateLimitTask = context.IsAccessMetric
-            ? _rateLimitApi.GetByTargetTypeAsync(TargetType.ResourcePool)
-            : Task.FromResult<List<GlobalRateLimit>>([]);
-
-        var breakdownsTask = visiblePoolIds.Count > 0
-            ? _statsService.GetClientUsageBreakdownAsync(
-                "ResourcePool", visiblePoolIds, context.SelectedClientIds, from, now, granularity)
-            : Task.FromResult<List<TargetClientUsageBreakdownResponse>>([]);
-
-        var recentBreakdownsTask = visiblePoolIds.Count > 0
-            ? _statsService.GetClientUsageBreakdownAsync(
-                "ResourcePool", visiblePoolIds, context.SelectedClientIds, recentFrom, recentTo, "FiveMinute")
-            : Task.FromResult<List<TargetClientUsageBreakdownResponse>>([]);
-
-        var allHistoriesTask = isAllPools && visiblePoolIds.Count > 0
-            ? _statsService.GetHistoricalUsageAsync(
-                "ResourcePool", visiblePoolIds, null, from, now, granularity)
-            : Task.FromResult<List<HistoricalUsageResponse>>([]);
-
-        var summaryRecentTask = context.IsAccessMetric && !isAllPools && poolsForFilter.Count > 0
-            ? _statsService.GetClientUsageBreakdownAsync(
-                "ResourcePool",
-                poolsForFilter.Select(pool => pool.ResourcePoolId),
-                context.SelectedClientIds,
-                recentFrom,
-                recentTo,
-                "FiveMinute")
-            : Task.FromResult<List<TargetClientUsageBreakdownResponse>>([]);
-
-        await Task.WhenAll(rateLimitTask, breakdownsTask, recentBreakdownsTask, allHistoriesTask, summaryRecentTask);
-
-        var breakdowns = await breakdownsTask;
-        var recentBreakdowns = await recentBreakdownsTask;
-        var allHistories = await allHistoriesTask;
-        var rateLimitLookup = (await rateLimitTask).ToDictionary(limit => limit.TargetId);
-
-        var clientHistoriesByPool = new Dictionary<string, Dictionary<string, ClientHistoricalUsageResponse>>(StringComparer.Ordinal);
-        var poolHistories = new Dictionary<string, HistoricalUsageResponse?>(StringComparer.Ordinal);
-
-        if (visiblePoolIds.Count > 0)
+        if (response is null)
         {
-            if (isAllPools && context.IsAccessMetric)
-            {
-                foreach (var pool in visiblePools)
-                {
-                    var entries = breakdowns.FirstOrDefault(b => b.TargetId == pool.ResourcePoolId)?.Entries ?? [];
-                    clientHistoriesByPool[pool.ResourcePoolId] = entries.Count > 0
-                        ? (await _statsService.GetHistoricalUsageByClientAsync(
-                            "ResourcePool",
-                            new[] { pool.ResourcePoolId },
-                            entries.Select(entry => entry.ClientId),
-                            from,
-                            now,
-                            granularity))
-                        .ToDictionary(history => history.ClientId)
-                        : [];
-                }
-            }
-            else if (!isAllPools)
-            {
-                var poolResults = await Task.WhenAll(visiblePools.Select(async pool =>
-                {
-                    var breakdown = breakdowns.FirstOrDefault(b => b.TargetId == pool.ResourcePoolId);
-                    var entries = breakdown?.Entries ?? [];
-                    var historiesByClientId = (await _statsService.GetHistoricalUsageByClientAsync(
-                            "ResourcePool",
-                            new[] { pool.ResourcePoolId },
-                            entries.Select(entry => entry.ClientId),
-                            from,
-                            now,
-                            granularity))
-                        .ToDictionary(history => history.ClientId);
-                    var poolHistory = (await _statsService.GetHistoricalUsageAsync(
-                            "ResourcePool", new[] { pool.ResourcePoolId }, null, from, now, granularity))
-                        .FirstOrDefault();
-                    return (pool.ResourcePoolId, historiesByClientId, poolHistory);
-                }));
+            return [];
+        }
 
-                foreach (var (poolId, historiesByClientId, poolHistory) in poolResults)
+        var poolNames = visiblePools.ToDictionary(pool => pool.ResourcePoolId, pool => pool.Name, StringComparer.Ordinal);
+        var rows = new List<AllocationClientRow>();
+
+        foreach (var target in response.Targets)
+        {
+            foreach (var clientSeries in target.ClientSeries)
+            {
+                var primary = isAccessMetric
+                    ? clientSeries.Buckets.Sum(bucket => bucket.GrantedCount)
+                    : (long)clientSeries.Buckets.LastOrDefault()?.ActiveCount;
+                var denied = clientSeries.Buckets.Sum(bucket =>
+                    bucket.DeniedUnauthenticatedCount
+                    + bucket.DeniedBlockedCount
+                    + bucket.DeniedRateLimitedCount
+                    + bucket.DeniedCapacityLimitedCount);
+
+                if (primary <= 0 && denied <= 0)
                 {
-                    clientHistoriesByPool[poolId] = historiesByClientId;
-                    poolHistories[poolId] = poolHistory;
+                    continue;
                 }
+
+                rows.Add(new AllocationClientRow(
+                    clientSeries.ClientId,
+                    clientSeries.ClientName,
+                    target.TargetId,
+                    poolNames.GetValueOrDefault(target.TargetId, target.TargetId),
+                    primary,
+                    isAccessMetric
+                        ? AllocationsCapCalculator.GetScaledGlobalPoolCap(target.TargetId, rateLimitLookup, AllocationsLoadContext.RecentWindow)
+                        : visiblePools.FirstOrDefault(pool => pool.ResourcePoolId == target.TargetId)?.MaxSlots ?? 0,
+                    denied,
+                    clientSeries.Buckets.Sum(bucket => bucket.DeniedUnauthenticatedCount),
+                    clientSeries.Buckets.Sum(bucket => bucket.DeniedBlockedCount),
+                    clientSeries.Buckets.Sum(bucket => bucket.DeniedRateLimitedCount),
+                    clientSeries.Buckets.Sum(bucket => bucket.DeniedCapacityLimitedCount)));
             }
         }
 
-        var summaryRecentBreakdowns = context.IsAccessMetric && !isAllPools
-            ? await summaryRecentTask
-            : recentBreakdowns;
-
-        var newPools = await newPoolsTask;
-
-        return new AllocationsFetchCache(
-            BuildCacheKey(context),
-            newPools,
-            breakdowns,
-            recentBreakdowns,
-            summaryRecentBreakdowns,
-            rateLimitLookup.ToDictionary(),
-            visiblePools,
-            isAllPools,
-            allHistories,
-            clientHistoriesByPool,
-            poolHistories,
-            from,
-            now,
-            granularity,
-            context.IsAccessMetric);
+        return rows;
     }
 
-    private AllocationsLoadResult BuildFromCache(AllocationsLoadContext context)
+    private static List<PoolSummaryRow> BuildPoolRows(
+        IReadOnlyList<ResourcePoolStatisticsResponse> pools,
+        TimeseriesSearchResponse? recentResponse,
+        IReadOnlyDictionary<string, GlobalRateLimit> rateLimitLookup,
+        bool isAccessMetric)
     {
-        if (_cache is null)
+        var recentByPool = recentResponse?.Targets.ToDictionary(target => target.TargetId, StringComparer.Ordinal)
+            ?? new Dictionary<string, TimeseriesTargetSeries>(StringComparer.Ordinal);
+
+        return pools.Select(pool =>
         {
-            return new AllocationsLoadResult([], [], [], []);
-        }
+            recentByPool.TryGetValue(pool.ResourcePoolId, out var target);
+            var clientSeries = target?.ClientSeries ?? [];
 
-        var chartAggregationMode = context.IsAccessMetric
-            ? ChartBucketAggregator.AggregationMode.Sum
-            : ChartBucketAggregator.AggregationMode.Latest;
-        var storageDuration = ChartGranularityHelper.GetStorageBucketDuration(_cache.Granularity);
-        var chartTemplate = ChartBucketAggregator.Aggregate(
-            [], _cache.From, _cache.Now, context.BucketCount, chartAggregationMode, storageDuration);
-        var chartBucketDuration = chartTemplate.BucketDuration;
+            long currentValue;
+            int capValue;
+            long? remainingValue;
+            long denied = 0;
+            long deniedUnauth = 0;
+            long deniedBlocked = 0;
+            long deniedRateLimited = 0;
+            long deniedCapacity = 0;
 
-        var poolRows = AllocationsPoolSummaryBuilder.Build(
-            _cache.Pools, _cache.SummaryRecentBreakdowns, _cache.RateLimitLookup, context.IsAccessMetric);
+            foreach (var series in clientSeries)
+            {
+                denied += series.Buckets.Sum(bucket =>
+                    bucket.DeniedUnauthenticatedCount + bucket.DeniedBlockedCount + bucket.DeniedRateLimitedCount + bucket.DeniedCapacityLimitedCount);
+                deniedUnauth += series.Buckets.Sum(bucket => bucket.DeniedUnauthenticatedCount);
+                deniedBlocked += series.Buckets.Sum(bucket => bucket.DeniedBlockedCount);
+                deniedRateLimited += series.Buckets.Sum(bucket => bucket.DeniedRateLimitedCount);
+                deniedCapacity += series.Buckets.Sum(bucket => bucket.DeniedCapacityLimitedCount);
+            }
 
-        if (_cache.VisiblePools.Count == 0)
-        {
-            return new AllocationsLoadResult([], [], _cache.Pools, poolRows);
-        }
+            if (isAccessMetric)
+            {
+                currentValue = clientSeries.Sum(series => series.Buckets.Sum(bucket => bucket.GrantedCount));
+                capValue = AllocationsCapCalculator.GetScaledGlobalPoolCap(pool.ResourcePoolId, rateLimitLookup, AllocationsLoadContext.RecentWindow);
+                remainingValue = capValue > 0 ? Math.Max(capValue - currentValue, 0L) : null;
+            }
+            else
+            {
+                currentValue = pool.ActiveAllocations;
+                capValue = pool.MaxSlots;
+                remainingValue = pool.AvailableSlots;
+            }
 
-        if (_cache.IsAllPools)
-        {
-            var (charts, clientRows) = _allPoolsLoader.BuildFromCache(
-                context, _cache, chartAggregationMode, chartTemplate, chartBucketDuration, storageDuration);
-            return new AllocationsLoadResult(charts, clientRows, _cache.Pools, poolRows);
-        }
-
-        var (singleCharts, singleRows) = _singlePoolLoader.BuildFromCache(
-            context, _cache, chartAggregationMode, chartTemplate, chartBucketDuration, storageDuration);
-        return new AllocationsLoadResult(singleCharts, singleRows, _cache.Pools, poolRows);
+            return new PoolSummaryRow(
+                pool.ResourcePoolId,
+                pool.Name,
+                currentValue,
+                capValue,
+                remainingValue,
+                denied,
+                deniedUnauth,
+                deniedBlocked,
+                deniedRateLimited,
+                deniedCapacity);
+        }).ToList();
     }
 }

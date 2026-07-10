@@ -16,6 +16,7 @@ namespace ClientManager.AdminUI.Components.Pages.Allocations;
 public partial class ActiveAllocations : ComponentBase, IAsyncDisposable
 {
     [Inject] private StatisticsApiService StatsService { get; set; } = null!;
+    [Inject] private ResourcePoolApiService PoolService { get; set; } = null!;
     [Inject] private ClientApiService ClientService { get; set; } = null!;
     [Inject] private GlobalRateLimitApiService RateLimitApi { get; set; } = null!;
     [Inject] private IStringLocalizer<SharedResources> Localizer { get; set; } = null!;
@@ -84,10 +85,17 @@ public partial class ActiveAllocations : ComponentBase, IAsyncDisposable
 
         try
         {
-            var poolsTask = StatsService.GetResourcePoolStatsAsync();
+            var poolsTask = PoolService.GetAllAsync();
             var clientsTask = ClientService.GetAllAsync();
             await Task.WhenAll(poolsTask, clientsTask);
-            _pools = await poolsTask;
+            var poolEntities = await poolsTask;
+            _pools = poolEntities.Select(pool => new ResourcePoolStatisticsResponse(
+                pool.Id,
+                pool.Name,
+                (int)pool.MaxSlots,
+                0,
+                (int)pool.MaxSlots,
+                false)).ToList();
             var clients = await clientsTask;
             _allClients = clients;
             _clientOptions = clients.Select(c => new NamedItem(c.Id, c.Name)).ToList();
