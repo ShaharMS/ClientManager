@@ -28,8 +28,11 @@ flowchart LR
     buf --> persist[UsagePersistenceService<br/>background worker]
     persist --> counters[(Atomic usage counters<br/>Statistics role)]
     counters --> snap[(UsageSnapshot documents)]
-    snap --> stats[UsageStatisticsService]
-    stats --> api[Statistics API + Admin UI]
+    snap --> pre[StatisticsPrecomputeService]
+    pre --> meta[(Precomputed overview + gauges)]
+    snap --> ts[StatisticsTimeseriesService]
+    meta --> api[Statistics API + Admin UI]
+    ts --> api
 ```
 
 The fast flush loop writes granted/denied/released counts to **atomic TTL-backed counters** (safe across multiple API pods). The slow rollup loop folds counters into snapshot documents and prunes expired buckets on every instance.
@@ -49,19 +52,25 @@ The system maintains separate snapshot series per granularity so the Admin UI ca
 
 Two services sit above the snapshot store:
 
-### `UsageStatisticsService` (storage-internal)
+### `StatisticsPrecomputeService` (write path)
 
-Owns time-series queries, global usage rollups, and continuity calculations across bucket boundaries. Used by export helpers and the public statistics facade.
+Runs during `UsagePersistenceService` flush and rollup cycles. Maintains:
+
+- `overview-summary` — RPM and pool acquisition gauges for `GET /statistics/overview`
+- `latest-usage-gauges` — per service×client granted/denied for Prometheus/Grafana export
+
+### `StatisticsTimeseriesService` (read path)
+
+Serves `POST /statistics/timeseries/search` with a single rollup-tier read per request (no granularity fallback loop). Picks the coarsest stored tier that still satisfies the requested range and `bucketCount`, merges buckets server-side, and overlays live counters for the recent tail.
 
 ### `StatisticsService` (public API facade)
 
 What controllers expose under `/api/v1/statistics/*`:
 
-- System overview (client/service/pool counts, global usage summaries)
-- Per-entity detail for dashboard drill-down
-- Delegates heavy usage analytics to `IUsageStatisticsService`
+- `GET /overview` — counts, active allocations, RPM, pool acquisition (from precomputed summary + catalog counts)
+- `POST /timeseries/search` — chart-ready bucketed series (`searchCategory`: `ServiceRequests`, `ResourcePoolAllocations`, `ResourcePoolRequests`)
 
-The Admin UI's dashboard and monitor pages call these endpoints through `StatisticsApiService`.
+The Admin UI dashboard, monitor, and allocations pages call these endpoints through `StatisticsApiService` (≤4 requests per dashboard poll).
 
 ## Read-only vs mutating queries
 
@@ -80,9 +89,9 @@ When building custom monitoring, prefer statistics and accessibility endpoints o
 `IStorageReadCache` / `StorageReadCache` provides read-through caching with separate TTLs for:
 
 - **Catalog reads** — clients, services, pools, global limit rules
-- **Statistics reads** — aggregated usage responses
+- **Statistics reads** — overview and timeseries responses (split tail vs closed TTL scopes)
 
-Catalog writes from the Admin UI invalidate affected cache entries. Statistics cache entries expire by TTL only.
+Catalog writes from the Admin UI invalidate affected cache entries. Statistics tail cache is invalidated on the fast usage flush loop (~1s); closed-tier and overview cache invalidate on rollup.
 
 Hot-path configuration reads benefit from caching; usage writes go to the in-memory buffer first, so recording does not block on snapshot persistence.
 
@@ -97,7 +106,7 @@ At a glance:
 | Path | Purpose |
 | --- | --- |
 | `/prometheus/otel` | Runtime counters and histograms (access, rate limits, HTTP, storage latency) |
-| `/api/v1/metrics/prometheus` | Usage and pool-capacity gauges from snapshots |
+| `/api/v1/metrics/prometheus` | Usage and pool-capacity gauges from precomputed documents |
 | `Observability:OtlpEndpoint` | OTLP trace export to Jaeger, Tempo, etc. |
 
 Hot-path spans use operation names like `storage.access.check` and `storage.resource.acquire`, tagged with `client.id`, `service.id`, and `resource_pool.id`.
