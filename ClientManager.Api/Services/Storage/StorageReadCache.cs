@@ -15,7 +15,8 @@ public sealed class StorageReadCache : IStorageReadCache, IDisposable
     private readonly StorageReadCacheOptions _options;
     private readonly object _sync = new();
     private CancellationTokenSource _catalogInvalidation = new();
-    private CancellationTokenSource _statisticsInvalidation = new();
+    private CancellationTokenSource _statisticsTailInvalidation = new();
+    private CancellationTokenSource _statisticsClosedInvalidation = new();
 
     public StorageReadCache(IMemoryCache cache, IOptions<StorageReadCacheOptions> options)
     {
@@ -30,11 +31,17 @@ public sealed class StorageReadCache : IStorageReadCache, IDisposable
         TimeSpan? ttl = null) =>
         GetOrCreateAsync($"catalog:{key}", ttl ?? _options.CatalogTtl, _catalogInvalidation.Token, factory, cancellationToken);
 
-    public Task<T> GetOrCreateStatisticsAsync<T>(
+    public Task<T> GetOrCreateStatisticsTailAsync<T>(
         string key,
         Func<CancellationToken, Task<T>> factory,
         CancellationToken cancellationToken) =>
-        GetOrCreateAsync($"statistics:{key}", _options.StatisticsTtl, _statisticsInvalidation.Token, factory, cancellationToken);
+        GetOrCreateAsync($"statistics:tail:{key}", _options.StatisticsTtl, _statisticsTailInvalidation.Token, factory, cancellationToken);
+
+    public Task<T> GetOrCreateStatisticsClosedAsync<T>(
+        string key,
+        Func<CancellationToken, Task<T>> factory,
+        CancellationToken cancellationToken) =>
+        GetOrCreateAsync($"statistics:closed:{key}", _options.StatisticsTtl, _statisticsClosedInvalidation.Token, factory, cancellationToken);
 
     public void InvalidateCatalog()
     {
@@ -44,13 +51,19 @@ public sealed class StorageReadCache : IStorageReadCache, IDisposable
 
     public void InvalidateStatistics()
     {
-        Rotate(ref _statisticsInvalidation);
+        InvalidateStatisticsTail();
+        InvalidateStatisticsClosed();
     }
+
+    public void InvalidateStatisticsTail() => Rotate(ref _statisticsTailInvalidation);
+
+    public void InvalidateStatisticsClosed() => Rotate(ref _statisticsClosedInvalidation);
 
     public void Dispose()
     {
         _catalogInvalidation.Dispose();
-        _statisticsInvalidation.Dispose();
+        _statisticsTailInvalidation.Dispose();
+        _statisticsClosedInvalidation.Dispose();
     }
 
     private Task<T> GetOrCreateAsync<T>(

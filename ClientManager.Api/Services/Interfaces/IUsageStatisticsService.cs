@@ -1,56 +1,7 @@
-using ClientManager.Shared.Models.Enums;
-using ClientManager.Shared.Models.Responses;
-
 namespace ClientManager.Api.Services.Interfaces;
 
 /// <summary>
-/// Composes usage analytics from persisted snapshot data.
-/// </summary>
-public interface IUsageStatisticsService
-{
-    Task<GlobalUsageStatsResponse> GetGlobalUsageStatsAsync(CancellationToken cancellationToken = default);
-
-    Task<IReadOnlyList<TargetUsageTimeSeriesResponse>> GetUsageTimeSeriesAsync(
-        TargetType targetType,
-        IEnumerable<string> targetIds,
-        IEnumerable<string>? clientIds,
-        DateTime? from = null,
-        DateTime? to = null,
-        BucketGranularity? granularity = null,
-        CancellationToken cancellationToken = default);
-
-    Task<IReadOnlyList<TargetClientUsageBreakdownResponse>> GetClientUsageBreakdownAsync(
-        TargetType targetType,
-        IEnumerable<string> targetIds,
-        IEnumerable<string>? clientIds,
-        DateTime? from = null,
-        DateTime? to = null,
-        BucketGranularity? granularity = null,
-        CancellationToken cancellationToken = default);
-
-    Task<ClientSummariesResponse> GetClientSummariesAsync(CancellationToken cancellationToken = default);
-
-    Task<IReadOnlyList<HistoricalUsageResponse>> GetHistoricalUsageAsync(
-        IEnumerable<string> targetIds,
-        TargetType targetType,
-        string? clientId,
-        DateTime from,
-        DateTime to,
-        BucketGranularity granularity,
-        CancellationToken cancellationToken = default);
-
-    Task<IReadOnlyList<ClientHistoricalUsageResponse>> GetHistoricalUsageByClientAsync(
-        IEnumerable<string> targetIds,
-        TargetType targetType,
-        IEnumerable<string> clientIds,
-        DateTime from,
-        DateTime to,
-        BucketGranularity granularity,
-        CancellationToken cancellationToken = default);
-}
-
-/// <summary>
-/// Generates Prometheus exposition output from usage statistics read models.
+/// Exports usage metrics in Prometheus exposition format.
 /// </summary>
 public interface IPrometheusExportService
 {
@@ -58,7 +9,7 @@ public interface IPrometheusExportService
 }
 
 /// <summary>
-/// Generates Grafana-oriented JSON metrics from usage statistics read models.
+/// Exports usage metrics as Grafana JSON payloads.
 /// </summary>
 public interface IGrafanaExportService
 {

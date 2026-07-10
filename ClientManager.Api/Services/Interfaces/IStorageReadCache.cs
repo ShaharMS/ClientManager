@@ -11,7 +11,12 @@ public interface IStorageReadCache
         CancellationToken cancellationToken,
         TimeSpan? ttl = null);
 
-    Task<T> GetOrCreateStatisticsAsync<T>(
+    Task<T> GetOrCreateStatisticsTailAsync<T>(
+        string key,
+        Func<CancellationToken, Task<T>> factory,
+        CancellationToken cancellationToken);
+
+    Task<T> GetOrCreateStatisticsClosedAsync<T>(
         string key,
         Func<CancellationToken, Task<T>> factory,
         CancellationToken cancellationToken);
@@ -19,4 +24,8 @@ public interface IStorageReadCache
     void InvalidateCatalog();
 
     void InvalidateStatistics();
+
+    void InvalidateStatisticsTail();
+
+    void InvalidateStatisticsClosed();
 }

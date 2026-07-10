@@ -4,13 +4,11 @@ using ClientManager.Shared.Models.Responses;
 namespace ClientManager.Api.Services.Interfaces;
 
 /// <summary>
-/// Provides read-only dashboard statistics: overview and timeseries search.
+/// Chart-ready statistics timeseries search.
 /// </summary>
-public interface IStatisticsService
+public interface IStatisticsTimeseriesService
 {
-    Task<SystemOverviewResponse> GetOverviewAsync(CancellationToken cancellationToken = default);
-
-    Task<TimeseriesSearchResponse> SearchTimeseriesAsync(
+    Task<TimeseriesSearchResponse> SearchAsync(
         TimeseriesSearchRequest request,
         CancellationToken cancellationToken = default);
 }

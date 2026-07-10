@@ -87,7 +87,8 @@ public static class StorageServicesRegistration
 
     private static void RegisterReadModelServices(IServiceCollection services)
     {
-        services.AddScoped<IUsageStatisticsService, UsageStatisticsService>();
+        services.AddScoped<IStatisticsTimeseriesService, StatisticsTimeseriesService>();
+        services.AddScoped<IStatisticsPrecomputeService, StatisticsPrecomputeService>();
         services.AddScoped<IPrometheusExportService, PrometheusExportService>();
         services.AddScoped<IGrafanaExportService, GrafanaExportService>();
     }

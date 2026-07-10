@@ -1,10 +1,10 @@
+using ClientManager.Api.Services.Interfaces;
 using ClientManager.DataAccess.Databases.Implementations;
 using ClientManager.DataAccess.Databases.Interfaces;
 using ClientManager.Shared.Logging;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Enums;
 using ClientManager.Shared.Configuration.Storage;
-using ClientManager.Api.Services.Interfaces;
 using Microsoft.Extensions.Options;
 
 namespace ClientManager.Api.Services.Storage.UsageTracking;
@@ -55,8 +55,12 @@ public partial class UsagePersistenceService : BackgroundService
                 await FlushBufferAsync(database, stoppingToken);
                 if (await MaterializeLatestSecondAsync(database, stoppingToken))
                 {
-                    _cache.InvalidateStatistics();
+                    _cache.InvalidateStatisticsTail();
                 }
+
+                using var precomputeScope = _scopeFactory.CreateScope();
+                var precompute = precomputeScope.ServiceProvider.GetRequiredService<IStatisticsPrecomputeService>();
+                await precompute.RefreshLatestUsageGaugesAsync(stoppingToken);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -90,7 +94,10 @@ public partial class UsagePersistenceService : BackgroundService
 
                 if (mutated)
                 {
-                    _cache.InvalidateStatistics();
+                    _cache.InvalidateStatisticsClosed();
+                    using var precomputeScope = _scopeFactory.CreateScope();
+                    var precompute = precomputeScope.ServiceProvider.GetRequiredService<IStatisticsPrecomputeService>();
+                    await precompute.RefreshOverviewSummaryAsync(stoppingToken);
                 }
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
@@ -146,7 +153,7 @@ public partial class UsagePersistenceService : BackgroundService
 
         await database.IncrementPendingCountersAsync(entries, cancellationToken);
 
-        _cache.InvalidateStatistics();
+        _cache.InvalidateStatisticsTail();
         _logger.Debug("Flushed usage counter groups to storage", new { Count = counts.Count });
     }
 
