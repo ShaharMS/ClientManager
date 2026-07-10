@@ -1,4 +1,3 @@
-using System.Text;
 using ClientManager.DataAccess.Databases.Interfaces;
 using ClientManager.DataAccess.Repositories.Interfaces;
 using ClientManager.Shared.Models.Entities;
@@ -12,67 +11,47 @@ namespace ClientManager.Api.Services.Storage.Exporters;
 /// </summary>
 public class PrometheusExportService : IPrometheusExportService
 {
-    private readonly IUsageSnapshotDatabase _usageSnapshotDatabase;
+    private readonly IStatisticsPrecomputedDatabase _precomputedDatabase;
     private readonly IEntityRepository<ResourcePool> _poolRepository;
     private readonly IResourceAllocationDatabase _allocationDatabase;
-    private readonly IUsageStatisticsService _statisticsService;
 
     public PrometheusExportService(
-        IUsageSnapshotDatabase usageSnapshotDatabase,
+        IStatisticsPrecomputedDatabase precomputedDatabase,
         IEntityRepository<ResourcePool> poolRepository,
-        IResourceAllocationDatabase allocationDatabase,
-        IUsageStatisticsService statisticsService)
+        IResourceAllocationDatabase allocationDatabase)
     {
-        _usageSnapshotDatabase = usageSnapshotDatabase;
+        _precomputedDatabase = precomputedDatabase;
         _poolRepository = poolRepository;
         _allocationDatabase = allocationDatabase;
-        _statisticsService = statisticsService;
     }
 
     public async Task<string> ExportMetricsAsync(CancellationToken cancellationToken = default)
     {
-        var builder = new StringBuilder();
-        var globalStats = await _statisticsService.GetGlobalUsageStatsAsync(cancellationToken);
+        var builder = new System.Text.StringBuilder();
+        var summary = await _precomputedDatabase.GetOverviewSummaryAsync(cancellationToken);
+        var requestsPerMinute = summary?.RequestsPerMinute ?? 0;
 
         builder.AppendLine("# HELP clientmanager_requests_per_minute Estimated requests per minute across all services.");
         builder.AppendLine("# TYPE clientmanager_requests_per_minute gauge");
-        builder.AppendLine($"clientmanager_requests_per_minute {globalStats.RequestsPerMinute}");
+        builder.AppendLine($"clientmanager_requests_per_minute {requestsPerMinute}");
         builder.AppendLine();
 
-        var secondSnapshots = await _usageSnapshotDatabase.GetAllByGranularityAsync(BucketGranularity.Second, cancellationToken);
-        var serviceSnapshots = secondSnapshots.Where(snapshot => snapshot.TargetType == TargetType.Service);
-
-        if (!serviceSnapshots.Any())
-        {
-            serviceSnapshots = (await _usageSnapshotDatabase.GetAllByGranularityAsync(BucketGranularity.FiveMinute, cancellationToken))
-                .Where(snapshot => snapshot.TargetType == TargetType.Service);
-        }
+        var gauges = await _precomputedDatabase.GetLatestUsageGaugesAsync(cancellationToken);
+        var entries = gauges?.Entries ?? [];
 
         builder.AppendLine("# HELP clientmanager_requests_total Total granted requests from latest buckets.");
         builder.AppendLine("# TYPE clientmanager_requests_total gauge");
-        foreach (var snapshot in serviceSnapshots)
+        foreach (var entry in entries)
         {
-            var latest = snapshot.Buckets.MaxBy(bucket => bucket.Timestamp);
-            if (latest is null)
-            {
-                continue;
-            }
-
-            builder.AppendLine($"clientmanager_requests_total{{service=\"{EscapeLabel(snapshot.TargetId)}\",client=\"{EscapeLabel(snapshot.ClientId)}\"}} {latest.GrantedCount}");
+            builder.AppendLine($"clientmanager_requests_total{{service=\"{EscapeLabel(entry.ServiceId)}\",client=\"{EscapeLabel(entry.ClientId)}\"}} {entry.GrantedCount}");
         }
 
         builder.AppendLine();
         builder.AppendLine("# HELP clientmanager_denied_total Total denied requests from latest buckets.");
         builder.AppendLine("# TYPE clientmanager_denied_total gauge");
-        foreach (var snapshot in serviceSnapshots)
+        foreach (var entry in entries)
         {
-            var latest = snapshot.Buckets.MaxBy(bucket => bucket.Timestamp);
-            if (latest is null)
-            {
-                continue;
-            }
-
-            builder.AppendLine($"clientmanager_denied_total{{service=\"{EscapeLabel(snapshot.TargetId)}\",client=\"{EscapeLabel(snapshot.ClientId)}\"}} {latest.DeniedCount}");
+            builder.AppendLine($"clientmanager_denied_total{{service=\"{EscapeLabel(entry.ServiceId)}\",client=\"{EscapeLabel(entry.ClientId)}\"}} {entry.DeniedCount}");
         }
 
         builder.AppendLine();
@@ -100,8 +79,6 @@ public class PrometheusExportService : IPrometheusExportService
         return builder.ToString();
     }
 
-    private static string EscapeLabel(string value)
-    {
-        return value.Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("\n", "\\n");
-    }
+    private static string EscapeLabel(string value) =>
+        value.Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("\n", "\\n");
 }
