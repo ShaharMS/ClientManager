@@ -1,4 +1,5 @@
 using Asp.Versioning;
+using ClientManager.Api.Filters;
 using ClientManager.Api.Models.Exceptions;
 using ClientManager.Api.Services.Interfaces;
 using ClientManager.Api.Services.Storage;
@@ -37,6 +38,7 @@ namespace ClientManager.Api.Controllers;
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/seed")]
 [Tags("Seeding")]
+[ServiceFilter(typeof(SeedEndpointGateFilter))]
 public class SeedController(
     ISeedCatalogService seedCatalogService,
     SeedOperationGate seedOperationGate) : ControllerBase

@@ -41,11 +41,19 @@ public static class StorageServicesRegistration
         services.AddStorageProviders(persistenceOptions, environment);
         services.AddStorageRepositories();
         services.AddMemoryCache();
+        services.AddSingleton<IConfigureOptions<DangerZoneOptions>, DangerZoneOptionsPostConfigure>();
+        services.AddSingleton<IValidateOptions<DangerZoneOptions>, DangerZoneOptionsValidator>();
+        services.AddOptions<DangerZoneOptions>()
+            .Bind(configuration.GetSection(DangerZoneOptions.SectionName))
+            .ValidateOnStart();
+        var storageReadCacheSection = configuration.GetSection(
+            $"{DangerZoneOptions.SectionName}:{DangerZoneOptions.StorageReadCacheSubsection}");
+        var storageReadCachePath = $"{DangerZoneOptions.SectionName}:{DangerZoneOptions.StorageReadCacheSubsection}";
         services.AddOptions<StorageReadCacheOptions>()
-            .Bind(configuration.GetSection(StorageReadCacheOptions.SectionName))
-            .Validate(options => options.CatalogTtl > TimeSpan.Zero, "StorageReadCache:CatalogTtl must be positive.")
-            .Validate(options => options.HotPathCatalogTtl > TimeSpan.Zero, "StorageReadCache:HotPathCatalogTtl must be positive.")
-            .Validate(options => options.StatisticsTtl > TimeSpan.Zero, "StorageReadCache:StatisticsTtl must be positive.")
+            .Bind(storageReadCacheSection)
+            .Validate(options => options.CatalogTtl > TimeSpan.Zero, $"{storageReadCachePath}:CatalogTtl must be positive.")
+            .Validate(options => options.HotPathCatalogTtl > TimeSpan.Zero, $"{storageReadCachePath}:HotPathCatalogTtl must be positive.")
+            .Validate(options => options.StatisticsTtl > TimeSpan.Zero, $"{storageReadCachePath}:StatisticsTtl must be positive.")
             .ValidateOnStart();
         services.AddSingleton<IStorageReadCache, StorageReadCache>();
         services.AddSingleton<IValidateOptions<RateLimitingSettings>, RateLimitingSettingsValidator>();
@@ -62,7 +70,7 @@ public static class StorageServicesRegistration
         services.AddScoped<ISeedCatalogService, SeedCatalogService>();
         services.AddSingleton<SeedOperationGate>();
         RegisterBackgroundServices(services);
-        RegisterSeeding(services, configuration);
+        RegisterSeeding(services, configuration, environment);
         services.Configure<UsageTrackingOptions>(
             configuration.GetSection(UsageTrackingOptions.SectionName));
 
@@ -100,10 +108,17 @@ public static class StorageServicesRegistration
         services.AddHostedService<UsagePersistenceService>();
     }
 
-    private static void RegisterSeeding(IServiceCollection services, IConfiguration configuration)
+    private static void RegisterSeeding(IServiceCollection services, IConfiguration configuration, IHostEnvironment environment)
     {
         var seedOptions = configuration.GetSection(SeedOptions.SectionName).Get<SeedOptions>();
         if (seedOptions is null)
+        {
+            return;
+        }
+
+        var dangerZone = configuration.GetSection(DangerZoneOptions.SectionName).Get<DangerZoneOptions>() ?? new DangerZoneOptions();
+        DangerZoneOptionsPostConfigure.ApplyDefaults(dangerZone, environment);
+        if (!dangerZone.IsStartupSeedingEnabled)
         {
             return;
         }

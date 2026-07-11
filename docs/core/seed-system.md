@@ -8,8 +8,8 @@ Use seeds to copy an instance's data to another environment, migrate between per
 
 | Path | When to use |
 | --- | --- |
-| **Runtime seed API** (`GET` / `DELETE` / `POST` / `PUT` `/api/v1/seed`) | Copy catalog and/or statistics between instances; migrate storage backends |
-| **appsettings `Seed`** | Bake catalog into deployment config; startup inserts missing IDs only (`skip` semantics) |
+| **Runtime seed API** (`GET` / `DELETE` / `POST` / `PUT` `/api/v1/seed`) | Copy catalog and/or statistics between instances; migrate storage backends — **gated by `DangerZone`** |
+| **appsettings `Seed`** | Bake catalog into deployment config; startup inserts missing IDs only (`skip` semantics) — **requires `DangerZone:EnableStartupSeeding`** |
 | **`seed_data.py`** | Large demo catalogs and optional `UsageSnapshots.json` history for JsonFile dev setups |
 
 ```mermaid
@@ -32,6 +32,11 @@ flowchart TD
 ## Seed API
 
 Base path: `/api/v1/seed` (Swagger tag: **Seeding**).
+
+!!! note "Danger zone gates"
+    - `GET` requires `DangerZone:EnableSeedExport` (HTTP 404 when off).
+    - `POST`, `PUT`, and `DELETE` require `DangerZone:EnableSeedImport` (HTTP 404 when off).
+    - In Production, both default to `false` when omitted. See [Danger zone](../danger-zone.md).
 
 | Method | Purpose |
 | --- | --- |
@@ -122,9 +127,10 @@ See [Storage migration](../migration/storage-migration.md) for curl examples.
 
 ### Saturate appsettings
 
-1. `GET /api/v1/seed` from a configured instance (catalog only — do not include `usageSnapshots`).
+1. `GET /api/v1/seed` from a configured instance (catalog only — do not include `usageSnapshots`). Requires `EnableSeedExport`.
 2. Paste the JSON under the `Seed` section in `appsettings.json`.
-3. Deploy; on startup `DataSeedService` creates any IDs that are still missing (`skip` — never overwrites existing runtime data).
+3. Deploy with `DangerZone:EnableStartupSeeding: true`; on startup `DataSeedService` creates any IDs that are still missing (`skip` — never overwrites existing runtime data).
+4. Disable `EnableStartupSeeding` after bootstrap in Production.
 
 ## PATCH vs seed
 
@@ -135,6 +141,7 @@ See [Storage migration](../migration/storage-migration.md) for curl examples.
 
 ## Related
 
+- [Danger zone](../danger-zone.md) — seed gates and Production defaults
 - [Storage migration](../migration/storage-migration.md) — provider X → empty Y with curl
 - [Configuration reference — Seed](../configuration-reference.md#seed)
 - [API overview — Seeding](../api-overview.md#seeding)

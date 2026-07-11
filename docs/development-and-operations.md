@@ -34,7 +34,7 @@ If catalogs look empty after restart, run:
 python _scripts/seed_data.py --base-url http://localhost:5062
 ```
 
-Or configure the `Seed` section — see [Configuration reference](configuration-reference.md). To copy catalog from another running instance, use `GET` then `PUT`/`POST` `/api/v1/seed` — see [Seed system](core/seed-system.md).
+Or configure the `Seed` section with `DangerZone:EnableStartupSeeding` — see [Configuration reference](configuration-reference.md) and [Danger zone](danger-zone.md). To copy catalog from another running instance, use `GET` then `PUT`/`POST` `/api/v1/seed` (requires seed gates) — see [Seed system](core/seed-system.md).
 
 ### Bulk catalog edits
 
@@ -146,7 +146,7 @@ After deploying builds with `RequestTrackingMiddleware` on Admin UI and API:
 | --- | --- |
 | Shared rate-limit state | `RateLimiting`, `Allocations`, and `Statistics` roles must use Redis or MongoDB in production (startup fails on JsonFile/Lucene for those roles) |
 | Configuration | MongoDB recommended; JsonFile on NFS is possible but not ideal |
-| Cache | Each API instance has its own in-memory `StorageReadCache`; catalog reads may be stale on other pods until `StorageReadCache:CatalogTtl` expires (default 30s); global-limit rules on the hot path use `HotPathCatalogTtl` (default 1s) |
+| Cache | Each API instance has its own in-memory `StorageReadCache`; catalog reads may be stale on other pods until `DangerZone:StorageReadCache:CatalogTtl` expires (default 30s); global-limit rules on the hot path use `HotPathCatalogTtl` (default 1s). See [Danger zone](danger-zone.md). |
 | Usage buffers | Each instance buffers usage in memory (~1s); counts flush to shared atomic counters before rollup into snapshots |
 | Background workers | Rollup and allocation cleanup run on every pod; duplicate rollup work is acceptable and bounded by `UsageTracking:FlushInterval` |
 

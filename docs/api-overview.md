@@ -95,6 +95,8 @@ PATCH /api/v1/services
 
 Base path: `/api/v1/seed` (Swagger tag: **Seeding**). Exports and imports catalog and optional statistics. Catalog-only export returns JSON in the `SeedOptions` shape (compatible with appsettings `Seed`). Requests that include `usageSnapshots` or `format=ndjson` stream `seed.ndjson`.
 
+Gated by [Danger zone](danger-zone.md): `GET` requires `EnableSeedExport`; `POST` / `PUT` / `DELETE` require `EnableSeedImport` (HTTP 404 when disabled).
+
 | Method | Path | Query | Body | Purpose |
 | --- | --- | --- | --- | --- |
 | `GET` | `/api/v1/seed` | `include`, `format` | — | Export (JSON or NDJSON file) |
@@ -109,6 +111,7 @@ Base path: `/api/v1/seed` (Swagger tag: **Seeding**). Exports and imports catalo
 | `200` | Export or import succeeded |
 | `400` | Unknown `include` collection, invalid `strategy` (PUT only), or missing/malformed body (POST/PUT) |
 | `409` | Included collection not empty on POST, or another seed operation in progress |
+| `404` | Seed gate disabled in `DangerZone` |
 | `503` | Storage unavailable |
 
 Unlike PATCH, seed import does not return per-item failures in a `200` body — a storage or validation error fails the entire request.

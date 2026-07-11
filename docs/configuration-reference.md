@@ -155,7 +155,7 @@ Persistence__Roles__RateLimiting__Redis__Host=redis
 
 ### `Seed`
 
-Binds to `SeedOptions`. When the `Seed` section is present in configuration, `DataSeedService` runs at startup and creates missing catalog entries (idempotent — existing IDs are skipped).
+Binds to `SeedOptions`. Defines catalog entities for startup bootstrap. Import runs only when **`DangerZone:EnableStartupSeeding`** is `true` (see [Danger zone](danger-zone.md)).
 
 | Property | Type | Description |
 | --- | --- | --- |
@@ -164,21 +164,23 @@ Binds to `SeedOptions`. When the `Seed` section is present in configuration, `Da
 | `ResourcePools` | `ResourcePool[]` | Pool definitions |
 | `GlobalRateLimits` | `GlobalRateLimit[]` | Global limit rules |
 
-**Generate from a running instance:** `GET /api/v1/seed` returns JSON in this exact shape. Paste it under `Seed` in appsettings (or merge multiple exports by entity `id` before pasting). See [Seed system](core/seed-system.md).
+**Generate from a running instance:** `GET /api/v1/seed` returns JSON in this exact shape (requires `DangerZone:EnableSeedExport`). Paste it under `Seed` in appsettings (or merge multiple exports by entity `id` before pasting). See [Seed system](core/seed-system.md).
 
-**Runtime import** (does not read appsettings): `POST` or `PUT /api/v1/seed` — see [API overview](api-overview.md#seeding).
+**Runtime import** (does not read appsettings): `POST` or `PUT /api/v1/seed` — requires `DangerZone:EnableSeedImport`. See [API overview](api-overview.md#seeding).
 
 Alternatives for demo data: `python _scripts/seed_data.py` (catalog + optional usage history files).
 
-### `StorageReadCache`
+### `DangerZone`
 
-| Property | Default | Description |
+Gates destructive seed operations, usage pruning, and cache TTL overrides. See the dedicated [Danger zone](danger-zone.md) guide for defaults, examples, and tuning.
+
+| Property | Production default (omitted) | Description |
 | --- | --- | --- |
-| `CatalogTtl` | `00:00:30` | Cache lifetime for admin/catalog reads (clients, services, pools); also bounds cross-pod catalog staleness |
-| `HotPathCatalogTtl` | `00:00:01` | Cache lifetime for global-limit rule lookups on the access-check hot path |
-| `StatisticsTtl` | `00:00:05` | Cache lifetime for statistics and exporter reads |
-
-Catalog writes invalidate the local pod's cache immediately. Other pods refresh on the next read after the relevant TTL (`CatalogTtl` or `HotPathCatalogTtl`).
+| `EnableStartupSeeding` | `false` | Run `DataSeedService` when root `Seed` exists |
+| `EnableSeedExport` | `false` | Allow `GET /api/v1/seed` |
+| `EnableSeedImport` | `false` | Allow `POST` / `PUT` / `DELETE /api/v1/seed` |
+| `EnableUsagePruning` | `true` | Delete expired usage snapshot buckets |
+| `StorageReadCache` | code defaults | `CatalogTtl`, `HotPathCatalogTtl`, `StatisticsTtl` |
 
 ### `UsageTracking`
 

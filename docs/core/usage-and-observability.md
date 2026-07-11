@@ -114,7 +114,7 @@ When building custom monitoring, prefer statistics and accessibility endpoints o
 
 ## Caching
 
-`IStorageReadCache` / `StorageReadCache` provides read-through caching with separate TTLs and **independent invalidation scopes**:
+`IStorageReadCache` / `StorageReadCache` provides read-through caching with separate TTLs and **independent invalidation scopes**. TTL overrides bind under `DangerZone:StorageReadCache` — see [Danger zone](../danger-zone.md).
 
 | Scope | Contents | Typical invalidation |
 | --- | --- | --- |

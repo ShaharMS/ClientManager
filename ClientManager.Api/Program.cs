@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 
 using Asp.Versioning;
 
+using ClientManager.Api.Filters;
 using ClientManager.Api.Middlewares;
 using ClientManager.Api.Models.Configuration;
 using ClientManager.Api.Services.Storage;
@@ -34,6 +35,11 @@ try
         Environment.Exit(UsageStatisticsContinuityChecks.Run());
     }
 
+    if (args.Contains("--danger-zone-check", StringComparer.Ordinal))
+    {
+        Environment.Exit(DangerZoneOptionsChecks.Run());
+    }
+
     var builder = WebApplication.CreateBuilder(args);
 
     builder.Logging.ClearProviders();
@@ -44,6 +50,8 @@ try
         {
             options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
         });
+
+    builder.Services.AddScoped<SeedEndpointGateFilter>();
 
     builder.Services.AddSingleton<IValidateOptions<ApiVersioningSettings>, ApiVersioningSettingsValidator>();
     builder.Services.AddOptions<ApiVersioningSettings>()

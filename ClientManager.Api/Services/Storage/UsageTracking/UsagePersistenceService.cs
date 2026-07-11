@@ -1,3 +1,4 @@
+using ClientManager.Api.Models.Configuration;
 using ClientManager.Api.Services.Interfaces;
 using ClientManager.DataAccess.Databases.Implementations;
 using ClientManager.DataAccess.Databases.Interfaces;
@@ -25,6 +26,7 @@ public partial class UsagePersistenceService : BackgroundService
     private readonly UsageBuffer _buffer;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly UsageTrackingOptions _options;
+    private readonly DangerZoneOptions _dangerZone;
     private readonly IStorageReadCache _cache;
 
     public UsagePersistenceService(
@@ -32,13 +34,15 @@ public partial class UsagePersistenceService : BackgroundService
         UsageBuffer buffer,
         IServiceScopeFactory scopeFactory,
         IStorageReadCache cache,
-        IOptions<UsageTrackingOptions> options)
+        IOptions<UsageTrackingOptions> options,
+        IOptions<DangerZoneOptions> dangerZone)
     {
         _logger = logger;
         _buffer = buffer;
         _scopeFactory = scopeFactory;
         _cache = cache;
         _options = options.Value;
+        _dangerZone = dangerZone.Value;
     }
 
     /// <inheritdoc />
@@ -100,7 +104,10 @@ public partial class UsagePersistenceService : BackgroundService
                 mutated |= await RollUpAsync(database, BucketGranularity.OneMinute, BucketGranularity.FiveMinute, TimeSpan.FromHours(1), stoppingToken);
                 mutated |= await RollUpAsync(database, BucketGranularity.FiveMinute, BucketGranularity.Hour, TimeSpan.FromHours(1), stoppingToken);
                 mutated |= await RollUpAsync(database, BucketGranularity.Hour, BucketGranularity.Day, TimeSpan.FromHours(24), stoppingToken);
-                mutated |= await PruneExpiredAsync(database, stoppingToken);
+                if (_dangerZone.IsUsagePruningEnabled)
+                {
+                    mutated |= await PruneExpiredAsync(database, stoppingToken);
+                }
 
                 if (mutated)
                 {

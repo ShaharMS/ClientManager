@@ -12,6 +12,7 @@ These guides explain how ClientManager works internally, how to wire it into you
 | --- | --- |
 | [Getting started](getting-started.md) | Solution layout, first run, Docker, seed data, and where to read next |
 | [Configuration reference](configuration-reference.md) | Every `appsettings` section, defaults, and environment-variable overrides |
+| [Danger zone](danger-zone.md) | Gates for seed, pruning, and cache TTL tuning — what is destructive and how to opt in |
 | [Admin UI guide](admin-ui-guide.md) | Operator screens, routes, and typical workflows |
 | [Localization](localization.md) | Admin UI languages, `.resx` workflow, RTL, and adding cultures |
 | [API overview](api-overview.md) | Catalog CRUD, statistics, metrics, and runtime endpoints |
