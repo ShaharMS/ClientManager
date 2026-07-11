@@ -82,6 +82,42 @@ public sealed class StatisticsTimeseriesService : IStatisticsTimeseriesService
         return BuildResponseAsync(request with { BucketCount = bucketCount }, cancellationToken);
     }
 
+    /// <inheritdoc />
+    public async Task<double> ComputeServiceRequestsPerMinuteAsync(CancellationToken cancellationToken = default)
+    {
+        const int windowMinutes = 5;
+        var now = DateTime.UtcNow;
+        var fromUtc = now.AddMinutes(-windowMinutes);
+        const int bucketCount = 5;
+
+        var targetIds = await ResolveTargetIdsAsync(StatisticsSearchCategory.ServiceRequests, null, cancellationToken);
+        var clientIds = await ResolveClientIdsAsync(null, targetIds, TargetType.Service, cancellationToken);
+        var granularity = StatisticsGranularityPicker.PickForRange(fromUtc, now, bucketCount);
+        var snapshots = targetIds.Count == 0 || clientIds.Count == 0
+            ? []
+            : await _usageSnapshotDatabase.GetByTargetsAndRangeAsync(
+                targetIds,
+                TargetType.Service,
+                granularity,
+                fromUtc,
+                now,
+                clientIds,
+                cancellationToken);
+
+        var totals = AggregateSnapshots(snapshots, fromUtc, now, granularity);
+        await OverlayLiveCountersBatchedAsync(
+            totals,
+            TargetType.Service,
+            targetIds,
+            clientIds,
+            fromUtc,
+            now,
+            granularity,
+            cancellationToken);
+
+        return StatisticsRequestsPerMinuteCalculator.Compute(totals, fromUtc, now, granularity, windowMinutes);
+    }
+
     /// <summary>
     /// Builds the full chart response: clone cached closed base, overlay live counters when needed,
     /// then merge and shape buckets per target and client.

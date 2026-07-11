@@ -12,33 +12,31 @@ namespace ClientManager.Api.Services.Storage;
 /// Maintains precomputed overview and gauge documents during usage persistence.
 /// </summary>
 /// <remarks>
-/// Overview summary is rebuilt on rollup because RPM depends on five-minute snapshot history.
+/// Overview summary is rebuilt on rollup for pool acquisition fields; RPM uses the same
+/// timeseries calculator as <c>GET /statistics/overview</c> for Prometheus export.
 /// Latest usage gauges are updated incrementally on each fast flush for only the dirty pairs
 /// returned by <see cref="UsageTracking.UsagePersistenceService"/>.
 /// </remarks>
 public sealed class StatisticsPrecomputeService : IStatisticsPrecomputeService
 {
     private readonly IStatisticsPrecomputedDatabase _precomputedDatabase;
-    private readonly IClientConfigurationDatabase _clientConfigDatabase;
     private readonly IEntityRepository<ResourcePool> _poolRepository;
-    private readonly IEntityRepository<Service> _serviceRepository;
     private readonly IResourceAllocationDatabase _allocationDatabase;
     private readonly IUsageSnapshotDatabase _usageSnapshotDatabase;
+    private readonly IStatisticsTimeseriesService _timeseriesService;
 
     public StatisticsPrecomputeService(
         IStatisticsPrecomputedDatabase precomputedDatabase,
-        IClientConfigurationDatabase clientConfigDatabase,
         IEntityRepository<ResourcePool> poolRepository,
-        IEntityRepository<Service> serviceRepository,
         IResourceAllocationDatabase allocationDatabase,
-        IUsageSnapshotDatabase usageSnapshotDatabase)
+        IUsageSnapshotDatabase usageSnapshotDatabase,
+        IStatisticsTimeseriesService timeseriesService)
     {
         _precomputedDatabase = precomputedDatabase;
-        _clientConfigDatabase = clientConfigDatabase;
         _poolRepository = poolRepository;
-        _serviceRepository = serviceRepository;
         _allocationDatabase = allocationDatabase;
         _usageSnapshotDatabase = usageSnapshotDatabase;
+        _timeseriesService = timeseriesService;
     }
 
     /// <inheritdoc />
@@ -61,38 +59,12 @@ public sealed class StatisticsPrecomputeService : IStatisticsPrecomputeService
             : 0;
 
         var now = DateTime.UtcNow;
-        var recentFrom = now.AddMinutes(-5);
-        var services = await _serviceRepository.GetAllAsync(cancellationToken);
-        var serviceIds = services.Select(service => service.Id).ToArray();
-        var clientIds = await ResolveServiceClientIdsAsync(serviceIds, cancellationToken);
-        var snapshots = serviceIds.Length == 0 || clientIds.Count == 0
-            ? []
-            : await _usageSnapshotDatabase.GetByTargetsAndRangeAsync(
-                serviceIds,
-                TargetType.Service,
-                BucketGranularity.FiveMinute,
-                recentFrom,
-                now,
-                clientIds,
-                cancellationToken);
-
-        long recentGranted = 0;
-        var storageDuration = TimeSpan.FromMinutes(5);
-        foreach (var snapshot in snapshots)
-        {
-            foreach (var bucket in snapshot.Buckets)
-            {
-                if (BucketGranularityHelper.OverlapsRange(bucket.Timestamp, storageDuration, recentFrom, now))
-                {
-                    recentGranted += bucket.GrantedCount;
-                }
-            }
-        }
+        var requestsPerMinute = await _timeseriesService.ComputeServiceRequestsPerMinuteAsync(cancellationToken);
 
         await _precomputedDatabase.UpsertOverviewSummaryAsync(
             new StatisticsOverviewSummary
             {
-                RequestsPerMinute = Math.Round(recentGranted / 5.0, 1),
+                RequestsPerMinute = requestsPerMinute,
                 TotalPoolSlots = totalSlots,
                 AcquiredPoolSlots = acquiredSlots,
                 AcquisitionPercentage = acquisitionPercentage,
@@ -261,18 +233,5 @@ public sealed class StatisticsPrecomputeService : IStatisticsPrecomputeService
 
         var latest = snapshot?.Buckets.MaxBy(bucket => bucket.Timestamp);
         return latest is null ? (0, 0) : (latest.GrantedCount, latest.DeniedCount);
-    }
-
-    private async Task<IReadOnlyList<string>> ResolveServiceClientIdsAsync(
-        IReadOnlyList<string> serviceIds,
-        CancellationToken cancellationToken)
-    {
-        var serviceIdSet = serviceIds.ToHashSet(StringComparer.Ordinal);
-        var clients = await _clientConfigDatabase.GetAllAsync(cancellationToken);
-        return clients
-            .Where(client => client.Services.Keys.Any(serviceIdSet.Contains))
-            .Select(client => client.Id)
-            .Distinct(StringComparer.Ordinal)
-            .ToList();
     }
 }

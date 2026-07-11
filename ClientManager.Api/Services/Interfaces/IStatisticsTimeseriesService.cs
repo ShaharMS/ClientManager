@@ -20,4 +20,10 @@ public interface IStatisticsTimeseriesService
     Task<TimeseriesSearchResponse> SearchAsync(
         TimeseriesSearchRequest request,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Estimates service granted requests per minute over the last five minutes using snapshot tiers
+    /// plus live counter overlay (same model as dashboard charts).
+    /// </summary>
+    Task<double> ComputeServiceRequestsPerMinuteAsync(CancellationToken cancellationToken = default);
 }

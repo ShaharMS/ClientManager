@@ -68,6 +68,8 @@ public sealed class StatisticsService : IStatisticsService
         var activeAllocations = poolIds.Sum(poolId => poolCounts.GetValueOrDefault(poolId));
 
         var summary = await _precomputedDatabase.GetOverviewSummaryAsync(cancellationToken);
+        var requestsPerMinute = await _timeseriesService.ComputeServiceRequestsPerMinuteAsync(cancellationToken);
+
         if (summary is not null)
         {
             return new SystemOverviewResponse(
@@ -77,7 +79,7 @@ public sealed class StatisticsService : IStatisticsService
                 (int)enabledServicesCount,
                 (int)allPools.TotalCount,
                 activeAllocations,
-                summary.RequestsPerMinute,
+                requestsPerMinute,
                 summary.TotalPoolSlots,
                 summary.AcquiredPoolSlots,
                 summary.AcquisitionPercentage);
@@ -96,7 +98,7 @@ public sealed class StatisticsService : IStatisticsService
             (int)enabledServicesCount,
             (int)allPools.TotalCount,
             activeAllocations,
-            0,
+            requestsPerMinute,
             totalSlots,
             acquiredSlots,
             acquisitionPercentage);
