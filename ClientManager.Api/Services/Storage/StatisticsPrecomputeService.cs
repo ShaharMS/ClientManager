@@ -11,6 +11,11 @@ namespace ClientManager.Api.Services.Storage;
 /// <summary>
 /// Maintains precomputed overview and gauge documents during usage persistence.
 /// </summary>
+/// <remarks>
+/// Overview summary is rebuilt on rollup because RPM depends on five-minute snapshot history.
+/// Latest usage gauges are updated incrementally on each fast flush for only the dirty pairs
+/// returned by <see cref="UsageTracking.UsagePersistenceService"/>.
+/// </remarks>
 public sealed class StatisticsPrecomputeService : IStatisticsPrecomputeService
 {
     private readonly IStatisticsPrecomputedDatabase _precomputedDatabase;
@@ -36,6 +41,7 @@ public sealed class StatisticsPrecomputeService : IStatisticsPrecomputeService
         _usageSnapshotDatabase = usageSnapshotDatabase;
     }
 
+    /// <inheritdoc />
     public async Task RefreshOverviewSummaryAsync(CancellationToken cancellationToken = default)
     {
         var pools = await _poolRepository.GetAllAsync(cancellationToken);
@@ -95,6 +101,7 @@ public sealed class StatisticsPrecomputeService : IStatisticsPrecomputeService
             cancellationToken);
     }
 
+    /// <inheritdoc />
     public async Task UpdateLatestUsageGaugesAsync(
         IReadOnlyCollection<ServiceClientGaugeKey> dirtyPairs,
         CancellationToken cancellationToken = default)
@@ -140,6 +147,13 @@ public sealed class StatisticsPrecomputeService : IStatisticsPrecomputeService
             cancellationToken);
     }
 
+    /// <summary>
+    /// Resolves granted/denied counts for a gauge row from pending counters or snapshot fallback.
+    /// </summary>
+    /// <remarks>
+    /// When pending counters exist in the overlay window, uses counts from the <em>latest</em> second only
+    /// so gauges reflect the most recent activity rather than summing the entire retention window.
+    /// </remarks>
     private async Task<(long Granted, long Denied)> ResolveGaugeCountsAsync(
         string serviceId,
         string clientId,
@@ -228,6 +242,9 @@ public sealed class StatisticsPrecomputeService : IStatisticsPrecomputeService
         return await ReadLatestSnapshotCountsAsync(serviceId, clientId, cancellationToken);
     }
 
+    /// <summary>
+    /// Reads the newest second-level snapshot bucket when no pending counters contribute to the gauge.
+    /// </summary>
     private async Task<(long Granted, long Denied)> ReadLatestSnapshotCountsAsync(
         string serviceId,
         string clientId,

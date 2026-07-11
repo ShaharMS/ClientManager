@@ -12,6 +12,13 @@ namespace ClientManager.Api.Services.Storage.UsageTracking;
 /// <summary>
 /// Flushes buffered usage events and maintains rolled-up usage snapshots.
 /// </summary>
+/// <remarks>
+/// <para>Two background loops run in parallel:</para>
+/// <list type="bullet">
+/// <item><description><strong>Fast loop</strong> (~1s) — drain buffer to atomic counters, materialize the latest completed second, incrementally refresh dirty gauge rows. Does <em>not</em> invalidate statistics tail cache.</description></item>
+/// <item><description><strong>Slow loop</strong> — rollup coarser granularities, prune expired buckets, invalidate closed statistics cache, refresh overview summary.</description></item>
+/// </list>
+/// </remarks>
 public partial class UsagePersistenceService : BackgroundService
 {
     private readonly IAppLogger<UsagePersistenceService> _logger;
@@ -42,6 +49,9 @@ public partial class UsagePersistenceService : BackgroundService
         await Task.WhenAll(fastLoop, slowLoop);
     }
 
+    /// <summary>
+    /// Fast persistence loop: counter flush, latest-second materialization, incremental gauge refresh.
+    /// </summary>
     private async Task RunFastLoopAsync(CancellationToken stoppingToken)
     {
         while (!stoppingToken.IsCancellationRequested)
@@ -111,6 +121,10 @@ public partial class UsagePersistenceService : BackgroundService
         }
     }
 
+    /// <summary>
+    /// Drains the in-memory buffer to atomic TTL counters and returns service×client pairs for gauge refresh.
+    /// </summary>
+    /// <returns>Dirty gauge pairs for the fast-loop precompute step; empty when the buffer was empty.</returns>
     private async Task<IReadOnlyList<ServiceClientGaugeKey>> FlushBufferAsync(
         IUsageSnapshotDatabase database,
         CancellationToken cancellationToken)

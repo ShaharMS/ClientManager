@@ -13,8 +13,12 @@ What it does:
 1. `docker compose -f compose/multipod.yml down -v` — wipe previous Mongo/Redis data
 2. `docker compose up --build -d` — build one API image, start 3 replicas + infra
 3. Wait until pods on **5062**, **5063**, **5064** respond
-4. `statistics_multipod_check.py` — seeds catalog (`seed_data.py --skip-history`), generates traffic, checks cross-pod totals and latency
+4. `statistics_multipod_check.py` — seeds catalog (`seed_data.py --skip-history`), runs round-robin access traffic, polls live timeseries **during** traffic on each pod, then checks cross-pod totals and latency budgets
 5. `docker compose down -v` — tear down (skip with `--keep-up`)
+
+### Latency checks
+
+The multipod check measures in-flight timeseries latency while traffic is active (prod-realistic: UI polls during load). Default budgets are p50 &lt; 100ms and max &lt; 500ms per pod; the Docker orchestrator passes a slightly relaxed p50 (115ms) for the seed pod on api-1.
 
 ## Manual steps
 

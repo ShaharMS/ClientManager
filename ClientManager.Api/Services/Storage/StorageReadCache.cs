@@ -9,6 +9,7 @@ namespace ClientManager.Api.Services.Storage;
 /// <summary>
 /// Owns storage-side cache entries and invalidation scopes for read-mostly queries.
 /// </summary>
+/// <inheritdoc cref="IStorageReadCache"/>
 public sealed class StorageReadCache : IStorageReadCache, IDisposable
 {
     private readonly IMemoryCache _cache;
@@ -24,6 +25,7 @@ public sealed class StorageReadCache : IStorageReadCache, IDisposable
         _options = options.Value;
     }
 
+    /// <inheritdoc />
     public Task<T> GetOrCreateCatalogAsync<T>(
         string key,
         Func<CancellationToken, Task<T>> factory,
@@ -31,28 +33,34 @@ public sealed class StorageReadCache : IStorageReadCache, IDisposable
         TimeSpan? ttl = null) =>
         GetOrCreateAsync($"catalog:{key}", ttl ?? _options.CatalogTtl, _catalogInvalidation.Token, factory, cancellationToken);
 
+    /// <inheritdoc />
     public Task<T> GetOrCreateStatisticsTailAsync<T>(
         string key,
         Func<CancellationToken, Task<T>> factory,
         CancellationToken cancellationToken) =>
         GetOrCreateAsync($"statistics:tail:{key}", _options.StatisticsTtl, _statisticsTailInvalidation.Token, factory, cancellationToken);
 
+    /// <inheritdoc />
     public Task<T> GetOrCreateStatisticsClosedAsync<T>(
         string key,
         Func<CancellationToken, Task<T>> factory,
         CancellationToken cancellationToken) =>
         GetOrCreateAsync($"statistics:closed:{key}", _options.StatisticsTtl, _statisticsClosedInvalidation.Token, factory, cancellationToken);
 
+    /// <inheritdoc />
     public void InvalidateCatalog() => Rotate(ref _catalogInvalidation);
 
+    /// <inheritdoc />
     public void InvalidateStatistics()
     {
         InvalidateStatisticsTail();
         InvalidateStatisticsClosed();
     }
 
+    /// <inheritdoc />
     public void InvalidateStatisticsTail() => Rotate(ref _statisticsTailInvalidation);
 
+    /// <inheritdoc />
     public void InvalidateStatisticsClosed() => Rotate(ref _statisticsClosedInvalidation);
 
     public void Dispose()

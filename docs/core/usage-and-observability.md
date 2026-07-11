@@ -59,9 +59,37 @@ Runs during `UsagePersistenceService` flush and rollup cycles. Maintains:
 - `overview-summary` — RPM and pool acquisition gauges for `GET /statistics/overview`
 - `latest-usage-gauges` — per service×client granted/denied for Prometheus/Grafana export
 
+On the **fast loop** (~1s), only service×client pairs touched by the latest buffer drain are passed to `UpdateLatestUsageGaugesAsync` — the service reads pending `usage:` counters once and patches the existing gauge document. On the **slow loop**, `RefreshOverviewSummaryAsync` recomputes overview fields after rollup or prune mutates five-minute (and coarser) history.
+
 ### `StatisticsTimeseriesService` (read path)
 
-Serves `POST /statistics/timeseries/search` with a single rollup-tier read per request (no granularity fallback loop). Picks the coarsest stored tier that still satisfies the requested range and `bucketCount`, merges buckets server-side, and overlays live counters for the recent tail.
+Serves `POST /statistics/timeseries/search` with a single rollup-tier snapshot read per cached closed base (no granularity fallback loop). Picks the coarsest stored tier that still satisfies the requested range and `bucketCount`, merges buckets server-side, and overlays live counters for the recent tail.
+
+Live dashboard polls use a **split read** so usage flushes do not bust the entire response cache every second:
+
+```mermaid
+sequenceDiagram
+    participant UI as AdminUI_poll
+    participant TS as StatisticsTimeseriesService
+    participant Cache as StorageReadCache
+    participant Snap as UsageSnapshots
+    participant Counters as Atomic_counters
+
+    UI->>TS: POST timeseries/search toUtc≈now
+    TS->>Cache: GetOrCreateStatisticsClosed(stable key)
+    Cache-->>TS: closed base from snapshots
+    TS->>Counters: one usage: prefix read
+    Counters-->>TS: pending second counters
+    TS->>TS: merge overlay in memory
+    TS-->>UI: chart buckets
+```
+
+| Phase | What is cached | When it invalidates |
+| --- | --- | --- |
+| **Closed base** | Snapshot aggregates for resolved targets/clients/granularity; key omits sliding `toUtc` when the query includes "now" | Slow rollup/prune loop (`InvalidateStatisticsClosed`) |
+| **Live overlay** | Not cached — one batched counter read per request | N/A (always fresh) |
+
+Historical queries (`toUtc` in the past) include `toUtc` in the closed cache key because the closed interval is fixed.
 
 ### `StatisticsService` (public API facade)
 
@@ -86,13 +114,24 @@ When building custom monitoring, prefer statistics and accessibility endpoints o
 
 ## Caching
 
-`IStorageReadCache` / `StorageReadCache` provides read-through caching with separate TTLs for:
+`IStorageReadCache` / `StorageReadCache` provides read-through caching with separate TTLs and **independent invalidation scopes**:
 
-- **Catalog reads** — clients, services, pools, global limit rules
-- **Statistics closed base** — snapshot aggregates keyed without wall-clock `toUtc`; invalidated on rollup only
-- **Live overlay** — batched pending-counter read applied on every live (`toUtc ≈ now`) request
+| Scope | Contents | Typical invalidation |
+| --- | --- | --- |
+| **Catalog** | Clients, services, pools, global limit rules | Admin UI catalog writes (`InvalidateCatalog`) |
+| **Statistics closed** | Timeseries closed-base aggregates (snapshots only) | Rollup/prune on the slow persistence loop |
+| **Statistics tail** | Legacy full-response tail entries (retained for compatibility) | Explicit tail rotation; live charts no longer depend on per-flush busting |
 
-Catalog writes invalidate catalog cache only. Statistics closed cache is invalidated on the slow usage rollup loop; live tail freshness comes from a single `usage:` counter prefix overlay at read time (not per-flush cache busting).
+### Timeseries read caching (live dashboards)
+
+- **Closed base** — snapshot aggregates keyed without wall-clock `toUtc` when the query includes the live tail, so consecutive UI polls reuse the same cache entry.
+- **Live overlay** — batched `usage:` pending-counter read applied on every live (`toUtc ≈ now`) request after the closed base is cloned, so sub-second traffic is visible without rebuilding the entire response from storage.
+
+Catalog writes invalidate **catalog cache only** — they do not cascade into statistics scopes. Statistics closed cache is invalidated on the slow usage rollup loop; tail freshness for charts comes from the per-request overlay, not from `InvalidateStatisticsTail` on every fast flush.
+
+### What changed from the earlier tail-cache model
+
+Previously, live timeseries responses were cached as a whole (including `toUtc` in the key) and the fast flush loop called `InvalidateStatisticsTail` about once per second. That forced full rebuilds — including hundreds of per-pair counter prefix scans — on every dashboard poll under load. The split closed-base + batched overlay model keeps the expensive snapshot work cached while still showing current counters.
 
 Hot-path configuration reads benefit from caching; usage writes go to the in-memory buffer first, so recording does not block on snapshot persistence.
 

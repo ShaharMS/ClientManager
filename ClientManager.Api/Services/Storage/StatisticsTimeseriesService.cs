@@ -14,8 +14,34 @@ using Microsoft.Extensions.Options;
 namespace ClientManager.Api.Services.Storage;
 
 /// <summary>
-/// Serves chart-ready statistics timeseries from rolled-up usage snapshots.
+/// Serves chart-ready statistics timeseries for <c>POST /statistics/timeseries/search</c>.
 /// </summary>
+/// <remarks>
+/// <para>
+/// Reads are intentionally split into a <strong>closed base</strong> and an optional
+/// <strong>live overlay</strong> so dashboard polls stay fast while usage counters flush every second:
+/// </para>
+/// <list type="number">
+/// <item>
+/// <description>
+/// <strong>Closed base</strong> — snapshot aggregates for the requested range, cached via
+/// <see cref="IStorageReadCache.GetOrCreateStatisticsClosedAsync{T}"/>. The cache key omits
+/// wall-clock <c>toUtc</c> when the query includes the live tail so consecutive UI polls reuse
+/// the same entry. Invalidated only when rollup/prune mutates closed history (slow persistence loop).
+/// </description>
+/// </item>
+/// <item>
+/// <description>
+/// <strong>Live overlay</strong> — per-request merge of pending second-level counters from one
+/// batched <c>usage:</c> prefix read. Applied when <see cref="IncludesNow"/> is true (~2s of UTC now).
+/// Tail freshness does not depend on per-flush cache busting.
+/// </description>
+/// </item>
+/// </list>
+/// <para>
+/// After overlay merge, <see cref="StatisticsBucketMerger"/> produces display buckets for the response.
+/// </para>
+/// </remarks>
 public sealed class StatisticsTimeseriesService : IStatisticsTimeseriesService
 {
     private const int MinBucketCount = 5;
@@ -47,6 +73,7 @@ public sealed class StatisticsTimeseriesService : IStatisticsTimeseriesService
         _usageTrackingOptions = usageTrackingOptions.Value;
     }
 
+    /// <inheritdoc />
     public Task<TimeseriesSearchResponse> SearchAsync(
         TimeseriesSearchRequest request,
         CancellationToken cancellationToken = default)
@@ -55,6 +82,10 @@ public sealed class StatisticsTimeseriesService : IStatisticsTimeseriesService
         return BuildResponseAsync(request with { BucketCount = bucketCount }, cancellationToken);
     }
 
+    /// <summary>
+    /// Builds the full chart response: clone cached closed base, overlay live counters when needed,
+    /// then merge and shape buckets per target and client.
+    /// </summary>
     private async Task<TimeseriesSearchResponse> BuildResponseAsync(
         TimeseriesSearchRequest request,
         CancellationToken cancellationToken)
@@ -149,6 +180,14 @@ public sealed class StatisticsTimeseriesService : IStatisticsTimeseriesService
             targets);
     }
 
+    /// <summary>
+    /// Loads or creates the cached closed-base aggregate (snapshots only, no live overlay).
+    /// </summary>
+    /// <remarks>
+    /// When the request includes the live tail, <c>snapshotToUtc</c> is pinned to <see cref="DateTime.UtcNow"/>
+    /// inside the factory so the cached base always reflects rolled-up history through "now" at cache-fill time.
+    /// Subsequent overlay work reconciles sub-second pending counters on every request.
+    /// </remarks>
     private async Task<TimeseriesClosedBase> GetOrCreateClosedBaseAsync(
         TimeseriesSearchRequest request,
         CancellationToken cancellationToken)
@@ -187,6 +226,14 @@ public sealed class StatisticsTimeseriesService : IStatisticsTimeseriesService
             cancellationToken);
     }
 
+    /// <summary>
+    /// Builds the statistics-closed cache key for a timeseries query.
+    /// </summary>
+    /// <remarks>
+    /// Live queries (those that include "now") omit <paramref name="request"/>.<c>ToUtc</c> from the key
+    /// so dashboard polls with a sliding wall-clock end time hit the same cache entry. Historical-only
+    /// queries include <c>toUtc</c> because the closed range is fixed.
+    /// </remarks>
     private static string CreateClosedCacheKey(
         TimeseriesSearchRequest request,
         int bucketCount,
@@ -198,8 +245,21 @@ public sealed class StatisticsTimeseriesService : IStatisticsTimeseriesService
         return IncludesNow(request.ToUtc) ? baseKey : $"{baseKey}:{request.ToUtc:O}";
     }
 
+    /// <summary>
+    /// Returns whether <paramref name="toUtc"/> is close enough to UTC now to require a live overlay.
+    /// </summary>
     private static bool IncludesNow(DateTime toUtc) => toUtc >= DateTime.UtcNow.AddSeconds(-2);
 
+    /// <summary>
+    /// Cached snapshot aggregate and resolved query dimensions before live overlay and display merge.
+    /// </summary>
+    /// <param name="SearchCategory">Original search category from the request.</param>
+    /// <param name="TargetType">Resolved service or resource-pool target type.</param>
+    /// <param name="UseLatestForActive">Whether the active-count series uses the latest bucket value (pool allocations).</param>
+    /// <param name="Granularity">Storage tier selected for this range and bucket count.</param>
+    /// <param name="TargetIds">Resolved target identifiers (explicit or catalog-expanded).</param>
+    /// <param name="ClientIds">Resolved client identifiers (explicit or catalog-expanded).</param>
+    /// <param name="TotalsByTargetClient">Per (target, client) bucket totals from snapshots only.</param>
     private sealed record TimeseriesClosedBase(
         StatisticsSearchCategory SearchCategory,
         TargetType TargetType,
@@ -209,6 +269,9 @@ public sealed class StatisticsTimeseriesService : IStatisticsTimeseriesService
         IReadOnlyList<string> ClientIds,
         Dictionary<(string TargetId, string ClientId), SortedDictionary<DateTime, BucketTotals>> TotalsByTargetClient);
 
+    /// <summary>
+    /// Deep-copies closed-base totals so overlay mutations do not corrupt the cached entry.
+    /// </summary>
     private static Dictionary<(string TargetId, string ClientId), SortedDictionary<DateTime, BucketTotals>> CloneTotals(
         Dictionary<(string TargetId, string ClientId), SortedDictionary<DateTime, BucketTotals>> source)
     {
@@ -436,6 +499,14 @@ public sealed class StatisticsTimeseriesService : IStatisticsTimeseriesService
         return result;
     }
 
+    /// <summary>
+    /// Applies pending second-level usage counters onto closed-base totals in one storage round-trip.
+    /// </summary>
+    /// <remarks>
+    /// Replaces the prior per-(target, client) prefix scan with a single <c>usage:</c> prefix read
+    /// (deduped in <c>UsageSnapshotDatabase</c>) and in-memory distribution. Hour/day granularities
+    /// skip overlay because second-level counters cannot affect those display buckets.
+    /// </remarks>
     private async Task OverlayLiveCountersBatchedAsync(
         Dictionary<(string TargetId, string ClientId), SortedDictionary<DateTime, BucketTotals>> totalsByTargetClient,
         TargetType targetType,
