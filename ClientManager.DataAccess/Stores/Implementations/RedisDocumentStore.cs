@@ -602,10 +602,65 @@ return {1, remaining, 0}
             "counter_reset_many",
             async () =>
             {
-                var redisKeys = keys.Select(CounterKey).ToArray();
+                var keyList = keys as IReadOnlyList<string> ?? keys.ToList();
+                var redisKeys = keyList.Select(CounterKey).ToArray();
                 await Database.KeyDeleteAsync(redisKeys);
+
+                var usageKeys = keyList
+                    .Where(IsUsageCounterKey)
+                    .Select(static key => (RedisValue)key)
+                    .ToArray();
+                if (usageKeys.Length > 0)
+                {
+                    await Database.SetRemoveAsync(UsageCounterIndexKey(), usageKeys);
+                }
             },
             DescribeCounterBatchContext(keys));
+    }
+
+    /// <inheritdoc />
+    public async Task<int> PurgeCountersByPrefixAsync(
+        string keyPrefix,
+        Func<string, long, DateTime?, bool> shouldPurge,
+        CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithRedisContextAsync(
+            "counter_purge_by_prefix",
+            async () =>
+            {
+                var counters = keyPrefix.StartsWith("usage", StringComparison.Ordinal)
+                    ? await ReadUsageCountersFromIndexMembersAsync(
+                        keyPrefix,
+                        await Database.SetMembersAsync(UsageCounterIndexKey()),
+                        cancellationToken)
+                    : await ScanCountersByPrefixAsync(keyPrefix, populateUsageIndex: false, cancellationToken);
+
+                var keysToRemove = new List<string>();
+                foreach (var (key, count) in counters)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (shouldPurge(key, count, null))
+                    {
+                        keysToRemove.Add(key);
+                    }
+                }
+
+                if (keysToRemove.Count == 0)
+                {
+                    return 0;
+                }
+
+                await Database.KeyDeleteAsync(keysToRemove.Select(CounterKey).ToArray());
+                if (keyPrefix.StartsWith("usage", StringComparison.Ordinal))
+                {
+                    await Database.SetRemoveAsync(
+                        UsageCounterIndexKey(),
+                        keysToRemove.Select(static key => (RedisValue)key).ToArray());
+                }
+
+                return keysToRemove.Count;
+            },
+            ("Prefix", keyPrefix));
     }
 
     /// <inheritdoc />

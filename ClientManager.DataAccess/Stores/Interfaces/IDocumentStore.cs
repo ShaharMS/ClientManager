@@ -222,6 +222,16 @@ public interface IDocumentStore
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Deletes counters whose keys start with <paramref name="keyPrefix"/> when
+    /// <paramref name="shouldPurge"/> returns <c>true</c>.
+    /// </summary>
+    /// <returns>The number of counters removed.</returns>
+    Task<int> PurgeCountersByPrefixAsync(
+        string keyPrefix,
+        Func<string, long, DateTime?, bool> shouldPurge,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Searches for documents matching the given query. Stores may implement native query
     /// translation (e.g. Lucene, MongoDB filters, RediSearch) or fall back to loading all
     /// documents and filtering in memory via <see cref="InMemoryQueryEvaluator"/>.

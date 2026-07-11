@@ -26,4 +26,10 @@ public sealed class StatisticsPrecomputedDatabase : IStatisticsPrecomputedDataba
 
     public Task UpsertLatestUsageGaugesAsync(LatestUsageGaugesDocument document, CancellationToken cancellationToken = default) =>
         _store.SetAsync(Collection, LatestUsageGaugesDocument.DocumentId, document, cancellationToken);
+
+    public async Task DeleteAllAsync(CancellationToken cancellationToken = default)
+    {
+        await _store.DeleteAsync(Collection, StatisticsOverviewSummary.DocumentId, cancellationToken);
+        await _store.DeleteAsync(Collection, LatestUsageGaugesDocument.DocumentId, cancellationToken);
+    }
 }

@@ -14,4 +14,6 @@ public interface IStatisticsPrecomputedDatabase
     Task<LatestUsageGaugesDocument?> GetLatestUsageGaugesAsync(CancellationToken cancellationToken = default);
 
     Task UpsertLatestUsageGaugesAsync(LatestUsageGaugesDocument document, CancellationToken cancellationToken = default);
+
+    Task DeleteAllAsync(CancellationToken cancellationToken = default);
 }

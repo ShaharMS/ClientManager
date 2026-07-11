@@ -224,6 +224,43 @@ public class MongoDBDocumentStore(IMongoDatabase database) : IDocumentStore
     }
 
     /// <inheritdoc />
+    public async Task<int> PurgeCountersByPrefixAsync(
+        string keyPrefix,
+        Func<string, long, DateTime?, bool> shouldPurge,
+        CancellationToken cancellationToken = default)
+    {
+        var filter = Builders<BsonDocument>.Filter.Regex(
+            "_id",
+            new BsonRegularExpression($"^{System.Text.RegularExpressions.Regex.Escape(keyPrefix)}"));
+        var docs = await CounterCollection.Find(filter).ToListAsync(cancellationToken);
+        var keysToRemove = new List<string>();
+
+        foreach (var document in docs)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var key = document["_id"].AsString;
+            var count = GetCounterCount(document);
+            DateTime? windowStart = document.Contains("WindowStart")
+                ? GetCounterWindowStart(document)
+                : null;
+            if (shouldPurge(key, count, windowStart))
+            {
+                keysToRemove.Add(key);
+            }
+        }
+
+        if (keysToRemove.Count == 0)
+        {
+            return 0;
+        }
+
+        await CounterCollection.DeleteManyAsync(
+            Builders<BsonDocument>.Filter.In("_id", keysToRemove),
+            cancellationToken);
+        return keysToRemove.Count;
+    }
+
+    /// <inheritdoc />
     public async Task SetCounterAsync(string key, long value, TimeSpan window, CancellationToken cancellationToken = default)
     {
         var filter = Builders<BsonDocument>.Filter.Eq("_id", key);

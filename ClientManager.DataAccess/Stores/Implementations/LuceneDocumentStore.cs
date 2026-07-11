@@ -484,6 +484,64 @@ public class LuceneDocumentStore : IDocumentStore, IDisposable
         }
     }
 
+    /// <inheritdoc />
+    public async Task<int> PurgeCountersByPrefixAsync(
+        string keyPrefix,
+        Func<string, long, DateTime?, bool> shouldPurge,
+        CancellationToken cancellationToken = default)
+    {
+        await WaitForWriteLockAsync(cancellationToken);
+        try
+        {
+            _searcherManager.MaybeRefreshBlocking();
+            var searcher = _searcherManager.Acquire();
+            List<string> keysToRemove;
+            try
+            {
+                var query = new BooleanQuery
+                {
+                    { new TermQuery(new Term(CollectionField, CountersCollection)), Occur.MUST },
+                    { new PrefixQuery(new Term(IdField, keyPrefix)), Occur.MUST }
+                };
+
+                keysToRemove = [];
+                var topDocs = searcher.Search(query, int.MaxValue);
+                foreach (var scoreDoc in topDocs.ScoreDocs)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var document = searcher.Doc(scoreDoc.Doc);
+                    var key = document.Get(IdField);
+                    var count = GetCounterCount(document);
+                    var windowStart = GetCounterWindowStart(document);
+                    if (shouldPurge(key, count, windowStart))
+                    {
+                        keysToRemove.Add(key);
+                    }
+                }
+            }
+            finally
+            {
+                _searcherManager.Release(searcher);
+            }
+
+            foreach (var key in keysToRemove)
+            {
+                DeleteByCollectionAndId(CountersCollection, key);
+            }
+
+            if (keysToRemove.Count > 0)
+            {
+                _writer.Commit();
+            }
+
+            return keysToRemove.Count;
+        }
+        finally
+        {
+            _writeLock.Release();
+        }
+    }
+
     public void Dispose()
     {
         if (_disposed) return;

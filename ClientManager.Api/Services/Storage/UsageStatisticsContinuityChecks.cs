@@ -1,6 +1,7 @@
 namespace ClientManager.Api.Services.Storage;
 
 using ClientManager.Api.Services.Storage.UsageTracking;
+using ClientManager.DataAccess.Databases.Implementations;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Enums;
 
@@ -70,6 +71,37 @@ internal static class UsageStatisticsContinuityChecks
             materializeBefore < eligible)
         {
             return 7;
+        }
+
+        var rpmFrom = new DateTime(2026, 1, 1, 10, 0, 0, DateTimeKind.Utc);
+        var rpmTo = rpmFrom.AddMinutes(5);
+        if (StatisticsGranularityPicker.PickForRange(rpmFrom, rpmTo, bucketCount: 5) != BucketGranularity.Second)
+        {
+            return 8;
+        }
+
+        var totals = new Dictionary<(string TargetId, string ClientId), SortedDictionary<DateTime, BucketTotals>>
+        {
+            [("svc", "client")] = new SortedDictionary<DateTime, BucketTotals>
+            {
+                [rpmFrom] = new BucketTotals(60, 0, 0, 0, 0, 0, 0),
+                [rpmFrom.AddMinutes(1)] = new BucketTotals(60, 0, 0, 0, 0, 0, 0),
+                [rpmFrom.AddMinutes(2)] = new BucketTotals(60, 0, 0, 0, 0, 0, 0),
+                [rpmFrom.AddMinutes(3)] = new BucketTotals(60, 0, 0, 0, 0, 0, 0),
+                [rpmFrom.AddMinutes(4)] = new BucketTotals(60, 0, 0, 0, 0, 0, 0)
+            }
+        };
+        if (StatisticsRequestsPerMinuteCalculator.Compute(totals, rpmFrom, rpmTo, BucketGranularity.Second, windowMinutes: 5) != 60.0)
+        {
+            return 9;
+        }
+
+        if (!UsageCounterPurge.ShouldPurge(
+                "usage:client:Service:svc:Second:20260101100000:Granted",
+                count: 1,
+                cutoffUtc: rpmFrom.AddMinutes(1)))
+        {
+            return 10;
         }
 
         return 0;

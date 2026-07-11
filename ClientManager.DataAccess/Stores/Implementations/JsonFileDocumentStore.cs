@@ -334,6 +334,50 @@ public class JsonFileDocumentStore : IDocumentStore
     }
 
     /// <inheritdoc />
+    public async Task<int> PurgeCountersByPrefixAsync(
+        string keyPrefix,
+        Func<string, long, DateTime?, bool> shouldPurge,
+        CancellationToken cancellationToken = default)
+    {
+        await WaitForWriteLockAsync(_state.CounterWriteLock, cancellationToken);
+        try
+        {
+            var counters = GetOrLoadCounters();
+            var keysToRemove = new List<string>();
+
+            foreach (var (key, entry) in counters)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (!key.StartsWith(keyPrefix, StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                if (shouldPurge(key, entry.Count, entry.WindowStart))
+                {
+                    keysToRemove.Add(key);
+                }
+            }
+
+            foreach (var key in keysToRemove)
+            {
+                counters.TryRemove(key, out _);
+            }
+
+            if (keysToRemove.Count > 0)
+            {
+                await PersistCountersAsync(counters, cancellationToken);
+            }
+
+            return keysToRemove.Count;
+        }
+        finally
+        {
+            _state.CounterWriteLock.Release();
+        }
+    }
+
+    /// <inheritdoc />
     public async Task SetCounterAsync(string key, long value, TimeSpan window, CancellationToken cancellationToken = default)
     {
         await WaitForWriteLockAsync(_state.CounterWriteLock, cancellationToken);

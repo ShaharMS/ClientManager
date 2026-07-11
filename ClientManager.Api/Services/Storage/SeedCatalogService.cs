@@ -20,6 +20,7 @@ public sealed partial class SeedCatalogService(
     IGlobalRateLimitDatabase globalRateLimitDatabase,
     IClientConfigurationDatabase clientConfigurationDatabase,
     IUsageSnapshotDatabase usageSnapshotDatabase,
+    IStatisticsPrecomputedDatabase precomputedDatabase,
     IStorageReadCache cache) : ISeedCatalogService
 {
     public async Task<SeedOptions> ExportAsync(SeedCollections collections, CancellationToken cancellationToken = default)
@@ -261,6 +262,13 @@ public sealed partial class SeedCatalogService(
                 stopwatch,
                 cancellationToken);
             summary = summary with { Deleted = summary.Deleted + deleted };
+
+            var purgedCounters = await usageSnapshotDatabase.PurgeAllUsageCountersAsync(cancellationToken);
+            await precomputedDatabase.DeleteAllAsync(cancellationToken);
+            if (purgedCounters > 0)
+            {
+                summary = summary with { Deleted = summary.Deleted + purgedCounters };
+            }
         }
 
         if (summary.Deleted > 0)

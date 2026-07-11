@@ -250,9 +250,11 @@ public class UsageSnapshotDatabase : IUsageSnapshotDatabase
             }
 
             var counters = await _store.GetCountersByPrefixAsync(keyPrefix, cancellationToken);
-            _cachedUsageOverlay = counters;
+            var cutoff = DateTime.UtcNow - TimeSpan.FromMinutes(5);
+            var filtered = UsageCounterPurge.FilterLiveCounters(counters, cutoff);
+            _cachedUsageOverlay = filtered;
             _cachedUsageOverlayTicks = Environment.TickCount64;
-            return counters;
+            return filtered;
         }
         finally
         {
@@ -315,6 +317,31 @@ public class UsageSnapshotDatabase : IUsageSnapshotDatabase
 
         await _store.ResetManyCountersAsync(distinct, cancellationToken);
         _cachedUsageOverlay = null;
+    }
+
+    /// <inheritdoc />
+    public async Task<int> ReconcileUsageCountersAsync(
+        TimeSpan retention,
+        CancellationToken cancellationToken = default)
+    {
+        var cutoff = DateTime.UtcNow - retention;
+        var purged = await _store.PurgeCountersByPrefixAsync(
+            "usage:",
+            (key, count, windowStart) => UsageCounterPurge.ShouldPurge(key, count, cutoff, windowStart),
+            cancellationToken);
+        _cachedUsageOverlay = null;
+        return purged;
+    }
+
+    /// <inheritdoc />
+    public async Task<int> PurgeAllUsageCountersAsync(CancellationToken cancellationToken = default)
+    {
+        var purged = await _store.PurgeCountersByPrefixAsync(
+            "usage:",
+            static (_, _, _) => true,
+            cancellationToken);
+        _cachedUsageOverlay = null;
+        return purged;
     }
 
     /// <inheritdoc />

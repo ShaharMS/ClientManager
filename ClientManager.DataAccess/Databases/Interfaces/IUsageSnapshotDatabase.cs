@@ -245,6 +245,18 @@ public interface IUsageSnapshotDatabase
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Removes expired or zero <c>usage:</c> pending counters (startup reconcile).
+    /// </summary>
+    Task<int> ReconcileUsageCountersAsync(
+        TimeSpan retention,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Deletes all <c>usage:</c> pending counters (statistics wipe).
+    /// </summary>
+    Task<int> PurgeAllUsageCountersAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Counts all usage snapshot documents in the store.
     /// </summary>
     Task<long> CountAllAsync(CancellationToken cancellationToken = default);

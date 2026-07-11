@@ -423,6 +423,67 @@ public sealed class SqliteDocumentStore : IDocumentStore
     }
 
     /// <inheritdoc />
+    public async Task<int> PurgeCountersByPrefixAsync(
+        string keyPrefix,
+        Func<string, long, DateTime?, bool> shouldPurge,
+        CancellationToken cancellationToken = default)
+    {
+        await _writeLock.WaitAsync(cancellationToken);
+        try
+        {
+            await using var connection = OpenConnection();
+            await using var select = connection.CreateCommand();
+            select.CommandText = "SELECT key, count, window_start FROM counters WHERE key LIKE $prefix ESCAPE '\\'";
+            select.Parameters.AddWithValue("$prefix", EscapeLikePrefix(keyPrefix) + "%");
+
+            var keysToRemove = new List<string>();
+            await using (var reader = await select.ExecuteReaderAsync(cancellationToken))
+            {
+                while (await reader.ReadAsync(cancellationToken))
+                {
+                    var key = reader.GetString(0);
+                    var count = reader.GetInt64(1);
+                    var windowStart = DateTime.Parse(
+                        reader.GetString(2),
+                        null,
+                        System.Globalization.DateTimeStyles.RoundtripKind);
+                    if (shouldPurge(key, count, windowStart))
+                    {
+                        keysToRemove.Add(key);
+                    }
+                }
+            }
+
+            if (keysToRemove.Count == 0)
+            {
+                return 0;
+            }
+
+            await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
+            foreach (var batch in keysToRemove.Chunk(250))
+            {
+                var placeholders = string.Join(',', batch.Select((_, index) => $"$key{index}"));
+                await using var delete = connection.CreateCommand();
+                delete.Transaction = transaction;
+                delete.CommandText = $"DELETE FROM counters WHERE key IN ({placeholders})";
+                for (var index = 0; index < batch.Length; index++)
+                {
+                    delete.Parameters.AddWithValue($"$key{index}", batch[index]);
+                }
+
+                await delete.ExecuteNonQueryAsync(cancellationToken);
+            }
+
+            await transaction.CommitAsync(cancellationToken);
+            return keysToRemove.Count;
+        }
+        finally
+        {
+            _writeLock.Release();
+        }
+    }
+
+    /// <inheritdoc />
     public async Task<SearchResult<T>> SearchAsync<T>(
         string collection,
         DocumentQuery query,

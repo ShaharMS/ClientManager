@@ -105,6 +105,7 @@ public static class StorageServicesRegistration
     private static void RegisterBackgroundServices(IServiceCollection services)
     {
         services.AddHostedService<AllocationCleanupService>();
+        services.AddHostedService<UsageCounterCleanupService>();
         services.AddHostedService<UsagePersistenceService>();
     }
 
