@@ -649,4 +649,41 @@ public sealed class SqliteUsageSnapshotDatabase : IUsageSnapshotDatabase, IDispo
 
         return result;
     }
+
+    /// <inheritdoc />
+    public async Task<long> CountAllAsync(CancellationToken cancellationToken = default)
+    {
+        await using var connection = OpenConnection();
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT COUNT(*) FROM usage_snapshots";
+        return (long)(await command.ExecuteScalarAsync(cancellationToken) ?? 0L);
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<UsageSnapshot>> GetPageAsync(
+        int skip,
+        int take,
+        CancellationToken cancellationToken = default)
+    {
+        await using var connection = OpenConnection();
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT id FROM usage_snapshots
+            ORDER BY id
+            LIMIT $take OFFSET $skip
+            """;
+        command.Parameters.AddWithValue("$skip", skip);
+        command.Parameters.AddWithValue("$take", take);
+
+        var ids = new List<string>();
+        await using (var reader = await command.ExecuteReaderAsync(cancellationToken))
+        {
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                ids.Add(reader.GetString(0));
+            }
+        }
+
+        return await LoadSnapshotsByIdsAsync(ids, cancellationToken);
+    }
 }

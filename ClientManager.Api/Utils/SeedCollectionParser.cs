@@ -11,7 +11,9 @@ public enum SeedCollections
     ResourcePools = 2,
     GlobalRateLimits = 4,
     ClientConfigurations = 8,
-    All = Services | ResourcePools | GlobalRateLimits | ClientConfigurations
+    UsageSnapshots = 16,
+    AllCatalog = Services | ResourcePools | GlobalRateLimits | ClientConfigurations,
+    All = AllCatalog
 }
 
 /// <summary>
@@ -28,8 +30,18 @@ public static class SeedCollectionParser
         ["global-rate-limits"] = SeedCollections.GlobalRateLimits,
         ["clientConfigurations"] = SeedCollections.ClientConfigurations,
         ["client-configurations"] = SeedCollections.ClientConfigurations,
-        ["clients"] = SeedCollections.ClientConfigurations
+        ["clients"] = SeedCollections.ClientConfigurations,
+        ["usageSnapshots"] = SeedCollections.UsageSnapshots,
+        ["usage-snapshots"] = SeedCollections.UsageSnapshots,
+        ["statistics"] = SeedCollections.UsageSnapshots
     };
+
+    /// <summary>
+    /// Returns true when export/import should use NDJSON streaming instead of JSON <see cref="ClientManager.Shared.Configuration.Storage.SeedOptions"/>.
+    /// </summary>
+    public static bool UsesNdjson(SeedCollections collections, string? format) =>
+        collections.HasFlag(SeedCollections.UsageSnapshots) ||
+        string.Equals(format, "ndjson", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Parses a comma-separated include list. Returns <see cref="SeedCollections.All"/> when empty.
