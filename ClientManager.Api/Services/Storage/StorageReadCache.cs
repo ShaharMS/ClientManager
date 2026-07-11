@@ -43,11 +43,7 @@ public sealed class StorageReadCache : IStorageReadCache, IDisposable
         CancellationToken cancellationToken) =>
         GetOrCreateAsync($"statistics:closed:{key}", _options.StatisticsTtl, _statisticsClosedInvalidation.Token, factory, cancellationToken);
 
-    public void InvalidateCatalog()
-    {
-        Rotate(ref _catalogInvalidation);
-        InvalidateStatistics();
-    }
+    public void InvalidateCatalog() => Rotate(ref _catalogInvalidation);
 
     public void InvalidateStatistics()
     {

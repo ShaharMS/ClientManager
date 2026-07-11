@@ -62,6 +62,7 @@
     <File Path="_scripts/download_images.py" />
     <File Path="_scripts/launch_observability_ui.py" />
     <File Path="_scripts/performance_baseline.py" />
+    <File Path="_scripts/run_multipod_docker.py" />
     <File Path="_scripts/seed_data.py" />
     <File Path="_scripts/statistics_latency_check.py" />
     <File Path="_scripts/statistics_multipod_check.py" />

@@ -520,7 +520,7 @@ def main():
             args.replace_history,
         )
 
-    print("\n✓ Seeding complete.")
+    print("\nSeeding complete.")
 
 
 if __name__ == "__main__":

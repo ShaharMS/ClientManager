@@ -9,6 +9,6 @@ include:
 #   - path: compose/default.yml
 #   - path: compose/dev.redis.yml
 
-# Multi-pod (3 APIs + MongoDB + Redis) — comment default above, use only:
+# Full multi-pod in Docker (3 APIs + Mongo + Redis) — or use: python _scripts/run_multipod_docker.py
 # include:
 #   - path: compose/multipod.yml

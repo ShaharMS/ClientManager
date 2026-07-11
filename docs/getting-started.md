@@ -35,7 +35,7 @@ The active solution (`ClientManager.slnx`) contains:
 | `data/` | Default JsonFile persistence directory when running locally |
 | [`docker-compose.yml`](docker-compose.yml) | Entry point for `docker compose up` — edit `include` to switch stacks |
 | [`compose/default.yml`](compose/default.yml) | API + Admin UI containers with `./data` mounted |
-| [`compose/dev.redis.yml`](compose/dev.redis.yml) | Overlay: adds Redis sidecar (use with `default.yml`) |
+| [`compose/dev.redis.yml`](compose/dev.redis.yml) | Redis overlay (combine with `default.yml`) |
 | [`compose/multipod.yml`](compose/multipod.yml) | Three API replicas + MongoDB + Redis for multi-pod testing |
 | `site/` | Built MkDocs output (`mkdocs build`); safe to regenerate |
 

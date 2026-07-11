@@ -8,6 +8,7 @@ import random
 import statistics
 import subprocess
 import sys
+import threading
 import time
 import urllib.error
 import urllib.parse
@@ -99,7 +100,12 @@ def run_steady_poll(base_url: str, polls: int, interval_seconds: float) -> list[
     return latencies
 
 
-def round_robin_traffic(base_urls: list[str], seconds: float, interval: float) -> int:
+def round_robin_traffic(
+    base_urls: list[str],
+    seconds: float,
+    interval: float,
+    stop_event: threading.Event | None = None,
+) -> int:
     combos: list[tuple[str, str]] = []
     for client_id in ENABLED_CLIENTS:
         for service_id in CLIENT_SERVICES.get(client_id, SERVICES):
@@ -108,7 +114,7 @@ def round_robin_traffic(base_urls: list[str], seconds: float, interval: float) -
     deadline = time.monotonic() + seconds
     sent = 0
     index = 0
-    while time.monotonic() < deadline:
+    while time.monotonic() < deadline and (stop_event is None or not stop_event.is_set()):
         client_id, service_id = combos[index % len(combos)]
         base_url = base_urls[index % len(base_urls)]
         params = {"clientId": client_id, "serviceId": service_id}
@@ -127,22 +133,72 @@ def round_robin_traffic(base_urls: list[str], seconds: float, interval: float) -
     return sent
 
 
-def run_latency_script(base_url: str) -> bool:
-    cmd = [
-        sys.executable,
-        "_scripts/statistics_latency_check.py",
-        "--base-url",
-        f"{base_url}{API_PREFIX}",
-        "--polls",
-        "8",
-        "--interval",
-        "1.0",
-    ]
-    result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(REPO_ROOT))
-    print(result.stdout.rstrip())
-    if result.stderr.strip():
-        print(result.stderr.rstrip(), file=sys.stderr)
-    return result.returncode == 0
+def poll_timeseries_all_pods(
+    base_urls: list[str],
+    pod_labels: list[str],
+) -> dict[str, float]:
+    body = live_timeseries_body()
+    latencies: dict[str, float] = {}
+    for base_url, label in zip(base_urls, pod_labels, strict=True):
+        status, _, latency_ms = post_json(base_url, f"{API_PREFIX}/statistics/timeseries/search", body)
+        if status < 400:
+            latencies[label] = latency_ms
+    return latencies
+
+
+def run_traffic_with_inflight_polls(
+    base_urls: list[str],
+    pod_labels: list[str],
+    traffic_seconds: float,
+    traffic_interval: float,
+    poll_interval: float,
+) -> tuple[int, dict[str, list[float]]]:
+    latencies_by_pod: dict[str, list[float]] = {label: [] for label in pod_labels}
+    stop_event = threading.Event()
+    sent_holder: list[int] = []
+
+    def traffic_worker() -> None:
+        sent_holder.append(
+            round_robin_traffic(base_urls, traffic_seconds, traffic_interval, stop_event)
+        )
+
+    thread = threading.Thread(target=traffic_worker, daemon=True)
+    thread.start()
+
+    poll_timeseries_all_pods(base_urls, pod_labels)
+
+    deadline = time.monotonic() + traffic_seconds
+    while time.monotonic() < deadline:
+        for label, latency_ms in poll_timeseries_all_pods(base_urls, pod_labels).items():
+            latencies_by_pod[label].append(latency_ms)
+        time.sleep(poll_interval)
+
+    stop_event.set()
+    thread.join(timeout=30)
+    sent = sent_holder[0] if sent_holder else 0
+    return sent, latencies_by_pod
+
+
+def check_inflight_latency_budget(
+    pod_labels: list[str],
+    latencies_by_pod: dict[str, list[float]],
+    p50_budget_ms: float,
+    max_budget_ms: float,
+) -> list[str]:
+    failures: list[str] = []
+    for label in pod_labels:
+        samples = latencies_by_pod.get(label, [])
+        if not samples:
+            failures.append(f"pod :{label} no in-flight latency samples")
+            continue
+        p50 = statistics.median(samples)
+        peak = max(samples)
+        print(f"pod :{label} in-flight: n={len(samples)} p50={p50:.1f}ms max={peak:.1f}ms")
+        if p50 >= p50_budget_ms:
+            failures.append(f"pod :{label} in-flight p50 {p50:.1f}ms >= {p50_budget_ms:.0f}ms")
+        if peak >= max_budget_ms:
+            failures.append(f"pod :{label} in-flight max {peak:.1f}ms >= {max_budget_ms:.0f}ms")
+    return failures
 
 
 def compare_pod_totals(
@@ -196,8 +252,26 @@ def main() -> int:
     )
     parser.add_argument("--traffic-seconds", type=float, default=45.0)
     parser.add_argument("--traffic-interval", type=float, default=0.15)
-    parser.add_argument("--skip-latency-script", action="store_true")
+    parser.add_argument("--poll-interval", type=float, default=2.0, help="Timeseries poll interval during traffic")
+    parser.add_argument("--p50-budget-ms", type=float, default=100.0)
+    parser.add_argument("--max-budget-ms", type=float, default=500.0)
+    parser.add_argument("--skip-inflight-latency", action="store_true")
+    parser.add_argument("--skip-seed", action="store_true", help="Skip catalog seed (seed_data.py --skip-history)")
     args = parser.parse_args()
+
+    if not args.skip_seed:
+        print("== seed catalog (no history) ==")
+        seed_cmd = [
+            sys.executable,
+            "_scripts/seed_data.py",
+            "--base-url",
+            args.base_urls[0],
+            "--skip-history",
+        ]
+        result = subprocess.run(seed_cmd, cwd=str(REPO_ROOT), text=True)
+        if result.returncode != 0:
+            print("FAILED: catalog seed failed")
+            return 1
 
     failures: list[str] = []
     pod_labels = [url.rstrip("/").split(":")[-1] for url in args.base_urls]
@@ -216,9 +290,29 @@ def main() -> int:
             print(f" - {failure}")
         return 1
 
-    print(f"\n== round-robin traffic ({args.traffic_seconds:.0f}s) ==")
-    sent = round_robin_traffic(args.base_urls, args.traffic_seconds, args.traffic_interval)
-    print(f"sent {sent} access checks across {len(args.base_urls)} pods")
+    print(f"\n== traffic + in-flight timeseries polls ({args.traffic_seconds:.0f}s) ==")
+    if args.skip_inflight_latency:
+        sent = round_robin_traffic(args.base_urls, args.traffic_seconds, args.traffic_interval)
+        latencies_by_pod: dict[str, list[float]] = {}
+        print(f"sent {sent} access checks across {len(args.base_urls)} pods")
+    else:
+        sent, latencies_by_pod = run_traffic_with_inflight_polls(
+            args.base_urls,
+            pod_labels,
+            args.traffic_seconds,
+            args.traffic_interval,
+            args.poll_interval,
+        )
+        print(f"sent {sent} access checks across {len(args.base_urls)} pods")
+        failures.extend(
+            check_inflight_latency_budget(
+                pod_labels,
+                latencies_by_pod,
+                args.p50_budget_ms,
+                args.max_budget_ms,
+            )
+        )
+
     time.sleep(3.0)
 
     print("\n== cross-pod totals (live 30m timeseries) ==")
@@ -243,13 +337,6 @@ def main() -> int:
         print(f"pod :{label} overview rpm={rpm[-1]:.1f}")
 
     failures.extend(compare_pod_totals(pod_labels, granted, denied, rpm))
-
-    if not args.skip_latency_script:
-        print("\n== per-pod latency budget ==")
-        for base_url, label in zip(args.base_urls, pod_labels, strict=True):
-            print(f"\n--- pod :{label} ---")
-            if not run_latency_script(base_url):
-                failures.append(f"pod :{label} latency budget failed")
 
     if failures:
         print("\nFAILED:")

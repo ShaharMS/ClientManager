@@ -52,15 +52,15 @@ public partial class UsagePersistenceService : BackgroundService
             {
                 using var scope = _scopeFactory.CreateScope();
                 var database = scope.ServiceProvider.GetRequiredService<IUsageSnapshotDatabase>();
-                await FlushBufferAsync(database, stoppingToken);
-                if (await MaterializeLatestSecondAsync(database, stoppingToken))
-                {
-                    _cache.InvalidateStatisticsTail();
-                }
+                var dirtyGaugePairs = await FlushBufferAsync(database, stoppingToken);
+                await MaterializeLatestSecondAsync(database, stoppingToken);
 
-                using var precomputeScope = _scopeFactory.CreateScope();
-                var precompute = precomputeScope.ServiceProvider.GetRequiredService<IStatisticsPrecomputeService>();
-                await precompute.RefreshLatestUsageGaugesAsync(stoppingToken);
+                if (dirtyGaugePairs.Count > 0)
+                {
+                    using var precomputeScope = _scopeFactory.CreateScope();
+                    var precompute = precomputeScope.ServiceProvider.GetRequiredService<IStatisticsPrecomputeService>();
+                    await precompute.UpdateLatestUsageGaugesAsync(dirtyGaugePairs, stoppingToken);
+                }
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -111,21 +111,27 @@ public partial class UsagePersistenceService : BackgroundService
         }
     }
 
-    private async Task FlushBufferAsync(
+    private async Task<IReadOnlyList<ServiceClientGaugeKey>> FlushBufferAsync(
         IUsageSnapshotDatabase database,
         CancellationToken cancellationToken)
     {
         var counts = _buffer.Drain();
         if (counts.Count == 0)
         {
-            return;
+            return [];
         }
 
         var bucketTimestamp = UsageSegmentHelper.RoundDownToSecond(DateTime.UtcNow);
         var entries = new Dictionary<string, (long amount, TimeSpan window)>(counts.Count, StringComparer.Ordinal);
+        var dirtyGaugePairs = new HashSet<ServiceClientGaugeKey>();
 
         foreach (var entry in counts)
         {
+            if (entry.Key.TargetType == TargetType.Service)
+            {
+                dirtyGaugePairs.Add(new ServiceClientGaugeKey(entry.Key.TargetId, entry.Key.ClientId));
+            }
+
             var storageKey = entry.Key.EventType == UsageEventType.Denied
                 ? UsageSegmentHelper.BuildUsageCounterKey(
                     entry.Key.ClientId,
@@ -153,8 +159,8 @@ public partial class UsagePersistenceService : BackgroundService
 
         await database.IncrementPendingCountersAsync(entries, cancellationToken);
 
-        _cache.InvalidateStatisticsTail();
         _logger.Debug("Flushed usage counter groups to storage", new { Count = counts.Count });
+        return dirtyGaugePairs.ToList();
     }
 
     private static UsageSnapshot CreateSnapshot(

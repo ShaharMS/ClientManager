@@ -17,9 +17,6 @@ x-api-environment: &api-environment
 
 x-api-service: &api-service
   image: clientmanager/api:local
-  build:
-    context: ..
-    dockerfile: ClientManager.Api/Dockerfile
   restart: unless-stopped
   environment:
     <<: *api-environment
@@ -54,16 +51,33 @@ services:
 
   api-1:
     <<: *api-service
+    build:
+      context: ..
+      dockerfile: ClientManager.Api/Dockerfile
     ports:
       - "5062:5062"
 
   api-2:
     <<: *api-service
+    depends_on:
+      api-1:
+        condition: service_started
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_started
     ports:
       - "5063:5062"
 
   api-3:
     <<: *api-service
+    depends_on:
+      api-1:
+        condition: service_started
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_started
     ports:
       - "5064:5062"
 

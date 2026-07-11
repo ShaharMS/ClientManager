@@ -91,16 +91,13 @@ There is no automated test suite or CI workflow in the repository today. Validat
 
 [`docker-compose.yml`](../docker-compose.yml) is the entry point for `docker compose up` (default: API + Admin UI with `./data`). See [`compose/README.md`](../compose/README.md) to switch stacks.
 
-**Multi-pod verification** (MongoDB + Redis + three API replicas):
-
-Edit [`docker-compose.yml`](../docker-compose.yml) to include [`compose/multipod.yml`](../compose/multipod.yml), then:
+**Multi-pod verification** (MongoDB + Redis + three API replicas in Docker):
 
 ```bash
-docker compose up --build -d
-python _scripts/seed_data.py --base-url http://localhost:5062
-python _scripts/statistics_multipod_check.py
-docker compose down
+python _scripts/run_multipod_docker.py
 ```
+
+See [Multi-pod Docker verification](scripts/multipod-docker.md). Each run wipes volumes (`down -v`), seeds catalog only, and runs cross-pod statistics checks. For richer seed data, import NDJSON via the seed API manually.
 
 Production-oriented deployments should:
 

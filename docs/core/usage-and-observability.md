@@ -89,9 +89,10 @@ When building custom monitoring, prefer statistics and accessibility endpoints o
 `IStorageReadCache` / `StorageReadCache` provides read-through caching with separate TTLs for:
 
 - **Catalog reads** — clients, services, pools, global limit rules
-- **Statistics reads** — overview and timeseries responses (split tail vs closed TTL scopes)
+- **Statistics closed base** — snapshot aggregates keyed without wall-clock `toUtc`; invalidated on rollup only
+- **Live overlay** — batched pending-counter read applied on every live (`toUtc ≈ now`) request
 
-Catalog writes from the Admin UI invalidate affected cache entries. Statistics tail cache is invalidated on the fast usage flush loop (~1s); closed-tier and overview cache invalidate on rollup.
+Catalog writes invalidate catalog cache only. Statistics closed cache is invalidated on the slow usage rollup loop; live tail freshness comes from a single `usage:` counter prefix overlay at read time (not per-flush cache busting).
 
 Hot-path configuration reads benefit from caching; usage writes go to the in-memory buffer first, so recording does not block on snapshot persistence.
 
