@@ -89,7 +89,18 @@ There is no automated test suite or CI workflow in the repository today. Validat
 
 ## Docker and Compose
 
-`docker-compose.yml` runs API + Admin UI with Development environment and a shared `./data` volume.
+[`docker-compose.yml`](../docker-compose.yml) is the entry point for `docker compose up` (default: API + Admin UI with `./data`). See [`compose/README.md`](../compose/README.md) to switch stacks.
+
+**Multi-pod verification** (MongoDB + Redis + three API replicas):
+
+Edit [`docker-compose.yml`](../docker-compose.yml) to include [`compose/multipod.yml`](../compose/multipod.yml), then:
+
+```bash
+docker compose up --build -d
+python _scripts/seed_data.py --base-url http://localhost:5062
+python _scripts/statistics_multipod_check.py
+docker compose down
+```
 
 Production-oriented deployments should:
 

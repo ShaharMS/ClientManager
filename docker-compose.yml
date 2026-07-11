@@ -1,27 +1,14 @@
-services:
-  api:
-    image: clientmanager/api:local
-    build:
-      context: .
-      dockerfile: ClientManager.Api/Dockerfile
-    restart: unless-stopped
-    environment:
-      ASPNETCORE_ENVIRONMENT: Development
-    ports:
-      - "5062:5062"
-    volumes:
-      - ./data:/app/data
+# Entry point for `docker compose up`. Switch stacks by editing the include list.
+#
+# Single API + Admin UI (default):
+include:
+  - path: compose/default.yml
 
-  adminui:
-    image: clientmanager/adminui:local
-    build:
-      context: .
-      dockerfile: ClientManager.AdminUI/Dockerfile
-    restart: unless-stopped
-    depends_on:
-      - api
-    environment:
-      ASPNETCORE_ENVIRONMENT: Development
-      ApiBaseUrl: http://api:5062
-    ports:
-      - "5100:5100"
+# Single API + Admin UI + Redis — comment default above, use both lines below:
+# include:
+#   - path: compose/default.yml
+#   - path: compose/dev.redis.yml
+
+# Multi-pod (3 APIs + MongoDB + Redis) — comment default above, use only:
+# include:
+#   - path: compose/multipod.yml

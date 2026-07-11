@@ -1,0 +1,72 @@
+# Three API replicas sharing MongoDB + Redis (production-like persistence).
+# Enable via docker-compose.yml: include only compose/multipod.yml
+
+x-api-environment: &api-environment
+  ASPNETCORE_ENVIRONMENT: Development
+  Persistence__DefaultProvider: MongoDb
+  Persistence__DefaultMongoDb__ConnectionString: mongodb://mongo:27017
+  Persistence__DefaultMongoDb__DatabaseName: ClientManager
+  Persistence__Roles__RateLimiting__Provider: Redis
+  Persistence__Roles__RateLimiting__Redis__Host: redis
+  Persistence__Roles__RateLimiting__Redis__Port: "6379"
+  Persistence__Roles__RateLimiting__Redis__DatabaseIndex: "1"
+  Persistence__Roles__Allocations__Provider: Redis
+  Persistence__Roles__Allocations__Redis__Host: redis
+  Persistence__Roles__Allocations__Redis__Port: "6379"
+  Persistence__Roles__Allocations__Redis__DatabaseIndex: "2"
+
+x-api-service: &api-service
+  image: clientmanager/api:local
+  build:
+    context: ..
+    dockerfile: ClientManager.Api/Dockerfile
+  restart: unless-stopped
+  environment:
+    <<: *api-environment
+  depends_on:
+    mongo:
+      condition: service_healthy
+    redis:
+      condition: service_started
+
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+  api-1:
+    <<: *api-service
+    ports:
+      - "5062:5062"
+
+  api-2:
+    <<: *api-service
+    ports:
+      - "5063:5062"
+
+  api-3:
+    <<: *api-service
+    ports:
+      - "5064:5062"
+
+volumes:
+  mongo-data:
+  redis-data:
