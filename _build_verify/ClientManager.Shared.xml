@@ -1,0 +1,2678 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>ClientManager.Shared</name>
+    </assembly>
+    <members>
+        <member name="T:ClientManager.Shared.Configuration.Storage.JsonFileStoreOptions">
+            <summary>
+            Settings for JSON-file-based storage. Primarily intended for local development or
+            single-instance deployments with a shared persistent volume.
+            <para>
+            These options are not bound independently from configuration. They are referenced
+            either as a default (<see cref="P:ClientManager.Shared.Configuration.Storage.PersistenceOptions.DefaultJsonFile"/>) or from a
+            per-role <see cref="T:ClientManager.Shared.Configuration.Storage.StorageRoleBinding"/>.
+            </para>
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.JsonFileStoreOptions.DataDirectory">
+            <summary>
+            The directory path where JSON data files are stored.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.JsonFileStoreOptions.PrettyPrint">
+            <summary>
+            Whether to format the JSON output with indentation for readability.
+            </summary>
+        </member>
+        <member name="T:ClientManager.Shared.Configuration.Storage.LuceneStoreOptions">
+            <summary>
+            Settings for Lucene.NET-based storage. Intended for PVC-based deployments that need
+            full-text and field-level search without an external database.
+            <para>
+            These options are not bound independently from configuration. They are referenced
+            either as a default (<see cref="P:ClientManager.Shared.Configuration.Storage.PersistenceOptions.DefaultLucene"/>) or from a
+            per-role <see cref="T:ClientManager.Shared.Configuration.Storage.StorageRoleBinding"/>.
+            </para>
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.LuceneStoreOptions.IndexDirectory">
+            <summary>
+            The directory path where Lucene index files are stored.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.LuceneStoreOptions.CommitIntervalSeconds">
+            <summary>
+            How often pending writes are committed to disk, in seconds.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.LuceneStoreOptions.MaxBufferedDocs">
+            <summary>
+            Maximum number of documents buffered in RAM before an automatic flush.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.LuceneStoreOptions.RamBufferSizeMb">
+            <summary>
+            RAM buffer size in megabytes for the index writer.
+            </summary>
+        </member>
+        <member name="T:ClientManager.Shared.Configuration.Storage.MongoDbStoreOptions">
+            <summary>
+            Connection and behavior settings for a MongoDB-backed storage role.
+            <para>
+            These options are not bound independently from configuration. They are referenced
+            either as a default (<see cref="P:ClientManager.Shared.Configuration.Storage.PersistenceOptions.DefaultMongoDb"/>) or from a
+            per-role <see cref="T:ClientManager.Shared.Configuration.Storage.StorageRoleBinding"/>.
+            </para>
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.MongoDbStoreOptions.ConnectionString">
+            <summary>
+            The MongoDB connection string (for example <c>mongodb://localhost:27017</c>).
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.MongoDbStoreOptions.DatabaseName">
+            <summary>
+            The database name to use on the server.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.MongoDbStoreOptions.UseTls">
+            <summary>
+            Whether to encrypt the connection with TLS.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.MongoDbStoreOptions.TlsCertificatePath">
+            <summary>
+            Path to a PFX client certificate used for TLS mutual authentication.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.MongoDbStoreOptions.TlsCertificatePassword">
+            <summary>
+            Password for the PFX client certificate specified in <see cref="P:ClientManager.Shared.Configuration.Storage.MongoDbStoreOptions.TlsCertificatePath"/>.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.MongoDbStoreOptions.AllowInsecureTls">
+            <summary>
+            Skips server certificate validation. Intended for development environments only.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.MongoDbStoreOptions.AuthenticationMechanism">
+            <summary>
+            The authentication mechanism to use (for example <c>SCRAM-SHA-256</c> or
+            <c>MONGODB-X509</c>). When <c>null</c>, the driver negotiates automatically.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.MongoDbStoreOptions.ConnectTimeoutSeconds">
+            <summary>
+            Maximum time in seconds to wait when establishing a new connection to the server.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.MongoDbStoreOptions.MaxConnectionPoolSize">
+            <summary>
+            Maximum number of connections allowed in the connection pool.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.MongoDbStoreOptions.RetryWrites">
+            <summary>
+            Whether write operations should be automatically retried once on transient errors.
+            </summary>
+        </member>
+        <member name="T:ClientManager.Shared.Configuration.Storage.PersistenceOptions">
+            <summary>
+            Configuration options for the persistence layer. Bound from the <c>"Persistence"</c>
+            section of <c>appsettings.json</c>.
+            <para>
+            Supports both single-provider and mixed-provider deployments. Set
+            <see cref="P:ClientManager.Shared.Configuration.Storage.PersistenceOptions.DefaultProvider"/> and the matching <c>Default*</c> options block for a
+            uniform backend, or use <see cref="P:ClientManager.Shared.Configuration.Storage.PersistenceOptions.Roles"/> to assign individual
+            <see cref="T:ClientManager.Shared.Models.Enums.StorageRole"/> values to different providers.
+            </para>
+            </summary>
+        </member>
+        <member name="F:ClientManager.Shared.Configuration.Storage.PersistenceOptions.SectionName">
+            <summary>
+            The configuration section name.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.PersistenceOptions.DefaultProvider">
+            <summary>
+            The fallback storage backend used for any <see cref="T:ClientManager.Shared.Models.Enums.StorageRole"/> that does not
+            have an explicit entry in <see cref="P:ClientManager.Shared.Configuration.Storage.PersistenceOptions.Roles"/>.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.PersistenceOptions.DefaultMongoDb">
+            <summary>
+            Default MongoDB settings applied to every role that uses
+            <see cref="F:ClientManager.Shared.Models.Enums.PersistenceProvider.MongoDb"/> unless the role's
+            <see cref="T:ClientManager.Shared.Configuration.Storage.StorageRoleBinding"/> supplies its own.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.PersistenceOptions.DefaultRedis">
+            <summary>
+            Default Redis settings applied to every role that uses
+            <see cref="F:ClientManager.Shared.Models.Enums.PersistenceProvider.Redis"/> unless the role's
+            <see cref="T:ClientManager.Shared.Configuration.Storage.StorageRoleBinding"/> supplies its own.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.PersistenceOptions.DefaultJsonFile">
+            <summary>
+            Default JSON file settings applied to every role that uses
+            <see cref="F:ClientManager.Shared.Models.Enums.PersistenceProvider.JsonFile"/> unless the role's
+            <see cref="T:ClientManager.Shared.Configuration.Storage.StorageRoleBinding"/> supplies its own.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.PersistenceOptions.DefaultLucene">
+            <summary>
+            Default Lucene.NET settings applied to every role that uses
+            <see cref="F:ClientManager.Shared.Models.Enums.PersistenceProvider.Lucene"/> unless the role's
+            <see cref="T:ClientManager.Shared.Configuration.Storage.StorageRoleBinding"/> supplies its own.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.PersistenceOptions.DefaultSqlite">
+            <summary>
+            Default SQLite settings applied to every role that uses
+            <see cref="F:ClientManager.Shared.Models.Enums.PersistenceProvider.Sqlite"/> unless the role's
+            <see cref="T:ClientManager.Shared.Configuration.Storage.StorageRoleBinding"/> supplies its own.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.PersistenceOptions.Roles">
+            <summary>
+            Optional per-role overrides. When a <see cref="T:ClientManager.Shared.Models.Enums.StorageRole"/> is present in this
+            dictionary, its binding takes precedence over <see cref="P:ClientManager.Shared.Configuration.Storage.PersistenceOptions.DefaultProvider"/> and the
+            <c>Default*</c> options.
+            </summary>
+        </member>
+        <member name="T:ClientManager.Shared.Configuration.Storage.RedisStoreOptions">
+            <summary>
+            Connection and behavior settings for a Redis-backed storage role.
+            <para>
+            These options are not bound independently from configuration. They are referenced
+            either as a default (<see cref="P:ClientManager.Shared.Configuration.Storage.PersistenceOptions.DefaultRedis"/>) or from a
+            per-role <see cref="T:ClientManager.Shared.Configuration.Storage.StorageRoleBinding"/>.
+            </para>
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.RedisStoreOptions.Host">
+            <summary>
+            Redis host or DNS name (for example <c>redis</c> or <c>cache-01.redis.internal</c>).
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.RedisStoreOptions.Port">
+            <summary>
+            Redis TCP port.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.RedisStoreOptions.User">
+            <summary>
+            Optional ACL user name for Redis authentication.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.RedisStoreOptions.UseSsl">
+            <summary>
+            Controls the Redis SSL flag directly.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.RedisStoreOptions.UseTls">
+            <summary>
+            Enables TLS behavior and implies SSL. When enabled, certificate settings are
+            applied when configured.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.RedisStoreOptions.TlsCertificatePath">
+            <summary>
+            Path to a PFX client certificate used for TLS mutual authentication.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.RedisStoreOptions.TlsCertificatePassword">
+            <summary>
+            Password for the PFX client certificate specified in <see cref="P:ClientManager.Shared.Configuration.Storage.RedisStoreOptions.TlsCertificatePath"/>.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.RedisStoreOptions.AllowInsecureTls">
+            <summary>
+            Skips server certificate validation. Intended for development environments only.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.RedisStoreOptions.ConnectTimeoutMilliseconds">
+            <summary>
+            Maximum time in milliseconds to wait when establishing a connection to the server.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.RedisStoreOptions.ConnectRetry">
+            <summary>
+            Number of connection retries attempted during the initial connect sequence.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.RedisStoreOptions.AbortOnConnectFail">
+            <summary>
+            When false, startup continues and the multiplexer keeps retrying if Redis is
+            temporarily unavailable.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.RedisStoreOptions.SyncTimeoutMilliseconds">
+            <summary>
+            Maximum time in milliseconds to wait for a synchronous operation to complete.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.RedisStoreOptions.DatabaseIndex">
+            <summary>
+            The zero-based Redis database index to use.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.RedisStoreOptions.GlobalKeyPrefix">
+            <summary>
+            Optional prefix applied to every Redis key created by this backend.
+            Include any delimiter characters you want preserved, such as <c>clientmanager:</c>.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.RedisStoreOptions.Password">
+            <summary>
+            Optional password when the connection string does not embed credentials.
+            </summary>
+        </member>
+        <member name="T:ClientManager.Shared.Configuration.Storage.SeedImportStrategy">
+            <summary>
+            Controls how seed import handles entities whose IDs already exist in storage.
+            </summary>
+        </member>
+        <member name="F:ClientManager.Shared.Configuration.Storage.SeedImportStrategy.Skip">
+            <summary>Leave existing entities unchanged; create only missing IDs.</summary>
+        </member>
+        <member name="F:ClientManager.Shared.Configuration.Storage.SeedImportStrategy.Replace">
+            <summary>Overwrite existing entities by ID or create when missing.</summary>
+        </member>
+        <member name="T:ClientManager.Shared.Configuration.Storage.SeedOptions">
+            <summary>
+            Defines initial entities to populate when the API host starts.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.SeedOptions.ClientConfigurations">
+            <summary>
+            Client configurations to create if they do not already exist.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.SeedOptions.Services">
+            <summary>
+            Service definitions to create if they do not already exist.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.SeedOptions.ResourcePools">
+            <summary>
+            Resource pool definitions to create if they do not already exist.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.SeedOptions.GlobalRateLimits">
+            <summary>
+            Global rate-limit definitions to create if they do not already exist.
+            </summary>
+        </member>
+        <member name="T:ClientManager.Shared.Configuration.Storage.SqliteStoreOptions">
+            <summary>
+            SQLite settings for the Statistics storage role.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.SqliteStoreOptions.DatabasePath">
+            <summary>
+            Path to the SQLite database file (e.g. <c>./data/statistics.db</c>).
+            </summary>
+        </member>
+        <member name="T:ClientManager.Shared.Configuration.Storage.StorageReadCacheOptions">
+            <summary>
+            Configures storage-side cache lifetimes for read-mostly catalog and statistics queries.
+            </summary>
+        </member>
+        <member name="F:ClientManager.Shared.Configuration.Storage.StorageReadCacheOptions.SectionName">
+            <summary>
+            The configuration section name.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.StorageReadCacheOptions.CatalogTtl">
+            <summary>
+            Cache lifetime for configuration catalog reads.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.StorageReadCacheOptions.HotPathCatalogTtl">
+            <summary>
+            Cache lifetime for global-limit rule lookups on the access-check hot path.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.StorageReadCacheOptions.StatisticsTtl">
+            <summary>
+            Cache lifetime for statistics and exporter reads.
+            </summary>
+        </member>
+        <member name="T:ClientManager.Shared.Configuration.Storage.StorageRoleBinding">
+            <summary>
+            Maps a single <see cref="T:ClientManager.Shared.Models.Enums.StorageRole"/> to a specific <see cref="T:ClientManager.Shared.Models.Enums.PersistenceProvider"/>
+            and its platform-specific connection settings.
+            <para>
+            Exactly one of <see cref="P:ClientManager.Shared.Configuration.Storage.StorageRoleBinding.MongoDb"/>, <see cref="P:ClientManager.Shared.Configuration.Storage.StorageRoleBinding.Redis"/>, <see cref="P:ClientManager.Shared.Configuration.Storage.StorageRoleBinding.JsonFile"/>,
+            or <see cref="P:ClientManager.Shared.Configuration.Storage.StorageRoleBinding.Lucene"/> should be populated, matching the value of
+            <see cref="P:ClientManager.Shared.Configuration.Storage.StorageRoleBinding.Provider"/>.
+            </para>
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.StorageRoleBinding.Provider">
+            <summary>
+            The storage backend to use for this role.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.StorageRoleBinding.MongoDb">
+            <summary>
+            MongoDB connection settings. Populated when <see cref="P:ClientManager.Shared.Configuration.Storage.StorageRoleBinding.Provider"/> is
+            <see cref="F:ClientManager.Shared.Models.Enums.PersistenceProvider.MongoDb"/>.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.StorageRoleBinding.Redis">
+            <summary>
+            Redis connection settings. Populated when <see cref="P:ClientManager.Shared.Configuration.Storage.StorageRoleBinding.Provider"/> is
+            <see cref="F:ClientManager.Shared.Models.Enums.PersistenceProvider.Redis"/>.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.StorageRoleBinding.JsonFile">
+            <summary>
+            JSON file storage settings. Populated when <see cref="P:ClientManager.Shared.Configuration.Storage.StorageRoleBinding.Provider"/> is
+            <see cref="F:ClientManager.Shared.Models.Enums.PersistenceProvider.JsonFile"/>.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.StorageRoleBinding.Lucene">
+            <summary>
+            Lucene.NET index settings. Populated when <see cref="P:ClientManager.Shared.Configuration.Storage.StorageRoleBinding.Provider"/> is
+            <see cref="F:ClientManager.Shared.Models.Enums.PersistenceProvider.Lucene"/>.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.StorageRoleBinding.Sqlite">
+            <summary>
+            SQLite settings. Populated when <see cref="P:ClientManager.Shared.Configuration.Storage.StorageRoleBinding.Provider"/> is
+            <see cref="F:ClientManager.Shared.Models.Enums.PersistenceProvider.Sqlite"/>.
+            </summary>
+        </member>
+        <member name="T:ClientManager.Shared.Configuration.Storage.UsageTrackingOptions">
+            <summary>
+            Configuration for usage-buffer flush cadence and retention windows.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.UsageTrackingOptions.FlushInterval">
+            <summary>
+            How often the slower rollup and pruning loop runs.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.UsageTrackingOptions.SecondFlushInterval">
+            <summary>
+            How often the fast per-second flush loop runs.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.UsageTrackingOptions.SecondRetention">
+            <summary>
+            Retention window for per-second buckets.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.UsageTrackingOptions.OneMinuteRetention">
+            <summary>
+            Retention window for one-minute buckets.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.UsageTrackingOptions.FiveMinuteRetention">
+            <summary>
+            Retention window for five-minute buckets.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.UsageTrackingOptions.HourlyRetention">
+            <summary>
+            Retention window for hourly buckets.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Configuration.Storage.UsageTrackingOptions.DailyRetention">
+            <summary>
+            Retention window for daily buckets.
+            </summary>
+        </member>
+        <member name="T:ClientManager.Shared.Contracts.Statistics.IdentifierList">
+            <summary>
+            An immutable list of identifiers transported as a single comma-separated value.
+            </summary>
+            <remarks>
+            This type owns the one documented parsing rule for repeated identifier query parameters
+            (such as <c>targetIds</c> and <c>clientIds</c>): the raw value is split on commas, each
+            entry is trimmed, and empty entries are dropped. Controllers bind directly to this type via
+            <see cref="T:ClientManager.Shared.Contracts.Statistics.IdentifierListTypeConverter"/> instead of splitting strings themselves.
+            </remarks>
+        </member>
+        <member name="F:ClientManager.Shared.Contracts.Statistics.IdentifierList.Separator">
+            <summary>
+            The character that separates identifiers in the transported value.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Contracts.Statistics.IdentifierList.Empty">
+            <summary>
+            An empty identifier list, representing an absent or blank value.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Contracts.Statistics.IdentifierList.Values">
+            <summary>
+            The parsed, trimmed identifiers in source order.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Contracts.Statistics.IdentifierList.HasValues">
+            <summary>
+            Whether the list contains at least one identifier.
+            </summary>
+        </member>
+        <member name="M:ClientManager.Shared.Contracts.Statistics.IdentifierList.Parse(System.String)">
+            <summary>
+            Parses a comma-separated value into an <see cref="T:ClientManager.Shared.Contracts.Statistics.IdentifierList"/>, trimming entries
+            and dropping blanks. Returns <see cref="P:ClientManager.Shared.Contracts.Statistics.IdentifierList.Empty"/> for null, empty, or whitespace input.
+            </summary>
+            <param name="raw">The raw comma-separated value.</param>
+            <returns>The parsed identifier list.</returns>
+        </member>
+        <member name="M:ClientManager.Shared.Contracts.Statistics.IdentifierList.Join(System.Collections.Generic.IEnumerable{System.String})">
+            <summary>
+            Joins the supplied identifiers into a single comma-separated value using the shared rule.
+            </summary>
+            <param name="values">The identifiers to join.</param>
+            <returns>The comma-separated representation.</returns>
+        </member>
+        <member name="M:ClientManager.Shared.Contracts.Statistics.IdentifierList.ToQueryValue">
+            <summary>
+            Returns the comma-separated representation of this list.
+            </summary>
+            <returns>The comma-separated value.</returns>
+        </member>
+        <member name="M:ClientManager.Shared.Contracts.Statistics.IdentifierList.ToString">
+            <inheritdoc />
+        </member>
+        <member name="T:ClientManager.Shared.Contracts.Statistics.IdentifierListTypeConverter">
+            <summary>
+            Converts between the comma-separated transport string and <see cref="T:ClientManager.Shared.Contracts.Statistics.IdentifierList"/>.
+            </summary>
+            <remarks>
+            Registering this converter on <see cref="T:ClientManager.Shared.Contracts.Statistics.IdentifierList"/> lets ASP.NET Core model binding
+            produce an <see cref="T:ClientManager.Shared.Contracts.Statistics.IdentifierList"/> directly from a query string, so controllers never
+            need their own string-splitting helpers.
+            </remarks>
+        </member>
+        <member name="M:ClientManager.Shared.Contracts.Statistics.IdentifierListTypeConverter.CanConvertFrom(System.ComponentModel.ITypeDescriptorContext,System.Type)">
+            <inheritdoc />
+        </member>
+        <member name="M:ClientManager.Shared.Contracts.Statistics.IdentifierListTypeConverter.ConvertFrom(System.ComponentModel.ITypeDescriptorContext,System.Globalization.CultureInfo,System.Object)">
+            <inheritdoc />
+        </member>
+        <member name="M:ClientManager.Shared.Contracts.Statistics.IdentifierListTypeConverter.CanConvertTo(System.ComponentModel.ITypeDescriptorContext,System.Type)">
+            <inheritdoc />
+        </member>
+        <member name="M:ClientManager.Shared.Contracts.Statistics.IdentifierListTypeConverter.ConvertTo(System.ComponentModel.ITypeDescriptorContext,System.Globalization.CultureInfo,System.Object,System.Type)">
+            <inheritdoc />
+        </member>
+        <member name="T:ClientManager.Shared.Contracts.Statistics.StatisticsQueryParameters">
+            <summary>
+            Canonical query-parameter names used by the statistics endpoints.
+            </summary>
+            <remarks>
+            These names are part of the cross-host contract: the public API binds them from
+            incoming requests and the internal storage routes emit the same names when forwarding
+            the request. Both sides must reference these constants so the names stay synchronized.
+            </remarks>
+        </member>
+        <member name="F:ClientManager.Shared.Contracts.Statistics.StatisticsQueryParameters.FilterType">
+            <summary>
+            The target type discriminator (service or resource pool).
+            </summary>
+        </member>
+        <member name="F:ClientManager.Shared.Contracts.Statistics.StatisticsQueryParameters.TargetIds">
+            <summary>
+            The comma-separated identifiers of the targeted services or resource pools.
+            </summary>
+        </member>
+        <member name="F:ClientManager.Shared.Contracts.Statistics.StatisticsQueryParameters.ClientIds">
+            <summary>
+            The optional comma-separated client identifiers used to scope the result.
+            </summary>
+        </member>
+        <member name="F:ClientManager.Shared.Contracts.Statistics.StatisticsQueryParameters.ClientId">
+            <summary>
+            A single optional client identifier used to scope the result.
+            </summary>
+        </member>
+        <member name="F:ClientManager.Shared.Contracts.Statistics.StatisticsQueryParameters.From">
+            <summary>
+            The inclusive start of the requested time range (UTC, ISO 8601).
+            </summary>
+        </member>
+        <member name="F:ClientManager.Shared.Contracts.Statistics.StatisticsQueryParameters.To">
+            <summary>
+            The inclusive end of the requested time range (UTC, ISO 8601).
+            </summary>
+        </member>
+        <member name="F:ClientManager.Shared.Contracts.Statistics.StatisticsQueryParameters.Granularity">
+            <summary>
+            The time-bucket granularity for aggregated results, or simply put, the amount of time each bucket of the result represents (Minutes, Hours, Etc.). 
+            </summary>
+        </member>
+        <member name="T:ClientManager.Shared.Logging.AppLogger`1">
+             <summary>
+             NLog-backed implementation of <see cref="T:ClientManager.Shared.Logging.IAppLogger`1"/>.
+            
+             <para>
+                 Attaches the public properties of the <c>extraData</c> object to each log event
+                 under the <c>ExtraData.</c> prefix using reflection, making them available as
+                 structured fields in NLog layouts and sinks (e.g. JSON file, Seq, Elasticsearch).
+             </para>
+             </summary>
+             <typeparam name="T">The category type for the logger.</typeparam>
+        </member>
+        <member name="T:ClientManager.Shared.Logging.IAppLogger`1">
+            <summary>
+            Structured logging interface that enforces static messages with optional exception and extra data.
+            </summary>
+            <typeparam name="T">The category type for the logger - typically the consuming class,
+            used to name the underlying NLog logger.</typeparam>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Entities.ClientConfiguration">
+             <summary>
+             Root configuration document for a single client. Defines everything the system needs to
+             know about a client: which services it may call, how fast it may call them, and how many
+             resource-pool slots it may hold.
+            
+             <para><strong>Settings hierarchy and override model</strong></para>
+             <para>
+                 Several settings follow a <em>client-level default → per-target override</em> pattern.
+                 The client-level value acts as the fallback; a per-target value (when non-null) wins.
+             </para>
+             <list type="bullet">
+                 <item>
+                     <description>
+                         <see cref="P:ClientManager.Shared.Models.Entities.ClientConfiguration.ContributesToGlobalLimits"/> is the client-wide default.
+                         <see cref="P:ClientManager.Shared.Models.Entities.ServiceAccessSettings.ContributesToGlobalLimit"/> overrides it for
+                         one specific service.
+                     </description>
+                 </item>
+                 <item>
+                     <description>
+                         <see cref="P:ClientManager.Shared.Models.Entities.ClientConfiguration.ExemptFromGlobalLimits"/> is the client-wide default.
+                         <see cref="P:ClientManager.Shared.Models.Entities.ServiceAccessSettings.ExemptFromGlobalLimit"/> overrides it for one
+                         specific service.
+                     </description>
+                 </item>
+                 <item>
+                     <description>
+                         <see cref="P:ClientManager.Shared.Models.Entities.ClientConfiguration.GlobalRateLimit"/> applies across all services as a blanket throttle.
+                         <see cref="P:ClientManager.Shared.Models.Entities.ServiceAccessSettings.RateLimit"/> adds a separate, per-service
+                         throttle that is evaluated <em>in addition to</em> (not instead of) the global one.
+                     </description>
+                 </item>
+             </list>
+            
+             <para><strong>Access model</strong></para>
+             <para>
+                 Access is <strong>deny-by-default</strong>. A client can only reach a service if:
+                 (1) <see cref="P:ClientManager.Shared.Models.Entities.ClientConfiguration.IsEnabled"/> is <c>true</c>,
+                 (2) a <see cref="T:ClientManager.Shared.Models.Entities.ServiceAccessSettings"/> entry exists in <see cref="P:ClientManager.Shared.Models.Entities.ClientConfiguration.Services"/> for
+                 that service, and
+                 (3) <see cref="P:ClientManager.Shared.Models.Entities.ServiceAccessSettings.IsAllowed"/> is <c>true</c>.
+                 After those static checks pass, the request still has to clear global and per-client
+                 rate limits before it is granted.
+             </para>
+            
+             <para><strong>Resource pool quotas</strong></para>
+             <para>
+                 Entries in <see cref="P:ClientManager.Shared.Models.Entities.ClientConfiguration.ResourcePools"/> set per-client concurrency caps on resource
+                 pools. They do <em>not</em> grant or deny access on their own - they only limit how
+                 many slots this specific client may hold at the same time. If no entry exists for a
+                 pool, the client can still acquire slots (up to the pool's system-wide
+                 <see cref="P:ClientManager.Shared.Models.Entities.ResourcePool.MaxSlots"/>), but has no individual cap.
+             </para>
+             </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.ClientConfiguration.Id">
+            <summary>
+            Unique identifier for the client.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.ClientConfiguration.Name">
+            <summary>
+            Human-readable display name.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.ClientConfiguration.IsEnabled">
+            <summary>
+            Whether this client is currently active. Disabled clients are rejected immediately
+            with a 403 Forbidden response - no further checks (rate limits, service access, quotas)
+            are evaluated.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.ClientConfiguration.ContributesToGlobalLimits">
+             <summary>
+             Whether this client's requests count toward the shared global rate-limit counters
+             (<see cref="P:ClientManager.Shared.Models.Entities.ClientConfiguration.GlobalRateLimit"/> entities with <see cref="F:ClientManager.Shared.Models.Enums.TargetType.Service"/> or
+             <see cref="F:ClientManager.Shared.Models.Enums.TargetType.ResourcePool"/>).
+            
+             <para>
+                 When <c>true</c> (the default), every granted or evaluated request from this client
+                 increments the global counter, consuming capacity for all other clients too.
+                 Set to <c>false</c> for internal/trusted clients whose traffic should not eat into
+                 the shared budget.
+             </para>
+             <para>
+                 Can be overridden per service via
+                 <see cref="P:ClientManager.Shared.Models.Entities.ServiceAccessSettings.ContributesToGlobalLimit"/>.
+             </para>
+             </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.ClientConfiguration.ExemptFromGlobalLimits">
+             <summary>
+             Whether this client is exempt from being <em>denied</em> by global rate limits.
+            
+             <para>
+                 This is independent of <see cref="P:ClientManager.Shared.Models.Entities.ClientConfiguration.ContributesToGlobalLimits"/>. A client can
+                 contribute to the counter (so its traffic is visible) yet still be exempt from
+                 denial (so it is never blocked). Conversely, a client can be non-contributing
+                 but still subject to global denials.
+             </para>
+             <para>
+                 Defaults to <c>false</c>. Can be overridden per service via
+                 <see cref="P:ClientManager.Shared.Models.Entities.ServiceAccessSettings.ExemptFromGlobalLimit"/>.
+             </para>
+             </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.ClientConfiguration.GlobalRateLimit">
+             <summary>
+             Optional per-client rate limit applied across <em>all</em> service requests from this
+             client, regardless of which service is being called.
+            
+             <para>
+                 Useful for throttling noisy or spammy clients without disabling them entirely.
+                 When a service also has its own <see cref="P:ClientManager.Shared.Models.Entities.ServiceAccessSettings.RateLimit"/>,
+                 <em>both</em> limits are evaluated - the most restrictive one wins.
+             </para>
+             </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.ClientConfiguration.Services">
+             <summary>
+             Per-service access settings, keyed by service ID.
+            
+             <para>
+                 If a service ID is absent from this dictionary, the client has no relationship
+                 with that service and requests are rejected with <see cref="F:System.Net.HttpStatusCode.Unauthorized"/> (401).
+             </para>
+             </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.ClientConfiguration.ResourcePools">
+             <summary>
+             Per-resource-pool quota settings, keyed by resource pool ID.
+            
+             <para>
+                 Each entry caps how many concurrent slots this client may hold in the
+                 corresponding pool. Pools not listed here have no per-client cap (the
+                 resource pool specific <see cref="P:ClientManager.Shared.Models.Entities.ResourcePool.MaxSlots"/> still applies).
+             </para>
+             </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.ClientConfiguration.CreatedAt">
+            <summary>
+            UTC timestamp when this configuration was created.
+            </summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Entities.ClientRateLimit">
+             <summary>
+             Rate-limit configuration for a single client. Reused in two scopes:
+             <list type="bullet">
+                 <item>
+                     <description>
+                         <strong>Client-wide</strong> via <see cref="P:ClientManager.Shared.Models.Entities.ClientConfiguration.GlobalRateLimit"/>:
+                         caps the client's total request rate across all services.
+                     </description>
+                 </item>
+                 <item>
+                     <description>
+                         <strong>Per-service</strong> via <see cref="P:ClientManager.Shared.Models.Entities.ServiceAccessSettings.RateLimit"/>:
+                         caps the client's request rate to one specific service. When both are present,
+                         both are evaluated - the most restrictive one wins.
+                     </description>
+                 </item>
+             </list>
+            
+             <para>
+                 This record only governs <em>per-client</em> throttling. System-wide aggregate limits
+                 across all clients are defined separately via <see cref="T:ClientManager.Shared.Models.Entities.GlobalRateLimit"/>.
+             </para>
+             </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.ClientRateLimit.Strategy">
+            <summary>
+            The rate limiting algorithm to use.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.ClientRateLimit.MaxRequests">
+            <summary>
+            Maximum requests in the window, or bucket capacity for <see cref="F:ClientManager.Shared.Models.Enums.RateLimitStrategy.TokenBucket"/>.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.ClientRateLimit.Window">
+            <summary>
+            Window duration, or refill interval for <see cref="F:ClientManager.Shared.Models.Enums.RateLimitStrategy.TokenBucket"/>.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.ClientRateLimit.TokensPerRefill">
+            <summary>
+            Tokens added per refill. Only used with <see cref="F:ClientManager.Shared.Models.Enums.RateLimitStrategy.TokenBucket"/>.
+            </summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Entities.GlobalRateLimit">
+             <summary>
+             A system-wide rate limit shared across all clients for a single target (service or resource pool).
+            
+             <para><strong>How it differs from <see cref="T:ClientManager.Shared.Models.Entities.ClientRateLimit"/></strong></para>
+             <para>
+                 A <see cref="T:ClientManager.Shared.Models.Entities.ClientRateLimit"/> throttles one individual client. A
+                 <see cref="T:ClientManager.Shared.Models.Entities.GlobalRateLimit"/> throttles the <em>aggregate</em> traffic of every client
+                 hitting the same target. Both can exist simultaneously - per-client limits prevent any
+                 single client from being too noisy, while the global limit protects the target from
+                 being overwhelmed even if every client is individually well-behaved.
+             </para>
+            
+             <para><strong>Contribute vs. exempt</strong></para>
+             <para>
+                 Not every client interacts with the global counter in the same way. Two independent
+                 flags control a client's relationship to this limit:
+             </para>
+             <list type="bullet">
+                 <item>
+                     <description>
+                         <strong>Contributes</strong>
+                         (<see cref="P:ClientManager.Shared.Models.Entities.ClientConfiguration.ContributesToGlobalLimits"/> /
+                         <see cref="P:ClientManager.Shared.Models.Entities.ServiceAccessSettings.ContributesToGlobalLimit"/>):
+                         when <c>true</c>, the client's requests increment this counter, consuming
+                         shared capacity. Disable this for internal or trusted clients whose traffic
+                         should not eat into the budget visible to others.
+                     </description>
+                 </item>
+                 <item>
+                     <description>
+                         <strong>Exempt</strong>
+                         (<see cref="P:ClientManager.Shared.Models.Entities.ClientConfiguration.ExemptFromGlobalLimits"/> /
+                         <see cref="P:ClientManager.Shared.Models.Entities.ServiceAccessSettings.ExemptFromGlobalLimit"/>):
+                         when <c>true</c>, the client is never denied by this counter, even if it is
+                         exhausted. Use this for high-priority clients that must always get through.
+                     </description>
+                 </item>
+             </list>
+             <para>
+                 These two flags are orthogonal: a client can contribute without being exempt
+                 (the common case), be exempt without contributing (high-priority, invisible),
+                 both, or neither.
+             </para>
+            
+             <para><strong>Applicability by target type</strong></para>
+             <para>
+                 For <see cref="F:ClientManager.Shared.Models.Enums.TargetType.Service"/>: caps aggregate request throughput (e.g. "this
+                 API can handle 10,000 requests/minute total").
+                 For <see cref="F:ClientManager.Shared.Models.Enums.TargetType.ResourcePool"/>: caps aggregate slot-acquisition frequency,
+                 preventing thundering-herd bursts against the pool, independent of the pool's slot
+                 capacity.
+             </para>
+             </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.GlobalRateLimit.Id">
+            <summary>
+            Unique identifier for this global rate limit.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.GlobalRateLimit.TargetId">
+            <summary>
+            ID of the service or resource pool this limit applies to.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.GlobalRateLimit.TargetType">
+            <summary>
+            Whether the target is a service or a resource pool. Determines the access-control
+            path that evaluates this limit.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.GlobalRateLimit.Strategy">
+            <summary>
+            The rate-limiting algorithm to use.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.GlobalRateLimit.MaxRequests">
+            <summary>
+            Maximum aggregate requests allowed in the window (or bucket capacity for
+            <see cref="F:ClientManager.Shared.Models.Enums.RateLimitStrategy.TokenBucket"/>). This is the total across <em>all</em>
+            contributing clients, not per-client.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.GlobalRateLimit.Window">
+            <summary>
+            Window duration (or refill interval for <see cref="F:ClientManager.Shared.Models.Enums.RateLimitStrategy.TokenBucket"/>).
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.GlobalRateLimit.TokensPerRefill">
+            <summary>
+            Tokens added per refill. Only used with <see cref="F:ClientManager.Shared.Models.Enums.RateLimitStrategy.TokenBucket"/>.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.GlobalRateLimit.CreatedAt">
+            <summary>
+            UTC timestamp when this global rate limit was created.
+            </summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Entities.RateLimitResult">
+            <summary>
+            Result of evaluating a rate limit.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.RateLimitResult.IsAllowed">
+            <summary>
+            Whether the request is allowed under the evaluated policy.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.RateLimitResult.RemainingRequests">
+            <summary>
+            Remaining requests or tokens before the limit is exhausted.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.RateLimitResult.RetryAfterSeconds">
+            <summary>
+            Seconds until the caller may retry when the request is denied.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.RateLimitResult.IsGlobalLimitHit">
+            <summary>
+            Whether the denial was caused by a global aggregate limit.
+            </summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Entities.ResourceAllocation">
+             <summary>
+             Represents one active (or formerly active) slot held by a client in a resource pool.
+            
+             <para>
+                 Created when a resource aquisition attempt succeeds. Freed in one of
+                 two ways: the client explicitly releases the resource (and emits
+                 a <see cref="F:ClientManager.Shared.Models.Enums.UsageEventType.Released"/> event), or the allocation outlives its
+                 <see cref="P:ClientManager.Shared.Models.Entities.ResourceAllocation.ExpiresAt"/> and is cleaned up by a cleanup service (no
+                 Released event emitted - the slot is silently reclaimed).
+             </para>
+             </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.ResourceAllocation.Id">
+            <summary>
+            Unique identifier for this allocation.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.ResourceAllocation.ResourcePoolId">
+            <summary>
+            ID of the resource pool this slot belongs to.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.ResourceAllocation.ClientId">
+            <summary>
+            ID of the client holding this slot.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.ResourceAllocation.AcquiredAt">
+            <summary>
+            UTC timestamp when this slot was acquired.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.ResourceAllocation.ExpiresAt">
+            <summary>
+            UTC timestamp when this allocation expires if not released.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.ResourceAllocation.IsReleased">
+            <summary>
+            Whether this allocation has been explicitly released.
+            </summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Entities.ResourcePool">
+             <summary>
+             Defines a named pool of finite, stateful resources that clients acquire and release
+             (databases, message brokers, streaming endpoints, etc.).
+            
+             <para><strong>Capacity model</strong></para>
+             <para>
+                 <see cref="P:ClientManager.Shared.Models.Entities.ResourcePool.MaxSlots"/> is the hard, system-wide ceiling - no more than this many
+                 connections may be active at the same time across <em>all</em> clients. Individual
+                 clients can be further restricted via <see cref="P:ClientManager.Shared.Models.Entities.ResourcePoolSettings.MaxSlots"/> in
+                 their <see cref="P:ClientManager.Shared.Models.Entities.ClientConfiguration.ResourcePools"/> dictionary (e.g. "this pool
+                 allows 100 total connections, but client X may hold at most 10").
+             </para>
+            
+             <para><strong>Slot lifecycle</strong></para>
+             <para>
+                 A slot is created on a successful acquire, held by the client for the duration of its
+                 work, and freed either by an explicit release or automatically after
+                 <see cref="P:ClientManager.Shared.Models.Entities.ResourcePool.AllocationTtl"/> expires. Expired allocations are cleaned up by a background
+                 service (<c>AllocationCleanupService</c>) and do not produce a
+                 <see cref="F:ClientManager.Shared.Models.Enums.UsageEventType.Released"/> usage event.
+             </para>
+            
+             <para><strong>Rate limits on top of slot quotas</strong></para>
+             <para>
+                 Optionally, a <see cref="T:ClientManager.Shared.Models.Entities.GlobalRateLimit"/> with
+                 <see cref="F:ClientManager.Shared.Models.Enums.TargetType.ResourcePool"/> can be configured to cap the
+                 <em>frequency</em> of acquisition attempts, independent of how many slots are free.
+                 This prevents thundering-herd bursts from overwhelming the backing resource.
+             </para>
+             </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.ResourcePool.Id">
+            <summary>
+            Unique identifier for the resource pool.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.ResourcePool.Name">
+            <summary>
+            Human-readable display name, used for error messages and metrics tags.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.ResourcePool.MaxSlots">
+            <summary>
+            Maximum number of concurrent slots available system-wide, across all clients.
+            This is the absolute hard cap - once reached, all further acquisitions are denied
+            until a slot is released or expires.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.ResourcePool.AllocationTtl">
+            <summary>
+            Duration after which an unreleased allocation automatically expires. Acts as a
+            safety net for clients that crash or forget to release - without this, leaked slots
+            would permanently reduce the pool's usable capacity.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.ResourcePool.IsEnabled">
+            <summary>
+            Whether this resource pool is currently active. Disabled pools reject all acquisition
+            attempts with a <see cref="F:System.Net.HttpStatusCode.Forbidden"/> response.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.ResourcePool.CreatedAt">
+            <summary>
+            UTC timestamp when this resource pool was registered in the system.
+            </summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Entities.ResourcePoolSettings">
+             <summary>
+             Per-client quota for a resource pool, stored in
+             <see cref="P:ClientManager.Shared.Models.Entities.ClientConfiguration.ResourcePools"/> keyed by pool ID.
+            
+             <para>
+                 This caps how many slots <em>one specific client</em> can hold at the same time,
+                 as opposed to <see cref="P:ClientManager.Shared.Models.Entities.ResourcePool.MaxSlots"/> which caps the pool system-wide.
+                 For example, a pool might allow 100 total connections but limit any single client
+                 to 10 so that one greedy consumer cannot starve the others.
+             </para>
+             </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.ResourcePoolSettings.MaxSlots">
+            <summary>
+            Maximum number of concurrent slots this client may hold in the pool.
+            Must be ≤ the pool's <see cref="P:ClientManager.Shared.Models.Entities.ResourcePool.MaxSlots"/>; otherwise the
+            system-wide cap would always be hit first.
+            </summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Entities.Service">
+             <summary>
+             Defines a stateless, request/response target that clients can be granted access to
+             (an API, microservice, or web endpoint).
+            
+             <para>
+                 Access to a service is controlled per-client through
+                 <see cref="P:ClientManager.Shared.Models.Entities.ClientConfiguration.Services"/>. Rate limits can be applied per-client
+                 (<see cref="T:ClientManager.Shared.Models.Entities.ClientRateLimit"/>), per-client-per-service
+                 (<see cref="P:ClientManager.Shared.Models.Entities.ServiceAccessSettings.RateLimit"/>), and globally
+                 (<see cref="T:ClientManager.Shared.Models.Entities.GlobalRateLimit"/> with <see cref="F:ClientManager.Shared.Models.Enums.TargetType.Service"/>).
+             </para>
+             </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.Service.Id">
+            <summary>
+            Unique identifier for the service.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.Service.Name">
+            <summary>
+            Human-readable display name, used for error messages and metrics tags.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.Service.IsEnabled">
+            <summary>
+            Whether this service is currently active. Disabled services reject all requests with a <see cref="F:System.Net.HttpStatusCode.Forbidden"/> response.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.Service.CreatedAt">
+            <summary>
+            UTC timestamp when this service was created (or at least, when it was registered in the system).
+            </summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Entities.ServiceAccessSettings">
+             <summary>
+             Per-service access settings for a single client, nested inside
+             <see cref="P:ClientManager.Shared.Models.Entities.ClientConfiguration.Services"/> (keyed by service ID).
+            
+             <para>
+                 This record controls both the <em>static</em> access decision (is the client allowed
+                 at all?) and the <em>dynamic</em> override knobs for rate-limit behavior on this
+                 specific service. Any nullable property left as <c>null</c> inherits the client-wide
+                 default from <see cref="T:ClientManager.Shared.Models.Entities.ClientConfiguration"/>.
+             </para>
+             </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.ServiceAccessSettings.IsAllowed">
+            <summary>
+            Whether the client is allowed to access this service.
+            <para>
+                If no <see cref="T:ClientManager.Shared.Models.Entities.ServiceAccessSettings"/> entry exists at all for this
+                client–service pair, the access check returns
+                <see cref="F:System.Net.HttpStatusCode.Unauthorized"/> (no relationship configured).
+                If an entry exists but <see cref="P:ClientManager.Shared.Models.Entities.ServiceAccessSettings.IsAllowed"/> is <c>false</c>, the check
+                returns <see cref="F:System.Net.HttpStatusCode.Forbidden"/> (explicitly blocked).
+            </para>
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.ServiceAccessSettings.ContributesToGlobalLimit">
+             <summary>
+             Whether this client's requests to <em>this specific service</em> count toward the
+             service's <see cref="T:ClientManager.Shared.Models.Entities.GlobalRateLimit"/> counter.
+            
+             <para>
+                 When <c>null</c>, inherits from
+                 <see cref="P:ClientManager.Shared.Models.Entities.ClientConfiguration.ContributesToGlobalLimits"/>.
+                 Set explicitly to decouple this service from the client-wide default - for example,
+                 to exclude a health-check service from contributing while the client normally
+                 contributes everywhere else.
+             </para>
+             </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.ServiceAccessSettings.ExemptFromGlobalLimit">
+             <summary>
+             Whether this client is exempt from being denied by the service's
+             <see cref="T:ClientManager.Shared.Models.Entities.GlobalRateLimit"/>.
+            
+             <para>
+                 When <c>null</c>, inherits from
+                 <see cref="P:ClientManager.Shared.Models.Entities.ClientConfiguration.ExemptFromGlobalLimits"/>.
+                 Set explicitly to grant priority access to a critical service without changing the
+                 client's global exemption posture.
+             </para>
+             </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.ServiceAccessSettings.RateLimit">
+             <summary>
+             Optional per-client rate limit scoped to this service only.
+            
+             <para>
+                 When set, this limit is evaluated <em>in addition to</em> the client's
+                 <see cref="P:ClientManager.Shared.Models.Entities.ClientConfiguration.GlobalRateLimit"/> - both must have remaining
+                 capacity for the request to be granted. This allows fine-grained throttling
+                 (e.g. a client may be allowed 1,000 req/min globally but only 100 req/min to
+                 an expensive reporting service).
+             </para>
+             </summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Entities.UsageBucket">
+            <summary>
+            A single time-window of aggregated usage counts within a <see cref="T:ClientManager.Shared.Models.Entities.UsageSnapshot"/>.
+            The window's duration is implied by the parent snapshot's <see cref="T:ClientManager.Shared.Models.Enums.BucketGranularity"/>.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.UsageBucket.Timestamp">
+            <summary>
+            UTC start of this time bucket.
+            <para>
+                The bucket covers the half-open interval
+                <c>[Timestamp, Timestamp + granularity)</c>. For example, with
+                <see cref="F:ClientManager.Shared.Models.Enums.BucketGranularity.Hour"/> and a timestamp of
+                <c>2024-01-01T14:00:00Z</c>, the bucket covers 14:00:00–14:59:59.
+            </para>
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.UsageBucket.GrantedCount">
+            <summary>
+            Number of <see cref="F:ClientManager.Shared.Models.Enums.UsageEventType.Granted"/> events in this window - successful
+            requests (for services) or successful slot acquisitions (for resource pools).
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.UsageBucket.DeniedCount">
+            <summary>
+            Total denied events in this window (sum of category counters).
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.UsageBucket.ReleasedCount">
+            <summary>
+            Number of <see cref="F:ClientManager.Shared.Models.Enums.UsageEventType.Released"/> events in this window.
+            Always <c>0</c> for <see cref="F:ClientManager.Shared.Models.Enums.TargetType.Service"/> targets because services are
+            stateless and have nothing to release.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.UsageBucket.ActiveCount">
+             <summary>
+             Point-in-time snapshot of how many resource-pool slots the client held when this
+             bucket was persisted. Always <c>0</c> for <see cref="F:ClientManager.Shared.Models.Enums.TargetType.Service"/> targets.
+            
+             <para>
+                 Unlike the other counters (which are cumulative over the bucket's window), this
+                 is a gauge captured at flush time. It's useful for observing concurrency trends
+                 (e.g. "client X consistently holds 8 of its 10 allowed slots").
+             </para>
+             </summary>
+        </member>
+        <member name="M:ClientManager.Shared.Models.Entities.UsageBucketExtensions.GetDeniedBreakdown(ClientManager.Shared.Models.Entities.UsageBucket)">
+            <summary>Legacy snapshots may only have DeniedCount; attribute remainder to Blocked.</summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Entities.UsageBufferKey">
+            <summary>
+            Composite key for the in-memory usage buffer.
+            </summary>
+            <param name="ClientId">The client that generated the event.</param>
+            <param name="TargetType">The target scope for the event.</param>
+            <param name="TargetId">The target identifier.</param>
+            <param name="EventType">The recorded event type.</param>
+            <param name="DenialCategory">Required when <paramref name="EventType"/> is <see cref="F:ClientManager.Shared.Models.Enums.UsageEventType.Denied"/>.</param>
+        </member>
+        <member name="M:ClientManager.Shared.Models.Entities.UsageBufferKey.#ctor(System.String,ClientManager.Shared.Models.Enums.TargetType,System.String,ClientManager.Shared.Models.Enums.UsageEventType,System.Nullable{ClientManager.Shared.Models.Enums.UsageDenialCategory})">
+            <summary>
+            Composite key for the in-memory usage buffer.
+            </summary>
+            <param name="ClientId">The client that generated the event.</param>
+            <param name="TargetType">The target scope for the event.</param>
+            <param name="TargetId">The target identifier.</param>
+            <param name="EventType">The recorded event type.</param>
+            <param name="DenialCategory">Required when <paramref name="EventType"/> is <see cref="F:ClientManager.Shared.Models.Enums.UsageEventType.Denied"/>.</param>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.UsageBufferKey.ClientId">
+            <summary>The client that generated the event.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.UsageBufferKey.TargetType">
+            <summary>The target scope for the event.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.UsageBufferKey.TargetId">
+            <summary>The target identifier.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.UsageBufferKey.EventType">
+            <summary>The recorded event type.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.UsageBufferKey.DenialCategory">
+            <summary>Required when <paramref name="EventType"/> is <see cref="F:ClientManager.Shared.Models.Enums.UsageEventType.Denied"/>.</summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Entities.UsageSnapshot">
+             <summary>
+             A time-series document recording usage for one client against one target at a given
+             <see cref="T:ClientManager.Shared.Models.Enums.BucketGranularity"/>.
+            
+             <para><strong>How snapshots are built</strong></para>
+             <para>
+                 As <see cref="T:ClientManager.Shared.Models.Enums.UsageEventType"/> events are emitted during access checks and resource
+                 allocations, they accumulate in an in-memory buffer. A background
+                 service periodically drains that buffer, groups the counts by
+                 (client, target, granularity), and upserts them into the matching snapshot document.
+                 Each flush appends or merges into the <see cref="P:ClientManager.Shared.Models.Entities.UsageSnapshot.Buckets"/> list.
+             </para>
+            
+             <para><strong>Time segments</strong></para>
+             <para>
+                 Snapshots are split into bounded <em>time segments</em> so that no single document
+                 grows indefinitely. Each segment covers a fixed time window whose size depends on
+                 the granularity (e.g. 1 hour for second-granularity, 1 day for five-minute, 1 week
+                 for hour, 1 month for day). The <see cref="P:ClientManager.Shared.Models.Entities.UsageSnapshot.SegmentStart"/> property records which
+                 window this document belongs to, and the <see cref="P:ClientManager.Shared.Models.Entities.UsageSnapshot.Id"/> includes a
+                 <c>yyyyMMddHH</c> suffix that makes each segment a separate document. This design
+                 means flush only reads and writes the current small segment, prune can drop whole
+                 segment documents instead of filtering individual buckets, and retention can grow
+                 without any single document becoming too large to handle efficiently.
+             </para>
+            
+             <para><strong>Composite key</strong></para>
+             <para>
+                 <see cref="P:ClientManager.Shared.Models.Entities.UsageSnapshot.Id"/> is deterministic:
+                 <c>"{ClientId}:{TargetType}:{TargetId}:{Granularity}:{SegmentStart:yyyyMMddHH}"</c>.
+                 Legacy pre-segmentation documents use the shorter form without the time suffix and
+                 have a <c>null</c> <see cref="P:ClientManager.Shared.Models.Entities.UsageSnapshot.SegmentStart"/>; they expire naturally via retention.
+             </para>
+             </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.UsageSnapshot.Id">
+            <summary>
+            A unique identifier for this usage snapshot document.
+            <br></br>
+            Segmented format: <c>"{ClientId}:{TargetType}:{TargetId}:{Granularity}:{SegmentStart:yyyyMMddHH}"</c>.
+            Legacy format (pre-segmentation): <c>"{ClientId}:{TargetType}:{TargetId}:{Granularity}"</c>.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.UsageSnapshot.ClientId">
+            <summary>
+            ID of the client this usage data belongs to.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.UsageSnapshot.TargetId">
+            <summary>
+            ID of the service or resource pool being tracked.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.UsageSnapshot.TargetType">
+            <summary>
+            The type of target this usage data is tracking.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.UsageSnapshot.Granularity">
+            <summary>
+            The "exactness" of data in this snapshot - how aggregated are the time buckets in the snapshot.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.UsageSnapshot.SegmentStart">
+             <summary>
+             The start of the time segment this document covers.
+            
+             <para>
+                 Each segment spans a fixed window determined by the <see cref="P:ClientManager.Shared.Models.Entities.UsageSnapshot.Granularity"/>:
+                 <see cref="F:ClientManager.Shared.Models.Enums.BucketGranularity.Second"/> → 1 hour,
+                 <see cref="F:ClientManager.Shared.Models.Enums.BucketGranularity.FiveMinute"/> → 1 day,
+                 <see cref="F:ClientManager.Shared.Models.Enums.BucketGranularity.Hour"/> → 1 week,
+                 <see cref="F:ClientManager.Shared.Models.Enums.BucketGranularity.Day"/> → 1 month.
+                 All <see cref="P:ClientManager.Shared.Models.Entities.UsageSnapshot.Buckets"/> in this document fall within
+                 <c>[SegmentStart, SegmentStart + window)</c>.
+             </para>
+             <para>
+                 <c>null</c> for legacy pre-segmentation documents that will age out naturally
+                 via the retention pruning cycle.
+             </para>
+             </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Entities.UsageSnapshot.Buckets">
+            <summary>
+            Ordered list of usage aggregations over time, oldest first.
+            </summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Enums.RateLimitStrategy">
+            <summary>
+            Defines the algorithm used to enforce rate limits.
+            </summary>
+        </member>
+        <member name="F:ClientManager.Shared.Models.Enums.RateLimitStrategy.FixedWindow">
+            <summary>
+            Counts requests in fixed, non-overlapping time windows.
+            <para>
+                Requests are grouped into discrete intervals (e.g. 1 minute), 
+                and the count resets at the end of each interval. This is straightforward 
+                to implement and efficient but can lead to uneven request distribution, 
+                especially if many requests arrive near the end of a window.
+            </para>
+            <para>
+                For example, with a 1-minute window, all requests from 12:00:00 to 12:00:59 
+                are counted together, and the count resets at 12:01:00. This is simple 
+                and efficient but can lead to burstiness at window boundaries.
+            </para>
+            </summary>
+        </member>
+        <member name="F:ClientManager.Shared.Models.Enums.RateLimitStrategy.ApproximateSlidingWindow">
+            <summary>
+            Approximate sliding window using a weighted average of two adjacent fixed windows.
+            <para>
+                Unlike a true sliding log (which stores every request timestamp), this approach
+                maintains only two counters and blends the previous window's count with the current
+                window's count proportionally to how far into the current window the request falls.
+                This is memory-efficient and widely used (e.g. Redis, Cloudflare) but may slightly
+                over- or under-count near window boundaries.
+            </para>
+            <para>
+                For example, with a 1-minute window and a request at 12:00:30, the count would be:
+                (0.5 * count from 11:59:00-11:59:59) + (0.5 * count from 12:00:00-12:00:29)
+            </para>
+            </summary>
+        </member>
+        <member name="F:ClientManager.Shared.Models.Enums.RateLimitStrategy.TokenBucket">
+            <summary>
+            Uses a token bucket that refills at a configured rate, allowing controlled bursts.
+            <para>
+               Each request consumes a token, and tokens are added to the bucket at a steady rate. 
+                If the bucket is empty, requests are denied until tokens are replenished. This allows for more flexible rate limiting, accommodating bursts while enforcing an average rate over time.
+            </para>
+            <para>
+               For example, with a bucket capacity of 10 tokens and a refill rate of 1 token per second, 
+                the bucket starts full with 10 tokens. If 10 requests arrive at once, 
+                they consume all tokens and are allowed. If an 11th request arrives immediately after, 
+                it is denied until at least one token is refilled (after 1 second).
+            </para>
+            </summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Enums.MetricTagKey">
+            <summary>
+            Tag keys used on runtime metrics.
+            </summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Enums.ServiceAccessDenialReason">
+            <summary>
+            Reasons an access check can be denied.
+            </summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Enums.ResourceAllocationDenialReason">
+            <summary>
+            Reasons a resource acquisition can be denied.
+            </summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Enums.PersistenceProvider">
+            <summary>
+            Identifies the storage backend used for persistence.
+            <para>
+                In this context, persistence refers to the ability of multiple instances 
+                of this application to act in unison, sharing the same data and state 
+                across a distributed environment. The choice of persistence provider 
+                determines how data is stored &amp; accessed across instances.
+            </para>
+            </summary>
+        </member>
+        <member name="F:ClientManager.Shared.Models.Enums.PersistenceProvider.JsonFile">
+            <summary>
+            File-based JSON storage, intended for local development, or for a shared persistent volume.
+            </summary>
+        </member>
+        <member name="F:ClientManager.Shared.Models.Enums.PersistenceProvider.MongoDb">
+            <summary>
+            A MongoDB document database, intended for production use in a distributed environment.
+            </summary>
+        </member>
+        <member name="F:ClientManager.Shared.Models.Enums.PersistenceProvider.Redis">
+            <summary>
+            A Redis in-memory data store, intended for production use where performance is critical and compromises on durability are acceptable.
+            </summary>
+        </member>
+        <member name="F:ClientManager.Shared.Models.Enums.PersistenceProvider.Lucene">
+            <summary>
+            A Lucene.NET embedded search index, intended for PVC-based deployments
+            that need full-text and field-level search without an external database.
+            </summary>
+        </member>
+        <member name="F:ClientManager.Shared.Models.Enums.PersistenceProvider.Sqlite">
+            <summary>
+            SQLite storage for usage statistics (local or single-instance deployments).
+            </summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Enums.StorageRole">
+            <summary>
+            Identifies a logical storage domain. Each role can be independently mapped to a
+            different <see cref="T:ClientManager.Shared.Models.Enums.PersistenceProvider"/>, allowing mixed-backend deployments
+            (e.g. Redis for rate-limit state, MongoDB for statistics).
+            </summary>
+        </member>
+        <member name="F:ClientManager.Shared.Models.Enums.StorageRole.Configuration">
+            <summary>
+            Client configurations, services, resource pools, and global rate limits.
+            </summary>
+        </member>
+        <member name="F:ClientManager.Shared.Models.Enums.StorageRole.RateLimiting">
+            <summary>
+            Rate-limit state counters (fixed window, sliding window, token bucket).
+            </summary>
+        </member>
+        <member name="F:ClientManager.Shared.Models.Enums.StorageRole.Allocations">
+            <summary>
+            Resource allocation documents and their maintained atomic counters.
+            </summary>
+        </member>
+        <member name="F:ClientManager.Shared.Models.Enums.StorageRole.Statistics">
+            <summary>
+            Usage snapshot time-series data.
+            </summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Enums.BucketGranularity">
+             <summary>
+             Controls the width of time windows used to aggregate <see cref="T:ClientManager.Shared.Models.Entities.UsageBucket"/>s
+             within a <see cref="T:ClientManager.Shared.Models.Entities.UsageSnapshot"/>.
+            
+             <para>
+                 Finer granularities (e.g. <see cref="F:ClientManager.Shared.Models.Enums.BucketGranularity.Second"/>) give precise, near-real-time visibility
+                 but produce many buckets and are therefore retained for a shorter period.
+                 Coarser granularities (e.g. <see cref="F:ClientManager.Shared.Models.Enums.BucketGranularity.Day"/>) compress data and are kept longer for
+                 trend analysis. The system maintains multiple snapshots per (client, target) combination
+                 - one for each granularity - so that dashboards can zoom from seconds to days without
+                 re-aggregating.
+             </para>
+             </summary>
+        </member>
+        <member name="F:ClientManager.Shared.Models.Enums.BucketGranularity.Second">
+            <summary>
+            1-second buckets. Highest resolution, shortest retention.
+            </summary>
+        </member>
+        <member name="F:ClientManager.Shared.Models.Enums.BucketGranularity.OneMinute">
+            <summary>
+            1-minute buckets. Bridges second-level live data and five-minute rollups.
+            </summary>
+        </member>
+        <member name="F:ClientManager.Shared.Models.Enums.BucketGranularity.FiveMinute">
+            <summary>
+            5-minute buckets. Balances precision with storage cost; suitable for short-term
+            operational dashboards.
+            </summary>
+        </member>
+        <member name="F:ClientManager.Shared.Models.Enums.BucketGranularity.Hour">
+            <summary>
+            1-hour buckets. Lower resolution, longer retention; suitable for medium-term capacity planning.
+            </summary>
+        </member>
+        <member name="F:ClientManager.Shared.Models.Enums.BucketGranularity.Day">
+            <summary>
+            1-day buckets. Coarsest resolution, longest retention; suitable for long-term trend analysis.
+            </summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Enums.TargetType">
+             <summary>
+             Distinguishes the two fundamental kinds of targets the system manages access to.
+            
+             <para>
+                 The target type drives which access-control path is taken and which constraints apply.
+                 <see cref="F:ClientManager.Shared.Models.Enums.TargetType.Service"/> targets go through <c>AccessControlService</c> and are governed
+                 purely by rate limits (request frequency). <see cref="F:ClientManager.Shared.Models.Enums.TargetType.ResourcePool"/> targets go through
+                 <c>ResourceAllocationService</c> and are governed by both slot quotas (concurrency) and
+                 rate limits (acquisition frequency).
+             </para>
+            
+             <para>
+                 This enum is used throughout the system - in <see cref="T:ClientManager.Shared.Models.Entities.GlobalRateLimit"/> to
+                 scope a rate-limit rule, in <see cref="T:ClientManager.Shared.Models.Enums.UsageEventType"/> tracking to categorize events,
+                 and in usage snapshots to partition statistics.
+             </para>
+             </summary>
+        </member>
+        <member name="F:ClientManager.Shared.Models.Enums.TargetType.Service">
+             <summary>
+             A stateless, request/response target - typically an API, microservice, or web endpoint.
+            
+             <para>
+                 Clients send discrete requests and receive responses; they do not hold open
+                 connections or occupy capacity between requests. The caller does not care which
+                 instance handles the request, only that the service is reachable.
+             </para>
+             <para>
+                 Throttled exclusively via rate limits: per-client
+                 (<see cref="T:ClientManager.Shared.Models.Entities.ClientRateLimit"/>), per-client-per-service
+                 (<see cref="P:ClientManager.Shared.Models.Entities.ServiceAccessSettings.RateLimit"/>), and global-per-service
+                 (<see cref="T:ClientManager.Shared.Models.Entities.GlobalRateLimit"/>).
+             </para>
+             </summary>
+        </member>
+        <member name="F:ClientManager.Shared.Models.Enums.TargetType.ResourcePool">
+             <summary>
+             A stateful, connection-oriented target - typically a database, message broker, or
+             streaming endpoint.
+            
+             <para>
+                 Clients acquire a <em>slot</em> (connection) and hold it for the duration of their
+                 work. The server must maintain state for each active connection, so both the total
+                 number of concurrent slots (<see cref="P:ClientManager.Shared.Models.Entities.ResourcePool.MaxSlots"/>) and each
+                 client's share (<see cref="P:ClientManager.Shared.Models.Entities.ResourcePoolSettings.MaxSlots"/>) are capped.
+             </para>
+             <para>
+                 In addition to slot quotas, resource pools can also have a
+                 <see cref="T:ClientManager.Shared.Models.Entities.GlobalRateLimit"/> that caps the <em>frequency</em> of
+                 acquisition attempts - preventing thundering-herd bursts even when slots are
+                 available.
+             </para>
+             </summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Enums.UsageEventType">
+             <summary>
+             Classifies the outcome of an access-control or resource-allocation decision so that
+             usage statistics can be recorded and later aggregated by
+             <see cref="T:ClientManager.Shared.Models.Enums.TargetType"/> (Service or ResourcePool).
+            
+             <para><strong>How the system uses these values</strong></para>
+             <para>
+                 Every time a client interacts with a <see cref="F:ClientManager.Shared.Models.Enums.TargetType.Service"/> (via
+                 <c>AccessControlService.CheckAccessAsync</c>) or a <see cref="F:ClientManager.Shared.Models.Enums.TargetType.ResourcePool"/>
+                 (via <c>ResourceAllocationService.AcquireAsync</c> / <c>ReleaseAsync</c>), exactly one
+                 <see cref="T:ClientManager.Shared.Models.Enums.UsageEventType"/> is emitted to the <c>IUsageRecorder</c>. These events are
+                 buffered in memory, then periodically flushed to persistent storage by
+                 <c>UsagePersistenceService</c>, where they become the <c>GrantedCount</c>,
+                 <c>DeniedCount</c>, and <c>ReleasedCount</c> fields on each usage bucket.
+             </para>
+            
+             <para><strong>Services vs. Resource Pools - why the distinction matters</strong></para>
+             <para>
+                 <see cref="F:ClientManager.Shared.Models.Enums.TargetType.Service"/> targets are stateless request/response endpoints (APIs,
+                 microservices). The only throttling mechanism is <em>rate limiting</em> - capping how
+                 many requests a client (or all clients globally) can make in a time window. A request
+                 is either <see cref="F:ClientManager.Shared.Models.Enums.UsageEventType.Granted"/> or <see cref="F:ClientManager.Shared.Models.Enums.UsageEventType.Denied"/>; there is nothing to release.
+             </para>
+             <para>
+                 <see cref="F:ClientManager.Shared.Models.Enums.TargetType.ResourcePool"/> targets are stateful connection-oriented resources
+                 (databases, message brokers, streamers). They are governed by <strong>two independent
+                 constraints</strong> that serve different purposes:
+             </para>
+             <list type="number">
+                 <item>
+                     <description>
+                         <strong>Slot quotas (concurrency caps)</strong> - limit how many connections can
+                         exist <em>at the same time</em>. <see cref="P:ClientManager.Shared.Models.Entities.ResourcePool.MaxSlots"/>
+                         sets the system-wide ceiling (e.g. "this database accepts 100 total connections"),
+                         while <see cref="P:ClientManager.Shared.Models.Entities.ResourcePoolSettings.MaxSlots"/> in a client's
+                         <see cref="P:ClientManager.Shared.Models.Entities.ClientConfiguration.ResourcePools"/> sets a per-client ceiling
+                         (e.g. "this client may hold at most 5 connections"). A slot is occupied from
+                         <see cref="F:ClientManager.Shared.Models.Enums.UsageEventType.Granted"/> until <see cref="F:ClientManager.Shared.Models.Enums.UsageEventType.Released"/> (or until the allocation's TTL
+                         expires and is cleaned up).
+                     </description>
+                 </item>
+                 <item>
+                     <description>
+                         <strong>Rate limits (acquisition-frequency caps)</strong> - limit how <em>often</em>
+                         clients can attempt to acquire slots, configured as a
+                         <see cref="T:ClientManager.Shared.Models.Entities.GlobalRateLimit"/> with
+                         <see cref="F:ClientManager.Shared.Models.Enums.TargetType.ResourcePool"/>. This exists to prevent thundering-herd
+                         scenarios: even when plenty of slots are available, a burst of hundreds of
+                         simultaneous acquire requests could overwhelm the backing resource. The rate limit
+                         smooths out that burst without reducing the pool's actual capacity.
+                     </description>
+                 </item>
+             </list>
+             <para>
+                 Because these two constraints are orthogonal, a pool can deny an acquisition for
+                 <em>either</em> reason independently: "you already hold too many slots" (quota) or
+                 "too many acquire attempts this minute" (rate limit). Both result in a
+                 <see cref="F:ClientManager.Shared.Models.Enums.UsageEventType.Denied"/> event - the distinction is in the exception and metric tag, not the
+                 event type.
+             </para>
+             </summary>
+        </member>
+        <member name="F:ClientManager.Shared.Models.Enums.UsageEventType.Granted">
+             <summary>
+             The access check passed and the requested action was allowed.
+            
+             <para><strong>For <see cref="F:ClientManager.Shared.Models.Enums.TargetType.Service"/>:</strong>
+                 The client's request cleared every gate - the client is enabled, the service is
+                 enabled, the client has an explicit access entry with <c>IsAllowed = true</c>,
+                 the global service rate limit (shared across all clients) has capacity, and the
+                 per-client rate limit (service-specific or the client's global rate limit) has
+                 capacity. The request is forwarded to the service for processing.
+             </para>
+            
+             <para><strong>For <see cref="F:ClientManager.Shared.Models.Enums.TargetType.ResourcePool"/>:</strong>
+                 A slot was successfully allocated. This means the client's per-client quota
+                 (<see cref="P:ClientManager.Shared.Models.Entities.ResourcePoolSettings.MaxSlots"/>) was not exhausted, the
+                 global acquisition rate limit for this pool was not exceeded, and the system-wide
+                 pool capacity (<see cref="P:ClientManager.Shared.Models.Entities.ResourcePool.MaxSlots"/>) still had room. The
+                 slot is now held by the client until it is either explicitly
+                 <see cref="F:ClientManager.Shared.Models.Enums.UsageEventType.Released"/> or it expires after the pool's
+                 <see cref="P:ClientManager.Shared.Models.Entities.ResourcePool.AllocationTtl"/>.
+             </para>
+             </summary>
+        </member>
+        <member name="F:ClientManager.Shared.Models.Enums.UsageEventType.Denied">
+             <summary>
+             The access check failed and the requested action was blocked.
+            
+             <para><strong>For <see cref="F:ClientManager.Shared.Models.Enums.TargetType.Service"/>:</strong>
+                 The request was rejected at one of several stages (checked in this order):
+                 the client is disabled, the service is disabled, no access entry exists for
+                 this client–service pair (401 Unauthorized), the entry has <c>IsAllowed = false</c>
+                 (403 Forbidden), the global service rate limit is exhausted, or the per-client
+                 rate limit is exhausted (429 Too Many Requests). The first failing check
+                 short-circuits the pipeline.
+             </para>
+            
+             <para><strong>For <see cref="F:ClientManager.Shared.Models.Enums.TargetType.ResourcePool"/>:</strong>
+                 Slot acquisition was rejected for one of three reasons (checked in this order):
+                 the client's per-client slot quota for this pool has been reached, the global
+                 acquisition rate limit for this pool has been exceeded, or the pool's system-wide
+                 slot capacity is full. All three produce a <see cref="F:ClientManager.Shared.Models.Enums.UsageEventType.Denied"/> event; the specific
+                 cause is captured in the associated metric tag and exception type.
+             </para>
+             </summary>
+        </member>
+        <member name="F:ClientManager.Shared.Models.Enums.UsageEventType.Released">
+             <summary>
+             A previously held resource pool slot was explicitly given back by the client.
+            
+             <para>
+                 This event only applies to <see cref="F:ClientManager.Shared.Models.Enums.TargetType.ResourcePool"/>. When a client
+                 calls <c>ResourceAllocationService.ReleaseAsync</c>, the slot is marked as released
+                 and becomes immediately available for other clients (or the same client) to acquire.
+             </para>
+            
+             <para>
+                 Allocations that are <em>not</em> explicitly released will eventually expire based on
+                 <see cref="P:ClientManager.Shared.Models.Entities.ResourcePool.AllocationTtl"/> and be cleaned up by the background
+                 <c>AllocationCleanupService</c>. Expired allocations do <strong>not</strong> produce a
+                 <see cref="F:ClientManager.Shared.Models.Enums.UsageEventType.Released"/> event - only explicit client-initiated releases do. This means
+                 the ratio of <see cref="F:ClientManager.Shared.Models.Enums.UsageEventType.Granted"/> to <see cref="F:ClientManager.Shared.Models.Enums.UsageEventType.Released"/> events can reveal how
+                 often clients are relying on TTL expiration instead of cleaning up after themselves.
+             </para>
+            
+             <para>
+                 This event is never emitted for <see cref="F:ClientManager.Shared.Models.Enums.TargetType.Service"/> because service
+                 interactions are stateless request/response exchanges with nothing to release.
+             </para>
+             </summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Enums.UsageDenialCategory">
+            <summary>
+            Persisted denial reason bucket for usage statistics.
+            </summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Problems.ProblemResponse">
+            <summary>
+            RFC 7807 problem payload returned for every failure response. Carries the human-readable
+            title and detail, the HTTP status code, and the request trace identifier so callers can
+            correlate a failure with server-side logs.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Problems.ProblemResponse.Title">
+            <summary>
+            Short, human-readable summary of the problem type (for example, "Not Found").
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Problems.ProblemResponse.Status">
+            <summary>
+            The HTTP status code generated for this occurrence of the problem.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Problems.ProblemResponse.ErrorCode">
+            <summary>
+            Machine-readable error code for client-side localization (matches <see cref="T:ClientManager.Shared.Models.Problems.StorageErrorCodes"/>).
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Problems.ProblemResponse.Detail">
+            <summary>
+            Human-readable explanation specific to this occurrence of the problem.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Problems.ProblemResponse.TraceId">
+            <summary>
+            Identifier of the request that produced the failure, used to correlate with server logs.
+            </summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Problems.ProblemResponseHeaders">
+            <summary>
+            HTTP response headers echoed alongside <see cref="T:ClientManager.Shared.Models.Problems.ProblemResponse"/> bodies so edge
+            proxies (for example nginx <c>auth_request</c>) can read failure metadata without the
+            subrequest response body, which <c>auth_request</c> discards.
+            </summary>
+        </member>
+        <member name="F:ClientManager.Shared.Models.Problems.ProblemResponseHeaders.Title">
+            <summary>Short problem title (same value as <see cref="P:ClientManager.Shared.Models.Problems.ProblemResponse.Title"/>).</summary>
+        </member>
+        <member name="F:ClientManager.Shared.Models.Problems.ProblemResponseHeaders.Detail">
+            <summary>Problem detail message (same value as <see cref="P:ClientManager.Shared.Models.Problems.ProblemResponse.Detail"/>).</summary>
+        </member>
+        <member name="F:ClientManager.Shared.Models.Problems.ProblemResponseHeaders.TraceId">
+            <summary>Request trace id (same value as <see cref="P:ClientManager.Shared.Models.Problems.ProblemResponse.TraceId"/>).</summary>
+        </member>
+        <member name="F:ClientManager.Shared.Models.Problems.ProblemResponseHeaders.Json">
+            <summary>
+            Compact JSON serialization of the problem payload (identical to the response body).
+            Convenient for proxies that can forward a variable response body but not read the
+            auth subrequest body directly.
+            </summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Requests.AcquireResourceRequest">
+            <summary>
+            Query parameters for acquiring a resource from a resource pool.
+            </summary>
+            <param name="ClientId">The ID of the client requesting the resource.</param>
+            <param name="ResourcePoolId">The ID of the resource pool to acquire from.</param>
+        </member>
+        <member name="M:ClientManager.Shared.Models.Requests.AcquireResourceRequest.#ctor(System.String,System.String)">
+            <summary>
+            Query parameters for acquiring a resource from a resource pool.
+            </summary>
+            <param name="ClientId">The ID of the client requesting the resource.</param>
+            <param name="ResourcePoolId">The ID of the resource pool to acquire from.</param>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Requests.AcquireResourceRequest.ClientId">
+            <summary>The ID of the client requesting the resource.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Requests.AcquireResourceRequest.ResourcePoolId">
+            <summary>The ID of the resource pool to acquire from.</summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Requests.CheckAccessRequest">
+            <summary>
+            Query parameters for checking if a client has access to a service.
+            </summary>
+            <param name="ClientId">The ID of the client.</param>
+            <param name="ServiceId">The ID of the service.</param>
+        </member>
+        <member name="M:ClientManager.Shared.Models.Requests.CheckAccessRequest.#ctor(System.String,System.String)">
+            <summary>
+            Query parameters for checking if a client has access to a service.
+            </summary>
+            <param name="ClientId">The ID of the client.</param>
+            <param name="ServiceId">The ID of the service.</param>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Requests.CheckAccessRequest.ClientId">
+            <summary>The ID of the client.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Requests.CheckAccessRequest.ServiceId">
+            <summary>The ID of the service.</summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Requests.PagedRequest">
+            <summary>
+            Pagination parameters for list endpoints.
+            </summary>
+            <param name="Page">The 1-based page number to retrieve.</param>
+            <param name="PageSize">The number of items per page.</param>
+        </member>
+        <member name="M:ClientManager.Shared.Models.Requests.PagedRequest.#ctor(System.Int32,System.Int32)">
+            <summary>
+            Pagination parameters for list endpoints.
+            </summary>
+            <param name="Page">The 1-based page number to retrieve.</param>
+            <param name="PageSize">The number of items per page.</param>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Requests.PagedRequest.Page">
+            <summary>The 1-based page number to retrieve.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Requests.PagedRequest.PageSize">
+            <summary>The number of items per page.</summary>
+        </member>
+        <member name="M:ClientManager.Shared.Models.Requests.PagedRequest.Clamp">
+            <summary>
+            Returns a validated copy with <see cref="P:ClientManager.Shared.Models.Requests.PagedRequest.Page"/> clamped to &gt;= 1
+            and <see cref="P:ClientManager.Shared.Models.Requests.PagedRequest.PageSize"/> clamped to [1, 100].
+            </summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Requests.ReleaseResourceRequest">
+            <summary>
+            Query parameters for releasing a previously acquired resource.
+            </summary>
+            <param name="AllocationId">The ID of the resource allocation to release.</param>
+        </member>
+        <member name="M:ClientManager.Shared.Models.Requests.ReleaseResourceRequest.#ctor(System.String)">
+            <summary>
+            Query parameters for releasing a previously acquired resource.
+            </summary>
+            <param name="AllocationId">The ID of the resource allocation to release.</param>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Requests.ReleaseResourceRequest.AllocationId">
+            <summary>The ID of the resource allocation to release.</summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Responses.AccessCheckResponse">
+            <summary>
+            Response model for checking if a client has access to a service.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.AccessCheckResponse.ClientId">
+            <summary>
+            The ID of the client.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.AccessCheckResponse.ServiceId">
+            <summary>
+            The ID of the service.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.AccessCheckResponse.RemainingRequests">
+            <summary>
+            The number of remaining requests the client can make.
+            </summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Responses.ClientAccessibilityResponse">
+            <summary>
+            A full accessibility report for a client listing every registered service
+            and the client's current access status for each.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.ClientAccessibilityResponse.ClientId">
+            <summary>
+            The unique identifier of the client.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.ClientAccessibilityResponse.Services">
+            <summary>
+            Per-service accessibility entries.
+            </summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Responses.ServiceAccessibility">
+            <summary>
+            Accessibility status for a single client-service pair.
+            Rate limit fields are populated via a read-only peek (counters are not incremented).
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.ServiceAccessibility.ServiceId">
+            <summary>
+            The unique identifier of the service.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.ServiceAccessibility.HasAccess">
+            <summary>
+            Whether the client has an explicit allow entry for this service.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.ServiceAccessibility.IsCurrentlyRateLimited">
+            <summary>
+            Whether the client is currently at or over the rate limit for this service.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.ServiceAccessibility.RemainingRequests">
+            <summary>
+            The number of remaining requests before the rate limit is hit, if applicable.
+            </summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Responses.ResourceAcquireResponse">
+            <summary>
+            Response returned when a resource slot is successfully acquired.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.ResourceAcquireResponse.AllocationId">
+            <summary>
+            The unique identifier of the allocation, used to release the slot later.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.ResourceAcquireResponse.ExpiresAt">
+            <summary>
+            The UTC time at which this allocation will expire if not released.
+            After this time, the background cleanup service will reclaim the slot.
+            </summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Responses.ResourceReleaseResponse">
+            <summary>
+            Response returned when a resource allocation release request completes.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.ResourceReleaseResponse.Released">
+            <summary>
+            Whether the allocation transitioned from active to released during this request.
+            </summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Responses.SlotReservationResult">
+            <summary>
+            Result of attempting to reserve allocation counters before creating an allocation.
+            </summary>
+        </member>
+        <member name="M:ClientManager.Shared.Models.Responses.SlotReservationResult.#ctor(System.Boolean,System.Int32,System.Int32)">
+            <summary>
+            Result of attempting to reserve allocation counters before creating an allocation.
+            </summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Responses.TokenBucketConsumeResult">
+            <summary>
+            Result of an atomic token-bucket consumption attempt.
+            </summary>
+        </member>
+        <member name="M:ClientManager.Shared.Models.Responses.TokenBucketConsumeResult.#ctor(System.Boolean,System.Int32,System.Int32)">
+            <summary>
+            Result of an atomic token-bucket consumption attempt.
+            </summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Responses.GrafanaMetricsResponse">
+            <summary>
+            Root response object for Grafana OpenMetrics JSON endpoint.
+            </summary>
+            <param name="Metrics">The list of metric definitions.</param>
+        </member>
+        <member name="M:ClientManager.Shared.Models.Responses.GrafanaMetricsResponse.#ctor(System.Collections.Generic.IReadOnlyList{ClientManager.Shared.Models.Responses.MetricDefinition})">
+            <summary>
+            Root response object for Grafana OpenMetrics JSON endpoint.
+            </summary>
+            <param name="Metrics">The list of metric definitions.</param>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.GrafanaMetricsResponse.Metrics">
+            <summary>The list of metric definitions.</summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Responses.MetricDefinition">
+            <summary>
+            Represents a metric definition with its values in OpenMetrics JSON format.
+            </summary>
+            <param name="Name">The name of the metric.</param>
+            <param name="Type">The metric type (e.g., gauge, counter).</param>
+            <param name="Help">A description of what the metric measures.</param>
+            <param name="Values">The list of metric values with their labels.</param>
+        </member>
+        <member name="M:ClientManager.Shared.Models.Responses.MetricDefinition.#ctor(System.String,System.String,System.String,System.Collections.Generic.IReadOnlyList{ClientManager.Shared.Models.Responses.MetricValue})">
+            <summary>
+            Represents a metric definition with its values in OpenMetrics JSON format.
+            </summary>
+            <param name="Name">The name of the metric.</param>
+            <param name="Type">The metric type (e.g., gauge, counter).</param>
+            <param name="Help">A description of what the metric measures.</param>
+            <param name="Values">The list of metric values with their labels.</param>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.MetricDefinition.Name">
+            <summary>The name of the metric.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.MetricDefinition.Type">
+            <summary>The metric type (e.g., gauge, counter).</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.MetricDefinition.Help">
+            <summary>A description of what the metric measures.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.MetricDefinition.Values">
+            <summary>The list of metric values with their labels.</summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Responses.MetricValue">
+            <summary>
+            Represents a single metric value with optional labels.
+            </summary>
+            <param name="Labels">Optional dictionary of label key-value pairs.</param>
+            <param name="Value">The numeric value of the metric.</param>
+        </member>
+        <member name="M:ClientManager.Shared.Models.Responses.MetricValue.#ctor(System.Collections.Generic.Dictionary{System.String,System.String},System.Double)">
+            <summary>
+            Represents a single metric value with optional labels.
+            </summary>
+            <param name="Labels">Optional dictionary of label key-value pairs.</param>
+            <param name="Value">The numeric value of the metric.</param>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.MetricValue.Labels">
+            <summary>Optional dictionary of label key-value pairs.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.MetricValue.Value">
+            <summary>The numeric value of the metric.</summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Responses.PagedResponse`1">
+            <summary>
+            Paginated response envelope for list endpoints.
+            </summary>
+            <typeparam name="T">The type of items in the page.</typeparam>
+            <param name="Items">The items in the current page.</param>
+            <param name="Page">The 1-based page number.</param>
+            <param name="PageSize">The number of items per page.</param>
+            <param name="TotalCount">The total number of items across all pages.</param>
+            <param name="TotalPages">The total number of pages.</param>
+        </member>
+        <member name="M:ClientManager.Shared.Models.Responses.PagedResponse`1.#ctor(System.Collections.Generic.IReadOnlyList{`0},System.Int32,System.Int32,System.Int32,System.Int32)">
+            <summary>
+            Paginated response envelope for list endpoints.
+            </summary>
+            <typeparam name="T">The type of items in the page.</typeparam>
+            <param name="Items">The items in the current page.</param>
+            <param name="Page">The 1-based page number.</param>
+            <param name="PageSize">The number of items per page.</param>
+            <param name="TotalCount">The total number of items across all pages.</param>
+            <param name="TotalPages">The total number of pages.</param>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.PagedResponse`1.Items">
+            <summary>The items in the current page.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.PagedResponse`1.Page">
+            <summary>The 1-based page number.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.PagedResponse`1.PageSize">
+            <summary>The number of items per page.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.PagedResponse`1.TotalCount">
+            <summary>The total number of items across all pages.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.PagedResponse`1.TotalPages">
+            <summary>The total number of pages.</summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Responses.KeyedEntry`1">
+            <summary>
+            Wraps a single key-value entry from a dictionary for paginated list responses.
+            </summary>
+            <typeparam name="T">The type of the value.</typeparam>
+            <param name="Key">The dictionary key.</param>
+            <param name="Value">Its attached value.</param>
+        </member>
+        <member name="M:ClientManager.Shared.Models.Responses.KeyedEntry`1.#ctor(System.String,`0)">
+            <summary>
+            Wraps a single key-value entry from a dictionary for paginated list responses.
+            </summary>
+            <typeparam name="T">The type of the value.</typeparam>
+            <param name="Key">The dictionary key.</param>
+            <param name="Value">Its attached value.</param>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.KeyedEntry`1.Key">
+            <summary>The dictionary key.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.KeyedEntry`1.Value">
+            <summary>Its attached value.</summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Responses.PatchItemStatus">
+            <summary>
+            Outcome of a single item in a bulk PATCH request.
+            </summary>
+        </member>
+        <member name="F:ClientManager.Shared.Models.Responses.PatchItemStatus.Updated">
+            <summary>The patch was applied successfully.</summary>
+        </member>
+        <member name="F:ClientManager.Shared.Models.Responses.PatchItemStatus.Failed">
+            <summary>The patch failed for this item.</summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Responses.PatchItemResult`1">
+            <summary>
+            Result for one entity in a bulk PATCH operation.
+            </summary>
+            <typeparam name="T">The catalog entity type.</typeparam>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.PatchItemResult`1.Id">
+            <summary>Entity identifier from the patch item.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.PatchItemResult`1.Status">
+            <summary>Whether the patch succeeded or failed.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.PatchItemResult`1.Entity">
+            <summary>Updated entity when <see cref="P:ClientManager.Shared.Models.Responses.PatchItemResult`1.Status"/> is <see cref="F:ClientManager.Shared.Models.Responses.PatchItemStatus.Updated"/>.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.PatchItemResult`1.Error">
+            <summary>Problem details when <see cref="P:ClientManager.Shared.Models.Responses.PatchItemResult`1.Status"/> is <see cref="F:ClientManager.Shared.Models.Responses.PatchItemStatus.Failed"/>.</summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Responses.BulkPatchResponse`1">
+            <summary>
+            Response body for bulk PATCH on a catalog resource.
+            </summary>
+            <typeparam name="T">The catalog entity type.</typeparam>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.BulkPatchResponse`1.Results">
+            <summary>Per-item patch outcomes.</summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Responses.SeedImportSummary">
+            <summary>
+            Counts returned after a seed import operation.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.SeedImportSummary.Created">
+            <summary>Entities created during import.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.SeedImportSummary.Updated">
+            <summary>Entities updated during import (replace strategy only).</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.SeedImportSummary.Skipped">
+            <summary>Entities skipped because they already existed (skip strategy only).</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.SeedImportSummary.Deleted">
+            <summary>Entities deleted before insert (POST wholesale replace only).</summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Responses.SystemOverviewResponse">
+            <summary>
+            High-level system overview statistics.
+            </summary>
+            <param name="TotalClients">Total number of client configurations.</param>
+            <param name="EnabledClients">Number of currently enabled clients.</param>
+            <param name="TotalServices">Total number of service definitions.</param>
+            <param name="EnabledServices">Number of currently enabled services.</param>
+            <param name="TotalResourcePools">Total number of resource pool definitions.</param>
+            <param name="ActiveAllocations">Total active resource allocations across all pools.</param>
+        </member>
+        <member name="M:ClientManager.Shared.Models.Responses.SystemOverviewResponse.#ctor(System.Int32,System.Int32,System.Int32,System.Int32,System.Int32,System.Int32)">
+            <summary>
+            High-level system overview statistics.
+            </summary>
+            <param name="TotalClients">Total number of client configurations.</param>
+            <param name="EnabledClients">Number of currently enabled clients.</param>
+            <param name="TotalServices">Total number of service definitions.</param>
+            <param name="EnabledServices">Number of currently enabled services.</param>
+            <param name="TotalResourcePools">Total number of resource pool definitions.</param>
+            <param name="ActiveAllocations">Total active resource allocations across all pools.</param>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.SystemOverviewResponse.TotalClients">
+            <summary>Total number of client configurations.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.SystemOverviewResponse.EnabledClients">
+            <summary>Number of currently enabled clients.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.SystemOverviewResponse.TotalServices">
+            <summary>Total number of service definitions.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.SystemOverviewResponse.EnabledServices">
+            <summary>Number of currently enabled services.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.SystemOverviewResponse.TotalResourcePools">
+            <summary>Total number of resource pool definitions.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.SystemOverviewResponse.ActiveAllocations">
+            <summary>Total active resource allocations across all pools.</summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Responses.ClientSummaryResponse">
+            <summary>
+            Summary statistics for a single client.
+            </summary>
+            <param name="ClientId">The unique identifier of the client.</param>
+            <param name="Name">Human-readable display name.</param>
+            <param name="IsEnabled">Whether the client is currently enabled.</param>
+            <param name="ServiceCount">Number of services the client has access entries for.</param>
+            <param name="ResourcePoolCount">Number of resource pools the client has quota entries for.</param>
+            <param name="HasGlobalRateLimit">Whether the client has a global rate limit configured.</param>
+        </member>
+        <member name="M:ClientManager.Shared.Models.Responses.ClientSummaryResponse.#ctor(System.String,System.String,System.Boolean,System.Int32,System.Int32,System.Boolean)">
+            <summary>
+            Summary statistics for a single client.
+            </summary>
+            <param name="ClientId">The unique identifier of the client.</param>
+            <param name="Name">Human-readable display name.</param>
+            <param name="IsEnabled">Whether the client is currently enabled.</param>
+            <param name="ServiceCount">Number of services the client has access entries for.</param>
+            <param name="ResourcePoolCount">Number of resource pools the client has quota entries for.</param>
+            <param name="HasGlobalRateLimit">Whether the client has a global rate limit configured.</param>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.ClientSummaryResponse.ClientId">
+            <summary>The unique identifier of the client.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.ClientSummaryResponse.Name">
+            <summary>Human-readable display name.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.ClientSummaryResponse.IsEnabled">
+            <summary>Whether the client is currently enabled.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.ClientSummaryResponse.ServiceCount">
+            <summary>Number of services the client has access entries for.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.ClientSummaryResponse.ResourcePoolCount">
+            <summary>Number of resource pools the client has quota entries for.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.ClientSummaryResponse.HasGlobalRateLimit">
+            <summary>Whether the client has a global rate limit configured.</summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Responses.ServiceStatisticsResponse">
+            <summary>
+            Per-service usage statistics.
+            </summary>
+            <param name="ServiceId">The unique identifier of the service.</param>
+            <param name="Name">Human-readable display name.</param>
+            <param name="IsEnabled">Whether the service is currently enabled.</param>
+            <param name="ClientCount">Number of clients that have an access entry for this service.</param>
+            <param name="HasGlobalRateLimit">Whether a global rate limit exists for this service.</param>
+        </member>
+        <member name="M:ClientManager.Shared.Models.Responses.ServiceStatisticsResponse.#ctor(System.String,System.String,System.Boolean,System.Int32,System.Boolean)">
+            <summary>
+            Per-service usage statistics.
+            </summary>
+            <param name="ServiceId">The unique identifier of the service.</param>
+            <param name="Name">Human-readable display name.</param>
+            <param name="IsEnabled">Whether the service is currently enabled.</param>
+            <param name="ClientCount">Number of clients that have an access entry for this service.</param>
+            <param name="HasGlobalRateLimit">Whether a global rate limit exists for this service.</param>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.ServiceStatisticsResponse.ServiceId">
+            <summary>The unique identifier of the service.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.ServiceStatisticsResponse.Name">
+            <summary>Human-readable display name.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.ServiceStatisticsResponse.IsEnabled">
+            <summary>Whether the service is currently enabled.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.ServiceStatisticsResponse.ClientCount">
+            <summary>Number of clients that have an access entry for this service.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.ServiceStatisticsResponse.HasGlobalRateLimit">
+            <summary>Whether a global rate limit exists for this service.</summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Responses.ResourcePoolStatisticsResponse">
+            <summary>
+            Per-resource-pool utilization statistics.
+            </summary>
+            <param name="ResourcePoolId">The unique identifier of the resource pool.</param>
+            <param name="Name">Human-readable display name.</param>
+            <param name="MaxSlots">System-wide maximum concurrent allocations.</param>
+            <param name="ActiveAllocations">Current number of active allocations.</param>
+            <param name="AvailableSlots">Remaining slots available for allocation.</param>
+            <param name="HasGlobalRateLimit">Whether a global rate limit exists for this pool.</param>
+        </member>
+        <member name="M:ClientManager.Shared.Models.Responses.ResourcePoolStatisticsResponse.#ctor(System.String,System.String,System.Int32,System.Int32,System.Int32,System.Boolean)">
+            <summary>
+            Per-resource-pool utilization statistics.
+            </summary>
+            <param name="ResourcePoolId">The unique identifier of the resource pool.</param>
+            <param name="Name">Human-readable display name.</param>
+            <param name="MaxSlots">System-wide maximum concurrent allocations.</param>
+            <param name="ActiveAllocations">Current number of active allocations.</param>
+            <param name="AvailableSlots">Remaining slots available for allocation.</param>
+            <param name="HasGlobalRateLimit">Whether a global rate limit exists for this pool.</param>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.ResourcePoolStatisticsResponse.ResourcePoolId">
+            <summary>The unique identifier of the resource pool.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.ResourcePoolStatisticsResponse.Name">
+            <summary>Human-readable display name.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.ResourcePoolStatisticsResponse.MaxSlots">
+            <summary>System-wide maximum concurrent allocations.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.ResourcePoolStatisticsResponse.ActiveAllocations">
+            <summary>Current number of active allocations.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.ResourcePoolStatisticsResponse.AvailableSlots">
+            <summary>Remaining slots available for allocation.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.ResourcePoolStatisticsResponse.HasGlobalRateLimit">
+            <summary>Whether a global rate limit exists for this pool.</summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Responses.GlobalUsageStatsResponse">
+            <summary>
+            Global usage statistics including request rate and pool acquisition.
+            </summary>
+            <param name="RequestsPerMinute">Estimated requests per minute across the system.</param>
+            <param name="TotalPoolSlots">Total number of pool slots across all resource pools.</param>
+            <param name="AcquiredPoolSlots">Number of pool slots currently acquired.</param>
+            <param name="AcquisitionPercentage">Percentage of pool slots currently acquired.</param>
+        </member>
+        <member name="M:ClientManager.Shared.Models.Responses.GlobalUsageStatsResponse.#ctor(System.Double,System.Int32,System.Int32,System.Double)">
+            <summary>
+            Global usage statistics including request rate and pool acquisition.
+            </summary>
+            <param name="RequestsPerMinute">Estimated requests per minute across the system.</param>
+            <param name="TotalPoolSlots">Total number of pool slots across all resource pools.</param>
+            <param name="AcquiredPoolSlots">Number of pool slots currently acquired.</param>
+            <param name="AcquisitionPercentage">Percentage of pool slots currently acquired.</param>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.GlobalUsageStatsResponse.RequestsPerMinute">
+            <summary>Estimated requests per minute across the system.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.GlobalUsageStatsResponse.TotalPoolSlots">
+            <summary>Total number of pool slots across all resource pools.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.GlobalUsageStatsResponse.AcquiredPoolSlots">
+            <summary>Number of pool slots currently acquired.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.GlobalUsageStatsResponse.AcquisitionPercentage">
+            <summary>Percentage of pool slots currently acquired.</summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Responses.ClientSummariesResponse">
+            <summary>
+            Summary of all clients with their service and pool access statistics for the dashboard.
+            </summary>
+            <param name="Rows">List of per-client summary rows.</param>
+        </member>
+        <member name="M:ClientManager.Shared.Models.Responses.ClientSummariesResponse.#ctor(System.Collections.Generic.IReadOnlyList{ClientManager.Shared.Models.Responses.ClientSummaryRow})">
+            <summary>
+            Summary of all clients with their service and pool access statistics for the dashboard.
+            </summary>
+            <param name="Rows">List of per-client summary rows.</param>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.ClientSummariesResponse.Rows">
+            <summary>List of per-client summary rows.</summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Responses.ClientSummaryRow">
+            <summary>
+            A single row in the client summary table.
+            </summary>
+            <param name="ClientId">The unique identifier of the client.</param>
+            <param name="DisplayName">Human-readable display name.</param>
+            <param name="AccessibleServices">Number of services the client can access.</param>
+            <param name="TotalRateLimitRequests">Sum of per-service rate limit max requests; 0 when none.</param>
+            <param name="AccessiblePools">Number of resource pools the client has access to.</param>
+            <param name="UsedSlots">Number of resource pool slots currently in use.</param>
+            <param name="TotalAccessibleSlots">Total number of resource pool slots the client can access.</param>
+        </member>
+        <member name="M:ClientManager.Shared.Models.Responses.ClientSummaryRow.#ctor(System.String,System.String,System.Int32,System.Int32,System.Int32,System.Int32,System.Int32)">
+            <summary>
+            A single row in the client summary table.
+            </summary>
+            <param name="ClientId">The unique identifier of the client.</param>
+            <param name="DisplayName">Human-readable display name.</param>
+            <param name="AccessibleServices">Number of services the client can access.</param>
+            <param name="TotalRateLimitRequests">Sum of per-service rate limit max requests; 0 when none.</param>
+            <param name="AccessiblePools">Number of resource pools the client has access to.</param>
+            <param name="UsedSlots">Number of resource pool slots currently in use.</param>
+            <param name="TotalAccessibleSlots">Total number of resource pool slots the client can access.</param>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.ClientSummaryRow.ClientId">
+            <summary>The unique identifier of the client.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.ClientSummaryRow.DisplayName">
+            <summary>Human-readable display name.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.ClientSummaryRow.AccessibleServices">
+            <summary>Number of services the client can access.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.ClientSummaryRow.TotalRateLimitRequests">
+            <summary>Sum of per-service rate limit max requests; 0 when none.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.ClientSummaryRow.AccessiblePools">
+            <summary>Number of resource pools the client has access to.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.ClientSummaryRow.UsedSlots">
+            <summary>Number of resource pool slots currently in use.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.ClientSummaryRow.TotalAccessibleSlots">
+            <summary>Total number of resource pool slots the client can access.</summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Responses.UsageTimeSeriesResponse">
+            <summary>
+            Time-series data for usage and capacity over time.
+            </summary>
+            <param name="UsagePoints">Data points representing actual usage over time.</param>
+            <param name="CapPoints">Data points representing the capacity limit over time.</param>
+        </member>
+        <member name="M:ClientManager.Shared.Models.Responses.UsageTimeSeriesResponse.#ctor(System.Collections.Generic.IReadOnlyList{ClientManager.Shared.Models.Responses.TimeSeriesPoint},System.Collections.Generic.IReadOnlyList{ClientManager.Shared.Models.Responses.TimeSeriesPoint})">
+            <summary>
+            Time-series data for usage and capacity over time.
+            </summary>
+            <param name="UsagePoints">Data points representing actual usage over time.</param>
+            <param name="CapPoints">Data points representing the capacity limit over time.</param>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.UsageTimeSeriesResponse.UsagePoints">
+            <summary>Data points representing actual usage over time.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.UsageTimeSeriesResponse.CapPoints">
+            <summary>Data points representing the capacity limit over time.</summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Responses.TimeSeriesPoint">
+            <summary>
+            A single data point in a time series.
+            </summary>
+            <param name="Timestamp">The point in time this value represents.</param>
+            <param name="Value">The measured value at this timestamp.</param>
+        </member>
+        <member name="M:ClientManager.Shared.Models.Responses.TimeSeriesPoint.#ctor(System.DateTime,System.Double)">
+            <summary>
+            A single data point in a time series.
+            </summary>
+            <param name="Timestamp">The point in time this value represents.</param>
+            <param name="Value">The measured value at this timestamp.</param>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.TimeSeriesPoint.Timestamp">
+            <summary>The point in time this value represents.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.TimeSeriesPoint.Value">
+            <summary>The measured value at this timestamp.</summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Responses.ClientUsageBreakdownResponse">
+            <summary>
+            Per-client usage breakdown for a specific service or resource pool.
+            </summary>
+            <param name="Entries">List of per-client usage entries.</param>
+        </member>
+        <member name="M:ClientManager.Shared.Models.Responses.ClientUsageBreakdownResponse.#ctor(System.Collections.Generic.IReadOnlyList{ClientManager.Shared.Models.Responses.ClientUsageEntry})">
+            <summary>
+            Per-client usage breakdown for a specific service or resource pool.
+            </summary>
+            <param name="Entries">List of per-client usage entries.</param>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.ClientUsageBreakdownResponse.Entries">
+            <summary>List of per-client usage entries.</summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Responses.ClientUsageEntry">
+            <summary>
+            A single client's usage value within a breakdown.
+            </summary>
+            <param name="ClientId">The unique identifier of the client.</param>
+            <param name="ClientName">Human-readable display name of the client.</param>
+            <param name="GrantedCount">Total granted requests across the requested window.</param>
+            <param name="DeniedCount">Total denied requests across the requested window.</param>
+            <param name="DeniedUnauthenticatedCount">Denied due to missing access configuration.</param>
+            <param name="DeniedBlockedCount">Denied due to policy or disabled state.</param>
+            <param name="DeniedRateLimitedCount">Denied due to rate or frequency limits.</param>
+            <param name="DeniedCapacityLimitedCount">Denied due to slot or capacity limits (pools only).</param>
+            <param name="ActiveCount">Latest active allocation count within the requested window.</param>
+        </member>
+        <member name="M:ClientManager.Shared.Models.Responses.ClientUsageEntry.#ctor(System.String,System.String,System.Int64,System.Int64,System.Int64,System.Int64,System.Int64,System.Int64,System.Int64)">
+            <summary>
+            A single client's usage value within a breakdown.
+            </summary>
+            <param name="ClientId">The unique identifier of the client.</param>
+            <param name="ClientName">Human-readable display name of the client.</param>
+            <param name="GrantedCount">Total granted requests across the requested window.</param>
+            <param name="DeniedCount">Total denied requests across the requested window.</param>
+            <param name="DeniedUnauthenticatedCount">Denied due to missing access configuration.</param>
+            <param name="DeniedBlockedCount">Denied due to policy or disabled state.</param>
+            <param name="DeniedRateLimitedCount">Denied due to rate or frequency limits.</param>
+            <param name="DeniedCapacityLimitedCount">Denied due to slot or capacity limits (pools only).</param>
+            <param name="ActiveCount">Latest active allocation count within the requested window.</param>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.ClientUsageEntry.ClientId">
+            <summary>The unique identifier of the client.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.ClientUsageEntry.ClientName">
+            <summary>Human-readable display name of the client.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.ClientUsageEntry.GrantedCount">
+            <summary>Total granted requests across the requested window.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.ClientUsageEntry.DeniedCount">
+            <summary>Total denied requests across the requested window.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.ClientUsageEntry.DeniedUnauthenticatedCount">
+            <summary>Denied due to missing access configuration.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.ClientUsageEntry.DeniedBlockedCount">
+            <summary>Denied due to policy or disabled state.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.ClientUsageEntry.DeniedRateLimitedCount">
+            <summary>Denied due to rate or frequency limits.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.ClientUsageEntry.DeniedCapacityLimitedCount">
+            <summary>Denied due to slot or capacity limits (pools only).</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.ClientUsageEntry.ActiveCount">
+            <summary>Latest active allocation count within the requested window.</summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Responses.HistoricalUsageResponse">
+            <summary>
+            Response containing historical usage time-series data for a target.
+            </summary>
+        </member>
+        <member name="M:ClientManager.Shared.Models.Responses.HistoricalUsageResponse.#ctor(System.String,ClientManager.Shared.Models.Enums.TargetType,ClientManager.Shared.Models.Enums.BucketGranularity,System.Collections.Generic.IReadOnlyList{ClientManager.Shared.Models.Responses.HistoricalUsagePoint})">
+            <summary>
+            Response containing historical usage time-series data for a target.
+            </summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Responses.ClientHistoricalUsageResponse">
+            <summary>
+            Response containing historical usage time-series data for a target and client pair.
+            </summary>
+        </member>
+        <member name="M:ClientManager.Shared.Models.Responses.ClientHistoricalUsageResponse.#ctor(System.String,ClientManager.Shared.Models.Enums.TargetType,System.String,ClientManager.Shared.Models.Enums.BucketGranularity,System.Collections.Generic.IReadOnlyList{ClientManager.Shared.Models.Responses.HistoricalUsagePoint})">
+            <summary>
+            Response containing historical usage time-series data for a target and client pair.
+            </summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Responses.HistoricalUsagePoint">
+            <summary>
+            A single data point in the historical usage time-series.
+            </summary>
+        </member>
+        <member name="M:ClientManager.Shared.Models.Responses.HistoricalUsagePoint.#ctor(System.DateTime,System.Int64,System.Int64,System.Int64,System.Int64,System.Int64,System.Int64,System.Int64,System.Int64)">
+            <summary>
+            A single data point in the historical usage time-series.
+            </summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Responses.TargetClientUsageBreakdownResponse">
+            <summary>
+            Per-target client usage breakdown within a batch response.
+            </summary>
+            <param name="TargetId">The service or resource pool ID.</param>
+            <param name="Entries">Per-client usage entries for this target.</param>
+        </member>
+        <member name="M:ClientManager.Shared.Models.Responses.TargetClientUsageBreakdownResponse.#ctor(System.String,System.Collections.Generic.IReadOnlyList{ClientManager.Shared.Models.Responses.ClientUsageEntry})">
+            <summary>
+            Per-target client usage breakdown within a batch response.
+            </summary>
+            <param name="TargetId">The service or resource pool ID.</param>
+            <param name="Entries">Per-client usage entries for this target.</param>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.TargetClientUsageBreakdownResponse.TargetId">
+            <summary>The service or resource pool ID.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.TargetClientUsageBreakdownResponse.Entries">
+            <summary>Per-client usage entries for this target.</summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Responses.TargetUsageTimeSeriesResponse">
+            <summary>
+            Per-target usage time-series within a batch response.
+            </summary>
+            <param name="TargetId">The service or resource pool ID.</param>
+            <param name="UsagePoints">Data points representing actual usage over time.</param>
+            <param name="CapPoints">Data points representing the capacity limit over time.</param>
+        </member>
+        <member name="M:ClientManager.Shared.Models.Responses.TargetUsageTimeSeriesResponse.#ctor(System.String,System.Collections.Generic.IReadOnlyList{ClientManager.Shared.Models.Responses.TimeSeriesPoint},System.Collections.Generic.IReadOnlyList{ClientManager.Shared.Models.Responses.TimeSeriesPoint})">
+            <summary>
+            Per-target usage time-series within a batch response.
+            </summary>
+            <param name="TargetId">The service or resource pool ID.</param>
+            <param name="UsagePoints">Data points representing actual usage over time.</param>
+            <param name="CapPoints">Data points representing the capacity limit over time.</param>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.TargetUsageTimeSeriesResponse.TargetId">
+            <summary>The service or resource pool ID.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.TargetUsageTimeSeriesResponse.UsagePoints">
+            <summary>Data points representing actual usage over time.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Responses.TargetUsageTimeSeriesResponse.CapPoints">
+            <summary>Data points representing the capacity limit over time.</summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Search.DocumentQuery">
+             <summary>
+             Composable query model for searching documents in a collection.
+             Supports field-level filters, sorting, and pagination. Stores translate this to their
+             native query language, or fall back to in-memory evaluation.
+            
+             <para>
+             Properties use public setters for JSON deserialization from HTTP request bodies.
+             Fluent methods (<see cref="M:ClientManager.Shared.Models.Search.DocumentQuery.Where(System.String,ClientManager.Shared.Models.Search.FilterOperator,System.Object)"/>, <see cref="M:ClientManager.Shared.Models.Search.DocumentQuery.OrderBy(System.String,ClientManager.Shared.Models.Search.SortDirection)"/>, <see cref="M:ClientManager.Shared.Models.Search.DocumentQuery.WithPagination(System.Int32,System.Int32)"/>)
+             are convenience shortcuts for building queries in code.
+             </para>
+             </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Search.DocumentQuery.Filters">
+            <summary>
+            Field-level filter clauses. Multiple filters are AND'd together.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Search.DocumentQuery.Sort">
+            <summary>
+            Optional sort clause for ordering results.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Search.DocumentQuery.Skip">
+            <summary>
+            Number of documents to skip (for pagination).
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Search.DocumentQuery.Take">
+            <summary>
+            Maximum number of documents to return (for pagination).
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Search.DocumentQuery.TextSearch">
+            <summary>
+            Free-text search term for matching across all string fields.
+            Not exposed to API consumers — used internally by store implementations.
+            </summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Search.DocumentQuery.All">
+            <summary>
+            Returns an empty query that matches all documents with no filters or pagination.
+            </summary>
+        </member>
+        <member name="M:ClientManager.Shared.Models.Search.DocumentQuery.Where(System.String,ClientManager.Shared.Models.Search.FilterOperator,System.Object)">
+            <summary>
+            Adds a field-level filter clause. Multiple calls are AND'd together.
+            </summary>
+            <param name="field">The JSON property name to filter on (case-insensitive).</param>
+            <param name="op">The comparison operator.</param>
+            <param name="value">The value to compare against (string, int, bool, DateTime, enum).</param>
+        </member>
+        <member name="M:ClientManager.Shared.Models.Search.DocumentQuery.WithTextSearch(System.String)">
+            <summary>
+            Sets a free-text search term that matches against all string fields.
+            </summary>
+            <param name="text">The text to search for (case-insensitive).</param>
+        </member>
+        <member name="M:ClientManager.Shared.Models.Search.DocumentQuery.OrderBy(System.String,ClientManager.Shared.Models.Search.SortDirection)">
+            <summary>
+            Sets the sort order for the results.
+            </summary>
+            <param name="field">The JSON property name to sort by.</param>
+            <param name="direction">The sort direction.</param>
+        </member>
+        <member name="M:ClientManager.Shared.Models.Search.DocumentQuery.WithPagination(System.Int32,System.Int32)">
+            <summary>
+            Sets pagination parameters for the results.
+            </summary>
+            <param name="skip">Number of documents to skip.</param>
+            <param name="take">Maximum number of documents to return.</param>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Search.FilterClause">
+            <summary>
+            A single field-level filter condition within a <see cref="T:ClientManager.Shared.Models.Search.DocumentQuery"/>.
+            Multiple clauses added to a query are AND'd together. Stores translate each clause
+            to their native query syntax; the in-memory fallback evaluates them via reflection.
+            </summary>
+            <param name="FieldName">The JSON property name to filter on (case-insensitive).</param>
+            <param name="Operator">The comparison operator to apply.</param>
+            <param name="Value">The target value to compare against (string, int, bool, DateTime, or enum).</param>
+        </member>
+        <member name="M:ClientManager.Shared.Models.Search.FilterClause.#ctor(System.String,ClientManager.Shared.Models.Search.FilterOperator,System.Object)">
+            <summary>
+            A single field-level filter condition within a <see cref="T:ClientManager.Shared.Models.Search.DocumentQuery"/>.
+            Multiple clauses added to a query are AND'd together. Stores translate each clause
+            to their native query syntax; the in-memory fallback evaluates them via reflection.
+            </summary>
+            <param name="FieldName">The JSON property name to filter on (case-insensitive).</param>
+            <param name="Operator">The comparison operator to apply.</param>
+            <param name="Value">The target value to compare against (string, int, bool, DateTime, or enum).</param>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Search.FilterClause.FieldName">
+            <summary>The JSON property name to filter on (case-insensitive).</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Search.FilterClause.Operator">
+            <summary>The comparison operator to apply.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Search.FilterClause.Value">
+            <summary>The target value to compare against (string, int, bool, DateTime, or enum).</summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Search.FilterClauseValueConverter">
+            <summary>
+            Custom JSON converter for <see cref="P:ClientManager.Shared.Models.Search.FilterClause.Value"/> that preserves CLR types
+            during round-tripping. Without this, <see cref="N:System.Text.Json"/> deserializes
+            <c>object</c>-typed properties as <see cref="T:System.Text.Json.JsonElement"/>, losing type fidelity
+            that the query evaluators rely on.
+            </summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Search.FilterOperator">
+            <summary>
+            Comparison operators used in <see cref="T:ClientManager.Shared.Models.Search.FilterClause"/> to define how a document
+            field is matched against a target value. Each store translates these to its native
+            query language (e.g. MongoDB filter, Lucene query, RediSearch predicate) or the
+            in-memory evaluator applies them via reflection.
+            </summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Search.SortDirection">
+            <summary>
+            Sort direction for a <see cref="T:ClientManager.Shared.Models.Search.SortClause"/> within a <see cref="T:ClientManager.Shared.Models.Search.DocumentQuery"/>.
+            </summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Search.SearchResult`1">
+            <summary>
+            The result of a search operation, containing the matching items and the total count
+            of documents matching the query (before pagination).
+            </summary>
+            <typeparam name="T">The document type.</typeparam>
+            <param name="Items">The page of matching documents.</param>
+            <param name="TotalCount">Total number of documents matching the query, ignoring pagination.</param>
+        </member>
+        <member name="M:ClientManager.Shared.Models.Search.SearchResult`1.#ctor(System.Collections.Generic.IEnumerable{`0},System.Int64)">
+            <summary>
+            The result of a search operation, containing the matching items and the total count
+            of documents matching the query (before pagination).
+            </summary>
+            <typeparam name="T">The document type.</typeparam>
+            <param name="Items">The page of matching documents.</param>
+            <param name="TotalCount">Total number of documents matching the query, ignoring pagination.</param>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Search.SearchResult`1.Items">
+            <summary>The page of matching documents.</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Search.SearchResult`1.TotalCount">
+            <summary>Total number of documents matching the query, ignoring pagination.</summary>
+        </member>
+        <member name="T:ClientManager.Shared.Models.Search.SortClause">
+            <summary>
+            Defines the sort order for search results.
+            At most one sort clause is applied per query.
+            </summary>
+            <param name="FieldName">The JSON property name to sort by (case-insensitive).</param>
+            <param name="Direction">Whether to sort ascending or descending.</param>
+        </member>
+        <member name="M:ClientManager.Shared.Models.Search.SortClause.#ctor(System.String,ClientManager.Shared.Models.Search.SortDirection)">
+            <summary>
+            Defines the sort order for search results.
+            At most one sort clause is applied per query.
+            </summary>
+            <param name="FieldName">The JSON property name to sort by (case-insensitive).</param>
+            <param name="Direction">Whether to sort ascending or descending.</param>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Search.SortClause.FieldName">
+            <summary>The JSON property name to sort by (case-insensitive).</summary>
+        </member>
+        <member name="P:ClientManager.Shared.Models.Search.SortClause.Direction">
+            <summary>Whether to sort ascending or descending.</summary>
+        </member>
+        <member name="T:ClientManager.Shared.Utils.BucketGranularityHelper">
+            <summary>
+            Shared bucket width, overlap, and ordering helpers for usage statistics.
+            </summary>
+        </member>
+    </members>
+</doc>

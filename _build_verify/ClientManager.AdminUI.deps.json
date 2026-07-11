@@ -1,0 +1,116 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v10.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v10.0": {
+      "ClientManager.AdminUI/1.2.5": {
+        "dependencies": {
+          "ClientManager.Shared": "1.2.5",
+          "NLog": "6.1.0",
+          "NLog.Web.AspNetCore": "6.1.0",
+          "Radzen.Blazor": "10.4.4"
+        },
+        "runtime": {
+          "ClientManager.AdminUI.dll": {}
+        },
+        "resources": {
+          "he-IL/ClientManager.AdminUI.resources.dll": {
+            "locale": "he-IL"
+          }
+        }
+      },
+      "NLog/6.1.0": {
+        "runtime": {
+          "lib/netstandard2.1/NLog.dll": {
+            "assemblyVersion": "6.0.0.0",
+            "fileVersion": "6.1.0.4914"
+          }
+        }
+      },
+      "NLog.Extensions.Logging/6.1.0": {
+        "dependencies": {
+          "NLog": "6.1.0"
+        },
+        "runtime": {
+          "lib/net10.0/NLog.Extensions.Logging.dll": {
+            "assemblyVersion": "6.0.0.0",
+            "fileVersion": "6.1.0.770"
+          }
+        }
+      },
+      "NLog.Web.AspNetCore/6.1.0": {
+        "dependencies": {
+          "NLog.Extensions.Logging": "6.1.0"
+        },
+        "runtime": {
+          "lib/net10.0/NLog.Web.AspNetCore.dll": {
+            "assemblyVersion": "6.0.0.0",
+            "fileVersion": "6.1.0.1363"
+          }
+        }
+      },
+      "Radzen.Blazor/10.4.4": {
+        "runtime": {
+          "lib/net10.0/Radzen.Blazor.dll": {
+            "assemblyVersion": "10.4.4.0",
+            "fileVersion": "10.4.4.0"
+          }
+        }
+      },
+      "ClientManager.Shared/1.2.5": {
+        "dependencies": {
+          "NLog": "6.1.0"
+        },
+        "runtime": {
+          "ClientManager.Shared.dll": {
+            "assemblyVersion": "1.2.5.0",
+            "fileVersion": "1.2.5.0"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "ClientManager.AdminUI/1.2.5": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "NLog/6.1.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-K4UdxS4fuJeCM0sm+JTXWoJgOtcXX7X5kvE94bR07UB8JOB6A2+ski7q1tf2qdv+N0H3gsoWtteScJCHa3+zpw==",
+      "path": "nlog/6.1.0",
+      "hashPath": "nlog.6.1.0.nupkg.sha512"
+    },
+    "NLog.Extensions.Logging/6.1.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-yWIluPmI4ISazv+1eEoRGnPbSVkxMN11ULblCxMvNsb8hGrw4LtuBebPOSjHK9D9yK/xSCHzmN46cELbgwiVsQ==",
+      "path": "nlog.extensions.logging/6.1.0",
+      "hashPath": "nlog.extensions.logging.6.1.0.nupkg.sha512"
+    },
+    "NLog.Web.AspNetCore/6.1.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-AYBO0oObnzc5KhrLR7J5GVGSd+fXMG1blFi5jVjmzN7antr5IBlVLcMO1BMJKgQZdByeyT7HLVvfbLd9CRYiEg==",
+      "path": "nlog.web.aspnetcore/6.1.0",
+      "hashPath": "nlog.web.aspnetcore.6.1.0.nupkg.sha512"
+    },
+    "Radzen.Blazor/10.4.4": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-+IoXXhOJ+LhxaSx7eBsT7bwxJVSRTecyTPNeOfCh2hKC1TwngEjBRxONvd0mwVnByoI+Bsvn1P3+mI5we7o4bw==",
+      "path": "radzen.blazor/10.4.4",
+      "hashPath": "radzen.blazor.10.4.4.nupkg.sha512"
+    },
+    "ClientManager.Shared/1.2.5": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}

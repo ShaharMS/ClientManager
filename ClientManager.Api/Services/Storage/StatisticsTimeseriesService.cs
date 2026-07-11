@@ -52,59 +52,40 @@ public sealed class StatisticsTimeseriesService : IStatisticsTimeseriesService
         CancellationToken cancellationToken = default)
     {
         var bucketCount = Math.Clamp(request.BucketCount, MinBucketCount, MaxBucketCount);
-        var cacheKey =
-            $"timeseries:{request.SearchCategory}:{CreateIdsKey(request.TargetIds)}:{CreateIdsKey(request.ClientIds)}:{request.FromUtc:O}:{request.ToUtc:O}:{bucketCount}";
-
-        var includesNow = request.ToUtc >= DateTime.UtcNow.AddSeconds(-2);
-        var factory = (CancellationToken token) => BuildResponseAsync(request with { BucketCount = bucketCount }, token);
-
-        return includesNow
-            ? _cache.GetOrCreateStatisticsTailAsync(cacheKey, factory, cancellationToken)
-            : _cache.GetOrCreateStatisticsClosedAsync(cacheKey, factory, cancellationToken);
+        return BuildResponseAsync(request with { BucketCount = bucketCount }, cancellationToken);
     }
 
     private async Task<TimeseriesSearchResponse> BuildResponseAsync(
         TimeseriesSearchRequest request,
         CancellationToken cancellationToken)
     {
-        var (targetType, useLatestForActive) = MapCategory(request.SearchCategory);
-        var targetIds = await ResolveTargetIdsAsync(request.SearchCategory, request.TargetIds, cancellationToken);
-        var clientIds = await ResolveClientIdsAsync(request.ClientIds, targetIds, targetType, cancellationToken);
-        var granularity = StatisticsGranularityPicker.PickForRange(request.FromUtc, request.ToUtc, request.BucketCount);
-        var capValues = await LoadCapValuesAsync(request.SearchCategory, targetIds, cancellationToken);
-        var clientNames = await LoadClientNamesAsync(clientIds, cancellationToken);
+        var closedBase = await GetOrCreateClosedBaseAsync(request, cancellationToken);
+        var totalsByTargetClient = CloneTotals(closedBase.TotalsByTargetClient);
 
-        var snapshots = targetIds.Count == 0 || clientIds.Count == 0
-            ? []
-            : await _usageSnapshotDatabase.GetByTargetsAndRangeAsync(
-                targetIds,
-                targetType,
-                granularity,
+        if (IncludesNow(request.ToUtc))
+        {
+            await OverlayLiveCountersBatchedAsync(
+                totalsByTargetClient,
+                closedBase.TargetType,
+                closedBase.TargetIds,
+                closedBase.ClientIds,
                 request.FromUtc,
                 request.ToUtc,
-                clientIds,
+                closedBase.Granularity,
                 cancellationToken);
+        }
 
-        var totalsByTargetClient = AggregateSnapshots(snapshots, request.FromUtc, request.ToUtc, granularity);
-        await OverlayLiveCountersAsync(
-            totalsByTargetClient,
-            targetType,
-            targetIds,
-            clientIds,
-            request.FromUtc,
-            request.ToUtc,
-            granularity,
-            cancellationToken);
-
-        var targetNames = await LoadTargetNamesAsync(request.SearchCategory, targetIds, cancellationToken);
+        var capValues = await LoadCapValuesAsync(request.SearchCategory, closedBase.TargetIds, cancellationToken);
+        var clientNames = await LoadClientNamesAsync(closedBase.ClientIds, cancellationToken);
+        var targetNames = await LoadTargetNamesAsync(request.SearchCategory, closedBase.TargetIds, cancellationToken);
         var targets = new List<TimeseriesTargetSeries>();
 
-        foreach (var targetId in targetIds)
+        foreach (var targetId in closedBase.TargetIds)
         {
             var clientSeries = new List<TimeseriesClientSeries>();
             var aggregateSource = new SortedDictionary<DateTime, BucketTotals>();
 
-            foreach (var clientId in clientIds)
+            foreach (var clientId in closedBase.ClientIds)
             {
                 if (!totalsByTargetClient.TryGetValue((targetId, clientId), out var clientBuckets) || clientBuckets.Count == 0)
                 {
@@ -126,8 +107,8 @@ public sealed class StatisticsTimeseriesService : IStatisticsTimeseriesService
                     request.FromUtc,
                     request.ToUtc,
                     request.BucketCount,
-                    granularity,
-                    useLatestForActive);
+                    closedBase.Granularity,
+                    closedBase.UseLatestForActive);
 
                 if (merged.Count == 0)
                 {
@@ -145,8 +126,8 @@ public sealed class StatisticsTimeseriesService : IStatisticsTimeseriesService
                 request.FromUtc,
                 request.ToUtc,
                 request.BucketCount,
-                granularity,
-                useLatestForActive);
+                closedBase.Granularity,
+                closedBase.UseLatestForActive);
 
             if (clientSeries.Count == 0 && aggregateMerged.Count == 0)
             {
@@ -163,9 +144,81 @@ public sealed class StatisticsTimeseriesService : IStatisticsTimeseriesService
 
         return new TimeseriesSearchResponse(
             request.SearchCategory,
-            targetType,
-            granularity,
+            closedBase.TargetType,
+            closedBase.Granularity,
             targets);
+    }
+
+    private async Task<TimeseriesClosedBase> GetOrCreateClosedBaseAsync(
+        TimeseriesSearchRequest request,
+        CancellationToken cancellationToken)
+    {
+        var (targetType, useLatestForActive) = MapCategory(request.SearchCategory);
+        var targetIds = await ResolveTargetIdsAsync(request.SearchCategory, request.TargetIds, cancellationToken);
+        var clientIds = await ResolveClientIdsAsync(request.ClientIds, targetIds, targetType, cancellationToken);
+        var granularity = StatisticsGranularityPicker.PickForRange(request.FromUtc, request.ToUtc, request.BucketCount);
+        var cacheKey = CreateClosedCacheKey(request, request.BucketCount, granularity);
+
+        return await _cache.GetOrCreateStatisticsClosedAsync(
+            cacheKey,
+            async token =>
+            {
+                var snapshotToUtc = IncludesNow(request.ToUtc) ? DateTime.UtcNow : request.ToUtc;
+                var snapshots = targetIds.Count == 0 || clientIds.Count == 0
+                    ? []
+                    : await _usageSnapshotDatabase.GetByTargetsAndRangeAsync(
+                        targetIds,
+                        targetType,
+                        granularity,
+                        request.FromUtc,
+                        snapshotToUtc,
+                        clientIds,
+                        token);
+
+                return new TimeseriesClosedBase(
+                    request.SearchCategory,
+                    targetType,
+                    useLatestForActive,
+                    granularity,
+                    targetIds,
+                    clientIds,
+                    AggregateSnapshots(snapshots, request.FromUtc, snapshotToUtc, granularity));
+            },
+            cancellationToken);
+    }
+
+    private static string CreateClosedCacheKey(
+        TimeseriesSearchRequest request,
+        int bucketCount,
+        BucketGranularity granularity)
+    {
+        var baseKey =
+            $"timeseries:closed:{request.SearchCategory}:{CreateIdsKey(request.TargetIds)}:{CreateIdsKey(request.ClientIds)}:{request.FromUtc:O}:{bucketCount}:{granularity}";
+
+        return IncludesNow(request.ToUtc) ? baseKey : $"{baseKey}:{request.ToUtc:O}";
+    }
+
+    private static bool IncludesNow(DateTime toUtc) => toUtc >= DateTime.UtcNow.AddSeconds(-2);
+
+    private sealed record TimeseriesClosedBase(
+        StatisticsSearchCategory SearchCategory,
+        TargetType TargetType,
+        bool UseLatestForActive,
+        BucketGranularity Granularity,
+        IReadOnlyList<string> TargetIds,
+        IReadOnlyList<string> ClientIds,
+        Dictionary<(string TargetId, string ClientId), SortedDictionary<DateTime, BucketTotals>> TotalsByTargetClient);
+
+    private static Dictionary<(string TargetId, string ClientId), SortedDictionary<DateTime, BucketTotals>> CloneTotals(
+        Dictionary<(string TargetId, string ClientId), SortedDictionary<DateTime, BucketTotals>> source)
+    {
+        var clone = new Dictionary<(string TargetId, string ClientId), SortedDictionary<DateTime, BucketTotals>>(source.Count);
+        foreach (var (key, buckets) in source)
+        {
+            clone[key] = new SortedDictionary<DateTime, BucketTotals>(buckets);
+        }
+
+        return clone;
     }
 
     private static (TargetType TargetType, bool UseLatestForActive) MapCategory(StatisticsSearchCategory category) =>
@@ -383,7 +436,7 @@ public sealed class StatisticsTimeseriesService : IStatisticsTimeseriesService
         return result;
     }
 
-    private async Task OverlayLiveCountersAsync(
+    private async Task OverlayLiveCountersBatchedAsync(
         Dictionary<(string TargetId, string ClientId), SortedDictionary<DateTime, BucketTotals>> totalsByTargetClient,
         TargetType targetType,
         IReadOnlyList<string> targetIds,
@@ -399,48 +452,50 @@ public sealed class StatisticsTimeseriesService : IStatisticsTimeseriesService
             return;
         }
 
-        foreach (var targetId in targetIds)
+        var targetIdSet = targetIds.ToHashSet(StringComparer.Ordinal);
+        var clientIdSet = clientIds.ToHashSet(StringComparer.Ordinal);
+        var overlayStart = UsageSegmentHelper.RoundDownToSecond(overlayFrom);
+        var overlayEnd = UsageSegmentHelper.RoundDownToSecond(toUtc);
+
+        var counters = await _usageSnapshotDatabase.GetPendingCounterValuesByPrefixAsync("usage:", cancellationToken);
+        foreach (var (storageKey, value) in counters)
         {
-            foreach (var clientId in clientIds)
+            if (value <= 0 ||
+                !UsageSegmentHelper.TryParseUsageCounterKey(
+                    storageKey,
+                    out var clientId,
+                    out var parsedTargetType,
+                    out var targetId,
+                    out var secondTimestamp,
+                    out var eventType,
+                    out var denialCategory))
             {
-                var counters = await _usageSnapshotDatabase.GetPendingCountersInRangeAsync(
-                    clientId,
-                    targetType,
-                    targetId,
-                    overlayFrom,
-                    toUtc,
-                    cancellationToken);
-
-                if (counters.Count == 0)
-                {
-                    continue;
-                }
-
-                var key = (targetId, clientId);
-                if (!totalsByTargetClient.TryGetValue(key, out var buckets))
-                {
-                    buckets = [];
-                    totalsByTargetClient[key] = buckets;
-                }
-
-                foreach (var (storageKey, value) in counters)
-                {
-                    if (value <= 0 ||
-                        !UsageSegmentHelper.TryParseUsageCounterKey(
-                            storageKey, out _, out _, out _, out var secondTimestamp, out var eventType, out var denialCategory))
-                    {
-                        continue;
-                    }
-
-                    var bucketTimestamp = BucketGranularityHelper.RoundDown(granularity, secondTimestamp);
-                    if (!buckets.TryGetValue(bucketTimestamp, out var totals))
-                    {
-                        totals = new BucketTotals(0, 0, 0, 0, 0, 0, 0);
-                    }
-
-                    buckets[bucketTimestamp] = ApplyCounterEvent(totals, eventType, denialCategory, value);
-                }
+                continue;
             }
+
+            if (parsedTargetType != targetType ||
+                !targetIdSet.Contains(targetId) ||
+                !clientIdSet.Contains(clientId) ||
+                secondTimestamp < overlayStart ||
+                secondTimestamp > overlayEnd)
+            {
+                continue;
+            }
+
+            var key = (targetId, clientId);
+            if (!totalsByTargetClient.TryGetValue(key, out var buckets))
+            {
+                buckets = [];
+                totalsByTargetClient[key] = buckets;
+            }
+
+            var bucketTimestamp = BucketGranularityHelper.RoundDown(granularity, secondTimestamp);
+            if (!buckets.TryGetValue(bucketTimestamp, out var totals))
+            {
+                totals = new BucketTotals(0, 0, 0, 0, 0, 0, 0);
+            }
+
+            buckets[bucketTimestamp] = ApplyCounterEvent(totals, eventType, denialCategory, value);
         }
     }
 

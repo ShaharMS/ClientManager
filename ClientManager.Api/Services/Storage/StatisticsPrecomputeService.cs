@@ -1,3 +1,4 @@
+using ClientManager.DataAccess.Databases.Implementations;
 using ClientManager.DataAccess.Databases.Interfaces;
 using ClientManager.DataAccess.Repositories.Interfaces;
 using ClientManager.Shared.Models.Entities;
@@ -94,43 +95,155 @@ public sealed class StatisticsPrecomputeService : IStatisticsPrecomputeService
             cancellationToken);
     }
 
-    public async Task RefreshLatestUsageGaugesAsync(CancellationToken cancellationToken = default)
+    public async Task UpdateLatestUsageGaugesAsync(
+        IReadOnlyCollection<ServiceClientGaugeKey> dirtyPairs,
+        CancellationToken cancellationToken = default)
     {
-        var snapshots = await _usageSnapshotDatabase.GetAllByGranularityAsync(BucketGranularity.Second, cancellationToken);
-        var serviceSnapshots = snapshots.Where(snapshot => snapshot.TargetType == TargetType.Service).ToList();
-
-        if (serviceSnapshots.Count == 0)
+        if (dirtyPairs.Count == 0)
         {
-            serviceSnapshots = (await _usageSnapshotDatabase.GetAllByGranularityAsync(
-                BucketGranularity.FiveMinute,
-                cancellationToken))
-                .Where(snapshot => snapshot.TargetType == TargetType.Service)
-                .ToList();
+            return;
         }
 
-        var entries = new List<LatestUsageGaugeEntry>();
-        foreach (var snapshot in serviceSnapshots)
-        {
-            var latest = snapshot.Buckets.MaxBy(bucket => bucket.Timestamp);
-            if (latest is null)
-            {
-                continue;
-            }
+        var existing = await _precomputedDatabase.GetLatestUsageGaugesAsync(cancellationToken);
+        var entriesByKey = existing?.Entries.ToDictionary(
+            entry => (entry.ServiceId, entry.ClientId),
+            entry => entry)
+            ?? new Dictionary<(string ServiceId, string ClientId), LatestUsageGaugeEntry>();
 
-            entries.Add(new LatestUsageGaugeEntry(
-                snapshot.TargetId,
-                snapshot.ClientId,
-                latest.GrantedCount,
-                latest.DeniedCount));
+        var counters = await _usageSnapshotDatabase.GetPendingCounterValuesByPrefixAsync("usage:", cancellationToken);
+        var now = DateTime.UtcNow;
+        var overlayFrom = now.AddMinutes(-5);
+
+        foreach (var pair in dirtyPairs)
+        {
+            var (granted, denied) = await ResolveGaugeCountsAsync(
+                pair.ServiceId,
+                pair.ClientId,
+                counters,
+                overlayFrom,
+                now,
+                cancellationToken);
+
+            entriesByKey[(pair.ServiceId, pair.ClientId)] = new LatestUsageGaugeEntry(
+                pair.ServiceId,
+                pair.ClientId,
+                granted,
+                denied);
         }
 
         await _precomputedDatabase.UpsertLatestUsageGaugesAsync(
             new LatestUsageGaugesDocument
             {
-                Entries = entries,
-                UpdatedAtUtc = DateTime.UtcNow
+                Entries = entriesByKey.Values.ToList(),
+                UpdatedAtUtc = now
             },
             cancellationToken);
+    }
+
+    private async Task<(long Granted, long Denied)> ResolveGaugeCountsAsync(
+        string serviceId,
+        string clientId,
+        IReadOnlyDictionary<string, long> counters,
+        DateTime overlayFrom,
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+        long granted = 0;
+        long denied = 0;
+        var overlayStart = UsageSegmentHelper.RoundDownToSecond(overlayFrom);
+        var overlayEnd = UsageSegmentHelper.RoundDownToSecond(now);
+        DateTime? latestSecond = null;
+
+        foreach (var (storageKey, value) in counters)
+        {
+            if (value <= 0 ||
+                !UsageSegmentHelper.TryParseUsageCounterKey(
+                    storageKey,
+                    out var parsedClientId,
+                    out var targetType,
+                    out var targetId,
+                    out var secondTimestamp,
+                    out _,
+                    out _))
+            {
+                continue;
+            }
+
+            if (targetType != TargetType.Service ||
+                !string.Equals(parsedClientId, clientId, StringComparison.Ordinal) ||
+                !string.Equals(targetId, serviceId, StringComparison.Ordinal) ||
+                secondTimestamp < overlayStart ||
+                secondTimestamp > overlayEnd)
+            {
+                continue;
+            }
+
+            if (latestSecond is null || secondTimestamp > latestSecond)
+            {
+                latestSecond = secondTimestamp;
+            }
+        }
+
+        if (latestSecond is not null)
+        {
+            foreach (var (storageKey, value) in counters)
+            {
+                if (value <= 0 ||
+                    !UsageSegmentHelper.TryParseUsageCounterKey(
+                        storageKey,
+                        out var parsedClientId,
+                        out var targetType,
+                        out var targetId,
+                        out var secondTimestamp,
+                        out var eventType,
+                        out _))
+                {
+                    continue;
+                }
+
+                if (targetType != TargetType.Service ||
+                    !string.Equals(parsedClientId, clientId, StringComparison.Ordinal) ||
+                    !string.Equals(targetId, serviceId, StringComparison.Ordinal) ||
+                    secondTimestamp != latestSecond)
+                {
+                    continue;
+                }
+
+                if (eventType == UsageEventType.Granted)
+                {
+                    granted += value;
+                }
+                else if (eventType == UsageEventType.Denied)
+                {
+                    denied += value;
+                }
+            }
+        }
+
+        if (granted > 0 || denied > 0)
+        {
+            return (granted, denied);
+        }
+
+        return await ReadLatestSnapshotCountsAsync(serviceId, clientId, cancellationToken);
+    }
+
+    private async Task<(long Granted, long Denied)> ReadLatestSnapshotCountsAsync(
+        string serviceId,
+        string clientId,
+        CancellationToken cancellationToken)
+    {
+        var segmentStart = UsageSegmentHelper.RoundDownToSecond(DateTime.UtcNow.AddMinutes(-5));
+        var snapshot = await _usageSnapshotDatabase.GetByClientTargetAndSegmentAsync(
+            clientId,
+            serviceId,
+            TargetType.Service,
+            BucketGranularity.Second,
+            segmentStart,
+            cancellationToken);
+
+        var latest = snapshot?.Buckets.MaxBy(bucket => bucket.Timestamp);
+        return latest is null ? (0, 0) : (latest.GrantedCount, latest.DeniedCount);
     }
 
     private async Task<IReadOnlyList<string>> ResolveServiceClientIdsAsync(
