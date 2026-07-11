@@ -34,7 +34,7 @@ These guides explain how ClientManager works internally, how to wire it into you
 | --- | --- |
 | [Integration guide](integration-guide.md) | Put ClientManager in front of your services with nginx, identify callers, and surface denials (401, 403, 429, …) to end users |
 | [Metrics integration guide](metrics-integration-guide.md) | Plug into Prometheus, Grafana, or OTLP collectors for metrics and traces |
-| [Persistence overview](persistence/index.md) | How storage roles map to JsonFile, SQLite, MongoDB, Redis, and Lucene |
+| [Persistence overview](persistence/index.md) | How storage roles map to JsonFile, MongoDB, Redis, and Lucene |
 
 ## Quick mental model
 

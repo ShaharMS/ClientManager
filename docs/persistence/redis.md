@@ -14,7 +14,7 @@ Redis acts as both a **document store** (collections grouped by key naming) and 
 
 ## Weak at
 
-- **Huge long-term statistics** — can store snapshots, but large historical analytics are usually better on MongoDB or SQLite with proper indexing.
+- **Huge long-term statistics** — can store snapshots, but large historical analytics are usually better on MongoDB with proper indexing.
 - **Complex ad-hoc queries** — not a replacement for MongoDB on catalog search/reporting.
 - **Durability expectations** — tune persistence (AOF/RDB) explicitly; rate-limit state is often ephemeral by design.
 

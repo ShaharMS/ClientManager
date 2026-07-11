@@ -15,7 +15,7 @@
 
 - **Multi-writer clusters** — index directory is not a shared database; treat as single-host or careful single-writer.
 - **Hot counters** — rate limits and allocations still want Redis semantics; Lucene is a poor fit for `RateLimiting`.
-- **Large statistics time-series** — use MongoDB, SQLite, or JsonFile with awareness of scale limits.
+- **Large statistics time-series** — use MongoDB or JsonFile with awareness of scale limits.
 - **Operational simplicity** — MongoDB often wins for the same “durable shared docs” slot with less index tuning.
 
 ## Storage role fit
@@ -23,7 +23,7 @@
 | Role | Lucene? |
 | --- | --- |
 | `Configuration` | Possible on single host |
-| `Statistics` | Rare; prefer MongoDB/SQLite |
+| `Statistics` | Rare; prefer MongoDB |
 | `RateLimiting` | Not recommended |
 | `Allocations` | Not recommended |
 

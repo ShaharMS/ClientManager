@@ -41,10 +41,4 @@ public record StorageRoleBinding
     /// <see cref="PersistenceProvider.Lucene"/>.
     /// </summary>
     public LuceneStoreOptions? Lucene { get; set; }
-
-    /// <summary>
-    /// SQLite settings. Populated when <see cref="Provider"/> is
-    /// <see cref="PersistenceProvider.Sqlite"/>.
-    /// </summary>
-    public SqliteStoreOptions? Sqlite { get; set; }
 }

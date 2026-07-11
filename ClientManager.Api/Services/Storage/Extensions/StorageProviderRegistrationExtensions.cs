@@ -67,7 +67,7 @@ public static class StorageProviderRegistrationExtensions
         foreach (var role in new[] { StorageRole.Statistics, StorageRole.RateLimiting, StorageRole.Allocations })
         {
             var binding = ResolveBinding(options, role);
-            if (binding.Provider is PersistenceProvider.JsonFile or PersistenceProvider.Lucene or PersistenceProvider.Sqlite)
+            if (binding.Provider is PersistenceProvider.JsonFile or PersistenceProvider.Lucene)
             {
                 throw new InvalidOperationException(
                     $"Storage role '{role}' uses {binding.Provider}, which is not safe for multi-instance production deployment. Configure Redis or MongoDB for Statistics, RateLimiting, and Allocations roles.");
@@ -111,10 +111,6 @@ public static class StorageProviderRegistrationExtensions
                 case PersistenceProvider.Lucene when string.IsNullOrWhiteSpace((binding.Lucene ?? new LuceneStoreOptions()).IndexDirectory):
                     throw new InvalidOperationException(
                         $"Storage role '{role}' uses Lucene but IndexDirectory is empty.");
-
-                case PersistenceProvider.Sqlite when string.IsNullOrWhiteSpace((binding.Sqlite ?? new SqliteStoreOptions()).DatabasePath):
-                    throw new InvalidOperationException(
-                        $"Storage role '{role}' uses Sqlite but DatabasePath is empty.");
             }
         }
     }
@@ -132,7 +128,6 @@ public static class StorageProviderRegistrationExtensions
                 PersistenceProvider.MongoDb => MaskConnectionString(binding.MongoDb?.ConnectionString),
                 PersistenceProvider.Redis => DescribeRedisEndpoint(binding.Redis),
                 PersistenceProvider.Lucene => binding.Lucene?.IndexDirectory ?? "./lucene-index",
-                PersistenceProvider.Sqlite => binding.Sqlite?.DatabasePath ?? "./data/statistics.db",
                 _ => "unknown"
             };
 
@@ -208,8 +203,7 @@ public static class StorageProviderRegistrationExtensions
             MongoDb = options.DefaultMongoDb,
             Redis = options.DefaultRedis,
             JsonFile = options.DefaultJsonFile,
-            Lucene = options.DefaultLucene,
-            Sqlite = options.DefaultSqlite
+            Lucene = options.DefaultLucene
         };
     }
 
