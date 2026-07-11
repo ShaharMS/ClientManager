@@ -20,7 +20,7 @@ Concrete collections:
 | `Configuration` | `ClientConfiguration`, `services`, `resource_pools`, `GlobalRateLimit` |
 | `RateLimiting` | Counter keys only (`usage:*`, rate-limit keys) |
 | `Allocations` | `ResourceAllocation`, `alloc-count:*` counters |
-| `Statistics` | `UsageSnapshots` (and `statistics.db` when using SQLite) |
+| `Statistics` | `UsageSnapshots` |
 
 ## How configuration works
 
@@ -60,7 +60,7 @@ Environment variables use `Section__SubSection__Property` (double underscore). S
 | Provider | Best for | Weak at | Multi-instance prod |
 | --- | --- | --- | --- |
 | [JsonFile](json-file.md) | Local dev, zero deps, readable files | Large statistics files, full-collection scans | Not recommended (single-host semantics) |
-| [SQLite](sqlite.md) | Fast statistics queries on one machine, low memory | Shared writes across many API replicas | Single instance or read replicas only |
+| [SQLite](sqlite.md) | Large local histories, low memory vs JsonFile | Shared writes across many API replicas | Single instance only |
 | [MongoDB](mongodb.md) | Durable shared documents, server-side queries | Counter hot paths without careful schema | Recommended default for prod catalog + stats |
 | [Redis](redis.md) | Atomic counters, rate limits, allocations | Long-term history at huge scale without tuning | Recommended for `RateLimiting` + `Allocations` |
 | [Lucene](lucene.md) | Full-text / field search on file-backed indexes | Operational complexity vs MongoDB | Single-host / PVC only |
@@ -89,7 +89,7 @@ Fastest path: clone, run API + Admin UI, seed catalog. No Docker required.
 | Role | Provider | Notes |
 | --- | --- | --- |
 | `Configuration` | `JsonFile` | `./data` |
-| `Statistics` | `Sqlite` | `./data/statistics.db` — lower memory than JsonFile for large histories |
+| `Statistics` | `Sqlite` | `./data/statistics.db` — avoids loading entire `UsageSnapshots.json` |
 
 See [SQLite](sqlite.md).
 
@@ -117,17 +117,17 @@ Works for smaller deployments. Rate-limit paths are slightly less ideal than Red
 | Role | Provider | Caveat |
 | --- | --- | --- |
 | `Configuration` | JsonFile on mounted path | One writer; not true HA |
-| `Statistics` | JsonFile or SQLite on mount | SQLite: one writer; use WAL |
+| `Statistics` | JsonFile or SQLite on mount | SQLite: one writer; WAL enabled |
 | `RateLimiting` / `Allocations` | Redis (still external) | Do not put hot counters on NFS |
 
-The API **blocks** JsonFile/Lucene for `Statistics`, `RateLimiting`, and `Allocations` in non-Development environments — use MongoDB or Redis for those roles in production.
+The API **blocks** JsonFile, SQLite, and Lucene for `Statistics`, `RateLimiting`, and `Allocations` in non-Development environments — use MongoDB or Redis for those roles in production.
 
 ## Provider guides
 
 | Guide | When to read |
 | --- | --- |
 | [JsonFile](json-file.md) | Default dev and seed data on disk |
-| [SQLite](sqlite.md) | Statistics-only SQL for large local histories |
+| [SQLite](sqlite.md) | Embedded SQL document store for large local histories |
 | [MongoDB](mongodb.md) | Production durable storage |
 | [Redis](redis.md) | Rate limits, allocations, optional all-in-Redis |
 | [Lucene](lucene.md) | Embedded search index on disk |

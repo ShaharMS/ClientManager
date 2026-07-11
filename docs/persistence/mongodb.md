@@ -71,14 +71,6 @@ Persistence__DefaultProvider=MongoDb
 Persistence__DefaultMongoDb__ConnectionString=mongodb://mongo:27017
 ```
 
-## vs SQLite (statistics)
-
-| | MongoDB | SQLite |
-| --- | --- | --- |
-| Shared replicas | Yes | No (single writer) |
-| Local dev statistics | Heavier setup | One file, no server |
-| Prod statistics | Yes | Single-node only |
-
 ## See also
 
 - [Redis](redis.md)

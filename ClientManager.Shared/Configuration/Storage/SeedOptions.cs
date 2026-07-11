@@ -28,4 +28,9 @@ public class SeedOptions
     /// Global rate-limit definitions to create if they do not already exist.
     /// </summary>
     public List<GlobalRateLimit> GlobalRateLimits { get; set; } = [];
+
+    /// <summary>
+    /// Usage snapshot documents (statistics history). Use NDJSON seed export for large volumes.
+    /// </summary>
+    public List<UsageSnapshot> UsageSnapshots { get; set; } = [];
 }

@@ -243,4 +243,17 @@ public interface IUsageSnapshotDatabase
     Task ResetPendingCountersAsync(
         IEnumerable<string> keys,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Counts all usage snapshot documents in the store.
+    /// </summary>
+    Task<long> CountAllAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns a page of snapshots ordered by document id (for seed export/delete pagination).
+    /// </summary>
+    Task<IReadOnlyList<UsageSnapshot>> GetPageAsync(
+        int skip,
+        int take,
+        CancellationToken cancellationToken = default);
 }

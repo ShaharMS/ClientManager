@@ -32,6 +32,7 @@ public static class StorageProviderRegistrationExtensions
         var redisMultiplexers = new Dictionary<string, IConnectionMultiplexer>();
         var jsonFileStores = new Dictionary<string, JsonFileDocumentStore>(GetPathComparer());
         var luceneStores = new Dictionary<string, LuceneDocumentStore>(GetPathComparer());
+        var sqliteStores = new Dictionary<string, SqliteDocumentStore>(GetPathComparer());
 
         foreach (var role in Enum.GetValues<StorageRole>())
         {
@@ -40,6 +41,7 @@ public static class StorageProviderRegistrationExtensions
                 binding,
                 jsonFileStores,
                 luceneStores,
+                sqliteStores,
                 mongoClients,
                 redisMultiplexers);
             var provider = binding.Provider;
@@ -132,14 +134,14 @@ public static class StorageProviderRegistrationExtensions
                 PersistenceProvider.MongoDb => MaskConnectionString(binding.MongoDb?.ConnectionString),
                 PersistenceProvider.Redis => DescribeRedisEndpoint(binding.Redis),
                 PersistenceProvider.Lucene => binding.Lucene?.IndexDirectory ?? "./lucene-index",
-                PersistenceProvider.Sqlite => binding.Sqlite?.DatabasePath ?? "./data/statistics.db",
+                PersistenceProvider.Sqlite => binding.Sqlite?.DatabasePath ?? "./data/store.db",
                 _ => "unknown"
             };
 
             logger.Info("Storage role {Role} -> {Provider} ({Detail})", role, binding.Provider, detail);
 
             if (!environment.IsDevelopment()
-                && (binding.Provider == PersistenceProvider.JsonFile || binding.Provider == PersistenceProvider.Lucene))
+                && binding.Provider is PersistenceProvider.JsonFile or PersistenceProvider.Lucene or PersistenceProvider.Sqlite)
             {
                 logger.Warn(
                     "Storage role {Role} is using {Provider}. This backend is intended for local or single-host use and is not safe for multi-instance production deployment.",
