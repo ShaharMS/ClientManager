@@ -2,7 +2,15 @@
 .github
 .vs
 .vscode
+.cursor
 .artifacts
+.observability-stack
+_build_verify
+_multipod_data
+data
+**/data
+docs
+_site
 **/bin
 **/obj
 **/node_modules
@@ -10,3 +18,5 @@
 **/*.user
 **/*.suo
 **/TestResults
+**/*.ndjson
+**/*.tmp

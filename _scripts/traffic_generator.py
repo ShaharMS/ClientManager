@@ -149,11 +149,12 @@ def do_read():
     """Hit a read-only endpoint (list clients, services, stats, etc.)."""
     choices = [
         ("GET", f"{API_PREFIX}/statistics/overview", None),
-        ("GET", f"{API_PREFIX}/statistics/global-usage", None),
-        ("GET", f"{API_PREFIX}/statistics/client-summaries?pageSize={CLIENT_SUMMARIES_PAGE_SIZE}", None),
-        ("POST", f"{API_PREFIX}/statistics/clients/search", READ_SEARCH_QUERY),
-        ("POST", f"{API_PREFIX}/statistics/services/search", READ_SEARCH_QUERY),
-        ("POST", f"{API_PREFIX}/statistics/resource-pools/search", READ_SEARCH_QUERY),
+        ("POST", f"{API_PREFIX}/statistics/timeseries/search", {
+            "searchCategory": "ServiceRequests",
+            "fromUtc": "2020-01-01T00:00:00Z",
+            "toUtc": "2030-01-01T00:00:00Z",
+            "bucketCount": 10,
+        }),
         ("POST", f"{API_PREFIX}/clients/search", READ_SEARCH_QUERY),
         ("POST", f"{API_PREFIX}/services/search", READ_SEARCH_QUERY),
         ("POST", f"{API_PREFIX}/resource-pools/search", READ_SEARCH_QUERY),
@@ -166,7 +167,6 @@ def do_read():
         choices.extend([
             ("GET", f"{API_PREFIX}/clients/{client}", None),
             ("GET", f"{API_PREFIX}/access/{client}", None),
-            ("GET", f"{API_PREFIX}/statistics/clients/{client}", None),
         ])
 
     method, path, body = random.choice(choices)

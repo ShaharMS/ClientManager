@@ -4,9 +4,10 @@ using ClientManager.AdminUI.Models.Monitor;
 using ClientManager.AdminUI.Resources;
 using ClientManager.AdminUI.Services;
 using ClientManager.AdminUI.Utils;
+using ClientManager.Shared.Models.Responses;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Enums;
-using ClientManager.Shared.Models.Responses;
+using ClientManager.Shared.Models.Requests;
 using Microsoft.Extensions.Localization;
 
 namespace ClientManager.AdminUI.Services.ChartData;
@@ -15,11 +16,7 @@ public sealed class MonitorDataLoader
 {
     private readonly StatisticsApiService _statsService;
     private readonly GlobalRateLimitApiService _rateLimitApi;
-    private readonly MonitorSingleServiceChartLoader _singleServiceLoader;
     private readonly IStringLocalizer<SharedResources> _localizer;
-
-    private MonitorFetchCache? _cache;
-    private List<ServiceSummaryRow> _lastServiceStats = [];
 
     public MonitorDataLoader(
         StatisticsApiService statsService,
@@ -29,117 +26,158 @@ public sealed class MonitorDataLoader
         _statsService = statsService;
         _rateLimitApi = rateLimitApi;
         _localizer = localizer;
-        _singleServiceLoader = new MonitorSingleServiceChartLoader(statsService, localizer);
     }
 
     public async Task<MonitorLoadResult> LoadAsync(MonitorLoadContext context)
     {
-        _cache = await FetchAsync(context);
-        _lastServiceStats = await FetchServiceStatsAsync(context, _cache);
-        return BuildChartsFromCache(context);
+        var now = DateTime.UtcNow;
+        var from = context.TimeRange.GetFrom(now);
+        var visibleServices = context.SelectedServiceId == MonitorLoadContext.AllServicesId
+            ? context.AllServices
+            : context.AllServices.Where(service => service.Id == context.SelectedServiceId).ToList();
+        var visibleServiceIds = visibleServices.Select(service => service.Id).ToList();
+
+        var visibleServiceItems = visibleServices
+            .Select(service => new NamedItem(service.Id, service.Name))
+            .ToList();
+
+        var charts = await TimeseriesChartBuilder.BuildMonitorChartsAsync(
+            _statsService,
+            visibleServiceItems,
+            context.SelectedClientIds,
+            from,
+            now,
+            context.BucketCount,
+            context.AllClients,
+            _localizer);
+
+        var recentFrom = now.Subtract(MonitorLoadContext.RecentWindow);
+        var recentResponse = visibleServiceIds.Count == 0
+            ? null
+            : await _statsService.SearchTimeseriesAsync(new TimeseriesSearchRequest
+            {
+                SearchCategory = StatisticsSearchCategory.ServiceRequests,
+                TargetIds = visibleServiceIds,
+                ClientIds = TimeseriesChartBuilder.ResolveClientIds(
+                    context.SelectedClientIds,
+                    context.AllClients,
+                    visibleServiceIds,
+                    isService: true),
+                FromUtc = recentFrom,
+                ToUtc = now,
+                BucketCount = 5
+            });
+
+        var rateLimits = await _rateLimitApi.GetByTargetTypeAsync(TargetType.Service);
+        var rateLimitLookup = rateLimits.ToDictionary(limit => limit.TargetId);
+
+        var rows = BuildClientRows(recentResponse, visibleServiceItems, rateLimitLookup, context.AllClients);
+        var serviceStats = await BuildServiceStatsAsync(context, recentResponse, rateLimitLookup);
+
+        return new MonitorLoadResult(charts, rows, serviceStats);
     }
 
     public bool TryRebuildFromCache(MonitorLoadContext context, out MonitorLoadResult result)
     {
-        if (_cache is null || _cache.CacheKey != BuildCacheKey(context))
-        {
-            result = new MonitorLoadResult([], [], []);
-            return false;
-        }
-
-        result = BuildChartsFromCache(context);
-        return true;
+        result = new MonitorLoadResult([], [], []);
+        return false;
     }
 
-    private static string BuildCacheKey(MonitorLoadContext context) =>
-        $"{context.SelectedServiceId}|{string.Join(',', context.SelectedClientIds ?? [])}|{context.TimeRange.GetFrom():O}|{context.TimeRange.GetTo():O}|{context.TimeRange.Granularity}";
-
-    private async Task<MonitorFetchCache> FetchAsync(MonitorLoadContext context)
+    private static List<MonitorClientRow> BuildClientRows(
+        TimeseriesSearchResponse? response,
+        IReadOnlyList<NamedItem> visibleServices,
+        IReadOnlyDictionary<string, GlobalRateLimit> rateLimitLookup,
+        IReadOnlyList<ClientConfiguration> allClients)
     {
-        var now = DateTime.UtcNow;
-        var from = context.TimeRange.GetFrom(now);
-        var rangeDuration = now - from;
-
-        var rateLimits = await _rateLimitApi.GetByTargetTypeAsync(TargetType.Service);
-        var rateLimitLookup = rateLimits.ToDictionary(r => r.TargetId);
-
-        var visibleServices = context.SelectedServiceId == MonitorLoadContext.AllServicesId
-            ? context.AllServices
-            : context.AllServices.Where(s => s.Id == context.SelectedServiceId).ToList();
-
-        var visibleServiceIds = visibleServices.Select(s => s.Id).ToList();
-
-        var breakdowns = await _statsService.GetClientUsageBreakdownAsync(
-            "Service", visibleServiceIds, context.SelectedClientIds,
-            from, now, context.TimeRange.Granularity);
-
-        var allClientIds = breakdowns
-            .SelectMany(b => b.Entries.Select(e => e.ClientId))
-            .Distinct()
-            .ToList();
-
-        var allHistories = allClientIds.Count > 0
-            ? await _statsService.GetHistoricalUsageAsync(
-                "Service", visibleServiceIds, null, from, now, context.TimeRange.Granularity)
-            : [];
-
-        var clientHistoriesByService = new Dictionary<string, Dictionary<string, ClientHistoricalUsageResponse>>(StringComparer.Ordinal);
-        var serviceHistories = new Dictionary<string, HistoricalUsageResponse?>(StringComparer.Ordinal);
-
-        foreach (var service in visibleServices)
+        if (response is null)
         {
-            var breakdown = breakdowns.FirstOrDefault(b => b.TargetId == service.Id);
-            var entries = breakdown?.Entries ?? [];
-            var historiesByClientId = entries.Count > 0
-                ? (await _statsService.GetHistoricalUsageByClientAsync(
-                    "Service",
-                    new[] { service.Id },
-                    entries.Select(entry => entry.ClientId),
-                    from,
-                    now,
-                    context.TimeRange.Granularity))
-                .ToDictionary(history => history.ClientId)
-                : new Dictionary<string, ClientHistoricalUsageResponse>(StringComparer.Ordinal);
-            clientHistoriesByService[service.Id] = historiesByClientId;
+            return [];
+        }
 
-            if (context.SelectedServiceId != MonitorLoadContext.AllServicesId)
+        var serviceNames = visibleServices.ToDictionary(service => service.Id, service => service.Name, StringComparer.Ordinal);
+        var rows = new List<MonitorClientRow>();
+
+        foreach (var target in response.Targets)
+        {
+            foreach (var clientSeries in target.ClientSeries)
             {
-                serviceHistories[service.Id] = allHistories.FirstOrDefault(h => h.TargetId == service.Id);
+                var granted = clientSeries.Buckets.Sum(bucket => bucket.GrantedCount);
+                var denied = clientSeries.Buckets.Sum(bucket =>
+                    bucket.DeniedUnauthenticatedCount
+                    + bucket.DeniedBlockedCount
+                    + bucket.DeniedRateLimitedCount
+                    + bucket.DeniedCapacityLimitedCount);
+
+                if (granted <= 0 && denied <= 0)
+                {
+                    continue;
+                }
+
+                var cap = rateLimitLookup.TryGetValue(target.TargetId, out var limit)
+                    ? MonitorCapCalculator.GetScaledGlobalServiceCap(target.TargetId, rateLimitLookup, MonitorLoadContext.RecentWindow)
+                    : 0;
+
+                rows.Add(new MonitorClientRow(
+                    clientSeries.ClientId,
+                    clientSeries.ClientName,
+                    serviceNames.GetValueOrDefault(target.TargetId, target.TargetId),
+                    granted,
+                    denied,
+                    clientSeries.Buckets.Sum(bucket => bucket.DeniedUnauthenticatedCount),
+                    clientSeries.Buckets.Sum(bucket => bucket.DeniedBlockedCount),
+                    clientSeries.Buckets.Sum(bucket => bucket.DeniedRateLimitedCount),
+                    clientSeries.Buckets.Sum(bucket => bucket.DeniedCapacityLimitedCount),
+                    cap));
             }
         }
 
-        return new MonitorFetchCache(
-            BuildCacheKey(context),
-            breakdowns,
-            allHistories,
-            rateLimitLookup,
-            visibleServices,
-            context.SelectedServiceId == MonitorLoadContext.AllServicesId,
-            from,
-            now,
-            rangeDuration,
-            context.TimeRange.Granularity,
-            clientHistoriesByService,
-            serviceHistories);
+        return rows;
     }
 
-    private async Task<List<ServiceSummaryRow>> FetchServiceStatsAsync(
+    private async Task<List<ServiceSummaryRow>> BuildServiceStatsAsync(
         MonitorLoadContext context,
-        MonitorFetchCache cache)
+        TimeseriesSearchResponse? recentResponse,
+        IReadOnlyDictionary<string, GlobalRateLimit> rateLimitLookup)
     {
-        var allServiceIds = context.AllServices.Select(s => s.Id).ToList();
-        var recentFrom = cache.Now.Subtract(MonitorLoadContext.RecentWindow);
-        var summaryBreakdowns = await _statsService.GetClientUsageBreakdownAsync(
-            "Service", allServiceIds, null, recentFrom, cache.Now, "FiveMinute");
+        var recentByService = recentResponse?.Targets.ToDictionary(target => target.TargetId, StringComparer.Ordinal)
+            ?? new Dictionary<string, TimeseriesTargetSeries>(StringComparer.Ordinal);
 
         return context.AllServices.Select(service =>
         {
-            var bd = summaryBreakdowns.FirstOrDefault(b => b.TargetId == service.Id);
-            var entries = bd?.Entries ?? [];
+            recentByService.TryGetValue(service.Id, out var target);
+            var entries = target?.ClientSeries ?? [];
+
+            long granted = 0;
+            long deniedUnauth = 0;
+            long deniedBlocked = 0;
+            long deniedRateLimited = 0;
+            long deniedCapacity = 0;
+
+            foreach (var clientSeries in entries)
+            {
+                granted += clientSeries.Buckets.Sum(bucket => bucket.GrantedCount);
+                deniedUnauth += clientSeries.Buckets.Sum(bucket => bucket.DeniedUnauthenticatedCount);
+                deniedBlocked += clientSeries.Buckets.Sum(bucket => bucket.DeniedBlockedCount);
+                deniedRateLimited += clientSeries.Buckets.Sum(bucket => bucket.DeniedRateLimitedCount);
+                deniedCapacity += clientSeries.Buckets.Sum(bucket => bucket.DeniedCapacityLimitedCount);
+            }
+
+            var breakdownEntries = entries.Select(client => new ClientManager.Shared.Models.Responses.ClientUsageEntry(
+                client.ClientId,
+                client.ClientName,
+                client.Buckets.Sum(bucket => bucket.GrantedCount),
+                client.Buckets.Sum(bucket => bucket.DeniedUnauthenticatedCount + bucket.DeniedBlockedCount + bucket.DeniedRateLimitedCount + bucket.DeniedCapacityLimitedCount),
+                client.Buckets.Sum(bucket => bucket.DeniedUnauthenticatedCount),
+                client.Buckets.Sum(bucket => bucket.DeniedBlockedCount),
+                client.Buckets.Sum(bucket => bucket.DeniedRateLimitedCount),
+                client.Buckets.Sum(bucket => bucket.DeniedCapacityLimitedCount),
+                (long)client.Buckets.LastOrDefault()?.ActiveCount)).ToList();
+
             var (contributingUsage, offBudgetUsage) = MonitorCapCalculator.PartitionServiceUsage(
-                entries, service.Id, context.AllClients);
+                breakdownEntries, service.Id, context.AllClients);
             var (cap, usesGlobalCap) = MonitorCapCalculator.GetServiceSummaryCap(
-                service.Id, entries, context.AllClients, cache.RateLimitLookup, MonitorLoadContext.RecentWindow);
+                service.Id, breakdownEntries, context.AllClients, rateLimitLookup, MonitorLoadContext.RecentWindow);
+
             return new ServiceSummaryRow(
                 service.Id,
                 service.Name,
@@ -147,42 +185,11 @@ public sealed class MonitorDataLoader
                 offBudgetUsage,
                 cap,
                 usesGlobalCap,
-                entries.Sum(e => e.DeniedCount),
-                entries.Sum(e => e.DeniedUnauthenticatedCount),
-                entries.Sum(e => e.DeniedBlockedCount),
-                entries.Sum(e => e.DeniedRateLimitedCount),
-                entries.Sum(e => e.DeniedCapacityLimitedCount));
+                deniedUnauth + deniedBlocked + deniedRateLimited + deniedCapacity,
+                deniedUnauth,
+                deniedBlocked,
+                deniedRateLimited,
+                deniedCapacity);
         }).ToList();
-    }
-
-    private MonitorLoadResult BuildChartsFromCache(MonitorLoadContext context)
-    {
-        if (_cache is null)
-        {
-            return new MonitorLoadResult([], [], _lastServiceStats);
-        }
-
-        var storageDuration = ChartGranularityHelper.GetStorageBucketDuration(_cache.Granularity);
-        var chartTemplate = ChartBucketAggregator.Aggregate([], _cache.From, _cache.Now, context.BucketCount, ChartBucketAggregator.AggregationMode.Sum, storageDuration);
-        var chartBucketDuration = chartTemplate.BucketDuration;
-
-        var charts = new List<TargetChartData>();
-        var rows = new List<MonitorClientRow>();
-
-        if (_cache.IsAllServices)
-        {
-            MonitorAllServicesChartBuilder.Build(
-                context, _cache.VisibleServices, _cache.Breakdowns,
-                _cache.AllHistories, _cache.ClientHistoriesByService, _cache.RateLimitLookup,
-                chartBucketDuration, _cache.RangeDuration,
-                _cache.From, _cache.Now, charts, rows, _localizer, storageDuration);
-        }
-        else
-        {
-            _singleServiceLoader.BuildFromCache(
-                context, _cache, chartTemplate, chartBucketDuration, charts, rows, storageDuration);
-        }
-
-        return new MonitorLoadResult(charts, rows, _lastServiceStats);
     }
 }

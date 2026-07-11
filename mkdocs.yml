@@ -37,6 +37,7 @@ nav:
     - Redis tuning: kubernetes/redis-tuning-airgapped.md
   - Scripts:
     - Overview: scripts/index.md
+    - Multi-pod Docker: scripts/multipod-docker.md
     - seed_data.py: scripts/seed-data.md
     - traffic_generator.py: scripts/traffic-generator.md
     - performance_baseline.py: scripts/performance-baseline.md

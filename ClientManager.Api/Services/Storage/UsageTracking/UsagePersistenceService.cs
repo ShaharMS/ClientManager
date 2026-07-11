@@ -1,10 +1,10 @@
+using ClientManager.Api.Services.Interfaces;
 using ClientManager.DataAccess.Databases.Implementations;
 using ClientManager.DataAccess.Databases.Interfaces;
 using ClientManager.Shared.Logging;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Enums;
 using ClientManager.Shared.Configuration.Storage;
-using ClientManager.Api.Services.Interfaces;
 using Microsoft.Extensions.Options;
 
 namespace ClientManager.Api.Services.Storage.UsageTracking;
@@ -12,6 +12,13 @@ namespace ClientManager.Api.Services.Storage.UsageTracking;
 /// <summary>
 /// Flushes buffered usage events and maintains rolled-up usage snapshots.
 /// </summary>
+/// <remarks>
+/// <para>Two background loops run in parallel:</para>
+/// <list type="bullet">
+/// <item><description><strong>Fast loop</strong> (~1s) — drain buffer to atomic counters, materialize the latest completed second, incrementally refresh dirty gauge rows. Does <em>not</em> invalidate statistics tail cache.</description></item>
+/// <item><description><strong>Slow loop</strong> — rollup coarser granularities, prune expired buckets, invalidate closed statistics cache, refresh overview summary.</description></item>
+/// </list>
+/// </remarks>
 public partial class UsagePersistenceService : BackgroundService
 {
     private readonly IAppLogger<UsagePersistenceService> _logger;
@@ -42,6 +49,9 @@ public partial class UsagePersistenceService : BackgroundService
         await Task.WhenAll(fastLoop, slowLoop);
     }
 
+    /// <summary>
+    /// Fast persistence loop: counter flush, latest-second materialization, incremental gauge refresh.
+    /// </summary>
     private async Task RunFastLoopAsync(CancellationToken stoppingToken)
     {
         while (!stoppingToken.IsCancellationRequested)
@@ -52,10 +62,14 @@ public partial class UsagePersistenceService : BackgroundService
             {
                 using var scope = _scopeFactory.CreateScope();
                 var database = scope.ServiceProvider.GetRequiredService<IUsageSnapshotDatabase>();
-                await FlushBufferAsync(database, stoppingToken);
-                if (await MaterializeLatestSecondAsync(database, stoppingToken))
+                var dirtyGaugePairs = await FlushBufferAsync(database, stoppingToken);
+                await MaterializeLatestSecondAsync(database, stoppingToken);
+
+                if (dirtyGaugePairs.Count > 0)
                 {
-                    _cache.InvalidateStatistics();
+                    using var precomputeScope = _scopeFactory.CreateScope();
+                    var precompute = precomputeScope.ServiceProvider.GetRequiredService<IStatisticsPrecomputeService>();
+                    await precompute.UpdateLatestUsageGaugesAsync(dirtyGaugePairs, stoppingToken);
                 }
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
@@ -90,7 +104,10 @@ public partial class UsagePersistenceService : BackgroundService
 
                 if (mutated)
                 {
-                    _cache.InvalidateStatistics();
+                    _cache.InvalidateStatisticsClosed();
+                    using var precomputeScope = _scopeFactory.CreateScope();
+                    var precompute = precomputeScope.ServiceProvider.GetRequiredService<IStatisticsPrecomputeService>();
+                    await precompute.RefreshOverviewSummaryAsync(stoppingToken);
                 }
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
@@ -104,21 +121,31 @@ public partial class UsagePersistenceService : BackgroundService
         }
     }
 
-    private async Task FlushBufferAsync(
+    /// <summary>
+    /// Drains the in-memory buffer to atomic TTL counters and returns service×client pairs for gauge refresh.
+    /// </summary>
+    /// <returns>Dirty gauge pairs for the fast-loop precompute step; empty when the buffer was empty.</returns>
+    private async Task<IReadOnlyList<ServiceClientGaugeKey>> FlushBufferAsync(
         IUsageSnapshotDatabase database,
         CancellationToken cancellationToken)
     {
         var counts = _buffer.Drain();
         if (counts.Count == 0)
         {
-            return;
+            return [];
         }
 
         var bucketTimestamp = UsageSegmentHelper.RoundDownToSecond(DateTime.UtcNow);
         var entries = new Dictionary<string, (long amount, TimeSpan window)>(counts.Count, StringComparer.Ordinal);
+        var dirtyGaugePairs = new HashSet<ServiceClientGaugeKey>();
 
         foreach (var entry in counts)
         {
+            if (entry.Key.TargetType == TargetType.Service)
+            {
+                dirtyGaugePairs.Add(new ServiceClientGaugeKey(entry.Key.TargetId, entry.Key.ClientId));
+            }
+
             var storageKey = entry.Key.EventType == UsageEventType.Denied
                 ? UsageSegmentHelper.BuildUsageCounterKey(
                     entry.Key.ClientId,
@@ -146,8 +173,8 @@ public partial class UsagePersistenceService : BackgroundService
 
         await database.IncrementPendingCountersAsync(entries, cancellationToken);
 
-        _cache.InvalidateStatistics();
         _logger.Debug("Flushed usage counter groups to storage", new { Count = counts.Count });
+        return dirtyGaugePairs.ToList();
     }
 
     private static UsageSnapshot CreateSnapshot(

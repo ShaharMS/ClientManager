@@ -27,6 +27,8 @@ Set `CLIENTMANAGER_STORAGE_DATA_DIR` to point the API at a custom persistence di
 
 | Script | API required? | Purpose |
 | --- | --- | --- |
+| [run_multipod_docker.py](multipod-docker.md) | Yes (starts it) | Fresh Docker multi-pod stack + statistics verification |
+| [statistics_multipod_check.py](multipod-docker.md) | Yes | Cross-pod latency and overlay consistency check |
 | [seed_data.py](seed-data.md) | Yes | Seed catalog via API + optional historical usage files |
 | [traffic_generator.py](traffic-generator.md) | Yes | Continuous live traffic for demos |
 | [performance_baseline.py](performance-baseline.md) | Yes | Deterministic load profile + latency report |

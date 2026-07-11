@@ -2,49 +2,42 @@ using ClientManager.AdminUI.Models.Charts;
 using ClientManager.AdminUI.Models.Dashboard;
 using ClientManager.AdminUI.Resources;
 using ClientManager.AdminUI.Services;
-using ClientManager.AdminUI.Utils;
+using ClientManager.Shared.Models.Responses;
 using Microsoft.Extensions.Localization;
 
 namespace ClientManager.AdminUI.Services.ChartData;
 
 public sealed class DashboardChartDataLoader
 {
-    private readonly DashboardDonutDataLoader _donutLoader;
-    private readonly DashboardSingleTargetChartLoader _singleTargetLoader;
-    private readonly DashboardAllTargetsChartLoader _allTargetsLoader;
+    private readonly StatisticsApiService _statsService;
     private readonly IStringLocalizer<SharedResources> _localizer;
-    private List<ClientUsagePoint>? _cachedRawDonut;
+    private TimeseriesSearchResponse? _cachedResponse;
+    private string? _cachedDataKey;
 
     public DashboardChartDataLoader(
         StatisticsApiService statsService,
-        ResourcePoolApiService poolService,
-        GlobalRateLimitApiService rateLimitApi,
         IStringLocalizer<SharedResources> localizer)
     {
+        _statsService = statsService;
         _localizer = localizer;
-        _donutLoader = new DashboardDonutDataLoader(statsService);
-        _singleTargetLoader = new DashboardSingleTargetChartLoader(statsService, poolService, rateLimitApi, localizer);
-        _allTargetsLoader = new DashboardAllTargetsChartLoader(statsService, poolService, rateLimitApi, localizer);
     }
 
     public async Task<(List<TargetChartData> Charts, DashboardDonutData Donut)> LoadAsync(
         DashboardChartLoadContext context)
     {
-        var newCharts = new List<TargetChartData>();
-        List<ClientUsagePoint> rawDonut;
-
-        if (context.SelectedTargetId == DashboardChartLoadContext.AllTargetsId)
+        var dataKey = BuildDataCacheKey(context);
+        if (_cachedResponse is null || _cachedDataKey != dataKey)
         {
-            await _allTargetsLoader.LoadAsync(context, newCharts);
-            rawDonut = await _donutLoader.LoadAllTargetsAsync(context);
-        }
-        else
-        {
-            rawDonut = await _singleTargetLoader.LoadAsync(context, newCharts);
+            _cachedResponse = await TimeseriesChartBuilder.FetchDashboardAsync(_statsService, context);
+            _cachedDataKey = dataKey;
         }
 
-        _cachedRawDonut = rawDonut;
-        return (newCharts, BuildDonutData(rawDonut, _localizer["Common.Others"]));
+        var (charts, rawDonut) = TimeseriesChartBuilder.BuildDashboardFromResponse(
+            _cachedResponse,
+            context,
+            _localizer);
+
+        return (charts, BuildDonutData(rawDonut, _localizer["Common.Others"]));
     }
 
     public bool TryRebuildFromCache(
@@ -52,118 +45,73 @@ public sealed class DashboardChartDataLoader
         out List<TargetChartData> charts,
         out DashboardDonutData donut)
     {
-        charts = new List<TargetChartData>();
-        if (context.SelectedTargetId == DashboardChartLoadContext.AllTargetsId)
+        if (_cachedResponse is null || _cachedDataKey != BuildDataCacheKey(context))
         {
-            if (!_allTargetsLoader.TryRebuildFromCache(context, charts) || _cachedRawDonut is null)
-            {
-                donut = new DashboardDonutData([], []);
-                return false;
-            }
-
-            donut = BuildDonutData(_cachedRawDonut, _localizer["Common.Others"]);
-            return true;
-        }
-
-        if (!_singleTargetLoader.TryRebuildFromCache(context, charts, out var singleDonut))
-        {
+            charts = [];
             donut = new DashboardDonutData([], []);
             return false;
         }
 
-        donut = BuildDonutData(singleDonut, _localizer["Common.Others"]);
+        (charts, var rawDonut) = TimeseriesChartBuilder.BuildDashboardFromResponse(
+            _cachedResponse,
+            context,
+            _localizer);
+        donut = BuildDonutData(rawDonut, _localizer["Common.Others"]);
         return true;
     }
+
+    private static string BuildDataCacheKey(DashboardChartLoadContext context) =>
+        $"{context.SelectedFilterType}|{context.SelectedTargetId}|{string.Join(',', context.SelectedClientIds ?? [])}|{context.TimeRange.GetFrom():O}|{context.TimeRange.GetTo():O}|{context.TimeRange.Granularity}";
 
     public static List<ClientUsagePoint> ToDisplaySlices(
         IReadOnlyList<ClientUsagePoint> points,
         string othersLabel)
     {
-        if (points.Count <= ChartAggregator.DefaultTopN)
-        {
-            return points.OrderByDescending(p => p.Value).ToList();
-        }
+        var aggregated = ChartAggregator.Aggregate(
+            points.Select(point => new ChartAggregator.AggregatedSeries(
+                point.ClientId,
+                point.ClientName,
+                [new ChartAggregator.AggregatedPoint(point.ClientName, point.Value)]))
+            .ToList());
 
-        var ranked = points.OrderByDescending(p => p.Value).ToList();
-        var top = ranked.Take(ChartAggregator.DefaultTopN).ToList();
-        var othersValue = ranked.Skip(ChartAggregator.DefaultTopN).Where(p => p.Value > 0).Sum(p => p.Value);
-        if (othersValue > 0)
-        {
-            top.Add(new ClientUsagePoint(ChartAggregator.OthersId, othersLabel, othersValue));
-        }
-
-        return top;
+        return aggregated
+            .Select(point => new ClientUsagePoint(point.Id, point.Name, point.Points[0].Value))
+            .ToList();
     }
 
-    public static List<ClientUsagePoint> GetOthersRestPool(IReadOnlyList<ClientUsagePoint> points) =>
-        points.Count <= ChartAggregator.DefaultTopN
-            ? []
-            : points.OrderByDescending(p => p.Value)
-                .Skip(ChartAggregator.DefaultTopN)
-                .Where(p => p.Value > 0)
-                .ToList();
+    public static bool CanDrillIntoOthers(DashboardDonutData donut, int drillDepth) =>
+        drillDepth == 0 && donut.OthersBreakdown.Count > 0;
 
-    public static List<ClientUsagePoint> GetPoolAtDrillDepth(DashboardDonutData donut, int depth)
+    public static IReadOnlyList<ClientUsagePoint> GetPoolAtDrillDepth(DashboardDonutData donut, int drillDepth) =>
+        drillDepth > 0 ? donut.OthersBreakdown : donut.Slices;
+
+    public static List<ClientUsagePoint> GetOthersRestPool(IReadOnlyList<ClientUsagePoint> rawSlices) =>
+        ChartAggregator.Aggregate(
+            rawSlices.Select(point => new ChartAggregator.AggregatedSeries(
+                point.ClientId,
+                point.ClientName,
+                [new ChartAggregator.AggregatedPoint(point.ClientName, point.Value)]))
+            .ToList())
+            .Where(point => point.Id == ChartAggregator.OthersId)
+            .SelectMany(point => point.Points.Select(p => new ClientUsagePoint(ChartAggregator.OthersId, p.Label, p.Value)))
+            .ToList();
+
+    public static int ReconcileDrillDepth(DashboardDonutData donut, int drillDepth, string othersLabel) =>
+        drillDepth > 0 && donut.OthersBreakdown.Count == 0 ? 0 : drillDepth;
+
+    private static DashboardDonutData BuildDonutData(List<ClientUsagePoint> rawDonut, string othersLabel)
     {
-        if (depth < 1)
-        {
-            return [];
-        }
+        var slices = ToDisplaySlices(rawDonut, othersLabel);
+        var othersBreakdown = ChartAggregator.Aggregate(
+            rawDonut.Select(point => new ChartAggregator.AggregatedSeries(
+                point.ClientId,
+                point.ClientName,
+                [new ChartAggregator.AggregatedPoint(point.ClientName, point.Value)]))
+            .ToList())
+            .Where(point => point.Id == ChartAggregator.OthersId)
+            .SelectMany(point => point.Points.Select(p => new ClientUsagePoint(point.Id, p.Label, p.Value)))
+            .ToList();
 
-        var pool = donut.OthersBreakdown;
-        for (var i = 1; i < depth; i++)
-        {
-            pool = GetOthersRestPool(pool);
-            if (pool.Count == 0)
-            {
-                return [];
-            }
-        }
-
-        return pool;
+        return new DashboardDonutData(slices, othersBreakdown);
     }
-
-    // ponytail: O(depth * n); depth is tiny (≤4), n is client count
-    public static int ReconcileDrillDepth(DashboardDonutData donut, int depth, string othersLabel)
-    {
-        while (depth > 0)
-        {
-            var pool = GetPoolAtDrillDepth(donut, depth);
-            if (pool.Count == 0)
-            {
-                depth--;
-                continue;
-            }
-
-            if (depth == 1)
-            {
-                if (!donut.Slices.Any(p => p.ClientId == ChartAggregator.OthersId)
-                    || donut.OthersBreakdown.Count == 0)
-                {
-                    return 0;
-                }
-            }
-            else
-            {
-                var parentDisplay = ToDisplaySlices(GetPoolAtDrillDepth(donut, depth - 1), othersLabel);
-                if (!parentDisplay.Any(p => p.ClientId == ChartAggregator.OthersId))
-                {
-                    depth--;
-                    continue;
-                }
-            }
-
-            return depth;
-        }
-
-        return 0;
-    }
-
-    public static bool CanDrillIntoOthers(DashboardDonutData donut, int depth) =>
-        depth == 0
-            ? donut.OthersBreakdown.Count > 0
-            : GetPoolAtDrillDepth(donut, depth).Count > ChartAggregator.DefaultTopN;
-
-    private static DashboardDonutData BuildDonutData(List<ClientUsagePoint> points, string othersLabel) =>
-        new(ToDisplaySlices(points, othersLabel), GetOthersRestPool(points));
 }

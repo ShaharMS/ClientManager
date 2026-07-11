@@ -119,33 +119,12 @@ See [Seed system](core/seed-system.md) and [Storage migration](migration/storage
 
 Base path: `/api/v1/statistics`
 
-### Overview and summaries
+### Overview and timeseries
 
 | Method | Path | Description |
 | --- | --- | --- |
-| `GET` | `/overview` | Counts of clients, services, pools, active allocations |
-| `POST` | `/clients/search` | Paginated per-client summary statistics |
-| `GET` | `/clients/{clientId}` | Detailed stats for one client |
-| `GET` | `/global-usage` | System-wide usage rollup |
-| `GET` | `/client-summaries` | Compact client usage summaries |
-
-### Usage time series
-
-| Method | Path | Description |
-| --- | --- | --- |
-| `GET` | `/usage-timeseries` | Time-bucketed usage for charts |
-| `GET` | `/client-usage-breakdown` | Per-client usage split |
-| `GET` | `/historical-usage` | Historical rollup |
-| `GET` | `/historical-usage/by-client` | Historical usage per client |
-
-### Catalog-enriched statistics
-
-| Method | Path | Description |
-| --- | --- | --- |
-| `POST` | `/services/search` | Services with usage stats |
-| `GET` | `/services/{serviceId}` | One service with stats |
-| `POST` | `/resource-pools/search` | Pools with usage stats |
-| `GET` | `/resource-pools/{resourcePoolId}` | One pool with stats |
+| `GET` | `/overview` | Counts, active allocations, RPM, and pool acquisition gauges |
+| `POST` | `/timeseries/search` | Chart-ready bucketed usage (`searchCategory`: `ServiceRequests`, `ResourcePoolAllocations`, `ResourcePoolRequests`) |
 
 Statistics endpoints are read-only and safe to poll for dashboards.
 

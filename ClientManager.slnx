@@ -18,10 +18,11 @@
     <File Path="docs/getting-started.md" />
     <File Path="docs/configuration-reference.md" />
     <File Path="docs/admin-ui-guide.md" />
+    <File Path="docs/localization.md" />
     <File Path="docs/api-overview.md" />
     <File Path="docs/development-and-operations.md" />
     <File Path="docs/integration-guide.md" />
-    <File Path="docs/persistence/index.md" />
+    <File Path="docs/metrics-integration-guide.md" />
     <File Path="docs/requirements.txt" />
     <File Path="mkdocs.yml" />
     <Folder Name="/_Solution Items_/Documentation/Core/">
@@ -29,13 +30,33 @@
       <File Path="docs/core/domain-model.md" />
       <File Path="docs/core/request-flow.md" />
       <File Path="docs/core/usage-and-observability.md" />
+      <File Path="docs/core/seed-system.md" />
     </Folder>
-  </Folder>
-  <Folder Name="/_Solution Items_/Documentation/Core/">
-    <File Path="docs/core/architecture.md" />
-    <File Path="docs/core/domain-model.md" />
-    <File Path="docs/core/request-flow.md" />
-    <File Path="docs/core/usage-and-observability.md" />
+    <Folder Name="/_Solution Items_/Documentation/Scripts/">
+      <File Path="docs/scripts/index.md" />
+      <File Path="docs/scripts/multipod-docker.md" />
+      <File Path="docs/scripts/seed-data.md" />
+      <File Path="docs/scripts/traffic-generator.md" />
+      <File Path="docs/scripts/performance-baseline.md" />
+      <File Path="docs/scripts/launch-observability-ui.md" />
+      <File Path="docs/scripts/download-images.md" />
+    </Folder>
+    <Folder Name="/_Solution Items_/Documentation/Persistence/">
+      <File Path="docs/persistence/index.md" />
+      <File Path="docs/persistence/json-file.md" />
+      <File Path="docs/persistence/sqlite.md" />
+      <File Path="docs/persistence/mongodb.md" />
+      <File Path="docs/persistence/redis.md" />
+      <File Path="docs/persistence/lucene.md" />
+    </Folder>
+    <Folder Name="/_Solution Items_/Documentation/Kubernetes/">
+      <File Path="docs/kubernetes/index.md" />
+      <File Path="docs/kubernetes/redis-tuning-airgapped.md" />
+      <File Path="docs/kubernetes/admin-ui-ingress.example.yaml" />
+    </Folder>
+    <Folder Name="/_Solution Items_/Documentation/Migration/">
+      <File Path="docs/migration/storage-migration.md" />
+    </Folder>
   </Folder>
   <Folder Name="/_Solution Items_/Quick Access/" />
   <Folder Name="/_Solution Items_/Quick Access/AdminUI/">
@@ -50,12 +71,23 @@
     <File Path="ClientManager.Api/Dockerfile" />
     <File Path="ClientManager.Api/nlog.config" />
   </Folder>
+  <Folder Name="/_Solution Items_/Docker/">
+    <File Path="docker-compose.yml" />
+    <File Path="compose/README.md" />
+    <File Path="compose/default.yml" />
+    <File Path="compose/dev.redis.yml" />
+    <File Path="compose/multipod.yml" />
+  </Folder>
   <Folder Name="/_Solution Items_/Scripts/">
     <File Path="_scripts/configuration.py" />
     <File Path="_scripts/download_images.py" />
     <File Path="_scripts/launch_observability_ui.py" />
     <File Path="_scripts/performance_baseline.py" />
+    <File Path="_scripts/run_multipod_docker.py" />
     <File Path="_scripts/seed_data.py" />
+    <File Path="_scripts/statistics_latency_check.py" />
+    <File Path="_scripts/statistics_multipod_check.py" />
+    <File Path="_scripts/statistics_multipod_stress.py" />
     <File Path="_scripts/traffic_generator.py" />
   </Folder>
 </Solution>

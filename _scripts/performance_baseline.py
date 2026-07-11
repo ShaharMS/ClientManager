@@ -180,21 +180,22 @@ def create_graph_scenario(
 ) -> dict[str, object]:
     range_spec = GRAPH_RANGE_PRESETS[range_key]
     now = time.time()
-    params = {
-        "filterType": filter_type,
-        "targetIds": ",".join(target_ids),
-        "from": format_utc(now - (range_spec["days"] * SECONDS_PER_DAY)),
-        "to": format_utc(now),
-        "granularity": range_spec["granularity"],
+    search_category = "ServiceRequests" if filter_type == "Service" else "ResourcePoolAllocations"
+    body: dict[str, object] = {
+        "searchCategory": search_category,
+        "targetIds": target_ids,
+        "fromUtc": format_utc(now - (range_spec["days"] * SECONDS_PER_DAY)),
+        "toUtc": format_utc(now),
+        "bucketCount": 12,
     }
-    path = f"{API_PREFIX}/statistics/historical-usage"
     if client_ids is not None:
-        path = f"{path}/by-client"
-        params["clientIds"] = ",".join(client_ids)
+        body["clientIds"] = client_ids
 
     return {
         "name": f"{name}_{range_key}",
-        "path": build_query_path(path, params),
+        "path": f"{API_PREFIX}/statistics/timeseries/search",
+        "method": "POST",
+        "body": body,
         "filter_type": filter_type,
         "range_key": range_key,
         "granularity": range_spec["granularity"],
@@ -219,11 +220,20 @@ def build_graph_scenarios(graph_range_keys: list[str]) -> list[dict[str, object]
 
 
 def run_dashboard_read(base_url: str) -> tuple[int, float]:
+    now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    thirty_minutes_ago = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() - MONITOR_WINDOW_SECONDS))
     endpoints = [
         ("GET", f"{API_PREFIX}/statistics/overview", None),
-        ("GET", f"{API_PREFIX}/statistics/global-usage", None),
-        ("POST", f"{API_PREFIX}/statistics/resource-pools/search", SEARCH_QUERY),
-        ("GET", f"{API_PREFIX}/statistics/client-summaries?pageSize={CLIENT_SUMMARIES_PAGE_SIZE}", None),
+        (
+            "POST",
+            f"{API_PREFIX}/statistics/timeseries/search",
+            {
+                "searchCategory": "ServiceRequests",
+                "fromUtc": thirty_minutes_ago,
+                "toUtc": now,
+                "bucketCount": 12,
+            },
+        ),
     ]
     total_ms = 0.0
     final_status = 200
@@ -240,14 +250,15 @@ def run_monitor_read(base_url: str, service_id: str) -> tuple[int, float]:
     thirty_minutes_ago = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() - MONITOR_WINDOW_SECONDS))
     endpoints = [
         (
-            "GET",
-            f"{API_PREFIX}/statistics/usage-timeseries?filterType=Service&targetIds={service_id}&from={thirty_minutes_ago}&to={now}&granularity=FiveMinute",
-            None,
-        ),
-        (
-            "GET",
-            f"{API_PREFIX}/statistics/client-usage-breakdown?filterType=Service&targetIds={service_id}&from={thirty_minutes_ago}&to={now}&granularity=FiveMinute",
-            None,
+            "POST",
+            f"{API_PREFIX}/statistics/timeseries/search",
+            {
+                "searchCategory": "ServiceRequests",
+                "targetIds": [service_id],
+                "fromUtc": thirty_minutes_ago,
+                "toUtc": now,
+                "bucketCount": 12,
+            },
         ),
     ]
     total_ms = 0.0
@@ -261,7 +272,9 @@ def run_monitor_read(base_url: str, service_id: str) -> tuple[int, float]:
 
 
 def run_graph_read(base_url: str, scenario: dict[str, object]) -> tuple[int, float]:
-    status, _, latency_ms = api_call(base_url, "GET", str(scenario["path"]))
+    method = str(scenario.get("method", "GET"))
+    body = scenario.get("body")
+    status, _, latency_ms = api_call(base_url, method, str(scenario["path"]), body)
     return status, latency_ms
 
 

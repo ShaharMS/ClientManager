@@ -89,7 +89,15 @@ There is no automated test suite or CI workflow in the repository today. Validat
 
 ## Docker and Compose
 
-`docker-compose.yml` runs API + Admin UI with Development environment and a shared `./data` volume.
+[`docker-compose.yml`](../docker-compose.yml) is the entry point for `docker compose up` (default: API + Admin UI with `./data`). See [`compose/README.md`](../compose/README.md) to switch stacks.
+
+**Multi-pod verification** (MongoDB + Redis + three API replicas in Docker):
+
+```bash
+python _scripts/run_multipod_docker.py
+```
+
+See [Multi-pod Docker verification](scripts/multipod-docker.md). Each run wipes volumes (`down -v`), seeds catalog only, and runs cross-pod statistics checks. For richer seed data, import NDJSON via the seed API manually.
 
 Production-oriented deployments should:
 
@@ -125,7 +133,7 @@ After deploying builds with `RequestTrackingMiddleware` on Admin UI and API:
 | --- | --- | --- | --- |
 | ~30s tab spinner | DevTools → Network → `document` TTFB on `GET /` | Slow `GET /` line (250ms+ threshold) | N/A — HTML is served without API calls |
 | Skeleton cards ~30s | Parallel `api/v1/statistics/*` waterfall | Outbound HTTP log duration per stats call | `RequestTrackingMiddleware` + `counter_get_by_prefix` / `counter_get_many` slow ops |
-| Charts never load | `historical-usage` / breakdown pending | Same outbound stats calls | Heavy Redis overlay paths on chart endpoints |
+| Charts never load | `timeseries/search` pending | Same outbound stats calls | Heavy snapshot overlay on tail buckets |
 | WebSocket stuck `101` | WS `/_blazor` pending | SignalR connect attempts | N/A |
 
 **Ingress vs pod:** `kubectl port-forward svc/clientmanager-admin-ui 5100:5100` — if `GET /` is fast locally but slow through ingress, fix ingress/DNS (see [Kubernetes guides](kubernetes/index.md)), not Redis.

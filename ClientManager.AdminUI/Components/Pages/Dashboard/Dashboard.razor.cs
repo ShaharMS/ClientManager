@@ -74,7 +74,7 @@ public partial class Dashboard : ComponentBase, IAsyncDisposable
 
     protected override async Task OnInitializedAsync()
     {
-        _chartLoader = new DashboardChartDataLoader(StatsService, PoolService, RateLimitApi, Localizer);
+        _chartLoader = new DashboardChartDataLoader(StatsService, Localizer);
 
         try
         {
@@ -82,10 +82,8 @@ public partial class Dashboard : ComponentBase, IAsyncDisposable
             var servicesTask = ServiceService.GetAllAsync();
             var poolsTask = PoolService.GetAllAsync();
             var clientsTask = ClientService.GetAllAsync();
-            var globalUsageTask = StatsService.GetGlobalUsageStatsAsync();
-            var summariesTask = StatsService.GetClientSummariesAsync();
 
-            await Task.WhenAll(overviewTask, servicesTask, poolsTask, clientsTask, globalUsageTask, summariesTask);
+            await Task.WhenAll(overviewTask, servicesTask, poolsTask, clientsTask);
 
             _overview = await overviewTask;
 
@@ -101,20 +99,21 @@ public partial class Dashboard : ComponentBase, IAsyncDisposable
                 .Concat(pools.Select(p => new NamedItem(p.Id, p.Name))).ToList();
             _filterTargets = _allServices;
 
-            var globalUsage = await globalUsageTask;
-            if (globalUsage is not null)
+            if (_overview is not null)
             {
-                _globalUsage = globalUsage.RequestsPerMinute > 0
-                    ? globalUsage.RequestsPerMinute.ToString("N0")
+                _globalUsage = _overview.RequestsPerMinute > 0
+                    ? _overview.RequestsPerMinute.ToString("N0")
                     : "-";
-                _acquisitionPct = (int)Math.Round(globalUsage.AcquisitionPercentage);
+                _acquisitionPct = (int)Math.Round(_overview.AcquisitionPercentage);
             }
 
-            var summaries = await summariesTask;
-            _clientSummaries = summaries.Select(r => new ClientSummaryTableRow(
-                r.ClientId, r.DisplayName, r.AccessibleServices,
-                r.TotalRateLimitRequests, r.AccessiblePools,
-                r.TotalAccessibleSlots
+            _clientSummaries = clients.Select(client => new ClientSummaryTableRow(
+                client.Id,
+                client.Name,
+                client.Services.Count(service => service.Value.IsAllowed),
+                client.Services.Values.Where(service => service.RateLimit is not null).Sum(service => service.RateLimit!.MaxRequests),
+                client.ResourcePools.Count,
+                client.ResourcePools.Values.Sum(pool => (int)pool.MaxSlots)
             )).ToList();
             _filteredClientSummaries = _clientSummaries;
 
@@ -288,13 +287,14 @@ public partial class Dashboard : ComponentBase, IAsyncDisposable
     {
         try
         {
-            var globalUsage = await StatsService.GetGlobalUsageStatsAsync();
-            if (globalUsage is not null)
+            var overview = await StatsService.GetOverviewAsync();
+            if (overview is not null)
             {
-                _globalUsage = globalUsage.RequestsPerMinute > 0
-                    ? globalUsage.RequestsPerMinute.ToString("N0")
+                _overview = overview;
+                _globalUsage = overview.RequestsPerMinute > 0
+                    ? overview.RequestsPerMinute.ToString("N0")
                     : "-";
-                _acquisitionPct = (int)Math.Round(globalUsage.AcquisitionPercentage);
+                _acquisitionPct = (int)Math.Round(overview.AcquisitionPercentage);
             }
 
             if (_chartInitComplete && _error is null)

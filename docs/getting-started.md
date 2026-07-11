@@ -33,7 +33,10 @@ The active solution (`ClientManager.slnx`) contains:
 | `docs/` | MkDocs documentation (this site) |
 | `_scripts/` | Python helpers for seeding, traffic, observability, performance baselines |
 | `data/` | Default JsonFile persistence directory when running locally |
-| `docker-compose.yml` | API + Admin UI containers with `./data` mounted |
+| [`docker-compose.yml`](docker-compose.yml) | Entry point for `docker compose up` — edit `include` to switch stacks |
+| [`compose/default.yml`](compose/default.yml) | API + Admin UI containers with `./data` mounted |
+| [`compose/dev.redis.yml`](compose/dev.redis.yml) | Redis overlay (combine with `default.yml`) |
+| [`compose/multipod.yml`](compose/multipod.yml) | Three API replicas + MongoDB + Redis for multi-pod testing |
 | `site/` | Built MkDocs output (`mkdocs build`); safe to regenerate |
 
 ## Requirements
@@ -44,7 +47,7 @@ The active solution (`ClientManager.slnx`) contains:
 
 Optional for full local observability:
 
-- **Docker** for `docker-compose.yml`, `download_images.py`, and `launch_observability_ui.py`
+- **Docker** for [`compose/`](compose/README.md) stacks, `download_images.py`, and `launch_observability_ui.py`
 
 ## Build
 
@@ -101,6 +104,8 @@ Stop the traffic generator before stopping the API so buffered usage events can 
 ```powershell
 docker compose up --build
 ```
+
+Switch stacks by editing `include` in [`docker-compose.yml`](docker-compose.yml) (see [`compose/README.md`](compose/README.md)).
 
 - API: `http://localhost:5062`
 - Admin UI: `http://localhost:5100`

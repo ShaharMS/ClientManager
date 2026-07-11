@@ -47,6 +47,10 @@ public static class StorageRepositoryRegistrationExtensions
             new ResourceAllocationDatabase(
                 sp.GetRequiredKeyedService<IDocumentStore>(StorageRole.Allocations)));
 
+        services.AddSingleton<IStatisticsPrecomputedDatabase>(sp =>
+            new StatisticsPrecomputedDatabase(
+                sp.GetRequiredKeyedService<IDocumentStore>(StorageRole.Statistics)));
+
         services.AddSingleton<IUsageSnapshotDatabase>(sp =>
             new UsageSnapshotDatabase(
                 sp.GetRequiredKeyedService<IDocumentStore>(StorageRole.Statistics),

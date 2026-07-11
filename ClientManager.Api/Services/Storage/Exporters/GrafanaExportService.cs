@@ -1,7 +1,6 @@
 using ClientManager.DataAccess.Databases.Interfaces;
 using ClientManager.DataAccess.Repositories.Interfaces;
 using ClientManager.Shared.Models.Entities;
-using ClientManager.Shared.Models.Enums;
 using ClientManager.Shared.Models.Responses;
 using ClientManager.Api.Services.Interfaces;
 
@@ -12,62 +11,46 @@ namespace ClientManager.Api.Services.Storage.Exporters;
 /// </summary>
 public class GrafanaExportService : IGrafanaExportService
 {
-    private readonly IUsageSnapshotDatabase _usageSnapshotDatabase;
+    private readonly IStatisticsPrecomputedDatabase _precomputedDatabase;
     private readonly IEntityRepository<ResourcePool> _poolRepository;
     private readonly IResourceAllocationDatabase _allocationDatabase;
-    private readonly IUsageStatisticsService _statisticsService;
 
     public GrafanaExportService(
-        IUsageSnapshotDatabase usageSnapshotDatabase,
+        IStatisticsPrecomputedDatabase precomputedDatabase,
         IEntityRepository<ResourcePool> poolRepository,
-        IResourceAllocationDatabase allocationDatabase,
-        IUsageStatisticsService statisticsService)
+        IResourceAllocationDatabase allocationDatabase)
     {
-        _usageSnapshotDatabase = usageSnapshotDatabase;
+        _precomputedDatabase = precomputedDatabase;
         _poolRepository = poolRepository;
         _allocationDatabase = allocationDatabase;
-        _statisticsService = statisticsService;
     }
 
     public async Task<object> ExportMetricsAsync(CancellationToken cancellationToken = default)
     {
         var metrics = new List<MetricDefinition>();
-        var globalStats = await _statisticsService.GetGlobalUsageStatsAsync(cancellationToken);
+        var summary = await _precomputedDatabase.GetOverviewSummaryAsync(cancellationToken);
 
         metrics.Add(new MetricDefinition(
             "clientmanager_requests_per_minute",
             "gauge",
             "Estimated requests per minute across all services.",
-            [new MetricValue(null, globalStats.RequestsPerMinute)]));
+            [new MetricValue(null, summary?.RequestsPerMinute ?? 0)]));
 
-        var secondSnapshots = await _usageSnapshotDatabase.GetAllByGranularityAsync(BucketGranularity.Second, cancellationToken);
-        var serviceSnapshots = secondSnapshots.Where(snapshot => snapshot.TargetType == TargetType.Service);
-
-        if (!serviceSnapshots.Any())
-        {
-            serviceSnapshots = (await _usageSnapshotDatabase.GetAllByGranularityAsync(BucketGranularity.FiveMinute, cancellationToken))
-                .Where(snapshot => snapshot.TargetType == TargetType.Service);
-        }
-
+        var gauges = await _precomputedDatabase.GetLatestUsageGaugesAsync(cancellationToken);
+        var entries = gauges?.Entries ?? [];
         var requestValues = new List<MetricValue>();
         var deniedValues = new List<MetricValue>();
 
-        foreach (var snapshot in serviceSnapshots)
+        foreach (var entry in entries)
         {
-            var latest = snapshot.Buckets.MaxBy(bucket => bucket.Timestamp);
-            if (latest is null)
-            {
-                continue;
-            }
-
             var labels = new Dictionary<string, string>
             {
-                ["service"] = snapshot.TargetId,
-                ["client"] = snapshot.ClientId
+                ["service"] = entry.ServiceId,
+                ["client"] = entry.ClientId
             };
 
-            requestValues.Add(new MetricValue(labels, latest.GrantedCount));
-            deniedValues.Add(new MetricValue(labels, latest.DeniedCount));
+            requestValues.Add(new MetricValue(labels, entry.GrantedCount));
+            deniedValues.Add(new MetricValue(labels, entry.DeniedCount));
         }
 
         metrics.Add(new MetricDefinition(
