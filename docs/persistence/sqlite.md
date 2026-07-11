@@ -1,124 +1,89 @@
 # SQLite provider
 
-
-
 **Enum:** `PersistenceProvider.Sqlite`  
+**Options:** `DefaultSqlite` / per-role `Sqlite` → `DatabasePath` (default `./data/store.db`)
 
-**Options:** `DefaultSqlite` / per-role `Sqlite` → `DatabasePath` (default `./data/statistics.db`)  
-
-**Scope today:** **`Statistics` role only** — implemented as `SqliteUsageSnapshotDatabase` with a normalized bucket schema.
-
-
-
-Catalog, rate limits, and allocations stay on JsonFile (or another provider) via `Roles` overrides.
-
-
+SQLite implements the same **document store** contract as JsonFile, MongoDB, Redis, and Lucene: logical collections, JSON documents, and counter keys in one database file. WAL mode is enabled; filtered search loads matching collection rows and evaluates queries in memory.
 
 ## Good at
 
-
-
-- **Fast range queries** on usage buckets — indexed `target_id`, `granularity`, `bucket_start`.
-
-- **Low API memory** — no large `UsageSnapshots.json` in heap.
-
-- **Single-machine prod** — one API instance with local disk.
-
-
+- **Zero infrastructure** — one file on disk, no separate database server.
+- **Large local histories** — `UsageSnapshots` stay on disk instead of loading a whole JSON file into RAM.
+- **Single-host deployments** — durable catalog or statistics on a laptop, VM, or PVC.
+- **Mixed layouts** — JsonFile for catalog, SQLite for `Statistics` (common dev upgrade path).
 
 ## Weak at
 
+- **Multi-instance API replicas** — SQLite is single-writer; not a shared cluster store like MongoDB.
+- **Very hot counters** — rate limits and allocations still want Redis at high QPS.
+- **Complex ad-hoc queries** — no server-side field indexes yet; `SearchAsync` scans the collection in memory.
 
+## Storage role fit
 
-- **Many concurrent writers** — SQLite is one writer; fine for statistics merge/rollup, not for fan-out rate-limit counters.
-
-- **Multi-replica API** — each replica needs its own DB or you accept single-writer; not a shared cluster store like MongoDB.
-
-- **Replacing all roles** — only statistics are implemented; do not set `DefaultProvider` to Sqlite for the whole app.
-
-
-
-## Schema (statistics)
-
-
-
-- `usage_snapshots` — segment metadata (client, target, granularity)
-
-- `usage_buckets` — per-bucket grants/denials (aggregation target)
-
-- `usage_counters` — pending usage counters before rollup
-
-
+| Role | SQLite? |
+| --- | --- |
+| `Statistics` | **Strong fit** for single-host / dev with large snapshot history |
+| `Configuration` | OK locally; MongoDB or JsonFile more typical |
+| `RateLimiting` | OK locally; prefer Redis in prod |
+| `Allocations` | OK locally; prefer Redis in prod |
 
 ## Configuration
 
-
-
-**Mixed layout** (recommended):
-
-
+**Mixed layout** (JsonFile catalog, SQLite statistics):
 
 ```json
-
 {
-
   "Persistence": {
-
     "DefaultProvider": "JsonFile",
-
     "DefaultJsonFile": {
-
       "DataDirectory": "./data"
-
     },
-
     "Roles": {
-
       "Statistics": {
-
         "Provider": "Sqlite",
-
         "Sqlite": {
-
           "DatabasePath": "./data/statistics.db"
-
         }
-
       }
-
     }
-
   }
-
 }
-
 ```
 
+**All roles on SQLite:**
 
-
-Environment variables:
-
-
-
-```powershell
-
-$env:Persistence__DefaultJsonFile__DataDirectory = "./data"
-
-$env:Persistence__Roles__Statistics__Provider = "Sqlite"
-
-$env:Persistence__Roles__Statistics__Sqlite__DatabasePath = "./data/statistics.db"
-
+```json
+{
+  "Persistence": {
+    "DefaultProvider": "Sqlite",
+    "DefaultSqlite": {
+      "DatabasePath": "./data/store.db"
+    }
+  }
+}
 ```
 
+```text
+Persistence__Roles__Statistics__Provider=Sqlite
+Persistence__Roles__Statistics__Sqlite__DatabasePath=./data/statistics.db
+```
 
+## Files on disk
+
+| Path | Contents |
+| --- | --- |
+| Your `DatabasePath` | `documents` table (collection + id + json) and `counters` table |
+
+Parent directories are created automatically on first use.
+
+## NFS / shared volumes
+
+Pointing `DatabasePath` at a network mount still uses **SQLite file semantics** (single writer, file locks). Treat as single-host or careful single-writer — same caveats as JsonFile on NFS.
+
+The API blocks SQLite for `Statistics`, `RateLimiting`, and `Allocations` in non-Development environments, like JsonFile and Lucene. Use MongoDB or Redis for those roles in multi-instance production.
 
 ## See also
 
-
-
-- [JsonFile](json-file.md)
-
-- [MongoDB](mongodb.md) — production-scale shared statistics
-
-- [Persistence overview](index.md)
-
+- [JsonFile](json-file.md) — simpler dev default
+- [MongoDB](mongodb.md) — shared production documents and statistics
+- [Persistence overview](index.md#suggested-layouts)

@@ -93,13 +93,14 @@ PATCH /api/v1/services
 
 ## Seeding
 
-Base path: `/api/v1/seed` (Swagger tag: **Seeding**). Exports and imports catalog data in the `SeedOptions` shape (compatible with appsettings `Seed`).
+Base path: `/api/v1/seed` (Swagger tag: **Seeding**). Exports and imports catalog and optional statistics. Catalog-only export returns JSON in the `SeedOptions` shape (compatible with appsettings `Seed`). Requests that include `usageSnapshots` or `format=ndjson` stream `seed.ndjson`.
 
 | Method | Path | Query | Body | Purpose |
 | --- | --- | --- | --- | --- |
-| `GET` | `/api/v1/seed` | `include` (optional) | — | Export from runtime storage |
-| `POST` | `/api/v1/seed` | `include` (optional) | `SeedOptions` | Wholesale replace included collections |
-| `PUT` | `/api/v1/seed` | `include`, `strategy=skip\|replace` | `SeedOptions` | Import per ID (`skip` = create missing; `replace` = upsert) |
+| `GET` | `/api/v1/seed` | `include`, `format` | — | Export (JSON or NDJSON file) |
+| `DELETE` | `/api/v1/seed` | `include`, `format` | — | Wipe included collections |
+| `POST` | `/api/v1/seed` | `include` | JSON or NDJSON | Import into empty collections |
+| `PUT` | `/api/v1/seed` | `include`, `strategy=skip\|replace` | JSON or NDJSON | Merge into existing data |
 
 **HTTP status codes (seed endpoints)**
 
@@ -107,11 +108,12 @@ Base path: `/api/v1/seed` (Swagger tag: **Seeding**). Exports and imports catalo
 | --- | --- |
 | `200` | Export or import succeeded |
 | `400` | Unknown `include` collection, invalid `strategy` (PUT only), or missing/malformed body (POST/PUT) |
+| `409` | Included collection not empty on POST, or another seed operation in progress |
 | `503` | Storage unavailable |
 
 Unlike PATCH, seed import does not return per-item failures in a `200` body — a storage or validation error fails the entire request.
 
-See [Seed system](core/seed-system.md) for workflows (instance copy, appsettings saturation, combining exports).
+See [Seed system](core/seed-system.md) and [Storage migration](migration/storage-migration.md) for workflows and curl examples.
 
 ## Statistics
 

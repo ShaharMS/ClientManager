@@ -7,7 +7,7 @@ namespace ClientManager.Shared.Configuration.Storage;
 /// and its platform-specific connection settings.
 /// <para>
 /// Exactly one of <see cref="MongoDb"/>, <see cref="Redis"/>, <see cref="JsonFile"/>,
-/// or <see cref="Lucene"/> should be populated, matching the value of
+/// <see cref="Lucene"/>, or <see cref="Sqlite"/> should be populated, matching the value of
 /// <see cref="Provider"/>.
 /// </para>
 /// </summary>

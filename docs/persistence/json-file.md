@@ -24,7 +24,7 @@ Each logical collection is one JSON file (e.g. `ClientConfiguration.json`, `Usag
 | `Configuration` | Excellent for dev |
 | `RateLimiting` | OK locally; prefer Redis in prod |
 | `Allocations` | OK locally; prefer Redis in prod |
-| `Statistics` | OK for dev/small; use SQLite or MongoDB for large histories or prod |
+| `Statistics` | OK for dev/small; use MongoDB for large histories or prod |
 
 ## Configuration
 
@@ -62,4 +62,3 @@ Pointing `DataDirectory` at a network mount (NFS, PVC) still uses **JsonFile sem
 ## See also
 
 - [Persistence overview](index.md)
-- [SQLite](sqlite.md) — statistics without loading a large JSON file

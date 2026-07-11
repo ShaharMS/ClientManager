@@ -20,7 +20,7 @@ Binds to `PersistenceOptions`. Controls which storage backend each **role** uses
 | `DefaultRedis` | — | Shared Redis settings when `DefaultProvider` or a role uses `Redis` |
 | `DefaultJsonFile` | `DataDirectory: "./data"` | Shared JsonFile settings |
 | `DefaultLucene` | `IndexDirectory: "./lucene-index"` | Shared Lucene settings |
-| `DefaultSqlite` | `DatabasePath: "./data/statistics.db"` | Shared SQLite settings (Statistics role) |
+| `DefaultSqlite` | `DatabasePath: "./data/store.db"` | Shared SQLite settings |
 | `Roles` | — | Per-role overrides (`Configuration`, `RateLimiting`, `Allocations`, `Statistics`) |
 
 Each `Roles` entry:
@@ -75,11 +75,11 @@ Each `Roles` entry:
 | --- | --- |
 | `IndexDirectory` | `./lucene-index` |
 
-**Sqlite options** (typically `Statistics` role only):
+**Sqlite options**:
 
 | Property | Default |
 | --- | --- |
-| `DatabasePath` | `./data/statistics.db` |
+| `DatabasePath` | `./data/store.db` |
 
 Example — statistics on SQLite, catalog on JsonFile:
 
@@ -92,6 +92,26 @@ Example — statistics on SQLite, catalog on JsonFile:
       "Statistics": {
         "Provider": "Sqlite",
         "Sqlite": { "DatabasePath": "./data/statistics.db" }
+      }
+    }
+  }
+}
+```
+
+Example — statistics on MongoDB, catalog on JsonFile:
+
+```json
+{
+  "Persistence": {
+    "DefaultProvider": "JsonFile",
+    "DefaultJsonFile": { "DataDirectory": "./data" },
+    "Roles": {
+      "Statistics": {
+        "Provider": "MongoDb",
+        "MongoDb": {
+          "ConnectionString": "mongodb://localhost:27017",
+          "DatabaseName": "ClientManager"
+        }
       }
     }
   }

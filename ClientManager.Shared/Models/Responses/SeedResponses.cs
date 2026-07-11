@@ -16,4 +16,10 @@ public record SeedImportSummary
 
     /// <summary>Entities deleted before insert (POST wholesale replace only).</summary>
     public int Deleted { get; init; }
+
+    /// <summary>Documents processed during the operation.</summary>
+    public int Processed { get; init; }
+
+    /// <summary>Wall-clock duration of the operation.</summary>
+    public long ElapsedMs { get; init; }
 }

@@ -3,10 +3,8 @@ using ClientManager.DataAccess.Databases.Interfaces;
 using ClientManager.DataAccess.Repositories.Implementations;
 using ClientManager.DataAccess.Repositories.Interfaces;
 using ClientManager.DataAccess.Stores.Interfaces;
-using ClientManager.Shared.Configuration.Storage;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Enums;
-using Microsoft.Extensions.Options;
 
 namespace ClientManager.Api.Services.Storage.Extensions;
 
@@ -50,40 +48,10 @@ public static class StorageRepositoryRegistrationExtensions
                 sp.GetRequiredKeyedService<IDocumentStore>(StorageRole.Allocations)));
 
         services.AddSingleton<IUsageSnapshotDatabase>(sp =>
-        {
-            var persistence = sp.GetRequiredService<IOptions<PersistenceOptions>>().Value;
-            var statisticsBinding = ResolveStatisticsBinding(persistence);
-            var clientDb = sp.GetRequiredService<IClientConfigurationDatabase>();
-
-            if (statisticsBinding.Provider == PersistenceProvider.Sqlite)
-            {
-                var databasePath = statisticsBinding.Sqlite?.DatabasePath ?? "./data/statistics.db";
-                return new SqliteUsageSnapshotDatabase(databasePath, clientDb);
-            }
-
-            return new UsageSnapshotDatabase(
+            new UsageSnapshotDatabase(
                 sp.GetRequiredKeyedService<IDocumentStore>(StorageRole.Statistics),
-                clientDb);
-        });
+                sp.GetRequiredService<IClientConfigurationDatabase>()));
 
         return services;
-    }
-
-    private static StorageRoleBinding ResolveStatisticsBinding(PersistenceOptions persistence)
-    {
-        if (persistence.Roles?.TryGetValue(StorageRole.Statistics, out var binding) == true)
-        {
-            return binding;
-        }
-
-        return new StorageRoleBinding
-        {
-            Provider = persistence.DefaultProvider,
-            MongoDb = persistence.DefaultMongoDb,
-            Redis = persistence.DefaultRedis,
-            JsonFile = persistence.DefaultJsonFile,
-            Lucene = persistence.DefaultLucene,
-            Sqlite = persistence.DefaultSqlite
-        };
     }
 }

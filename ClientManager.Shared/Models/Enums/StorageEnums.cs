@@ -33,7 +33,7 @@ public enum PersistenceProvider
     Lucene,
 
     /// <summary>
-    /// SQLite storage for usage statistics (local or single-instance deployments).
+    /// SQLite file-backed document store for single-instance deployments.
     /// </summary>
     Sqlite
 }

@@ -316,4 +316,19 @@ public class UsageSnapshotDatabase : IUsageSnapshotDatabase
         await _store.ResetManyCountersAsync(distinct, cancellationToken);
         _cachedUsageOverlay = null;
     }
+
+    /// <inheritdoc />
+    public Task<long> CountAllAsync(CancellationToken cancellationToken = default) =>
+        _store.CountAsync<UsageSnapshot>(Collection, DocumentQuery.All, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<IReadOnlyList<UsageSnapshot>> GetPageAsync(
+        int skip,
+        int take,
+        CancellationToken cancellationToken = default) =>
+        ExecuteQueryAsync(
+            DocumentQuery.All
+                .OrderBy(nameof(UsageSnapshot.Id), SortDirection.Ascending)
+                .WithPagination(skip, take),
+            cancellationToken);
 }
