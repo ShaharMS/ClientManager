@@ -273,6 +273,7 @@ public sealed class InstrumentedDocumentStore : IDocumentStore
             MongoDBDocumentStore => PersistenceProvider.MongoDb,
             JsonFileDocumentStore => PersistenceProvider.JsonFile,
             LuceneDocumentStore => PersistenceProvider.Lucene,
+            SqliteDocumentStore => PersistenceProvider.Sqlite,
             _ => configuredProvider
         };
     }

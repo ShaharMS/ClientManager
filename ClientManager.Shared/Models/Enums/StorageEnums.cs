@@ -30,7 +30,12 @@ public enum PersistenceProvider
     /// A Lucene.NET embedded search index, intended for PVC-based deployments
     /// that need full-text and field-level search without an external database.
     /// </summary>
-    Lucene
+    Lucene,
+
+    /// <summary>
+    /// SQLite file-backed document store for single-instance deployments.
+    /// </summary>
+    Sqlite
 }
 
 /// <summary>

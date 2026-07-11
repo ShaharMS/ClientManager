@@ -118,6 +118,7 @@ curl -fS -OJ "http://instance-a:5062/api/v1/seed?format=ndjson"
 | **Redis** | Export/import uses paginated key reads and batched writes; viable at large scale. |
 | **MongoDB** | Preferred statistics backend for very large histories. |
 | **JsonFile** | Fine for dev; entire file loads into memory — avoid multi-GB statistics on JsonFile. |
+| **SQLite** | Embedded document store; lower memory than JsonFile for large `UsageSnapshots`; same seed API. |
 
 Pending atomic usage counters are **not** exported — they are ephemeral and folded into snapshots on flush.
 

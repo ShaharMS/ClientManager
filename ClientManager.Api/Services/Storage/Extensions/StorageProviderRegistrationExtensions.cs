@@ -32,6 +32,7 @@ public static class StorageProviderRegistrationExtensions
         var redisMultiplexers = new Dictionary<string, IConnectionMultiplexer>();
         var jsonFileStores = new Dictionary<string, JsonFileDocumentStore>(GetPathComparer());
         var luceneStores = new Dictionary<string, LuceneDocumentStore>(GetPathComparer());
+        var sqliteStores = new Dictionary<string, SqliteDocumentStore>(GetPathComparer());
 
         foreach (var role in Enum.GetValues<StorageRole>())
         {
@@ -40,6 +41,7 @@ public static class StorageProviderRegistrationExtensions
                 binding,
                 jsonFileStores,
                 luceneStores,
+                sqliteStores,
                 mongoClients,
                 redisMultiplexers);
             var provider = binding.Provider;
@@ -67,7 +69,7 @@ public static class StorageProviderRegistrationExtensions
         foreach (var role in new[] { StorageRole.Statistics, StorageRole.RateLimiting, StorageRole.Allocations })
         {
             var binding = ResolveBinding(options, role);
-            if (binding.Provider is PersistenceProvider.JsonFile or PersistenceProvider.Lucene)
+            if (binding.Provider is PersistenceProvider.JsonFile or PersistenceProvider.Lucene or PersistenceProvider.Sqlite)
             {
                 throw new InvalidOperationException(
                     $"Storage role '{role}' uses {binding.Provider}, which is not safe for multi-instance production deployment. Configure Redis or MongoDB for Statistics, RateLimiting, and Allocations roles.");
@@ -111,6 +113,10 @@ public static class StorageProviderRegistrationExtensions
                 case PersistenceProvider.Lucene when string.IsNullOrWhiteSpace((binding.Lucene ?? new LuceneStoreOptions()).IndexDirectory):
                     throw new InvalidOperationException(
                         $"Storage role '{role}' uses Lucene but IndexDirectory is empty.");
+
+                case PersistenceProvider.Sqlite when string.IsNullOrWhiteSpace((binding.Sqlite ?? new SqliteStoreOptions()).DatabasePath):
+                    throw new InvalidOperationException(
+                        $"Storage role '{role}' uses Sqlite but DatabasePath is empty.");
             }
         }
     }
@@ -128,13 +134,14 @@ public static class StorageProviderRegistrationExtensions
                 PersistenceProvider.MongoDb => MaskConnectionString(binding.MongoDb?.ConnectionString),
                 PersistenceProvider.Redis => DescribeRedisEndpoint(binding.Redis),
                 PersistenceProvider.Lucene => binding.Lucene?.IndexDirectory ?? "./lucene-index",
+                PersistenceProvider.Sqlite => binding.Sqlite?.DatabasePath ?? "./data/store.db",
                 _ => "unknown"
             };
 
             logger.Info("Storage role {Role} -> {Provider} ({Detail})", role, binding.Provider, detail);
 
             if (!environment.IsDevelopment()
-                && (binding.Provider == PersistenceProvider.JsonFile || binding.Provider == PersistenceProvider.Lucene))
+                && binding.Provider is PersistenceProvider.JsonFile or PersistenceProvider.Lucene or PersistenceProvider.Sqlite)
             {
                 logger.Warn(
                     "Storage role {Role} is using {Provider}. This backend is intended for local or single-host use and is not safe for multi-instance production deployment.",
@@ -203,7 +210,8 @@ public static class StorageProviderRegistrationExtensions
             MongoDb = options.DefaultMongoDb,
             Redis = options.DefaultRedis,
             JsonFile = options.DefaultJsonFile,
-            Lucene = options.DefaultLucene
+            Lucene = options.DefaultLucene,
+            Sqlite = options.DefaultSqlite
         };
     }
 

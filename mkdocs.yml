@@ -52,6 +52,7 @@ nav:
   - Persistence:
     - Overview: persistence/index.md
     - JsonFile: persistence/json-file.md
+    - SQLite: persistence/sqlite.md
     - MongoDB: persistence/mongodb.md
     - Redis: persistence/redis.md
     - Lucene: persistence/lucene.md

@@ -18,6 +18,7 @@ internal static class DocumentStoreFactory
         StorageRoleBinding binding,
         Dictionary<string, JsonFileDocumentStore> jsonFileStores,
         Dictionary<string, LuceneDocumentStore> luceneStores,
+        Dictionary<string, SqliteDocumentStore> sqliteStores,
         Dictionary<string, IMongoClient> mongoClients,
         Dictionary<string, IConnectionMultiplexer> redisMultiplexers)
     {
@@ -27,6 +28,7 @@ internal static class DocumentStoreFactory
             PersistenceProvider.MongoDb => CreateMongoStore(binding.MongoDb, mongoClients),
             PersistenceProvider.Redis => CreateRedisStore(binding.Redis, redisMultiplexers),
             PersistenceProvider.Lucene => CreateLuceneStore(binding.Lucene, luceneStores),
+            PersistenceProvider.Sqlite => CreateSqliteStore(binding.Sqlite, sqliteStores),
             _ => throw new InvalidOperationException($"Unsupported persistence provider: {binding.Provider}")
         };
     }
@@ -212,6 +214,14 @@ internal static class DocumentStoreFactory
     {
         var indexDirectory = ResolvePath((options ?? new LuceneStoreOptions()).IndexDirectory);
         return GetOrCreate(storeCache, indexDirectory, () => new LuceneDocumentStore(indexDirectory));
+    }
+
+    private static SqliteDocumentStore CreateSqliteStore(
+        SqliteStoreOptions? options,
+        Dictionary<string, SqliteDocumentStore> storeCache)
+    {
+        var databasePath = ResolvePath((options ?? new SqliteStoreOptions()).DatabasePath);
+        return GetOrCreate(storeCache, databasePath, () => new SqliteDocumentStore(databasePath));
     }
 
     private static TStore GetOrCreate<TKey, TStore>(

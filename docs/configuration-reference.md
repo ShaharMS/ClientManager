@@ -20,14 +20,15 @@ Binds to `PersistenceOptions`. Controls which storage backend each **role** uses
 | `DefaultRedis` | — | Shared Redis settings when `DefaultProvider` or a role uses `Redis` |
 | `DefaultJsonFile` | `DataDirectory: "./data"` | Shared JsonFile settings |
 | `DefaultLucene` | `IndexDirectory: "./lucene-index"` | Shared Lucene settings |
+| `DefaultSqlite` | `DatabasePath: "./data/store.db"` | Shared SQLite settings |
 | `Roles` | — | Per-role overrides (`Configuration`, `RateLimiting`, `Allocations`, `Statistics`) |
 
 Each `Roles` entry:
 
 | Property | Description |
 | --- | --- |
-| `Provider` | `JsonFile`, `MongoDb`, `Redis`, or `Lucene` |
-| `MongoDb` / `Redis` / `JsonFile` / `Lucene` | Provider-specific options for this role only |
+| `Provider` | `JsonFile`, `MongoDb`, `Redis`, `Lucene`, or `Sqlite` |
+| `MongoDb` / `Redis` / `JsonFile` / `Lucene` / `Sqlite` | Provider-specific options for this role only |
 
 **MongoDB options** (`DefaultMongoDb` or per-role `MongoDb`):
 
@@ -73,6 +74,29 @@ Each `Roles` entry:
 | Property | Default |
 | --- | --- |
 | `IndexDirectory` | `./lucene-index` |
+
+**Sqlite options**:
+
+| Property | Default |
+| --- | --- |
+| `DatabasePath` | `./data/store.db` |
+
+Example — statistics on SQLite, catalog on JsonFile:
+
+```json
+{
+  "Persistence": {
+    "DefaultProvider": "JsonFile",
+    "DefaultJsonFile": { "DataDirectory": "./data" },
+    "Roles": {
+      "Statistics": {
+        "Provider": "Sqlite",
+        "Sqlite": { "DatabasePath": "./data/statistics.db" }
+      }
+    }
+  }
+}
+```
 
 Example — statistics on MongoDB, catalog on JsonFile:
 
