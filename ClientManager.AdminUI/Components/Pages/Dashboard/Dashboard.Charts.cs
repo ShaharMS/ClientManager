@@ -1,3 +1,4 @@
+using System.Text.Json;
 using ClientManager.AdminUI.Models.Charts;
 using ClientManager.AdminUI.Models.Dashboard;
 using ClientManager.AdminUI.Services.ChartData;
@@ -114,7 +115,7 @@ public partial class Dashboard
             _donutDataGeneration++;
             _chartError = null;
         }
-        catch (HttpRequestException ex)
+        catch (Exception ex) when (ex is HttpRequestException or JsonException)
         {
             if (_disposed || ticket != _chartLoadTicket)
             {

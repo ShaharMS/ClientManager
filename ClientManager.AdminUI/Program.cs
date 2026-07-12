@@ -122,6 +122,7 @@ if (app.Environment.IsDevelopment())
 {
     ChartBucketAggregatorSelfCheck.Run();
     DashboardDonutDrillSelfCheck.Run();
+    TimeseriesJsonContractSelfCheck.Run();
     app.MapGet("/_dev/culture", (HttpContext ctx, IStringLocalizer<SharedResources> localizer) =>
         Results.Json(new
         {
