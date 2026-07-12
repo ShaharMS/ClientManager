@@ -32,6 +32,11 @@
     container-type: inline-size;
 }
 
+.cm-chart-card__toolbar:has(.cm-chart-settings-dropdown--open) {
+    position: relative;
+    z-index: 1100;
+}
+
 .cm-chart-card__filters {
     grid-column: 1 / -1;
     grid-row: 1;
