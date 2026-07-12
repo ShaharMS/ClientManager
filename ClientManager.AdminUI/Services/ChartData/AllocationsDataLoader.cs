@@ -66,13 +66,13 @@ public sealed class AllocationsDataLoader
             ? (await _rateLimitApi.GetByTargetTypeAsync(TargetType.ResourcePool)).ToDictionary(limit => limit.TargetId)
             : new Dictionary<string, GlobalRateLimit>(StringComparer.Ordinal);
 
-        var charts = chartResponse?.Targets
-            .Select(target => TimeseriesChartBuilder.BuildTargetChart(
-                target,
+        List<TargetChartData> charts = chartResponse?.Targets is { Count: > 0 } targets
+            ? [TimeseriesChartBuilder.BuildAggregateChart(
+                targets,
                 isRateBased: context.IsAccessMetric,
                 context.AllClients,
-                _localizer).Chart)
-            .ToList() ?? [];
+                _localizer).Chart]
+            : [];
 
         var clientRows = BuildClientRows(recentResponse, visiblePools, context.IsAccessMetric, rateLimitLookup, context.AllClients);
         var poolRows = BuildPoolRows(pools, recentResponse, rateLimitLookup, context.IsAccessMetric);

@@ -50,22 +50,12 @@ public static class TimeseriesChartBuilder
             return ([], []);
         }
 
-        var isService = context.SelectedFilterType == "Service";
-        var charts = new List<TargetChartData>();
-        var donutSlices = new List<ClientUsagePoint>();
-
-        foreach (var target in response.Targets)
-        {
-            var chart = BuildTargetChart(
-                target,
-                isService,
-                context.AllClients,
-                localizer);
-            charts.Add(chart.Chart);
-            donutSlices.AddRange(chart.DonutSlices);
-        }
-
-        return (charts, donutSlices);
+        var chart = BuildAggregateChart(
+            response.Targets,
+            context.SelectedFilterType == "Service",
+            context.AllClients,
+            localizer);
+        return ([chart.Chart], chart.DonutSlices);
     }
 
     public static async Task<(List<TargetChartData> Charts, List<ClientUsagePoint> DonutSlices)> BuildDashboardAsync(
@@ -125,14 +115,77 @@ public static class TimeseriesChartBuilder
             BucketCount = bucketCount
         });
 
-        if (response is null)
+        if (response is null || response.Targets.Count == 0)
         {
             return [];
         }
 
-        return response.Targets
-            .Select(target => BuildTargetChart(target, isRateBased: true, allClients, localizer).Chart)
+        return [BuildAggregateChart(response.Targets, isRateBased: true, allClients, localizer).Chart];
+    }
+
+    public static (TargetChartData Chart, List<ClientUsagePoint> DonutSlices) BuildAggregateChart(
+        IReadOnlyList<TimeseriesTargetSeries> targets,
+        bool isRateBased,
+        IReadOnlyList<ClientConfiguration> allClients,
+        IStringLocalizer<SharedResources> localizer)
+    {
+        var clientEntries = targets
+            .SelectMany(target => target.ClientSeries.Select(series => (Target: target, Series: series)))
             .ToList();
+        var valueSelector = isRateBased
+            ? (Func<TimeseriesDisplayBucket, double>)(bucket => bucket.GrantedCount)
+            : bucket => bucket.ActiveCount;
+        var contributingEntries = clientEntries
+            .Where(entry => !isRateBased
+                || MonitorCapCalculator.ContributesToGlobalServiceLimit(
+                    entry.Series.ClientId, entry.Target.TargetId, allClients))
+            .ToList();
+        var clientAreas = new List<ClientAreaSeries>();
+        var aggregatePoints = AggregateDisplayBuckets(
+            contributingEntries.SelectMany(entry => entry.Series.Buckets),
+            valueSelector);
+        var aggregateName = targets.Count == 1 ? targets[0].TargetName : string.Empty;
+
+        if (aggregatePoints.Any(point => point.Value > 0))
+        {
+            clientAreas.Add(new ClientAreaSeries(
+                ChartAggregator.AggregateSeriesId,
+                aggregateName,
+                aggregatePoints));
+        }
+
+        if (isRateBased)
+        {
+            var offBudgetPoints = AggregateDisplayBuckets(
+                clientEntries
+                    .Where(entry => !MonitorCapCalculator.ContributesToGlobalServiceLimit(
+                        entry.Series.ClientId, entry.Target.TargetId, allClients))
+                    .SelectMany(entry => entry.Series.Buckets),
+                valueSelector);
+            OffBudgetChartSeriesBuilder.AppendSeries(
+                clientAreas,
+                ChartAggregator.AggregateSeriesId,
+                offBudgetPoints,
+                localizer);
+        }
+
+        AppendAggregateDeniedSeries(clientAreas, targets, isRateBased, localizer);
+
+        var cap = targets.All(target => target.CapValue > 0)
+            ? (int)targets.Sum(target => target.CapValue)
+            : 0;
+        var capPoints = ChartCapResolver.BuildCapSeries(
+            BuildReferenceBuckets(targets),
+            cap);
+        var donutSlices = contributingEntries
+            .Select(entry => new ClientUsagePoint(
+                entry.Series.ClientId,
+                entry.Series.ClientName,
+                entry.Series.Buckets.Sum(valueSelector)))
+            .Where(slice => slice.Value > 0)
+            .ToList();
+
+        return (new TargetChartData(aggregateName, clientAreas, capPoints), donutSlices);
     }
 
     public static async Task<TimeseriesSearchResponse?> FetchAllocationsAsync(
@@ -173,108 +226,72 @@ public static class TimeseriesChartBuilder
             .ToList();
     }
 
-    public static (TargetChartData Chart, List<ClientUsagePoint> DonutSlices) BuildTargetChart(
-        TimeseriesTargetSeries target,
+    private static void AppendAggregateDeniedSeries(
+        ICollection<ClientAreaSeries> series,
+        IReadOnlyList<TimeseriesTargetSeries> targets,
         bool isRateBased,
-        IReadOnlyList<ClientConfiguration> allClients,
         IStringLocalizer<SharedResources> localizer)
     {
-        var clientAreas = new List<ClientAreaSeries>();
-        var donutSlices = new List<ClientUsagePoint>();
-
-        foreach (var clientSeries in target.ClientSeries)
+        var buckets = targets.SelectMany(target => target.AggregateBuckets).ToList();
+        foreach (var (suffix, label) in GetDeniedDefinitions(isRateBased, localizer))
         {
-            if (isRateBased
-                && !MonitorCapCalculator.ContributesToGlobalServiceLimit(clientSeries.ClientId, target.TargetId, allClients))
-            {
-                continue;
-            }
+            var points = AggregateDisplayBuckets(
+                buckets,
+                bucket => suffix switch
+                {
+                    ChartAggregator.DeniedUnauthSuffix => bucket.DeniedUnauthenticatedCount,
+                    ChartAggregator.DeniedBlockedSuffix => bucket.DeniedBlockedCount,
+                    ChartAggregator.DeniedRateLimitedSuffix => bucket.DeniedRateLimitedCount,
+                    ChartAggregator.DeniedCapacitySuffix => bucket.DeniedCapacityLimitedCount,
+                    _ => 0
+                });
 
-            var valueSelector = isRateBased
-                ? (Func<TimeseriesDisplayBucket, double>)(bucket => bucket.GrantedCount)
-                : bucket => bucket.ActiveCount;
-
-            var points = clientSeries.Buckets
-                .Select(bucket => new ChartPoint(bucket.Label, valueSelector(bucket)))
-                .ToList();
-
-            if (points.All(point => point.Value <= 0))
-            {
-                continue;
-            }
-
-            clientAreas.Add(new ClientAreaSeries(clientSeries.ClientId, clientSeries.ClientName, points));
-            donutSlices.Add(new ClientUsagePoint(
-                clientSeries.ClientId,
-                clientSeries.ClientName,
-                clientSeries.Buckets.Sum(bucket => valueSelector(bucket))));
+            series.Add(new ClientAreaSeries(
+                ChartAggregator.AggregateSeriesId + suffix,
+                label,
+                points,
+                Hidden: true));
         }
-
-        var aggregatedAreas = ChartAggregator.Aggregate(
-            clientAreas.Select(area => new ChartAggregator.AggregatedSeries(
-                area.ClientId,
-                area.ClientName,
-                area.Points.Select(point => new ChartAggregator.AggregatedPoint(point.Label, point.Value)).ToList()))
-            .ToList());
-
-        clientAreas = aggregatedAreas
-            .Select(area => new ClientAreaSeries(
-                area.Id,
-                area.Name,
-                area.Points.Select(point => new ChartPoint(point.Label, point.Value)).ToList()))
-            .ToList();
-
-        AppendDeniedSeries(clientAreas, target, isRateBased, localizer);
-
-        var referenceBuckets = target.ClientSeries.FirstOrDefault()?.Buckets ?? target.AggregateBuckets;
-        var cap = isRateBased
-            ? (int)target.CapValue
-            : ChartCapResolver.ResolvePoolSlotCap((int)target.CapValue);
-        var capPoints = ChartCapResolver.BuildCapSeries(
-            referenceBuckets.Select(bucket => new ChartBucketAggregator.AggregatedBucket(
-                bucket.Label, cap, bucket.BucketStartUtc, bucket.BucketEndUtc)).ToList(),
-            cap);
-
-        return (new TargetChartData(target.TargetName, clientAreas, capPoints), donutSlices);
     }
 
-    private static void AppendDeniedSeries(
-        ICollection<ClientAreaSeries> series,
-        TimeseriesTargetSeries target,
+    internal static List<ChartPoint> AggregateDisplayBuckets(
+        IEnumerable<TimeseriesDisplayBucket> buckets,
+        Func<TimeseriesDisplayBucket, double> valueSelector) =>
+        buckets
+            .GroupBy(bucket => (bucket.Label, bucket.BucketStartUtc, bucket.BucketEndUtc))
+            .OrderBy(group => group.Key.BucketStartUtc)
+            .Select(group => new ChartPoint(
+                group.Key.Label,
+                group.Sum(valueSelector)))
+            .ToList();
+
+    private static List<ChartBucketAggregator.AggregatedBucket> BuildReferenceBuckets(
+        IReadOnlyList<TimeseriesTargetSeries> targets) =>
+        targets
+            .SelectMany(target => target.AggregateBuckets)
+            .GroupBy(bucket => (bucket.Label, bucket.BucketStartUtc, bucket.BucketEndUtc))
+            .OrderBy(group => group.Key.BucketStartUtc)
+            .Select(group => new ChartBucketAggregator.AggregatedBucket(
+                group.Key.Label,
+                0,
+                group.Key.BucketStartUtc,
+                group.Key.BucketEndUtc))
+            .ToList();
+
+    private static (string Suffix, string Label)[] GetDeniedDefinitions(
         bool isRateBased,
-        IStringLocalizer<SharedResources> localizer)
-    {
-        var mode = isRateBased ? DeniedViewMode.RateLimitDenied : DeniedViewMode.CapacityDenied;
-        (string Suffix, string Label)[] definitions = mode == DeniedViewMode.CapacityDenied
+        IStringLocalizer<SharedResources> localizer) =>
+        isRateBased
             ?
             [
                 (ChartAggregator.DeniedUnauthSuffix, localizer[TermKeys.DeniedUnauthenticated]),
                 (ChartAggregator.DeniedBlockedSuffix, localizer[TermKeys.DeniedBlocked]),
-                (ChartAggregator.DeniedCapacitySuffix, localizer[TermKeys.DeniedOutOfSlots])
+                (ChartAggregator.DeniedRateLimitedSuffix, localizer[TermKeys.DeniedThrottled])
             ]
             :
             [
                 (ChartAggregator.DeniedUnauthSuffix, localizer[TermKeys.DeniedUnauthenticated]),
                 (ChartAggregator.DeniedBlockedSuffix, localizer[TermKeys.DeniedBlocked]),
-                (ChartAggregator.DeniedRateLimitedSuffix, localizer[TermKeys.DeniedThrottled])
+                (ChartAggregator.DeniedCapacitySuffix, localizer[TermKeys.DeniedOutOfSlots])
             ];
-
-        foreach (var (suffix, label) in definitions)
-        {
-            var points = target.AggregateBuckets
-                .Select(bucket => new ChartPoint(
-                    bucket.Label,
-                    suffix switch
-                    {
-                        ChartAggregator.DeniedUnauthSuffix => bucket.DeniedUnauthenticatedCount,
-                        ChartAggregator.DeniedBlockedSuffix => bucket.DeniedBlockedCount,
-                        ChartAggregator.DeniedRateLimitedSuffix => bucket.DeniedRateLimitedCount,
-                        ChartAggregator.DeniedCapacitySuffix => bucket.DeniedCapacityLimitedCount,
-                        _ => 0
-                    }))
-                .ToList();
-
-            series.Add(new ClientAreaSeries(target.TargetId + suffix, label, points, Hidden: true));
-        }
-    }
 }
