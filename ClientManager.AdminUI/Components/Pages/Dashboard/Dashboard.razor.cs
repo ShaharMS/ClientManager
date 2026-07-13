@@ -1,10 +1,6 @@
-using ClientManager.AdminUI.Models.Charts;
-using ClientManager.AdminUI.Models.Dashboard;
+using ClientManager.AdminUI.Components.Shared;
 using ClientManager.AdminUI.Resources;
 using ClientManager.AdminUI.Services;
-using ClientManager.AdminUI.Services.ChartData;
-using ClientManager.Shared.Models.Entities;
-using ClientManager.Shared.Models.Responses;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Localization;
 using Microsoft.JSInterop;
@@ -14,319 +10,76 @@ namespace ClientManager.AdminUI.Components.Pages.Dashboard;
 public partial class Dashboard : ComponentBase, IAsyncDisposable
 {
     [Inject] private StatisticsApiService StatsService { get; set; } = null!;
-    [Inject] private ClientApiService ClientService { get; set; } = null!;
-    [Inject] private ServiceApiService ServiceService { get; set; } = null!;
-    [Inject] private ResourcePoolApiService PoolService { get; set; } = null!;
-    [Inject] private GlobalRateLimitApiService RateLimitApi { get; set; } = null!;
     [Inject] private IStringLocalizer<SharedResources> Localizer { get; set; } = null!;
     [Inject] private ApiErrorLocalizer Errors { get; set; } = null!;
     [Inject] private IJSRuntime JS { get; set; } = null!;
-    [Inject] private UrlQuerySync UrlQuery { get; set; } = null!;
-    [Inject] private UserPreferencesService PreferencesService { get; set; } = null!;
 
     private bool _loading = true;
-    private bool _chartLoading = true;
     private string? _error;
-    private string? _chartError;
-    private SystemOverviewResponse? _overview;
-
-    private string _globalUsage = "-";
-    private int _acquisitionPct;
-
-    private string _selectedFilterType = "Service";
-    private string? _selectedTargetId;
-    private IEnumerable<string>? _selectedClientIds;
-    private string? _tableSearch;
-
+    private DashboardOverview? _overview;
+    private string _rpmDisplay = "-";
     private PagePollingLifecycle? _polling;
-    private DashboardChartDataLoader? _chartLoader;
-
-    private List<FilterOption> _filterTypes = [];
-
-    protected override void OnInitialized()
-    {
-        _filterTypes =
-        [
-            new(Localizer["Pages.Dashboard.FilterType.Service"], "Service"),
-            new(Localizer["Pages.Dashboard.FilterType.ResourcePool"], "ResourcePool")
-        ];
-    }
-
-    private List<NamedItem> _filterTargets = [];
-    private List<NamedItem> _allServices = [];
-    private List<NamedItem> _allPools = [];
-    private List<NamedItem> _clients = [];
-    private List<ClientConfiguration> _allClients = [];
-
-    private List<TargetChartData> _targetCharts = [];
-    private DashboardDonutData _donutData = new([], []);
-    private int _donutDataGeneration;
-
-    private ChartTimeRange _timeRange = ChartTimeRange.FromPreset(TimeRangePreset.Default);
-    private AxisScaleType _axisScaleType = AxisScaleType.Linear;
-    private int _chartBucketCount = ChartBucketAggregator.DefaultBucketCount;
-    private bool _pollingOverride;
-    private IJSObjectReference? _chartJs;
-    private DotNetObjectReference<Dashboard>? _chartSelfRef;
-
-    private List<ClientSummaryTableRow> _clientSummaries = [];
-    private List<ClientSummaryTableRow> _filteredClientSummaries = [];
 
     protected override async Task OnInitializedAsync()
     {
-        _chartLoader = new DashboardChartDataLoader(StatsService, Localizer);
-
         try
         {
-            var overviewTask = StatsService.GetOverviewAsync();
-            var servicesTask = ServiceService.GetAllAsync();
-            var poolsTask = PoolService.GetAllAsync();
-            var clientsTask = ClientService.GetAllAsync();
-
-            await Task.WhenAll(overviewTask, servicesTask, poolsTask, clientsTask);
-
-            _overview = await overviewTask;
-
-            var services = await servicesTask;
-            var pools = await poolsTask;
-            var clients = await clientsTask;
-
-            _allClients = clients;
-            _clients = clients.Select(c => new NamedItem(c.Id, c.Name)).ToList();
-            _allServices = new List<NamedItem> { new(DashboardChartLoadContext.AllTargetsId, Localizer["Pages.Dashboard.Target.AllServices"]) }
-                .Concat(services.Select(s => new NamedItem(s.Id, s.Name))).ToList();
-            _allPools = new List<NamedItem> { new(DashboardChartLoadContext.AllTargetsId, Localizer["Pages.Dashboard.Target.AllResourcePools"]) }
-                .Concat(pools.Select(p => new NamedItem(p.Id, p.Name))).ToList();
-            _filterTargets = _allServices;
-
-            if (_overview is not null)
-            {
-                _globalUsage = _overview.RequestsPerMinute > 0
-                    ? _overview.RequestsPerMinute.ToString("N0")
-                    : "-";
-                _acquisitionPct = (int)Math.Round(_overview.AcquisitionPercentage);
-            }
-
-            _clientSummaries = clients.Select(client => new ClientSummaryTableRow(
-                client.Id,
-                client.Name,
-                client.Services.Count(service => service.Value.IsAllowed),
-                client.Services.Values.Where(service => service.RateLimit is not null).Sum(service => service.RateLimit!.MaxRequests),
-                client.ResourcePools.Count,
-                client.ResourcePools.Values.Sum(pool => (int)pool.MaxSlots)
-            )).ToList();
-            _filteredClientSummaries = _clientSummaries;
-
-            if (_filterTargets.Count > 0 && _selectedTargetId is null)
-            {
-                _selectedTargetId = _filterTargets[0].Id;
-            }
-
-            HydrateFromUrl();
-
-            _chartInitComplete = true;
-
-            if (_error is null)
-            {
-                _ = BeginInitialChartLoadAsync();
-            }
-            else
-            {
-                _chartLoading = false;
-            }
+            await RefreshDataAsync();
         }
         catch (HttpRequestException ex)
         {
             _error = Errors.Format("Api.UnableToConnect", ex);
-            _chartLoading = false;
         }
         finally
         {
             _loading = false;
         }
 
-        _polling = new PagePollingLifecycle(JS, InvokeAsync, RefreshDataAsync);
-        var pollInterval = PollingIntervalPreset.FindByKey(_pollingKey)?.Interval;
-        _polling.Start(pollInterval);
+        _polling = new PagePollingLifecycle(JS, InvokeAsync, RefreshOverviewAsync);
+        _polling.Start(TimeSpan.FromSeconds(10));
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!firstRender)
-        {
-            return;
-        }
-
-        try
-        {
-            _chartJs = await JS.InvokeAsync<IJSObjectReference>("import", "./js/chart.js");
-            _chartSelfRef = DotNetObjectReference.Create(this);
-            await _chartJs.InvokeVoidAsync("register", _chartSelfRef);
-            await UpdateChartBucketCountAsync(reloadWhenChanged: false);
-        }
-        catch (JSDisconnectedException)
-        {
-        }
-        catch (ObjectDisposedException)
-        {
-        }
-
-        if (_polling is not null)
+        if (firstRender && _polling is not null)
         {
             await _polling.RegisterVisibilityAsync();
         }
     }
 
-    [JSInvokable]
-    public async Task OnChartResize() => await UpdateChartBucketCountAsync(reloadWhenChanged: true);
-
-    private async Task UpdateChartBucketCountAsync(bool reloadWhenChanged)
-    {
-        if (_chartJs is null)
-        {
-            return;
-        }
-
-        var chartWidth = await _chartJs.InvokeAsync<int>("getChartCardWidth");
-        var bucketCount = ChartBucketAggregator.GetBucketCountForWidth(chartWidth);
-        if (bucketCount == _chartBucketCount)
-        {
-            return;
-        }
-
-        _chartBucketCount = bucketCount;
-        if (reloadWhenChanged && _chartLoader is not null)
-        {
-            var context = CreateChartLoadContext();
-            if (_chartLoader.TryRebuildFromCache(context, out var charts, out var donut))
-            {
-                _targetCharts = charts;
-                _donutData = donut;
-                await InvokeAsync(StateHasChanged);
-                return;
-            }
-
-            await LoadChartDataAsync();
-            StateHasChanged();
-        }
-    }
-
-    private Task OnPollingIntervalChanged(PollingIntervalPreset preset)
-    {
-        _pollingOverride = true;
-        _pollingKey = preset.Key;
-        _polling?.SetInterval(preset.Interval);
-        SyncUrl();
-        return Task.CompletedTask;
-    }
-
-    private Task OnAxisScaleChanged(AxisScaleType scale)
-    {
-        _axisScaleType = scale;
-        SyncUrl();
-        StateHasChanged();
-        return Task.CompletedTask;
-    }
-
-    private void OnTableSearchChanged()
-    {
-        if (string.IsNullOrWhiteSpace(_tableSearch))
-        {
-            _filteredClientSummaries = _clientSummaries;
-        }
-        else
-        {
-            _filteredClientSummaries = _clientSummaries
-                .Where(c => c.ClientId.Contains(_tableSearch, StringComparison.OrdinalIgnoreCase)
-                    || c.DisplayName.Contains(_tableSearch, StringComparison.OrdinalIgnoreCase))
-                .ToList();
-        }
-
-        SyncUrlDebounced();
-    }
-
-    private Task OnFilterTypeChangedAsync(string value)
-    {
-        _selectedFilterType = value;
-        return Task.CompletedTask;
-    }
-
-    private Task OnTargetChangedAsync(string? value)
-    {
-        _selectedTargetId = value;
-        return Task.CompletedTask;
-    }
-
-    private Task OnClientsChangedAsync(IEnumerable<string>? value)
-    {
-        _selectedClientIds = value;
-        return Task.CompletedTask;
-    }
-
-    private Task OnTableSearchTextChangedAsync(string? value)
-    {
-        _tableSearch = value;
-        OnTableSearchChanged();
-        return Task.CompletedTask;
-    }
-
-    private async Task BeginInitialChartLoadAsync()
+    private async Task RefreshOverviewAsync()
     {
         try
         {
-            await LoadChartDataWithSkeletonAsync();
+            await RefreshDataAsync();
+            await InvokeAsync(StateHasChanged);
         }
         catch (HttpRequestException ex)
         {
-            _chartError = Errors.Format("Api.UnableToConnect", ex);
-            await InvokeAsync(StateHasChanged);
+            _error = Errors.Format("Api.UnableToConnect", ex);
         }
     }
 
     private async Task RefreshDataAsync()
     {
-        try
+        var overview = await StatsService.GetOverviewAsync();
+        if (overview is null)
         {
-            var overview = await StatsService.GetOverviewAsync();
-            if (overview is not null)
-            {
-                _overview = overview;
-                _globalUsage = overview.RequestsPerMinute > 0
-                    ? overview.RequestsPerMinute.ToString("N0")
-                    : "-";
-                _acquisitionPct = (int)Math.Round(overview.AcquisitionPercentage);
-            }
+            return;
+        }
 
-            if (_chartInitComplete && _error is null)
-            {
-                await LoadChartDataAsync();
-                await InvokeAsync(StateHasChanged);
-            }
-        }
-        catch (HttpRequestException ex)
-        {
-            _chartError = Errors.Format("Api.UnableToConnect", ex);
-        }
+        _overview = overview;
+        _rpmDisplay = overview.RequestsPerMinute > 0
+            ? overview.RequestsPerMinute.ToString("N0")
+            : "-";
+        _error = null;
     }
 
     public async ValueTask DisposeAsync()
     {
-        _disposed = true;
-        System.Threading.Interlocked.Increment(ref _chartLoadTicket);
-
-        if (_chartJs is not null)
-        {
-            await _chartJs.InvokeVoidAsync("unregister");
-            await _chartJs.DisposeAsync();
-        }
-
-        _chartSelfRef?.Dispose();
-
         if (_polling is not null)
         {
             await _polling.DisposeAsync();
         }
-
-        UrlQuery.Dispose();
     }
 }

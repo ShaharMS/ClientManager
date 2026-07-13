@@ -95,28 +95,6 @@ public class UserPreferencesService : IAsyncDisposable
         await module.InvokeVoidAsync("applyTheme", prefs.Theme);
     }
 
-    public async Task<TimeRangePreset> GetDefaultTimeRangeAsync()
-    {
-        var prefs = await GetPreferencesAsync();
-        return TimeRangePreset.FindByKey(prefs.DefaultTimeRange)
-               ?? TimeRangePreset.Default;
-    }
-
-    public async Task<PollingIntervalPreset> GetDefaultPollingIntervalAsync()
-    {
-        var prefs = await GetPreferencesAsync();
-        return PollingIntervalPreset.FindByKey(prefs.DefaultPollingInterval)
-               ?? PollingIntervalPreset.Default;
-    }
-
-    public async Task<AxisScaleType> GetDefaultAxisScaleAsync()
-    {
-        var prefs = await GetPreferencesAsync();
-        return Enum.TryParse<AxisScaleType>(prefs.DefaultAxisScale, out var scale)
-            ? scale
-            : AxisScaleType.Linear;
-    }
-
     public async ValueTask DisposeAsync()
     {
         if (_module is not null)

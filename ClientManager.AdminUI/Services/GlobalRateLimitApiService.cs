@@ -1,50 +1,56 @@
 using ClientManager.Shared.Models.Entities;
-using ClientManager.Shared.Models.Enums;
 using ClientManager.Shared.Models.Search;
 
 namespace ClientManager.AdminUI.Services;
 
+/// <summary>
+/// API client for global per-service rate limits. Each limit's <see cref="GlobalRateLimit.Id"/> is the service ID.
+/// </summary>
 public class GlobalRateLimitApiService(IHttpClientFactory httpClientFactory)
     : GenericApiService<GlobalRateLimit>(httpClientFactory, "api/v1/global-rate-limits")
 {
-    private readonly Dictionary<TargetType, (List<GlobalRateLimit> Data, DateTime At)> _cachedByTarget = [];
+    private (List<GlobalRateLimit> Data, DateTime At)? _cached;
 
-    public async Task<List<GlobalRateLimit>> GetByTargetTypeAsync(TargetType targetType)
+    /// <summary>
+    /// Returns all global service rate limits, cached for 30 seconds.
+    /// </summary>
+    public async Task<List<GlobalRateLimit>> GetAllServiceLimitsAsync()
     {
-        if (_cachedByTarget.TryGetValue(targetType, out var cached) && DateTime.UtcNow - cached.At < TimeSpan.FromSeconds(30))
+        if (_cached is { } hit && DateTime.UtcNow - hit.At < TimeSpan.FromSeconds(30))
         {
-            return cached.Data;
+            return hit.Data;
         }
 
-        var query = new DocumentQuery { Take = 100 }
-            .Where(nameof(GlobalRateLimit.TargetType), FilterOperator.Equals, targetType.ToString());
-        var result = await SearchAsync(query);
+        var result = await SearchAsync(new DocumentQuery { Take = 100 });
         var data = result.Items.ToList();
-        _cachedByTarget[targetType] = (data, DateTime.UtcNow);
+        _cached = (data, DateTime.UtcNow);
         return data;
     }
 
-    public async Task<GlobalRateLimit?> GetByTargetAsync(string targetId, TargetType targetType)
+    /// <summary>
+    /// Returns the global rate limit for a service, if one exists.
+    /// </summary>
+    public async Task<GlobalRateLimit?> GetByServiceIdAsync(string serviceId)
     {
-        var limits = await GetByTargetTypeAsync(targetType);
-        return limits.FirstOrDefault(l => string.Equals(l.TargetId, targetId, StringComparison.Ordinal));
+        var limits = await GetAllServiceLimitsAsync();
+        return limits.FirstOrDefault(l => string.Equals(l.Id, serviceId, StringComparison.Ordinal));
     }
 
     public new async Task CreateAsync(GlobalRateLimit limit)
     {
         await base.CreateAsync(limit);
-        _cachedByTarget.Clear();
+        _cached = null;
     }
 
     public new async Task UpdateAsync(string id, GlobalRateLimit limit)
     {
         await base.UpdateAsync(id, limit);
-        _cachedByTarget.Clear();
+        _cached = null;
     }
 
     public new async Task DeleteAsync(string id)
     {
         await base.DeleteAsync(id);
-        _cachedByTarget.Clear();
+        _cached = null;
     }
 }

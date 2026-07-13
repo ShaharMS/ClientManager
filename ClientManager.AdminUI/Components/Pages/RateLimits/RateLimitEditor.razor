@@ -22,7 +22,7 @@
     {
         <div class="cm-editor__field">
             <label>@L["Columns.Service"]</label>
-            <EntityIdInput @bind-Value="_model.TargetId" Suggestions="_serviceIds"
+            <EntityIdInput @bind-Value="_model.ServiceId" Suggestions="_serviceIds"
                 DisabledSuggestions="@_limitedServiceIds"
                 DisabledSuggestionMessage="@L["Pages.RateLimits.AlreadyHasRateLimit"]"
                 Mode="EntityIdInputMode.Reference" EntityName="@L["Dialog.EntityLabel.Service"]"
@@ -60,7 +60,7 @@
     private string? _saveError;
     private string _createDescription = "";
     private string? _editTitle;
-    private RateLimitFormModel _model = new() { TargetType = TargetType.Service };
+    private RateLimitFormModel _model = new();
     private List<string> _serviceIds = [];
     private List<string> _limitedServiceIds = [];
     private bool _canCreate;
@@ -76,10 +76,8 @@
         try
         {
             _serviceIds = (await ServiceApi.GetAllAsync()).Select(s => s.Id).ToList();
-            var existingLimits = await RateLimitApi.GetByTargetTypeAsync(TargetType.Service);
-            var limitedTargets = existingLimits
-                .Select(l => l.TargetId)
-                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var existingLimits = await RateLimitApi.GetAllServiceLimitsAsync();
+            var limitedServices = existingLimits.Select(l => l.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
             if (!_isNew)
             {
@@ -90,29 +88,25 @@
                     return;
                 }
 
-                _editTitle = string.Format(CultureInfo.CurrentCulture, L["Pages.RateLimits.EditTitle"], limit.TargetId);
-
-                limitedTargets.Remove(limit.TargetId);
+                _editTitle = string.Format(CultureInfo.CurrentCulture, L["Pages.RateLimits.EditTitle"], limit.Id);
+                limitedServices.Remove(limit.Id);
 
                 _model = new RateLimitFormModel
                 {
                     Id = limit.Id,
-                    TargetId = limit.TargetId,
-                    TargetType = TargetType.Service,
-                    Strategy = limit.Strategy,
-                    MaxRequests = limit.MaxRequests,
-                    WindowSeconds = limit.Window.TotalSeconds,
-                    TokensPerRefill = limit.TokensPerRefill
+                    ServiceId = limit.Id,
+                    Strategy = limit.Policy.Strategy,
+                    MaxRequests = limit.Policy.MaxRequests,
+                    WindowSeconds = limit.Policy.Window.TotalSeconds,
+                    TokensPerRefill = limit.Policy.TokensPerRefill
                 };
             }
 
-            _limitedServiceIds = _serviceIds
-                .Where(id => limitedTargets.Contains(id))
-                .ToList();
+            _limitedServiceIds = _serviceIds.Where(id => limitedServices.Contains(id)).ToList();
 
             if (_isNew)
             {
-                _model.TargetId = _serviceIds.FirstOrDefault(id => !limitedTargets.Contains(id)) ?? string.Empty;
+                _model.ServiceId = _serviceIds.FirstOrDefault(id => !limitedServices.Contains(id)) ?? string.Empty;
                 RefreshCreateState();
             }
         }
@@ -139,31 +133,31 @@
         _canCreate = _serviceIds.Any(id => !_limitedServiceIds.Contains(id, StringComparer.OrdinalIgnoreCase));
         _submitDisabled = !_canCreate;
         _submitTitle = _canCreate ? null : allLimited;
-        _createDescription = _canCreate
-            ? L["Pages.RateLimits.CreateDescription"]
-            : allLimited;
+        _createDescription = _canCreate ? L["Pages.RateLimits.CreateDescription"] : allLimited;
     }
 
     private async Task SaveAsync()
     {
         var allLimited = L["Pages.RateLimits.CreateDisabledTooltip"].Value;
-        if (_isNew && (!_canCreate || _limitedServiceIds.Any(id => string.Equals(id, _model.TargetId, StringComparison.OrdinalIgnoreCase))))
+        if (_isNew && (!_canCreate || _limitedServiceIds.Any(id => string.Equals(id, _model.ServiceId, StringComparison.OrdinalIgnoreCase))))
         {
             _saveError = allLimited;
             StateHasChanged();
             return;
         }
 
+        var serviceId = _isNew ? _model.ServiceId : _model.Id;
         var limit = new GlobalRateLimit
         {
-            Id = _isNew ? EntityIdGenerator.FromTarget(_model.TargetId) : _model.Id,
-            TargetId = _model.TargetId,
-            TargetType = TargetType.Service,
-            Strategy = _model.Strategy,
-            MaxRequests = _model.MaxRequests,
-            Window = TimeSpan.FromSeconds(_model.WindowSeconds),
-            TokensPerRefill = _model.Strategy == RateLimitStrategy.TokenBucket
-                ? _model.TokensPerRefill : null
+            Id = serviceId,
+            Policy = new RateLimitPolicy
+            {
+                Strategy = _model.Strategy,
+                MaxRequests = _model.MaxRequests,
+                Window = TimeSpan.FromSeconds(_model.WindowSeconds),
+                TokensPerRefill = _model.Strategy == RateLimitStrategy.TokenBucket
+                    ? _model.TokensPerRefill : null
+            }
         };
 
         try
@@ -176,7 +170,7 @@
             }
             else
             {
-                await RateLimitApi.UpdateAsync(Id!, limit with { Id = _model.Id });
+                await RateLimitApi.UpdateAsync(Id!, limit);
             }
         }
         catch (HttpRequestException ex)

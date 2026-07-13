@@ -1,6 +1,4 @@
 @page "/"
-@using ClientManager.AdminUI.Models.Charts
-@using ClientManager.AdminUI.Models.Dashboard
 
 <PageTitle>@string.Format(L["Common.PageTitleSuffix"], L["Pages.Dashboard.Title"])</PageTitle>
 
@@ -11,12 +9,7 @@
 
 @if (_loading)
 {
-    <StatCardsSkeleton Count="5" />
-    <div class="cm-dashboard__charts" style="margin-top: var(--space-xl);">
-        <ChartSkeleton />
-        <ChartSkeleton />
-    </div>
-    <TableSkeleton RowCount="6" />
+    <StatCardsSkeleton Count="3" />
 }
 else if (_error is not null)
 {
@@ -27,43 +20,5 @@ else
     <DashboardStatsCards
         TotalClients="@_overview?.TotalClients"
         TotalServices="@_overview?.TotalServices"
-        TotalResourcePools="@_overview?.TotalResourcePools"
-        GlobalUsage="@_globalUsage"
-        AcquisitionPct="@_acquisitionPct" />
-
-    <div class="cm-dashboard__charts">
-        <DashboardChartsSection
-            SelectedFilterType="@_selectedFilterType"
-            SelectedFilterTypeChanged="OnFilterTypeChangedAsync"
-            SelectedTargetId="@_selectedTargetId"
-            SelectedTargetIdChanged="OnTargetChangedAsync"
-            SelectedClientIds="@_selectedClientIds"
-            SelectedClientIdsChanged="OnClientsChangedAsync"
-            FilterTypes="@_filterTypes"
-            FilterTargets="@_filterTargets"
-            Clients="@_clients"
-            TargetCharts="@_targetCharts"
-            DonutData="@_donutData"
-            DonutDataGeneration="@_donutDataGeneration"
-            ChartLoading="@_chartLoading"
-            ChartError="@_chartError"
-            AxisScaleType="@_axisScaleType"
-            InitialTimeRangeKey="@_initialTimeRangeKey"
-            InitialPollingKey="@_initialPollingKey"
-            InitialAxisScale="@_initialAxisScale"
-            InitialCustomFromUtc="@_initialCustomFromUtc"
-            InitialCustomToUtc="@_initialCustomToUtc"
-            OnFilterChanged="OnFilterChanged"
-            OnTimeRangeChanged="OnTimeRangeChanged"
-            OnPollingIntervalChanged="OnPollingIntervalChanged"
-            OnAxisScaleChanged="OnAxisScaleChanged"
-            PollingKey="@_pollingKey" />
-    </div>
-
-    <DashboardClientTable
-        AllRows="@_clientSummaries"
-        FilteredRows="@_filteredClientSummaries"
-        SearchText="@_tableSearch"
-        SearchTextChanged="OnTableSearchTextChangedAsync"
-        OnSearchChanged="OnTableSearchChanged" />
+        RequestsPerMinute="@_rpmDisplay" />
 }

@@ -1,122 +1,14 @@
-using ClientManager.AdminUI.Models;
 using Radzen;
 
 namespace ClientManager.AdminUI.Utils;
 
 public static class QueryParamParsers
 {
-    public const string Range = "range";
-    public const string From = "from";
-    public const string To = "to";
-    public const string Scale = "scale";
-    public const string Poll = "poll";
-    public const string Clients = "clients";
     public const string Search = "search";
     public const string Enabled = "enabled";
     public const string Page = "page";
     public const string Sort = "sort";
     public const string Dir = "dir";
-    public const string Type = "type";
-    public const string Target = "target";
-    public const string Service = "service";
-    public const string Pool = "pool";
-    public const string Metric = "metric";
-
-    public static ChartTimeRange? TryParseTimeRange(string? range, string? from, string? to)
-    {
-        if (string.IsNullOrWhiteSpace(range))
-        {
-            return null;
-        }
-
-        if (string.Equals(range, "custom", StringComparison.OrdinalIgnoreCase))
-        {
-            if (DateTime.TryParse(from, null, System.Globalization.DateTimeStyles.RoundtripKind, out var fromUtc)
-                && DateTime.TryParse(to, null, System.Globalization.DateTimeStyles.RoundtripKind, out var toUtc))
-            {
-                return ChartTimeRange.FromCustom(
-                    fromUtc.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind(fromUtc, DateTimeKind.Utc) : fromUtc.ToUniversalTime(),
-                    toUtc.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind(toUtc, DateTimeKind.Utc) : toUtc.ToUniversalTime());
-            }
-
-            return null;
-        }
-
-        var preset = TimeRangePreset.FindByKey(range);
-        return preset is not null ? ChartTimeRange.FromPreset(preset) : null;
-    }
-
-    public static void WriteTimeRange(IDictionary<string, string?> query, ChartTimeRange range, ChartTimeRange defaultRange)
-    {
-        if (RangesEqual(range, defaultRange))
-        {
-            return;
-        }
-
-        if (range.Mode == ChartTimeRangeMode.Custom)
-        {
-            query[Range] = "custom";
-            query[From] = range.CustomFromUtc.ToString("O");
-            query[To] = range.CustomToUtc.ToString("O");
-            return;
-        }
-
-        var preset = TimeRangePreset.All.FirstOrDefault(p => p.Duration == range.RelativeDuration);
-        if (preset is not null)
-        {
-            query[Range] = preset.Key;
-        }
-    }
-
-    public static string? TryGetRangeKey(ChartTimeRange range)
-    {
-        if (range.Mode == ChartTimeRangeMode.Custom)
-        {
-            return "custom";
-        }
-
-        return TimeRangePreset.All.FirstOrDefault(p => p.Duration == range.RelativeDuration)?.Key;
-    }
-
-    public static AxisScaleType? TryParseScale(string? value) =>
-        value?.ToLowerInvariant() switch
-        {
-            "linear" => AxisScaleType.Linear,
-            "log" => AxisScaleType.Logarithmic,
-            _ => null
-        };
-
-    public static string? FormatScale(AxisScaleType scale, AxisScaleType defaultScale) =>
-        scale == defaultScale ? null : scale == AxisScaleType.Logarithmic ? "log" : "linear";
-
-    public static PollingIntervalPreset? TryParsePoll(string? value) =>
-        PollingIntervalPreset.FindByKey(value);
-
-    public static string? FormatPoll(string? key, string defaultKey) =>
-        string.IsNullOrEmpty(key) || string.Equals(key, defaultKey, StringComparison.OrdinalIgnoreCase) ? null : key;
-
-    public static IEnumerable<string>? ParseClientIds(string? csv, IReadOnlySet<string>? validIds)
-    {
-        if (string.IsNullOrWhiteSpace(csv))
-        {
-            return null;
-        }
-
-        var ids = csv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        if (validIds is null)
-        {
-            return ids.Length > 0 ? ids : null;
-        }
-
-        var filtered = ids.Where(validIds.Contains).ToList();
-        return filtered.Count > 0 ? filtered : null;
-    }
-
-    public static string? FormatClientIds(IEnumerable<string>? ids)
-    {
-        var list = ids?.Where(id => !string.IsNullOrWhiteSpace(id)).ToList();
-        return list is { Count: > 0 } ? string.Join(',', list) : null;
-    }
 
     public static bool? TryParseEnabled(string? value) =>
         value?.ToLowerInvariant() switch
@@ -243,18 +135,6 @@ public static class QueryParamParsers
         return Math.Clamp(page, 1, maxPage);
     }
 
-    public static bool RangesEqual(ChartTimeRange a, ChartTimeRange b)
-    {
-        if (a.Mode != b.Mode)
-        {
-            return false;
-        }
-
-        return a.Mode == ChartTimeRangeMode.Custom
-            ? a.CustomFromUtc == b.CustomFromUtc && a.CustomToUtc == b.CustomToUtc
-            : a.RelativeDuration == b.RelativeDuration;
-    }
-
     public static void WriteIfPresent(IDictionary<string, string?> query, string key, string? value)
     {
         if (string.IsNullOrEmpty(value))
@@ -268,20 +148,14 @@ public static class QueryParamParsers
     // ponytail: smallest runnable check if parse/format regress
     public static void SelfCheck()
     {
-        if (TryParseTimeRange("1h", null, null) is null)
-        {
-            throw new InvalidOperationException("range parse failed");
-        }
-
         if (TryParsePage("2") != 2 || FormatPage(1) is not null)
         {
             throw new InvalidOperationException("page parse/format failed");
         }
 
-        var clients = ParseClientIds("a,b", new HashSet<string> { "a", "b", "c" })?.ToList();
-        if (clients is null || clients.Count != 2 || FormatClientIds(clients) != "a,b")
+        if (TryParseEnabled("true") != true || FormatEnabled(null) is not null)
         {
-            throw new InvalidOperationException("clients parse/format failed");
+            throw new InvalidOperationException("enabled parse/format failed");
         }
     }
 }

@@ -10,7 +10,6 @@ public partial class ClientEditor : ComponentBase
     [Parameter] public string? Id { get; set; }
     [Inject] private ClientApiService ClientApi { get; set; } = null!;
     [Inject] private ServiceApiService ServiceApi { get; set; } = null!;
-    [Inject] private ResourcePoolApiService PoolApi { get; set; } = null!;
     [Inject] private NavigationManager Nav { get; set; } = null!;
     [Inject] private ApiErrorLocalizer Errors { get; set; } = null!;
 
@@ -23,10 +22,8 @@ public partial class ClientEditor : ComponentBase
     private ClientRateLimitEntryModel _globalRateLimit = new();
     private double _globalRateLimitWindowSeconds = 60;
     private List<ServiceEntryModel> _serviceEntries = [];
-    private List<PoolEntryModel> _poolEntries = [];
     private List<string> _existingClientIds = [];
     private List<string> _serviceIds = [];
-    private List<string> _poolIds = [];
 
     protected override async Task OnInitializedAsync()
     {
@@ -34,7 +31,6 @@ public partial class ClientEditor : ComponentBase
         {
             _existingClientIds = (await ClientApi.GetAllAsync()).Select(c => c.Id).ToList();
             _serviceIds = (await ServiceApi.GetAllAsync()).Select(s => s.Id).ToList();
-            _poolIds = (await PoolApi.GetAllAsync()).Select(p => p.Id).ToList();
 
             if (!_isNew)
             {

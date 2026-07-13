@@ -5,8 +5,6 @@ using ClientManager.AdminUI.Http;
 using ClientManager.AdminUI.Localization;
 using ClientManager.AdminUI.Resources;
 using ClientManager.AdminUI.Services;
-using ClientManager.AdminUI.Services.ChartData;
-using ClientManager.AdminUI.Utils;
 using ClientManager.Shared.Logging;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.Extensions.Localization;
@@ -20,143 +18,136 @@ var logger = LogManager.Setup()
 
 try
 {
-var builder = WebApplication.CreateBuilder(args);
-builder.WebHost.UseStaticWebAssets();
+    var builder = WebApplication.CreateBuilder(args);
+    builder.WebHost.UseStaticWebAssets();
 
-builder.Logging.ClearProviders();
-builder.Host.UseNLog();
+    builder.Logging.ClearProviders();
+    builder.Host.UseNLog();
 
-builder.Services.AddSingleton(typeof(IAppLogger<>), typeof(AppLogger<>));
-builder.Services.AddHttpContextAccessor();
+    builder.Services.AddSingleton(typeof(IAppLogger<>), typeof(AppLogger<>));
+    builder.Services.AddHttpContextAccessor();
 
-builder.Services.AddLocalization();
+    builder.Services.AddLocalization();
 
-builder.Services.Configure<RequestLocalizationOptions>(options =>
-{
-    var cultures = SupportedCultures.Codes
-        .Select(c => new CultureInfo(c))
-        .ToList();
-    options.SupportedCultures = cultures;
-    options.SupportedUICultures = cultures;
-    options.SetDefaultCulture(SupportedCultures.Default);
-    options.ApplyCurrentCultureToResponseHeaders = true;
-    options.RequestCultureProviders =
-    [
-        new CmCultureCookieProvider(),
+    builder.Services.Configure<RequestLocalizationOptions>(options =>
+    {
+        var cultures = SupportedCultures.Codes
+            .Select(c => new CultureInfo(c))
+            .ToList();
+        options.SupportedCultures = cultures;
+        options.SupportedUICultures = cultures;
+        options.SetDefaultCulture(SupportedCultures.Default);
+        options.ApplyCurrentCultureToResponseHeaders = true;
+        options.RequestCultureProviders =
+        [
+            new CmCultureCookieProvider(),
         new CookieRequestCultureProvider(),
         new AcceptLanguageHeaderRequestCultureProvider(),
-    ];
-});
+        ];
+    });
 
-builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents();
+    builder.Services.AddRazorComponents()
+        .AddInteractiveServerComponents();
 
-if (builder.Environment.IsDevelopment())
-{
-    builder.Services.Configure<Microsoft.AspNetCore.Components.Server.CircuitOptions>(
-        options => options.DetailedErrors = true);
-}
-
-builder.Services.AddTransient<OutboundHttpLoggingHandler>();
-
-builder.Services.AddHttpClient("ClientManagerApi", client =>
-{
-    client.BaseAddress = new Uri(
-        builder.Configuration["ApiBaseUrl"] ?? "http://localhost:5062");
-})
-.AddHttpMessageHandler<OutboundHttpLoggingHandler>()
-.ConfigurePrimaryHttpMessageHandler(() =>
-{
-    var handler = new HttpClientHandler();
     if (builder.Environment.IsDevelopment())
     {
-        handler.ServerCertificateCustomValidationCallback =
-            HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+        builder.Services.Configure<Microsoft.AspNetCore.Components.Server.CircuitOptions>(
+            options => options.DetailedErrors = true);
     }
-    return handler;
-});
 
-builder.Services.AddScoped<ClientApiService>();
-builder.Services.AddScoped<ServiceApiService>();
-builder.Services.AddScoped<ResourcePoolApiService>();
-builder.Services.AddScoped<GlobalRateLimitApiService>();
-builder.Services.AddScoped<StatisticsApiService>();
-builder.Services.AddSingleton<EntityColorService>();
-builder.Services.AddScoped<UserPreferencesService>();
-builder.Services.AddScoped<UrlQuerySync>();
-builder.Services.AddScoped<CultureService>();
-builder.Services.AddScoped<ApiErrorLocalizer>();
-builder.Services.AddScoped<DeniedBreakdownFormatter>();
-builder.Services.AddRadzenComponents();
+    builder.Services.AddTransient<OutboundHttpLoggingHandler>();
 
-var app = builder.Build();
-
-var localizationOptions = app.Services
-    .GetRequiredService<Microsoft.Extensions.Options.IOptions<RequestLocalizationOptions>>()
-    .Value;
-
-LocalizationValidator.ValidateDevelopment(
-    app.Services.GetRequiredService<IStringLocalizer<SharedResources>>(),
-    app.Environment);
-
-if (!app.Environment.IsDevelopment())
-{
-    app.UseExceptionHandler("/Error");
-    app.UseHsts();
-}
-
-app.UseHttpsRedirection();
-app.UseMiddleware<RequestTrackingMiddleware>();
-app.UseRequestLocalization(localizationOptions);
-app.UseStaticFiles();
-app.UseAntiforgery();
-app.MapStaticAssets();
-
-app.MapGet("/health/live", () => Results.Ok(new { status = "live" }));
-app.MapGet("/health/ready", () => Results.Ok(new { status = "ready" }));
-
-app.MapRazorComponents<App>()
-    .AddInteractiveServerRenderMode();
-
-if (app.Environment.IsDevelopment())
-{
-    ChartBucketAggregatorSelfCheck.Run();
-    DashboardDonutDrillSelfCheck.Run();
-    TimeseriesJsonContractSelfCheck.Run();
-    TimeseriesChartAggregationSelfCheck.Run();
-    app.MapGet("/_dev/culture", (HttpContext ctx, IStringLocalizer<SharedResources> localizer) =>
-        Results.Json(new
+    builder.Services.AddHttpClient("ClientManagerApi", client =>
+    {
+        client.BaseAddress = new Uri(
+            builder.Configuration["ApiBaseUrl"] ?? "http://localhost:5062");
+    })
+    .AddHttpMessageHandler<OutboundHttpLoggingHandler>()
+    .ConfigurePrimaryHttpMessageHandler(() =>
+    {
+        var handler = new HttpClientHandler();
+        if (builder.Environment.IsDevelopment())
         {
-            uiCulture = CultureInfo.CurrentUICulture.Name,
-            contentLanguage = ctx.Response.Headers.ContentLanguage.ToString(),
-            cmCookie = ctx.Request.Cookies[CmCultureCookieProvider.CookieName],
-            settingsTitle = localizer["Settings.Title"].Value,
-        }));
-}
+            handler.ServerCertificateCustomValidationCallback =
+                HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+        }
+        return handler;
+    });
 
-app.Lifetime.ApplicationStarted.Register(() =>
-{
-    var appLogger = app.Services.GetRequiredService<IAppLogger<StartupLogger>>();
-    var environment = app.Environment;
+    builder.Services.AddScoped<ClientApiService>();
+    builder.Services.AddScoped<ServiceApiService>();
+    builder.Services.AddScoped<GlobalRateLimitApiService>();
+    builder.Services.AddScoped<StatisticsApiService>();
+    builder.Services.AddScoped<UserPreferencesService>();
+    builder.Services.AddScoped<UrlQuerySync>();
+    builder.Services.AddScoped<CultureService>();
+    builder.Services.AddScoped<ApiErrorLocalizer>();
+    builder.Services.AddRadzenComponents();
 
-    foreach (var url in app.Urls)
+    var app = builder.Build();
+
+    var localizationOptions = app.Services
+        .GetRequiredService<Microsoft.Extensions.Options.IOptions<RequestLocalizationOptions>>()
+        .Value;
+
+    LocalizationValidator.ValidateDevelopment(
+        app.Services.GetRequiredService<IStringLocalizer<SharedResources>>(),
+        app.Environment);
+
+    if (!app.Environment.IsDevelopment())
     {
-        appLogger.Info("User interface bound to address", new { Url = url });
+        app.UseExceptionHandler("/Error");
+        app.UseHsts();
     }
 
-    if (string.IsNullOrWhiteSpace(environment.EnvironmentName))
+    app.UseHttpsRedirection();
+    app.UseMiddleware<RequestTrackingMiddleware>();
+    app.UseRequestLocalization(localizationOptions);
+    app.UseStaticFiles();
+    app.UseAntiforgery();
+    app.MapStaticAssets();
+
+    app.MapGet("/health/live", () => Results.Ok(new { status = "live" }));
+    app.MapGet("/health/ready", () => Results.Ok(new { status = "ready" }));
+
+    app.MapRazorComponents<App>()
+        .AddInteractiveServerRenderMode();
+
+    if (app.Environment.IsDevelopment())
     {
-        appLogger.Warn("Failed to detect hosting environment, falling back to default", new { Environment = Environments.Production });
-    }
-    else
-    {
-        appLogger.Info("Hosting environment detected successfully", new { Environment = environment.EnvironmentName });
+        app.MapGet("/_dev/culture", (HttpContext ctx, IStringLocalizer<SharedResources> localizer) =>
+            Results.Json(new
+            {
+                uiCulture = CultureInfo.CurrentUICulture.Name,
+                contentLanguage = ctx.Response.Headers.ContentLanguage.ToString(),
+                cmCookie = ctx.Request.Cookies[CmCultureCookieProvider.CookieName],
+                settingsTitle = localizer["Settings.Title"].Value,
+            }));
     }
 
-    appLogger.Info("Serving content from root path", new { ContentRoot = environment.ContentRootPath });
-});
+    app.Lifetime.ApplicationStarted.Register(() =>
+    {
+        var appLogger = app.Services.GetRequiredService<IAppLogger<StartupLogger>>();
+        var environment = app.Environment;
 
-app.Run();
+        foreach (var url in app.Urls)
+        {
+            appLogger.Info("User interface bound to address", new { Url = url });
+        }
+
+        if (string.IsNullOrWhiteSpace(environment.EnvironmentName))
+        {
+            appLogger.Warn("Failed to detect hosting environment, falling back to default", new { Environment = Environments.Production });
+        }
+        else
+        {
+            appLogger.Info("Hosting environment detected successfully", new { Environment = environment.EnvironmentName });
+        }
+
+        appLogger.Info("Serving content from root path", new { ContentRoot = environment.ContentRootPath });
+    });
+
+    app.Run();
 }
 catch (Exception exception)
 {

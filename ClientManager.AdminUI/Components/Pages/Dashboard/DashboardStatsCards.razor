@@ -11,27 +11,14 @@
         <div class="cm-stat-card__value">@TotalServices</div>
         <div class="cm-stat-card__label">@L["Pages.Dashboard.Stats.Services"]</div>
     </div>
-    <div class="cm-stat-card cm-stat-card--clickable" @onclick='() => Nav.NavigateTo("/resource-pools")'>
-        <div class="cm-stat-card__arrow"><RadzenIcon Icon="north_east" /></div>
-        <div class="cm-stat-card__value">@TotalResourcePools</div>
-        <div class="cm-stat-card__label">@L["Pages.Dashboard.Stats.ResourcePools"]</div>
-    </div>
-    <div class="cm-stat-card cm-stat-card--clickable" @onclick='() => Nav.NavigateTo("/monitor")'>
-        <div class="cm-stat-card__arrow"><RadzenIcon Icon="north_east" /></div>
-        <div class="cm-stat-card__value">@GlobalUsage</div>
+    <div class="cm-stat-card">
+        <div class="cm-stat-card__value">@RequestsPerMinute</div>
         <div class="cm-stat-card__label">@L["Pages.Dashboard.Stats.RequestsPerMin"]</div>
-    </div>
-    <div class="cm-stat-card cm-stat-card--clickable" @onclick='() => Nav.NavigateTo("/allocations")'>
-        <div class="cm-stat-card__arrow"><RadzenIcon Icon="north_east" /></div>
-        <div class="cm-stat-card__value">@AcquisitionPct%</div>
-        <div class="cm-stat-card__label">@L["Pages.Dashboard.Stats.PoolAcquisition"]</div>
     </div>
 </div>
 
 @code {
     [Parameter] public int? TotalClients { get; set; }
     [Parameter] public int? TotalServices { get; set; }
-    [Parameter] public int? TotalResourcePools { get; set; }
-    [Parameter] public string GlobalUsage { get; set; } = "-";
-    [Parameter] public int AcquisitionPct { get; set; }
+    [Parameter] public string RequestsPerMinute { get; set; } = "-";
 }

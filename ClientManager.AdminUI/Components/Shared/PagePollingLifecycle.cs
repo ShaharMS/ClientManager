@@ -3,7 +3,7 @@ using Microsoft.JSInterop;
 namespace ClientManager.AdminUI.Components.Shared;
 
 /// <summary>
-/// Timer + page-visibility polling used by Dashboard, Monitor, and Active Allocations.
+/// Timer + page-visibility polling used by Dashboard overview refresh.
 /// </summary>
 public sealed class PagePollingLifecycle : IAsyncDisposable
 {

@@ -77,10 +77,6 @@ else
                     CssClass="cm-col-scalar-count" HeaderCssClass="cm-col-scalar-count">
                     <Template Context="client">@client.Services.Count</Template>
                 </RadzenDataGridColumn>
-                <RadzenDataGridColumn TItem="ClientConfiguration" Title="@L["Columns.Pools"]"
-                    CssClass="cm-col-scalar-count" HeaderCssClass="cm-col-scalar-count">
-                    <Template Context="client">@client.ResourcePools.Count</Template>
-                </RadzenDataGridColumn>
                 <RadzenDataGridColumn TItem="ClientConfiguration" Title="@L["Columns.Actions"]" Sortable="false"
                     CssClass="cm-col-actions" HeaderCssClass="cm-col-actions">
                     <Template Context="client">
@@ -123,8 +119,7 @@ else
     private string? _urlSortProperty;
     private SortOrder? _urlSortOrder;
     private DataGridSettings _gridSettings = new() { CurrentPage = 0 };
-    private IJSObjectReference? _tableJs;
-    private DotNetObjectReference<ClientList>? _selfRef;
+    private ListPageTableInterop? _tableInterop;
     private List<object> _enabledOptions = [];
 
     private IEnumerable<ClientConfiguration> _filteredClients =>
@@ -167,30 +162,21 @@ else
     {
         if (firstRender)
         {
-            _tableJs = await JS.InvokeAsync<IJSObjectReference>("import", "./js/table.js");
-            _selfRef = DotNetObjectReference.Create(this);
-            await _tableJs.InvokeVoidAsync("register", _selfRef);
-            await RecalculatePageSizeAsync();
+            _tableInterop = new ListPageTableInterop(JS, async size =>
+            {
+                _pageSize = size;
+                await InvokeAsync(StateHasChanged);
+            });
+            await _tableInterop.InitializeAsync();
         }
-    }
-
-    [JSInvokable]
-    public async Task OnWindowResize() => await RecalculatePageSizeAsync();
-
-    private async Task RecalculatePageSizeAsync()
-    {
-        _pageSize = await _tableJs!.InvokeAsync<int>("getPageSize", 45);
-        StateHasChanged();
     }
 
     public async ValueTask DisposeAsync()
     {
-        if (_tableJs is not null)
+        if (_tableInterop is not null)
         {
-            await _tableJs.InvokeVoidAsync("unregister");
-            await _tableJs.DisposeAsync();
+            await _tableInterop.DisposeAsync();
         }
-        _selfRef?.Dispose();
         UrlQuery.Dispose();
     }
 
