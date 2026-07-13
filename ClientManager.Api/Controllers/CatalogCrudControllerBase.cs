@@ -1,8 +1,5 @@
-using System.Text.Json;
 using ClientManager.Api.Services.Interfaces;
-using ClientManager.Api.Utils;
 using ClientManager.Shared.Models.Problems;
-using ClientManager.Shared.Models.Responses;
 using ClientManager.Shared.Models.Search;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -12,6 +9,17 @@ namespace ClientManager.Api.Controllers;
 /// <summary>
 /// Shared Search/GetById/Create/Update/Delete actions for catalog controllers.
 /// </summary>
+/// <remarks>
+/// <para>
+/// Catalog entities (clients, services, global rate limits) share the same management shape: searchable
+/// lists, fetch-by-id for editors, and full-document create/update/delete. This base keeps those routes
+/// and XML docs consistent so Swagger and the Admin UI see one predictable contract.
+/// </para>
+/// <para>
+/// Updates are full PUT replacements. Partial PATCH was removed to avoid competing edit paths now that
+/// the Admin UI always saves complete documents.
+/// </para>
+/// </remarks>
 /// <typeparam name="TEntity">The catalog entity type.</typeparam>
 public abstract class CatalogCrudControllerBase<TEntity>(ICatalogCrudService<TEntity> catalog) : ControllerBase
     where TEntity : class
@@ -74,7 +82,7 @@ public abstract class CatalogCrudControllerBase<TEntity>(ICatalogCrudService<TEn
     }
 
     /// <summary>
-    /// Updates an existing catalog entry.
+    /// Updates an existing catalog entry (full document replace).
     /// </summary>
     /// <param name="id">The unique identifier of the entry to update.</param>
     /// <param name="entity">The updated entry.</param>

@@ -4,6 +4,20 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace ClientManager.Api.Controllers;
 
+/// <summary>
+/// Manages client configuration documents and their top-level CRUD operations.
+/// </summary>
+/// <remarks>
+/// <para>
+/// A client configuration is the single source of truth for identity, enablement, global rate-limit
+/// policy, and per-service access rules. The Admin UI loads and saves the full document with PUT so
+/// operators never need nested setting endpoints.
+/// </para>
+/// <para>
+/// Search, create, update, and delete actions are inherited from
+/// <see cref="CatalogCrudControllerBase{ClientConfiguration}"/> and power the Clients list and editor.
+/// </para>
+/// </remarks>
 [ApiController]
 [Route("api/v1/clients")]
 [Tags("Client Configurations")]

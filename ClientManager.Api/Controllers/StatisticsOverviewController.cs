@@ -6,13 +6,31 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace ClientManager.Api.Controllers;
 
-/// <summary>Dashboard statistics endpoints.</summary>
+/// <summary>
+/// Dashboard statistics endpoints.
+/// </summary>
+/// <remarks>
+/// <para>
+/// These read-only endpoints aggregate lightweight counters for the Admin UI dashboard cards. They
+/// intentionally avoid historical timeseries payloads so the overview stays fast on large deployments.
+/// </para>
+/// <para>
+/// Request-per-minute values come from the shared in-storage RPM ring (a five-minute average), keeping
+/// the dashboard consistent with internal accounting while Prometheus uses counter + rate queries.
+/// </para>
+/// </remarks>
 [ApiController]
 [Route("api/v1/statistics")]
 [Tags("Statistics")]
 public class StatisticsOverviewController(IStatisticsService statisticsService) : ControllerBase
 {
-    /// <summary>Returns client count, service count, and current RPM.</summary>
+    /// <summary>
+    /// Returns system overview counts and the current requests-per-minute gauge.
+    /// </summary>
+    /// <param name="cancellationToken">Token used to cancel the overview query before it completes.</param>
+    /// <returns>Client count, service count, and current RPM.</returns>
+    /// <response code="200">Returns the dashboard overview.</response>
+    /// <response code="503">The storage service is temporarily unavailable.</response>
     [HttpGet("overview")]
     [ProducesResponseType(typeof(SystemOverviewResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemResponse), StatusCodes.Status503ServiceUnavailable)]
