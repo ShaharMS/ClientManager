@@ -7,6 +7,16 @@ namespace ClientManager.Api.Services.Storage;
 /// <summary>
 /// Buffers RPM events per replica and flushes them into the global second-bucket ring.
 /// </summary>
+/// <remarks>
+/// <para>
+/// Access checks call <see cref="RecordRequest"/> on the hot path. Events accumulate locally until
+/// either the configured event count or flush interval is reached, then merge into storage through
+/// <see cref="IRpmRingDatabase"/>.
+/// </para>
+/// <para>
+/// Dashboard RPM reads aggregate the retained buckets into a fixed five-minute average.
+/// </para>
+/// </remarks>
 public sealed class RpmAccountingService : IDisposable
 {
     private readonly IRpmRingDatabase _database;

@@ -8,6 +8,13 @@ namespace ClientManager.Api.Services.Storage;
 /// <summary>
 /// Shared Search/GetById/Create/Update/Delete implementation for entity-backed catalogs with read-through caching.
 /// </summary>
+/// <remarks>
+/// <para>
+/// Concrete catalog services inherit this helper to avoid duplicating cache key construction,
+/// not-found/conflict translation, and ID assignment. Catalog writes invalidate the read cache
+/// after persistence succeeds.
+/// </para>
+/// </remarks>
 public abstract class GenericEntityCatalogService<TEntity>(
     IEntityRepository<TEntity> repository,
     IStorageReadCache cache,

@@ -17,6 +17,14 @@ namespace ClientManager.Api.Services.Storage;
 /// <summary>
 /// Owns the deny-by-default access path in the API host.
 /// </summary>
+/// <remarks>
+/// <para>
+/// Implements <see cref="IAccessControlService"/> by loading catalog data through the read cache,
+/// evaluating rate limits, recording RPM, and emitting storage/client metrics. Typed exceptions
+/// thrown here are translated by <c>ErrorHandlingMiddleware</c> into the nginx-compatible status and
+/// problem-header contract.
+/// </para>
+/// </remarks>
 public class AccessControlService : IAccessControlService
 {
     private readonly IAppLogger<AccessControlService> _logger;

@@ -14,6 +14,13 @@ namespace ClientManager.Api.Services.Storage.RateLimiting;
 /// <summary>
 /// Evaluates client and global rate-limit state inside the storage boundary.
 /// </summary>
+/// <remarks>
+/// <para>
+/// Implements <see cref="IRateLimitService"/> by resolving the configured strategy per policy,
+/// building storage keys for each scope, and recording slow-path telemetry when evaluations exceed
+/// the configured threshold.
+/// </para>
+/// </remarks>
 public class RateLimitService : IRateLimitService
 {
     private const double SlowRateLimitThresholdMs = 250;

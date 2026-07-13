@@ -13,6 +13,13 @@ namespace ClientManager.Api.Services.Storage;
 /// <summary>
 /// Exports and imports catalog entities for instance-to-instance copying.
 /// </summary>
+/// <remarks>
+/// <para>
+/// Implements <see cref="ISeedCatalogService"/> by reading and writing services, global rate limits,
+/// and client configurations through their database abstractions. Invalidates the catalog cache
+/// after mutating imports or deletes so Admin UI and access checks observe fresh data immediately.
+/// </para>
+/// </remarks>
 public sealed class SeedCatalogService(
     IEntityRepository<Service> serviceRepository,
     IGlobalRateLimitDatabase globalRateLimitDatabase,

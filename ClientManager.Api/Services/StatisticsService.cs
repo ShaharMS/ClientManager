@@ -7,7 +7,16 @@ using ClientManager.Shared.Models.Search;
 
 namespace ClientManager.Api.Services;
 
-/// <summary>Composes dashboard statistics from catalog data and RPM accounting.</summary>
+/// <summary>
+/// Composes dashboard statistics from catalog data and RPM accounting.
+/// </summary>
+/// <remarks>
+/// <para>
+/// Implements <see cref="IStatisticsService"/> with inexpensive count queries for clients and
+/// services plus the shared RPM ring average. Keeps the dashboard responsive without reintroducing
+/// historical timeseries storage.
+/// </para>
+/// </remarks>
 public sealed class StatisticsService : IStatisticsService
 {
     private readonly IClientConfigurationDatabase _clients;
