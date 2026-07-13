@@ -10,8 +10,8 @@ namespace ClientManager.Api.Controllers;
 /// <remarks>
 /// <para>
 /// A client configuration is the single source of truth for identity, enablement, global rate-limit
-/// policy, and per-service access rules. The Admin UI loads and saves the full document with PUT so
-/// operators never need nested setting endpoints.
+/// policy, and per-service access rules. The Admin UI loads and saves the full
+/// <see cref="ClientConfiguration"/> so operators see the complete picture.
 /// </para>
 /// <para>
 /// Search, create, update, and delete actions are inherited from

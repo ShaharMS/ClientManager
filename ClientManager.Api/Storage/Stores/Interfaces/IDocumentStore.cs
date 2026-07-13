@@ -248,7 +248,7 @@ public interface IDocumentStore
 
     /// <summary>
     /// Counts documents matching the given query without loading them. Useful when only the
-    /// count is needed (e.g. active allocation counts, pagination totals).
+    /// count is needed (e.g. dashboard totals, pagination).
     /// </summary>
     /// <typeparam name="T">The document type to match against.</typeparam>
     /// <param name="collection">The name of the collection to count in.</param>

@@ -8,8 +8,8 @@ namespace ClientManager.Api.Storage.Databases.Interfaces;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Global limits are keyed by service ID in the slimmed model. The extra lookup keeps the access-check
-/// path from scanning the entire catalog when only one service policy is needed.
+/// Global limits are keyed by service ID. The dedicated lookup keeps the access-check path from
+/// scanning the entire catalog when only one service policy is needed.
 /// </para>
 /// </remarks>
 public interface IGlobalRateLimitDatabase : IEntityRepository<GlobalRateLimit>

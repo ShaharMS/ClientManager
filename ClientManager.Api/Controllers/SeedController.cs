@@ -34,7 +34,7 @@ namespace ClientManager.Api.Controllers;
 /// </list>
 /// <para>
 /// Endpoints are gated by <see cref="SeedEndpointGateFilter"/> so production clusters can disable
-/// destructive seed APIs without removing the controller from the build.
+/// destructive seed APIs when they are not needed.
 /// </para>
 /// </remarks>
 [ApiController]

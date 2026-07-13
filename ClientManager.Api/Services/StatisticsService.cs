@@ -12,9 +12,8 @@ namespace ClientManager.Api.Services;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Implements <see cref="IStatisticsService"/> with inexpensive count queries for clients and
-/// services plus the shared RPM ring average. Keeps the dashboard responsive without reintroducing
-/// historical timeseries storage.
+/// Implements <see cref="IStatisticsService"/> with count queries for clients and services plus the
+/// shared RPM ring average used by the dashboard cards.
 /// </para>
 /// </remarks>
 public sealed class StatisticsService : IStatisticsService

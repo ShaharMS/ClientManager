@@ -16,8 +16,7 @@ namespace ClientManager.Api.Controllers;
 /// and XML docs consistent so Swagger and the Admin UI see one predictable contract.
 /// </para>
 /// <para>
-/// Updates are full PUT replacements. Partial PATCH was removed to avoid competing edit paths now that
-/// the Admin UI always saves complete documents.
+/// The Admin UI loads and saves complete documents with PUT, matching the update semantics exposed here.
 /// </para>
 /// </remarks>
 /// <typeparam name="TEntity">The catalog entity type.</typeparam>

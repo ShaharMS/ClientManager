@@ -11,12 +11,11 @@ namespace ClientManager.Api.Controllers;
 /// </summary>
 /// <remarks>
 /// <para>
-/// These read-only endpoints aggregate lightweight counters for the Admin UI dashboard cards. They
-/// intentionally avoid historical timeseries payloads so the overview stays fast on large deployments.
+/// These read-only endpoints aggregate lightweight counters for the Admin UI dashboard cards:
+/// total clients, total services, and current requests per minute.
 /// </para>
 /// <para>
-/// Request-per-minute values come from the shared in-storage RPM ring (a five-minute average), keeping
-/// the dashboard consistent with internal accounting while Prometheus uses counter + rate queries.
+/// Request-per-minute values come from the shared in-storage RPM ring (a five-minute average).
 /// </para>
 /// </remarks>
 [ApiController]

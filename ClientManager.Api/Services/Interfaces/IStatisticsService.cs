@@ -7,14 +7,12 @@ namespace ClientManager.Api.Services.Interfaces;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Statistics are intentionally lightweight: the Admin UI dashboard only needs aggregate counts and
-/// a live RPM gauge, not historical timeseries payloads. RPM values come from the shared in-storage
-/// second-bucket ring (five-minute average) so every replica reports the same number operators see
-/// internally.
+/// The overview endpoint serves the Admin UI dashboard cards with aggregate client and service counts
+/// plus a live requests-per-minute gauge. RPM values come from the shared in-storage second-bucket ring
+/// (five-minute average) so every replica reports the same number operators see in the UI.
 /// </para>
 /// <para>
-/// Prometheus/Grafana consumers should use cumulative request counters and PromQL rate queries
-/// rather than this endpoint.
+/// External observability stacks can derive RPM from cumulative request counters and PromQL rate queries.
 /// </para>
 /// </remarks>
 public interface IStatisticsService

@@ -10,8 +10,8 @@ namespace ClientManager.Api.Services.Interfaces;
 /// stay responsive without serving stale data after Admin UI edits.
 /// </para>
 /// <para>
-/// Rate-limit enforcement and RPM accounting write directly to storage counters and do not rely on
-/// this cache, keeping distributed correctness independent of catalog TTL tuning.
+/// Rate-limit enforcement and RPM accounting persist through dedicated storage counters with atomic
+/// semantics, separate from catalog cache entries.
 /// </para>
 /// <para>
 /// <see cref="InvalidateCatalog"/> rotates the catalog invalidation scope. Catalog writes call it

@@ -10,8 +10,8 @@ namespace ClientManager.Api.Services.Interfaces;
 /// <remarks>
 /// <para>
 /// Seed operations are intentionally separate from normal CRUD so operators can back up, clone, or
-/// restore entire catalogs without hand-writing migration scripts. All methods honor collection
-/// filters and coordinate with <see cref="IStorageReadCache"/> invalidation after writes.
+/// restore entire catalogs between environments. All methods honor collection filters and coordinate
+/// with <see cref="IStorageReadCache"/> invalidation after writes.
 /// </para>
 /// <para>
 /// Imports are serialized through <see cref="Storage.SeedOperationGate"/> so only one long-running seed

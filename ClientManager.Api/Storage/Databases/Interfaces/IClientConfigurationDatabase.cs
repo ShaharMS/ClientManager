@@ -15,8 +15,8 @@ namespace ClientManager.Api.Storage.Databases.Interfaces;
 /// </para>
 /// <para>
 /// The generic <see cref="Repositories.Interfaces.IEntityRepository{T}"/> assumes flat entities with
-/// a string ID. Keeping a standalone database contract makes client-specific search and count
-/// operations explicit and avoids leaking nested-dictionary semantics into generic repositories.
+/// a string ID. A standalone database contract keeps client-specific search and count operations
+/// explicit for documents that include nested service access settings.
 /// </para>
 /// </remarks>
 public interface IClientConfigurationDatabase

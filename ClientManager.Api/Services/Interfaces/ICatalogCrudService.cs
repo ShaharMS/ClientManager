@@ -13,8 +13,8 @@ namespace ClientManager.Api.Services.Interfaces;
 /// consistent across Admin UI pages.
 /// </para>
 /// <para>
-/// Updates are full document replacements (PUT). Partial PATCH was removed so the Admin UI and
-/// API expose one coherent edit path per entity.
+/// Updates replace the full catalog document with PUT so the Admin UI and API share one edit path
+/// per entity.
 /// </para>
 /// </remarks>
 /// <typeparam name="TEntity">The catalog entity type.</typeparam>
