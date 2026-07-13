@@ -59,3 +59,7 @@ TempBlazor/
 
 ## MkDocs static site output
 site/
+
+## Local refactor measurement artifacts
+tests/production-baseline.json
+tests/production-after.json
