@@ -7,10 +7,12 @@ using ClientManager.Api.Services.Storage.RateLimiting;
 using ClientManager.Api.Storage.Databases.Interfaces;
 using ClientManager.Api.Storage.Repositories.Interfaces;
 using ClientManager.Api.Utils.Instrumentation;
+using ClientManager.Shared.Configuration.Storage;
 using ClientManager.Shared.Logging;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Shared.Models.Enums;
 using ClientManager.Shared.Models.Responses;
+using Microsoft.Extensions.Options;
 
 namespace ClientManager.Api.Services.Storage;
 
@@ -27,9 +29,14 @@ namespace ClientManager.Api.Services.Storage;
 /// </remarks>
 public class AccessControlService : IAccessControlService
 {
+    private const string ClientCachePrefix = "clients";
+    private const string ServiceCachePrefix = "services";
+
     private readonly IAppLogger<AccessControlService> _logger;
     private readonly IClientConfigurationDatabase _clientConfigDatabase;
     private readonly IEntityRepository<Service> _serviceRepository;
+    private readonly IStorageReadCache _cache;
+    private readonly StorageReadCacheOptions _cacheOptions;
     private readonly RateLimitService _rateLimitService;
     private readonly RpmAccountingService _rpmAccounting;
     private readonly StorageMetrics _storageMetrics;
@@ -39,6 +46,8 @@ public class AccessControlService : IAccessControlService
         IAppLogger<AccessControlService> logger,
         IClientConfigurationDatabase clientConfigDatabase,
         IEntityRepository<Service> serviceRepository,
+        IStorageReadCache cache,
+        IOptions<StorageReadCacheOptions> cacheOptions,
         RateLimitService rateLimitService,
         RpmAccountingService rpmAccounting,
         StorageMetrics storageMetrics,
@@ -47,6 +56,8 @@ public class AccessControlService : IAccessControlService
         _logger = logger;
         _clientConfigDatabase = clientConfigDatabase;
         _serviceRepository = serviceRepository;
+        _cache = cache;
+        _cacheOptions = cacheOptions.Value;
         _rateLimitService = rateLimitService;
         _rpmAccounting = rpmAccounting;
         _storageMetrics = storageMetrics;
@@ -68,7 +79,7 @@ public class AccessControlService : IAccessControlService
             },
             async (completion, ct) =>
             {
-                var configuration = await _clientConfigDatabase.GetByIdAsync(clientId, ct);
+                var configuration = await GetCachedClientAsync(clientId, ct);
                 if (configuration is null)
                 {
                     _clientMetrics.RecordAccessOutcome(serviceId, clientId, "client_not_found");
@@ -76,7 +87,7 @@ public class AccessControlService : IAccessControlService
                 }
                 EnsureClientEnabled(configuration, clientId, serviceId);
 
-                var service = await _serviceRepository.GetByIdAsync(serviceId, ct);
+                var service = await GetCachedServiceAsync(serviceId, ct);
                 if (service is null)
                 {
                     _clientMetrics.RecordAccessOutcome(serviceId, clientId, "service_not_found");
@@ -103,6 +114,20 @@ public class AccessControlService : IAccessControlService
             },
             completion => RecordAccessCheckCompletion(clientId, serviceId, completion),
             cancellationToken);
+
+    private Task<ClientConfiguration?> GetCachedClientAsync(string clientId, CancellationToken cancellationToken) =>
+        _cache.GetOrCreateCatalogAsync(
+            $"{ClientCachePrefix}:id:{clientId}",
+            token => _clientConfigDatabase.GetByIdAsync(clientId, token),
+            cancellationToken,
+            _cacheOptions.HotPathClientServiceTtl);
+
+    private Task<Service?> GetCachedServiceAsync(string serviceId, CancellationToken cancellationToken) =>
+        _cache.GetOrCreateCatalogAsync(
+            $"{ServiceCachePrefix}:id:{serviceId}",
+            token => _serviceRepository.GetByIdAsync(serviceId, token),
+            cancellationToken,
+            _cacheOptions.HotPathClientServiceTtl);
 
     private void EnsureClientEnabled(ClientConfiguration configuration, string clientId, string serviceId)
     {

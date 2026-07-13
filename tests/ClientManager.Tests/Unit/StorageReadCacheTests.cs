@@ -14,7 +14,8 @@ public sealed class StorageReadCacheTests
         var cache = new StorageReadCache(memory, Options.Create(new StorageReadCacheOptions
         {
             CatalogTtl = TimeSpan.FromMinutes(1),
-            HotPathCatalogTtl = TimeSpan.FromSeconds(1)
+            HotPathCatalogTtl = TimeSpan.FromSeconds(1),
+            HotPathClientServiceTtl = TimeSpan.FromSeconds(5)
         }));
 
         var calls = 0;

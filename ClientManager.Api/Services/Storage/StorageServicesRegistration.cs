@@ -39,6 +39,7 @@ public static class StorageServicesRegistration
             .Bind(configuration.GetSection(StorageReadCacheOptions.SectionName))
             .Validate(options => options.CatalogTtl > TimeSpan.Zero, $"{StorageReadCacheOptions.SectionName}:CatalogTtl must be positive.")
             .Validate(options => options.HotPathCatalogTtl > TimeSpan.Zero, $"{StorageReadCacheOptions.SectionName}:HotPathCatalogTtl must be positive.")
+            .Validate(options => options.HotPathClientServiceTtl > TimeSpan.Zero, $"{StorageReadCacheOptions.SectionName}:HotPathClientServiceTtl must be positive.")
             .ValidateOnStart();
         services.AddSingleton<IStorageReadCache, StorageReadCache>();
 
