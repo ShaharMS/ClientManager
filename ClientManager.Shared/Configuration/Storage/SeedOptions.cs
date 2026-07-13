@@ -5,6 +5,15 @@ namespace ClientManager.Shared.Configuration.Storage;
 /// <summary>
 /// Seed export/import payload and API gate configuration.
 /// </summary>
+/// <remarks>
+/// <para>
+/// The list properties form the JSON bundle exchanged by the seed API. Operators use them to
+/// back up, clone, or restore catalog data between environments.
+/// </para>
+/// <para>
+/// <see cref="SeedApiEnabled"/> controls whether seed endpoints are exposed at runtime.
+/// </para>
+/// </remarks>
 public class SeedOptions
 {
     /// <summary>

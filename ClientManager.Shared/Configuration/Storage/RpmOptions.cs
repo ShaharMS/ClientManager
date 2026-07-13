@@ -3,6 +3,17 @@ namespace ClientManager.Shared.Configuration.Storage;
 /// <summary>
 /// Configures the global second-bucket RPM ring and per-replica flush batching.
 /// </summary>
+/// <remarks>
+/// <para>
+/// Each granted access check increments a UTC second bucket. Buckets are retained for
+/// <see cref="Retention"/> and aggregated into a five-minute requests-per-minute average for the
+/// dashboard via <see cref="RpmWindow"/>.
+/// </para>
+/// <para>
+/// Per-replica buffering reduces storage writes on the hot path. Setting
+/// <see cref="FlushEventCount"/> to <c>1</c> flushes every event immediately.
+/// </para>
+/// </remarks>
 public sealed class RpmOptions
 {
     /// <summary>
@@ -31,7 +42,7 @@ public sealed class RpmOptions
     public TimeSpan FlushInterval { get; init; } = TimeSpan.FromSeconds(1);
 
     /// <summary>
-    /// Fixed RPM calculation window (not configurable at runtime).
+    /// Fixed RPM calculation window used by dashboard statistics.
     /// </summary>
     public static readonly TimeSpan RpmWindow = TimeSpan.FromMinutes(5);
 }

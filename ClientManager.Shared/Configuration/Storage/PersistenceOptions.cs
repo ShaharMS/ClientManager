@@ -3,8 +3,17 @@ using ClientManager.Shared.Models.Enums;
 namespace ClientManager.Shared.Configuration.Storage;
 
 /// <summary>
-/// Configuration options for the persistence layer. Bound from the <c>"Persistence"</c> section.
+/// Configuration options for the persistence layer. Bound from the <c>"Persistence"</c>
+/// section of <c>appsettings.json</c>.
 /// </summary>
+/// <remarks>
+/// <para>
+/// Supports both single-provider and mixed-provider deployments. Set
+/// <see cref="DefaultProvider"/> and the matching default connection settings for a
+/// uniform backend, or use <see cref="Roles"/> to assign individual
+/// <see cref="StorageRole"/> values to different storage providers.
+/// </para>
+/// </remarks>
 public record PersistenceOptions
 {
     /// <summary>
@@ -13,22 +22,29 @@ public record PersistenceOptions
     public const string SectionName = "Persistence";
 
     /// <summary>
-    /// The fallback storage backend used for roles without an explicit <see cref="Roles"/> entry.
+    /// The fallback storage provider used for any <see cref="StorageRole"/> that does not
+    /// have an explicit entry in <see cref="Roles"/>.
     /// </summary>
     public PersistenceProvider DefaultProvider { get; set; } = PersistenceProvider.Redis;
 
     /// <summary>
-    /// Default MongoDB settings for roles using <see cref="PersistenceProvider.MongoDb"/>.
+    /// Default MongoDB settings applied to every role that uses
+    /// <see cref="PersistenceProvider.MongoDb"/> unless the role's
+    /// <see cref="StorageRoleBinding"/> supplies its own.
     /// </summary>
     public MongoDbStoreOptions? DefaultMongoDb { get; set; }
 
     /// <summary>
-    /// Default Redis settings for roles using <see cref="PersistenceProvider.Redis"/>.
+    /// Default Redis settings applied to every role that uses
+    /// <see cref="PersistenceProvider.Redis"/> unless the role's
+    /// <see cref="StorageRoleBinding"/> supplies its own.
     /// </summary>
     public RedisStoreOptions? DefaultRedis { get; set; }
 
     /// <summary>
-    /// Optional per-role overrides.
+    /// Optional per-role overrides. When a <see cref="StorageRole"/> is present in this
+    /// dictionary, its binding takes precedence over <see cref="DefaultProvider"/> and the
+    /// default connection settings.
     /// </summary>
     public Dictionary<StorageRole, StorageRoleBinding>? Roles { get; set; }
 }

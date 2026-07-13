@@ -3,6 +3,11 @@ namespace ClientManager.Shared.Models.Responses;
 /// <summary>
 /// Counts returned after a seed import operation.
 /// </summary>
+/// <remarks>
+/// Populated fields depend on the import strategy and HTTP verb. For example,
+/// <see cref="Skipped"/> is meaningful only for skip imports, while <see cref="Deleted"/>
+/// applies to wholesale replace operations that clear storage before insert.
+/// </remarks>
 public record SeedImportSummary
 {
     /// <summary>Entities created during import.</summary>

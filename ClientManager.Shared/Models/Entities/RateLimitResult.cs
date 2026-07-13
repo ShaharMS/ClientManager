@@ -17,11 +17,13 @@ public record RateLimitResult
 
     /// <summary>
     /// Seconds until the caller may retry when the request is denied.
+    /// Populated for HTTP 429 responses and forwarded as <c>Retry-After</c> when applicable.
     /// </summary>
     public int? RetryAfterSeconds { get; init; }
 
     /// <summary>
-    /// Whether the denial was caused by a global aggregate limit.
+    /// Whether the denial was caused by a global aggregate limit rather than a per-client limit.
+    /// Helps callers distinguish shared-capacity exhaustion from per-client throttling.
     /// </summary>
     public bool IsGlobalLimitHit { get; init; }
 }
