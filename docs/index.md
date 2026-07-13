@@ -1,6 +1,6 @@
 # ClientManager documentation
 
-ClientManager is a layered .NET service for **client access control**, **rate limiting**, **resource pool allocation**, and **usage statistics**. Your applications call its HTTP API at request time; operators configure clients, services, and limits through the Admin UI or the catalog API.
+ClientManager is a layered .NET service for **client access control**, **rate limiting**, and **RPM accounting**. Your applications call its HTTP API at request time; operators configure clients, services, and limits through the Admin UI or the catalog API.
 
 These guides explain how ClientManager works internally, how to wire it into your stack, and how its persistence layer behaves.
 
@@ -24,9 +24,9 @@ These guides explain how ClientManager works internally, how to wire it into you
 | Guide | What you will learn |
 | --- | --- |
 | [Architecture overview](core/architecture.md) | Solution structure, API vs Admin UI, internal layering, and how doc files map to site URLs |
-| [Domain model](core/domain-model.md) | Clients, services, resource pools, rate limits, allocations, and how settings override each other |
-| [Request flow](core/request-flow.md) | Ordered pipelines for access checks and resource acquisition, with HTTP status mapping |
-| [Usage and observability](core/usage-and-observability.md) | Usage recording, statistics API, metrics, and Admin UI dashboards |
+| [Domain model](core/domain-model.md) | Clients, services, rate limits, and how settings override each other |
+| [Request flow](core/request-flow.md) | Access-check pipeline and HTTP status mapping |
+| [Usage and observability](core/usage-and-observability.md) | RPM accounting, statistics API, and OpenTelemetry metrics |
 | [Seed system](core/seed-system.md) | Export/import catalog seed data, appsettings `Seed`, and instance copy workflows |
 
 ### Integration and operations
@@ -35,14 +35,14 @@ These guides explain how ClientManager works internally, how to wire it into you
 | --- | --- |
 | [Integration guide](integration-guide.md) | Put ClientManager in front of your services with nginx, identify callers, and surface denials (401, 403, 429, …) to end users |
 | [Metrics integration guide](metrics-integration-guide.md) | Plug into Prometheus, Grafana, or OTLP collectors for metrics and traces |
-| [Persistence overview](persistence/index.md) | How storage roles map to JsonFile, SQLite, MongoDB, Redis, and Lucene |
+| [Persistence overview](persistence/index.md) | How storage roles map to MongoDB and Redis |
 
 ## Quick mental model
 
 ```mermaid
 flowchart LR
     user[Caller] --> proxy[Your reverse proxy or app]
-    proxy -->|access check / acquire| cm[ClientManager API]
+    proxy -->|access check| cm[ClientManager API]
     proxy -->|only if allowed| svc[Your backend service]
     cm --> store[(Configured storage backends)]
 ```
@@ -51,7 +51,6 @@ ClientManager is **not** a user directory. It answers operational questions for 
 
 - Is this **client** allowed to use this **service** right now?
 - Is the client under its **rate limit**?
-- Can the client **acquire a slot** from a **resource pool**?
 
 Every denial is an HTTP error with an [RFC 7807](https://datatracker.ietf.org/doc/html/rfc7807) `application/problem+json` body. The same fields are echoed in `X-Problem-*` headers for nginx `auth_request`. Your integration should forward that status and problem details to the caller instead of masking it as a generic 502.
 
@@ -100,4 +99,4 @@ Interactive OpenAPI documentation is available from the running API host (Swagge
 These files live at the repository root (outside this doc site):
 
 - `README.md` — build, run, and persistence quick start
-- `ClientManager.DataAccess/README.md` — data-access layer notes
+- `ClientManager.Api/Storage/` — in-process document stores, databases, and repositories

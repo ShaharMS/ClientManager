@@ -28,7 +28,6 @@ nav:
   - Home: index.md
   - Getting started: getting-started.md
   - Configuration reference: configuration-reference.md
-  - Danger zone: danger-zone.md
   - Admin UI guide: admin-ui-guide.md
   - Localization: localization.md
   - API overview: api-overview.md
@@ -49,15 +48,13 @@ nav:
     - Domain model: core/domain-model.md
     - Request flow: core/request-flow.md
     - Usage and observability: core/usage-and-observability.md
+    - Seed system: core/seed-system.md
   - Integration guide: integration-guide.md
   - Metrics integration guide: metrics-integration-guide.md
   - Persistence:
     - Overview: persistence/index.md
-    - JsonFile: persistence/json-file.md
-    - SQLite: persistence/sqlite.md
     - MongoDB: persistence/mongodb.md
     - Redis: persistence/redis.md
-    - Lucene: persistence/lucene.md
 
 extra_javascript:
   - javascripts/mermaid.min.js

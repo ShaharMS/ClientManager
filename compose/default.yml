@@ -9,8 +9,6 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
     ports:
       - "5062:5062"
-    volumes:
-      - ../data:/app/data
 
   adminui:
     image: clientmanager/adminui:local

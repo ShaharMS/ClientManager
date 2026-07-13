@@ -1,29 +1,27 @@
 """
 Generates semi-random live traffic against the public ClientManager API.
 
-Before running this script, start ClientManager.Api.
+Before running this script, start ClientManager.Api and seed catalog data.
 
-Simulates realistic client behavior:
-  - Access checks (most common)
-  - Resource acquire / release cycles
-  - Occasional stats & list reads
-  - Varying request rates per client (busy vs. quiet)
-  - Some requests that should fail (disabled client, wrong service, etc.)
+Simulates:
+  - Access checks (primary)
+  - Statistics overview and catalog list reads
 
 Usage:
     python traffic_generator.py [--base-url http://localhost:5062] [--interval 2.0]
     Ctrl+C to stop.
 """
 
+from __future__ import annotations
+
 import argparse
 import json
 import random
 import sys
 import time
-import urllib.request
 import urllib.error
 import urllib.parse
-from datetime import datetime
+import urllib.request
 
 from configuration import CONFIGURATION
 
@@ -34,7 +32,6 @@ BASE_URL = GLOBAL_SETTINGS["api"]["base_url"]
 INTERVAL = TRAFFIC_SETTINGS["defaults"]["interval_seconds"]
 API_PREFIX = GLOBAL_SETTINGS["api"]["prefix_with_leading_slash"]
 READ_SEARCH_QUERY = GLOBAL_SETTINGS["queries"]["search_body"]
-CLIENT_SUMMARIES_PAGE_SIZE = GLOBAL_SETTINGS["queries"]["client_summaries_page_size"]
 VALID_ACCESS_COMBINATION_PROBABILITY = TRAFFIC_SETTINGS["probabilities"]["valid_access_combination"]
 DETAILED_READ_PROBABILITY = TRAFFIC_SETTINGS["probabilities"]["detailed_read"]
 BURST_SIZES = TRAFFIC_SETTINGS["burst"]["sizes"]
@@ -45,36 +42,26 @@ STATS_EVERY_ITERATIONS = TRAFFIC_SETTINGS["timing"]["stats_every_iterations"]
 MINIMUM_SLEEP_SECONDS = TRAFFIC_SETTINGS["timing"]["minimum_sleep_seconds"]
 SLEEP_JITTER_MULTIPLIER = TRAFFIC_SETTINGS["timing"]["sleep_jitter_multiplier"]
 
-# ── Known IDs (must match seed_data.py) ───────────────────────────────────
-
 ENABLED_CLIENTS = GLOBAL_SETTINGS["catalogs"]["enabled_client_ids"]
 DISABLED_CLIENTS = GLOBAL_SETTINGS["catalogs"]["disabled_client_ids"]
 ALL_CLIENTS = GLOBAL_SETTINGS["catalogs"]["all_client_ids"]
-
 SERVICES = GLOBAL_SETTINGS["catalogs"]["service_ids"]
-RESOURCE_POOLS = GLOBAL_SETTINGS["catalogs"]["resource_pool_ids"]
-
-# Client -> services they have access to (for realistic traffic)
 CLIENT_SERVICES = GLOBAL_SETTINGS["catalogs"]["client_services"]
-
-# Client -> pools they can use
-CLIENT_POOLS = GLOBAL_SETTINGS["catalogs"]["client_pools"]
-
-# Relative traffic weight per client (higher = more requests)
 CLIENT_WEIGHT = TRAFFIC_SETTINGS["client_weights"]
 
-# Track active allocations so we can release them
-active_allocations: list[dict] = []
-
-# Stats
-stats = {"access_checks": 0, "acquires": 0, "releases": 0, "reads": 0, "errors": 0, "total": 0}
+stats = {"access_checks": 0, "reads": 0, "errors": 0, "total": 0}
 
 
-def api(method: str, path: str, params=None):
+def api(method: str, path: str, params=None, body=None):
     url = f"{BASE_URL.rstrip('/')}/{path.lstrip('/')}"
     if params:
         url = f"{url}?{urllib.parse.urlencode(params)}"
-    req = urllib.request.Request(url, method=method)
+    data = None
+    headers = {}
+    if body is not None:
+        data = json.dumps(body).encode("utf-8")
+        headers["Content-Type"] = "application/json"
+    req = urllib.request.Request(url, data=data, method=method, headers=headers)
     start_time = time.time()
     try:
         with urllib.request.urlopen(req) as resp:
@@ -82,29 +69,25 @@ def api(method: str, path: str, params=None):
             payload = resp.read()
             if not payload:
                 return resp.status, None, ms
-
             try:
                 return resp.status, json.loads(payload), ms
             except json.JSONDecodeError:
                 return resp.status, payload.decode(errors="ignore"), ms
-    except urllib.error.HTTPError as e:
+    except urllib.error.HTTPError as error:
         ms = (time.time() - start_time) * 1000
-        payload = e.read()
+        payload = error.read()
         if not payload:
-            return e.code, None, ms
-
+            return error.code, None, ms
         try:
-            return e.code, json.loads(payload), ms
+            return error.code, json.loads(payload), ms
         except json.JSONDecodeError:
-            return e.code, payload.decode(errors="ignore"), ms
-    except Exception as e:
+            return error.code, payload.decode(errors="ignore"), ms
+    except Exception as error:
         ms = (time.time() - start_time) * 1000
-        return 0, str(e), ms
+        return 0, str(error), ms
 
 
 def do_access_check():
-    """Simulate a client checking access to a service."""
-    # 85% chance: pick a valid client+service combo; 15% chance: pick something that might fail
     if random.random() < VALID_ACCESS_COMBINATION_PROBABILITY:
         client = random.choices(ENABLED_CLIENTS, weights=[CLIENT_WEIGHT[c] for c in ENABLED_CLIENTS])[0]
         service = random.choice(CLIENT_SERVICES[client])
@@ -112,66 +95,29 @@ def do_access_check():
         client = random.choice(ALL_CLIENTS)
         service = random.choice(SERVICES)
 
-    status, resp, ms = api("GET", f"{API_PREFIX}/access/check", {"clientId": client, "serviceId": service})
+    status, _, ms = api("GET", f"{API_PREFIX}/access/check", {"clientId": client, "serviceId": service})
     stats["access_checks"] += 1
+    if status == 0 or status >= 500:
+        stats["errors"] += 1
     return f"ACCESS  {client} -> {service}: {status} ({ms:.1f}MS)"
 
 
-def do_acquire():
-    """Acquire a resource slot."""
-    client = random.choices(ENABLED_CLIENTS, weights=[CLIENT_WEIGHT[c] for c in ENABLED_CLIENTS])[0]
-    pools = CLIENT_POOLS.get(client, [])
-    if not pools:
-        return None
-
-    pool = random.choice(pools)
-    status, resp, ms = api("GET", f"{API_PREFIX}/resources/acquire", {"clientId": client, "resourcePoolId": pool})
-    stats["acquires"] += 1
-
-    if status == 200 and isinstance(resp, dict) and "allocationId" in resp:
-        active_allocations.append({"allocationId": resp["allocationId"], "client": client, "pool": pool})
-        return f"ACQUIRE {client} -> {pool}: OK (alloc={resp['allocationId'][:8]}..., active={len(active_allocations)}) ({ms:.1f}MS)"
-    return f"ACQUIRE {client} -> {pool}: {status} ({ms:.1f}MS)"
-
-
-def do_release():
-    """Release a previously acquired resource."""
-    if not active_allocations:
-        return None
-
-    alloc = active_allocations.pop(random.randrange(len(active_allocations)))
-    status, _, ms = api("GET", f"{API_PREFIX}/resources/release", {"allocationId": alloc["allocationId"]})
-    stats["releases"] += 1
-    return f"RELEASE {alloc['client']} <- {alloc['pool']}: {status} (active={len(active_allocations)}) ({ms:.1f}MS)"
-
-
 def do_read():
-    """Hit a read-only endpoint (list clients, services, stats, etc.)."""
     choices = [
-        ("GET", f"{API_PREFIX}/statistics/overview", None),
-        ("POST", f"{API_PREFIX}/statistics/timeseries/search", {
-            "searchCategory": "ServiceRequests",
-            "fromUtc": "2020-01-01T00:00:00Z",
-            "toUtc": "2030-01-01T00:00:00Z",
-            "bucketCount": 10,
-        }),
-        ("POST", f"{API_PREFIX}/clients/search", READ_SEARCH_QUERY),
-        ("POST", f"{API_PREFIX}/services/search", READ_SEARCH_QUERY),
-        ("POST", f"{API_PREFIX}/resource-pools/search", READ_SEARCH_QUERY),
-        ("POST", f"{API_PREFIX}/global-rate-limits/search", READ_SEARCH_QUERY),
+        ("GET", f"{API_PREFIX}/statistics/overview", None, None),
+        ("POST", f"{API_PREFIX}/clients/search", None, READ_SEARCH_QUERY),
+        ("POST", f"{API_PREFIX}/services/search", None, READ_SEARCH_QUERY),
+        ("POST", f"{API_PREFIX}/global-rate-limits/search", None, READ_SEARCH_QUERY),
     ]
-
-    # Also occasionally look up a specific client or their accessibility
     if random.random() < DETAILED_READ_PROBABILITY:
         client = random.choice(ENABLED_CLIENTS)
-        choices.extend([
-            ("GET", f"{API_PREFIX}/clients/{client}", None),
-            ("GET", f"{API_PREFIX}/access/{client}", None),
-        ])
+        choices.append(("GET", f"{API_PREFIX}/clients/{client}", None, None))
 
-    method, path, body = random.choice(choices)
-    status, _, ms = api(method, path, body)
+    method, path, params, body = random.choice(choices)
+    status, _, ms = api(method, path, params, body)
     stats["reads"] += 1
+    if status == 0 or status >= 500:
+        stats["errors"] += 1
     return f"READ    {method} {path}: {status} ({ms:.1f}MS)"
 
 
@@ -179,10 +125,10 @@ def print_stats():
     elapsed = time.time() - stats.get("_start", time.time())
     mins = elapsed / 60
     rpm = stats["total"] / mins if mins > 0 else 0
-    print(f"\n  ┌─ Stats: {stats['total']} total ({rpm:.0f} req/min) | "
-          f"checks={stats['access_checks']} acquires={stats['acquires']} "
-          f"releases={stats['releases']} reads={stats['reads']} | "
-          f"active_allocs={len(active_allocations)}")
+    print(
+        f"\n  Stats: {stats['total']} total ({rpm:.0f} req/min) | "
+        f"checks={stats['access_checks']} reads={stats['reads']} errors={stats['errors']}"
+    )
 
 
 def run():
@@ -195,46 +141,32 @@ def run():
 
     while True:
         iteration += 1
-
-        # Each burst does 1–5 actions
         burst_size = random.choices(BURST_SIZES, weights=BURST_WEIGHTS)[0]
-        timestamp = datetime.now().strftime("%H:%M:%S")
+        actions = random.choices(ACTION_TYPES, weights=ACTION_WEIGHTS, k=burst_size)
 
-        for _ in range(burst_size):
-            # Weight the action types
-            action = random.choices(ACTION_TYPES, weights=ACTION_WEIGHTS)[0]
-
-            result = None
+        for action in actions:
+            stats["total"] += 1
             if action == "access_check":
-                result = do_access_check()
-            elif action == "acquire":
-                result = do_acquire()
-            elif action == "release":
-                result = do_release()
-            elif action == "read":
-                result = do_read()
+                line = do_access_check()
+            else:
+                line = do_read()
+            if line:
+                print(line)
 
-            if result:
-                stats["total"] += 1
-                print(f"  [{timestamp}] {result}")
-
-        # Print periodic stats
         if iteration % STATS_EVERY_ITERATIONS == 0:
             print_stats()
 
-        # Jittered sleep
-        sleep = max(MINIMUM_SLEEP_SECONDS, random.gauss(INTERVAL, INTERVAL * SLEEP_JITTER_MULTIPLIER))
-        time.sleep(sleep)
+        sleep_seconds = INTERVAL * (1 + random.uniform(-SLEEP_JITTER_MULTIPLIER, SLEEP_JITTER_MULTIPLIER))
+        time.sleep(max(MINIMUM_SLEEP_SECONDS, sleep_seconds))
 
 
-def main():
+def main() -> int:
     global BASE_URL, INTERVAL
 
-    parser = argparse.ArgumentParser(description="Generate random traffic against the public ClientManager API")
-    parser.add_argument("--base-url", default=BASE_URL, help="Public API base URL")
-    parser.add_argument("--interval", type=float, default=INTERVAL, help="Average seconds between bursts")
+    parser = argparse.ArgumentParser(description="Generate live API traffic")
+    parser.add_argument("--base-url", default=BASE_URL)
+    parser.add_argument("--interval", type=float, default=INTERVAL)
     args = parser.parse_args()
-
     BASE_URL = args.base_url.rstrip("/")
     INTERVAL = args.interval
 
@@ -242,8 +174,9 @@ def main():
         run()
     except KeyboardInterrupt:
         print_stats()
-        print("  └─ Stopped.\n")
+        print("\nStopped.")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

@@ -8,9 +8,8 @@ ClientManager is a .NET service that answers operational questions at request ti
 
 - May this **client** call this **service**?
 - Is the client under its **rate limit**?
-- Can the client **hold a slot** in a **resource pool**?
 
-Your applications (or a reverse proxy in front of them) call the HTTP API on every inbound request. Operators configure clients, services, pools, and limits through the **Admin UI** or the **catalog API**.
+Your applications (or a reverse proxy in front of them) call the HTTP API on every inbound request. Operators configure clients, services, and limits through the **Admin UI** or the **catalog API**.
 
 ClientManager is **not** a user directory. It does not authenticate end users or issue tokens. You supply a stable `clientId` on each request; see the [Integration guide](integration-guide.md).
 
@@ -20,10 +19,10 @@ The active solution (`ClientManager.slnx`) contains:
 
 | Project | Type | Purpose |
 | --- | --- | --- |
-| `ClientManager.Api` | Executable | Public HTTP API, all business logic, in-process persistence, background workers |
+| `ClientManager.Api` | Executable | Public HTTP API, business logic, in-process storage (`Api/Storage`), background workers |
 | `ClientManager.AdminUI` | Executable | Blazor Server admin dashboard; talks to the API over HTTP only |
-| `ClientManager.DataAccess` | Library | Document stores and repositories (referenced **only** by the API) |
 | `ClientManager.Shared` | Library | Entities, DTOs, enums, configuration models, logging |
+| `ClientManager.Tests` | Test | Unit and integration regression suite |
 | `ClientManager.DependencyInventory` | Tooling | Dependency audit helper under `_Solution Items_/Bookkeeping` |
 
 ### Folders outside the solution
@@ -32,10 +31,11 @@ The active solution (`ClientManager.slnx`) contains:
 | --- | --- |
 | `docs/` | MkDocs documentation (this site) |
 | `_scripts/` | Python helpers for seeding, traffic, observability, performance baselines |
-| `data/` | Default JsonFile persistence directory when running locally |
+| `data/` | Legacy local dev artifacts; not used when Redis/Mongo is configured |
 | [`docker-compose.yml`](docker-compose.yml) | Entry point for `docker compose up` — edit `include` to switch stacks |
 | [`compose/default.yml`](compose/default.yml) | API + Admin UI containers with `./data` mounted |
 | [`compose/dev.redis.yml`](compose/dev.redis.yml) | Redis overlay (combine with `default.yml`) |
+| [`compose/redis.yml`](compose/redis.yml) | Standalone Redis for local dev and integration tests |
 | [`compose/multipod.yml`](compose/multipod.yml) | Three API replicas + MongoDB + Redis for multi-pod testing |
 | `site/` | Built MkDocs output (`mkdocs build`); safe to regenerate |
 
@@ -79,7 +79,7 @@ With the API running, open Swagger UI at [http://localhost:5062/docs](http://loc
 
 ### Seed demo data
 
-Out of the box the API uses **JsonFile** persistence with data in `./data` (relative to the API working directory). Catalogs may be empty on first run.
+Out of the box the API uses **Redis** persistence on `localhost:6379` (see `ClientManager.Api/appsettings.Development.json`). Start Redis with `docker compose -f compose/redis.yml up -d` if needed. Catalogs may be empty on first run.
 
 Populate realistic demo configuration:
 
@@ -87,7 +87,7 @@ Populate realistic demo configuration:
 python _scripts/seed_data.py --base-url http://localhost:5062
 ```
 
-The seed script mirrors the catalogs defined in `_scripts/configuration.py` (20 services, 10 resource pools, global limits, and several client profiles).
+The seed script mirrors the catalogs defined in `_scripts/configuration.py` (services, global limits, and several client profiles).
 
 For **catalog-only** seeding without the script, use the seed API (`GET` / `POST` / `PUT` `/api/v1/seed`) or the appsettings `Seed` section — see [Seed system](core/seed-system.md).
 

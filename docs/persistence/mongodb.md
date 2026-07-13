@@ -8,13 +8,13 @@ Each logical collection maps to a MongoDB collection with the same name. Counter
 ## Good at
 
 - **Production multi-instance** — shared durable state across API replicas.
-- **Configuration + statistics** — large documents, indexed filters, no full-file RAM load.
+- **Configuration catalogs** — durable documents and server-side queries.
 - **Operational familiarity** — backups, replication, Atlas/managed Mongo.
 - **Default “everything durable”** — single `DefaultProvider: MongoDb` works for smaller prod deployments.
 
 ## Weak at
 
-- **Ultra-hot counter paths** — works, but Redis is simpler for rate-limit and allocation counters at very high QPS.
+- **Ultra-hot counter paths** — works, but Redis is simpler for rate-limit and RPM counters at very high QPS.
 - **Local zero-deps dev** — requires a running MongoDB (Docker Compose or Atlas).
 
 ## Storage role fit
@@ -22,9 +22,8 @@ Each logical collection maps to a MongoDB collection with the same name. Counter
 | Role | MongoDB? |
 | --- | --- |
 | `Configuration` | Recommended prod |
-| `Statistics` | Recommended prod |
 | `RateLimiting` | Possible; Redis usually better |
-| `Allocations` | Possible; Redis usually better |
+| `Rpm` | Possible; Redis usually better |
 
 ## Configuration
 
@@ -35,7 +34,7 @@ Each logical collection maps to a MongoDB collection with the same name. Counter
   "Persistence": {
     "DefaultProvider": "MongoDb",
     "DefaultMongoDb": {
-      "ConnectionString": "mongodb://mongo:27017",
+      "ConnectionString": "mongodb://mongo:27017/?replicaSet=rs0",
       "DatabaseName": "ClientManager"
     }
   }
@@ -49,7 +48,7 @@ Each logical collection maps to a MongoDB collection with the same name. Counter
   "Persistence": {
     "DefaultProvider": "MongoDb",
     "DefaultMongoDb": {
-      "ConnectionString": "mongodb://mongo:27017",
+      "ConnectionString": "mongodb://mongo:27017/?replicaSet=rs0",
       "DatabaseName": "ClientManager"
     },
     "Roles": {
@@ -57,7 +56,7 @@ Each logical collection maps to a MongoDB collection with the same name. Counter
         "Provider": "Redis",
         "Redis": { "Host": "redis", "Port": 6379, "DatabaseIndex": 1 }
       },
-      "Allocations": {
+      "Rpm": {
         "Provider": "Redis",
         "Redis": { "Host": "redis", "Port": 6379, "DatabaseIndex": 2 }
       }
@@ -68,8 +67,12 @@ Each logical collection maps to a MongoDB collection with the same name. Counter
 
 ```text
 Persistence__DefaultProvider=MongoDb
-Persistence__DefaultMongoDb__ConnectionString=mongodb://mongo:27017
+Persistence__DefaultMongoDb__ConnectionString=mongodb://mongo:27017/?replicaSet=rs0
 ```
+
+MongoDB token buckets use transactions. Configure a replica set whenever the
+`RateLimiting` role uses MongoDB; `compose/dev.mongo.yml` provides a local
+single-member replica set.
 
 ## See also
 

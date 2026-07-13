@@ -4,19 +4,24 @@ Stack definitions live in this folder. Use the repo-root [`docker-compose.yml`](
 
 | File | Purpose |
 | --- | --- |
-| [`default.yml`](default.yml) | Single API + Admin UI with JsonFile (`../data` volume) |
+| [`default.yml`](default.yml) | Single API + Admin UI |
 | [`dev.redis.yml`](dev.redis.yml) | Overlay: adds Redis and wires API `depends_on` |
-| [`multipod.yml`](multipod.yml) | Three API replicas + MongoDB + Redis (production-like persistence) |
+| [`redis.yml`](redis.yml) | Standalone Redis (`docker compose -f compose/redis.yml up -d`) |
+| [`dev.mongo.yml`](dev.mongo.yml) | Standalone MongoDB replica set for integration tests |
+| [`otel.yml`](otel.yml) | Jaeger all-in-one with OTLP on port 4317 |
+| [`multipod.yml`](multipod.yml) | Three API replicas + MongoDB replica set + Redis (production-like persistence) |
+
+Persistence uses **MongoDB** and **Redis** only. Storage roles: `Configuration`, `RateLimiting`, `Rpm`.
 
 ## Multi-pod verification (recommended)
 
-Fresh cluster every run — empty Mongo/Redis volumes, catalog-only seed, no historical usage:
+Fresh cluster every run — empty Mongo/Redis volumes, catalog-only seed:
 
 ```bash
 python _scripts/run_multipod_docker.py
 ```
 
-This runs `docker compose down -v`, `up --build`, `statistics_multipod_check.py` (which seeds via `seed_data.py --skip-history`), then tears down again.
+This runs `docker compose down -v`, `up --build`, cross-pod checks, then tears down.
 
 Options:
 
@@ -26,8 +31,16 @@ Options:
 | `--skip-check` | Only start the stack (no seed/check) |
 | `--no-build` | Skip image rebuild |
 
-For richer seed data (including statistics history), import NDJSON manually via the [seed API](../docs/core/seed-system.md) after the stack is up.
-
-**Disk:** the API image build excludes `data/` via [`.dockerignore`](../.dockerignore). Do not remove those exclusions — `UsageSnapshots.json` is ~1.5 GB and will bloat the build context.
+For catalog migration between instances, use `GET` / `POST` `/api/v1/seed` with `Seed:SeedApiEnabled: true` — see [Seed system](../docs/core/seed-system.md).
 
 Pods listen on host ports **5062**, **5063**, and **5064**.
+
+## Multipod persistence layout
+
+Typical `multipod.yml` environment:
+
+| Role | Provider |
+| --- | --- |
+| `Configuration` (default) | MongoDB |
+| `RateLimiting` | Redis (`DatabaseIndex: 1`) |
+| `Rpm` | Redis (`DatabaseIndex: 2`) |

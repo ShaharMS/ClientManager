@@ -1,4 +1,4 @@
-"""ponytail: fresh multi-pod Docker stack — down -v, build, seed catalog, run statistics_multipod_check."""
+"""ponytail: fresh multi-pod Docker stack — down -v, build, seed catalog, run multipod_overview_check."""
 
 from __future__ import annotations
 
@@ -51,7 +51,7 @@ def run_python_script(script: str, *args: str) -> int:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Run fresh Docker multi-pod statistics verification")
+    parser = argparse.ArgumentParser(description="Run fresh Docker multi-pod overview verification")
     parser.add_argument(
         "--keep-up",
         action="store_true",
@@ -60,7 +60,7 @@ def main() -> int:
     parser.add_argument(
         "--skip-check",
         action="store_true",
-        help="Only bring the stack up and seed catalog; do not run statistics_multipod_check.py",
+        help="Only bring the stack up and seed catalog; do not run multipod_overview_check.py",
     )
     parser.add_argument(
         "--no-build",
@@ -92,14 +92,13 @@ def main() -> int:
         return 1
 
     if not args.skip_check:
-        print("\n== multipod statistics check (includes catalog seed) ==")
-        # ponytail: seed catalog hits api-1 only; Docker Desktop adds ~10ms vs bare-metal 100ms budget
+        print("\n== multipod overview check (includes catalog seed) ==")
         if run_python_script(
-            "_scripts/statistics_multipod_check.py",
+            "_scripts/multipod_overview_check.py",
             "--p50-budget-ms",
             "115",
         ) != 0:
-            failures.append("statistics_multipod_check.py failed")
+            failures.append("multipod_overview_check.py failed")
 
     if not args.keep_up:
         print("\n== tear down stack ==")

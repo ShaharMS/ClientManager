@@ -1,23 +1,23 @@
 # API overview
 
-All routes use URL versioning: `/api/v1/...`. The default version is `1.0`.
+All routes use URL versioning: `/api/v1/...`.
 
-**Interactive reference:** [http://localhost:5062/docs](http://localhost:5062/docs) (Swagger UI) — always the most up-to-date catalog of request/response schemas.
+**Interactive reference:** [http://localhost:5062/docs](http://localhost:5062/docs) (Swagger UI).
 
-Errors return [RFC 7807](https://datatracker.ietf.org/doc/html/rfc7807) `application/problem+json` with a `traceId` for log correlation. The same fields are echoed in `X-Problem-Title`, `X-Problem-Detail`, `X-Trace-Id`, and `X-Problem-Json` headers so nginx `auth_request` and similar proxies can forward denials without reading the subrequest body.
+Errors return [RFC 7807](https://datatracker.ietf.org/doc/html/rfc7807) `application/problem+json` with a `traceId`. The same fields are echoed in `X-Problem-Title`, `X-Problem-Detail`, `X-Trace-Id`, and `X-Problem-Json` headers so nginx `auth_request` can forward denials without reading the subrequest body.
 
 ## Runtime gatekeeping
 
-These endpoints are designed for reverse proxies (`auth_request`), application middleware, and workers. Runtime gatekeeping uses **GET with query parameters** so nginx and similar tools can call them without a request body.
+Designed for reverse proxies (`auth_request`), application middleware, and workers. Uses **GET with query parameters**.
 
 | Method | Path | Query parameters | Side effects |
 | --- | --- | --- | --- |
-| `GET` | `/api/v1/access/check` | `clientId`, `serviceId` | Increments rate limits; records `Granted` or `Denied` usage |
-| `GET` | `/api/v1/access/{clientId}` | — | Read-only accessibility report across all services |
-| `GET` | `/api/v1/resources/acquire` | `clientId`, `resourcePoolId` | Creates allocation; increments counters |
-| `GET` | `/api/v1/resources/release` | `allocationId` | Frees allocation; records `Released` usage |
+| `GET` | `/api/v1/access/check` | `clientId`, `serviceId` | Increments rate limits; records RPM; emits OTel metrics |
 
 See [Request flow](core/request-flow.md) and [Integration guide](integration-guide.md) for pipeline order, status codes, and nginx examples.
+
+!!! note "Removed runtime routes"
+    `GET /api/v1/access/{clientId}`, `GET /api/v1/resources/acquire`, and `GET /api/v1/resources/release` were removed.
 
 ## Catalog CRUD
 
@@ -29,8 +29,9 @@ Catalog controllers share a common pattern:
 | `GET` | `/{id}` | — | Get by ID |
 | `POST` | `/` | Entity | Create (409 if ID exists) |
 | `PUT` | `/{id}` | Entity | Full document replace |
-| `PATCH` | `/` | Array of `{ id, …fields }` | Partial update (bulk or single); per-item results |
 | `DELETE` | `/{id}` | — | Delete |
+
+`PATCH` and bulk partial updates were removed.
 
 ### Top-level resources
 
@@ -38,108 +39,49 @@ Catalog controllers share a common pattern:
 | --- | --- | --- |
 | `/api/v1/clients` | `ClientConfiguration` | Client Configurations |
 | `/api/v1/services` | `Service` | Services |
-| `/api/v1/resource-pools` | `ResourcePool` | Resource Pools |
 | `/api/v1/global-rate-limits` | `GlobalRateLimit` | Global Rate Limits |
 
-### Nested client settings
+`GlobalRateLimit.id` is the service ID; rate-limit fields live in nested `policy`.
 
-Under `/api/v1/clients/{id}/`:
+### Removed catalog routes
 
-| Path | Methods | Purpose |
-| --- | --- | --- |
-| `services` | `GET` | Paginated list of service access settings |
-| `services/{serviceId}` | `GET`, `PUT`, `DELETE` | Per-service `ServiceAccessSettings` |
-| `resource-pools` | `GET` | Paginated list of per-client pool quotas |
-| `resource-pools/{poolId}` | `GET`, `PUT`, `DELETE` | Per-client `ResourcePoolSettings` (`maxSlots`) |
-| `global-rate-limit` | `GET`, `PUT`, `DELETE` | Client-wide `globalRateLimit` |
+- `/api/v1/resource-pools`
+- Nested `/api/v1/clients/{id}/services/...`, `resource-pools/...`, `global-rate-limit`
 
-The Admin UI uses these nested routes when editing individual cards on the client editor.
-
-**Bulk client permission edits** can also go through `PATCH /api/v1/clients` with `services` / `resourcePools` / `globalRateLimit` in each patch object (deep-merged by dictionary key).
-
-### PATCH semantics
-
-- Each array item must include `id` plus only the fields to change.
-- Unknown property names fail that item; `createdAt` cannot be patched.
-- Update only — missing IDs return a per-item failure (use `POST` to create).
-- Response body is always a `results` array; HTTP status reflects the batch outcome.
-
-**HTTP status codes**
-
-| Status | When |
-| --- | --- |
-| `200` | Every item in `results` has `status: updated` |
-| `207` | Mixed — at least one `updated` and at least one `failed` |
-| `422` | Every item `failed` (body still contains per-item `error` details) |
-| `400` | Body missing or not a JSON array |
-| `503` | Storage unavailable (whole request fails) |
-
-**Per-item failures** — inside `results`, failed items include `error` (`ProblemResponse`):
-
-| `error.status` | Typical cause |
-| --- | --- |
-| `404` | No entity with that `id` |
-| `400` | Unknown property, missing `id`, or non-patchable field |
-| `500` | Unexpected error applying that item |
-
-Example:
-
-```json
-PATCH /api/v1/services
-[
-  { "id": "billing-api", "name": "Billing API" }
-]
-```
+Edit per-client service access through the full `ClientConfiguration` document (`PUT /api/v1/clients/{id}`).
 
 ## Seeding
 
-Base path: `/api/v1/seed` (Swagger tag: **Seeding**). Exports and imports catalog and optional statistics. Catalog-only export returns JSON in the `SeedOptions` shape (compatible with appsettings `Seed`). Requests that include `usageSnapshots` or `format=ndjson` stream `seed.ndjson`.
-
-Gated by [Danger zone](danger-zone.md): `GET` requires `EnableSeedExport`; `POST` / `PUT` / `DELETE` require `EnableSeedImport` (HTTP 404 when disabled).
+Base path: `/api/v1/seed`. Gated by `Seed:SeedApiEnabled` (HTTP 404 when `false`).
 
 | Method | Path | Query | Body | Purpose |
 | --- | --- | --- | --- | --- |
-| `GET` | `/api/v1/seed` | `include`, `format` | — | Export (JSON or NDJSON file) |
-| `DELETE` | `/api/v1/seed` | `include`, `format` | — | Wipe included collections |
-| `POST` | `/api/v1/seed` | `include` | JSON or NDJSON | Import into empty collections |
-| `PUT` | `/api/v1/seed` | `include`, `strategy=skip\|replace` | JSON or NDJSON | Merge into existing data |
-
-**HTTP status codes (seed endpoints)**
+| `GET` | `/api/v1/seed` | `include` | — | Export JSON `SeedOptions` |
+| `DELETE` | `/api/v1/seed` | `include` | — | Wipe included collections |
+| `POST` | `/api/v1/seed` | `include` | JSON | Import into empty collections |
+| `PUT` | `/api/v1/seed` | `include`, `strategy=skip\|replace` | JSON | Merge into existing data |
 
 | Status | When |
 | --- | --- |
 | `200` | Export or import succeeded |
-| `400` | Unknown `include` collection, invalid `strategy` (PUT only), or missing/malformed body (POST/PUT) |
-| `409` | Included collection not empty on POST, or another seed operation in progress |
-| `404` | Seed gate disabled in `DangerZone` |
+| `400` | Unknown `include`, invalid `strategy`, or malformed body |
+| `404` | `SeedApiEnabled` is `false` |
+| `409` | Collection not empty on POST, or operation in progress |
 | `503` | Storage unavailable |
-
-Unlike PATCH, seed import does not return per-item failures in a `200` body — a storage or validation error fails the entire request.
-
-See [Seed system](core/seed-system.md) and [Storage migration](migration/storage-migration.md) for workflows and curl examples.
 
 ## Statistics
 
-Base path: `/api/v1/statistics`
-
-### Overview and timeseries
-
 | Method | Path | Description |
 | --- | --- | --- |
-| `GET` | `/overview` | Counts, active allocations, RPM, and pool acquisition gauges |
-| `POST` | `/timeseries/search` | Chart-ready bucketed usage (`searchCategory`: `ServiceRequests`, `ResourcePoolAllocations`, `ResourcePoolRequests`) |
-
-Statistics endpoints are read-only and safe to poll for dashboards.
+| `GET` | `/api/v1/statistics/overview` | Client count, service count, current RPM |
 
 ## Metrics export
 
 | Method | Path | Format |
 | --- | --- | --- |
-| `GET` | `/api/v1/metrics/prometheus` | Prometheus text — usage and pool gauges |
-| `GET` | `/api/v1/metrics/grafana` | Grafana-oriented JSON |
 | `GET` | `/prometheus/otel` | Prometheus text — OpenTelemetry runtime metrics |
 
-See the [Metrics integration guide](metrics-integration-guide.md) for Prometheus scrape jobs, the full metric catalog, OTLP trace setup, and example alerts.
+See the [Metrics integration guide](metrics-integration-guide.md).
 
 ## Infrastructure endpoints
 
@@ -148,7 +90,7 @@ See the [Metrics integration guide](metrics-integration-guide.md) for Prometheus
 | `/docs` | Swagger UI |
 | `/swagger/v1/swagger.json` | OpenAPI document |
 
-There is **no** dedicated `/health` or `/ready` endpoint today. For load balancers, common choices are probing `/api/v1/statistics/overview` or adding a health check in a future change.
+There is **no** dedicated `/health` endpoint. Common choices: probe `/api/v1/statistics/overview` or add a health check later.
 
 ## Search queries
 
@@ -163,14 +105,10 @@ There is **no** dedicated `/health` or `/ready` endpoint today. For load balance
 }
 ```
 
-Pass `null` or `{}` for an unpaginated "all" query where the controller allows it. See Swagger for filter field names per entity.
-
-## Versioning
-
-Configured in `ApiVersioning:DefaultVersion` (default `1.0`). The URL segment `v1` maps to version 1.0. Clients should include the version in the path.
+Pass `null` or `{}` for an unpaginated "all" query where allowed.
 
 ## Related reading
 
 - [Integration guide](integration-guide.md) — edge integration patterns
-- [Usage and observability](core/usage-and-observability.md) — how events become statistics
+- [Usage and observability](core/usage-and-observability.md) — RPM and metrics
 - [Admin UI guide](admin-ui-guide.md) — which pages call which endpoints

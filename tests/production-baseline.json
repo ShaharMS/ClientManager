@@ -1,0 +1,12 @@
+{
+  "measured_at": "2026-07-12",
+  "total_files": 387,
+  "total_lines": 27131,
+  "production_roots": [
+    "ClientManager.Api",
+    "ClientManager.AdminUI",
+    "ClientManager.Shared",
+    "ClientManager.DataAccess",
+    "compose"
+  ]
+}
