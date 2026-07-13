@@ -12,7 +12,7 @@ using StackExchange.Redis;
 namespace ClientManager.Api.Services.Storage.Extensions;
 
 /// <summary>
-/// Registers configured MongoDB and Redis document-store providers.
+/// Registers configured storage provider document stores.
 /// </summary>
 public static class StorageProviderRegistrationExtensions
 {

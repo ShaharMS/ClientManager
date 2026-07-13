@@ -5,7 +5,7 @@ namespace ClientManager.Api.Storage.Stores.Implementations.Helpers;
 
 /// <summary>
 /// Applies a <see cref="DocumentQuery"/> to an in-memory list using reflection.
-/// Used as the fallback engine for plain Redis and as a safety net for any store.
+/// Used when a storage provider lacks indexed search, and as a safety net for any store.
 /// </summary>
 public static class InMemoryQueryEvaluator
 {

@@ -44,7 +44,7 @@ public interface IRateLimitService
 /// <remarks>
 /// <para>
 /// Each strategy encapsulates how counters are read, updated, and expired for one algorithm.
-/// Implementations delegate persistence to <c>IRateLimitStateDatabase</c> so Redis and MongoDB can
+/// Implementations delegate persistence to <c>IRateLimitStateDatabase</c> so storage providers can
 /// provide backend-appropriate atomicity.
 /// </para>
 /// </remarks>

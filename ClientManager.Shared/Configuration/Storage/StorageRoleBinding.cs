@@ -3,7 +3,7 @@ using ClientManager.Shared.Models.Enums;
 namespace ClientManager.Shared.Configuration.Storage;
 
 /// <summary>
-/// Maps a single <see cref="StorageRole"/> to MongoDB or Redis connection settings.
+/// Maps a single <see cref="StorageRole"/> to a storage provider and its connection settings.
 /// </summary>
 public record StorageRoleBinding
 {

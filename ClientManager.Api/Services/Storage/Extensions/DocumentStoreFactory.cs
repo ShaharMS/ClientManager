@@ -9,7 +9,7 @@ using StackExchange.Redis;
 namespace ClientManager.Api.Services.Storage.Extensions;
 
 /// <summary>
-/// Creates MongoDB and Redis document-store implementations from configured storage bindings.
+/// Creates document-store implementations from configured storage bindings.
 /// </summary>
 internal static class DocumentStoreFactory
 {

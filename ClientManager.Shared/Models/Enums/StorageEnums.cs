@@ -17,7 +17,7 @@ public enum PersistenceProvider
 }
 
 /// <summary>
-/// Identifies a logical storage domain. Each role can be mapped to MongoDB or Redis independently.
+/// Identifies a logical storage domain. Each role can be mapped to a storage provider independently.
 /// </summary>
 public enum StorageRole
 {

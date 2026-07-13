@@ -3,9 +3,9 @@ using ClientManager.Shared.Models.Search;
 namespace ClientManager.Api.Storage.Stores.Interfaces;
 
 /// <summary>
-/// Lowest-level storage abstraction in the data-access layer. Every persistence backend
-/// (MongoDB or Redis) implements this interface once, and all higher-level
-/// databases and repositories delegate to it - no caller talks to a store driver directly.
+/// Lowest-level storage abstraction in the data-access layer. Every configured storage provider
+/// implements this interface once, and all higher-level databases and repositories delegate to it —
+/// no caller talks to a store driver directly.
 ///
 /// <para><strong>Two responsibilities in one surface</strong></para>
 /// <para>
@@ -36,10 +36,10 @@ namespace ClientManager.Api.Storage.Stores.Interfaces;
 ///
 /// <para><strong>Why counters live here</strong></para>
 /// <para>
-///     Rate-limit and RPM counters need atomicity guarantees that vary by backend
-///     (e.g. Redis INCR/Lua vs. MongoDB updates). Pushing them into the same abstraction lets each
-///     backend implement the atomic-increment semantics that are natural for its storage
-///     engine, rather than forcing a read-modify-write cycle through the document API.
+///     Rate-limit and RPM counters need atomicity guarantees that vary by storage provider.
+///     Pushing them into the same abstraction lets each provider implement the increment semantics
+///     that are natural for its engine, rather than forcing a read-modify-write cycle through the
+///     document API.
 /// </para>
 /// </summary>
 public interface IDocumentStore
@@ -146,7 +146,7 @@ public interface IDocumentStore
     /// Atomically decrements a counter identified by key, flooring at zero.
     /// Unlike a read-modify-write cycle through <see cref="GetCounterAsync"/> and
     /// <see cref="SetCounterAsync"/>, this is safe under concurrent access because
-    /// each backend can implement it with a single atomic operation (e.g. Redis DECRBY).
+    /// each storage provider can implement it with a single atomic operation.
     /// </summary>
     /// <param name="key">The counter key.</param>
     /// <param name="cancellationToken">Cancels the decrement before it completes.</param>
@@ -231,9 +231,8 @@ public interface IDocumentStore
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Searches for documents matching the given query. Stores may implement native query
-    /// translation (e.g. MongoDB filters or RediSearch) or fall back to loading all
-    /// documents and filtering in memory via
+    /// Searches for documents matching the given query. Storage providers may implement native query
+    /// translation or fall back to loading all documents and filtering in memory via
     /// <see cref="Implementations.Helpers.InMemoryQueryEvaluator"/>.
     /// </summary>
     /// <typeparam name="T">The document type to deserialize.</typeparam>
