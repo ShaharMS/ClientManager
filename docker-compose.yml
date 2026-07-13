@@ -1,14 +1,11 @@
 # Entry point for `docker compose up`. Switch stacks by editing the include list.
 #
-# Single API + Admin UI (default):
+# Multipod + observability + traffic-gen (full demo):
 include:
-  - path: compose/default.yml
+  - path: compose/multipod.yml
+  - path: compose/observability.yml
+  - path: compose/traffic-gen.yml
 
-# Single API + Admin UI + Redis — comment default above, use both lines below:
+# Single API + Admin UI:
 # include:
 #   - path: compose/default.yml
-#   - path: compose/dev.redis.yml
-
-# Full multi-pod in Docker (3 APIs + Mongo + Redis) — or use: python _scripts/run_multipod_docker.py
-# include:
-#   - path: compose/multipod.yml

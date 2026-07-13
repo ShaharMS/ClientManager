@@ -1,16 +1,7 @@
-# Jaeger all-in-one with OTLP gRPC on 4317 for local trace verification.
-#
-# Usage:
-#   docker compose -f compose/otel.yml up -d
-#
-# UI: http://localhost:16686
+# Deprecated — use compose/observability.yml --profile traces
 
 services:
-  jaeger:
-    image: jaegertracing/all-in-one:latest
-    restart: unless-stopped
-    ports:
-      - "16686:16686"
-      - "4317:4317"
-    environment:
-      COLLECTOR_OTLP_ENABLED: "true"
+  otel-deprecated-notice:
+    image: busybox:1.36
+    profiles: [deprecated]
+    command: ["sh", "-c", "echo Use compose/observability.yml with --profile traces && exit 1"]

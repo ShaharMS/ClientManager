@@ -8,22 +8,48 @@ Stack definitions live in this folder. Use the repo-root [`docker-compose.yml`](
 | [`dev.redis.yml`](dev.redis.yml) | Overlay: adds Redis and wires API `depends_on` |
 | [`redis.yml`](redis.yml) | Standalone Redis (`docker compose -f compose/redis.yml up -d`) |
 | [`dev.mongo.yml`](dev.mongo.yml) | Standalone MongoDB replica set for integration tests |
-| [`otel.yml`](otel.yml) | Jaeger all-in-one with OTLP on port 4317 |
-| [`multipod.yml`](multipod.yml) | Three API replicas + MongoDB replica set + Redis (production-like persistence) |
+| [`observability.yml`](observability.yml) | Prometheus + Grafana; `--profile traces` adds Tempo + OTel Collector |
+| [`traffic-gen.yml`](traffic-gen.yml) | `--profile load` synthetic access-check traffic (multipod) |
+| [`multipod.yml`](multipod.yml) | Three API replicas + MongoDB replica set + Redis |
+| [`otel.yml`](otel.yml) | Deprecated pointer — use `observability.yml --profile traces` |
 
 Persistence uses **MongoDB** and **Redis** only. Storage roles: `Configuration`, `RateLimiting`, `Rpm`.
 
-## Multi-pod verification (recommended)
+## Observability (local)
 
-Fresh cluster every run — empty Mongo/Redis volumes, catalog-only seed:
+```powershell
+# Metrics only (2 containers)
+python _scripts/launch_observability_ui.py up
+
+# With traces
+python _scripts/launch_observability_ui.py up --traces
+```
+
+Full runbook: [docs/observability-runbook.md](../docs/observability-runbook.md)
+
+## Multipod + dashboard
+
+Edit `docker-compose.yml`:
+
+```yaml
+include:
+  - path: compose/multipod.yml
+  - path: compose/observability.yml
+  - path: compose/traffic-gen.yml   # optional
+```
+
+```powershell
+docker compose up --build
+docker compose --profile load up    # skewed demo traffic
+```
+
+Pods: host ports **5062**, **5063**, **5064**. Prometheus scrapes each pod on the Docker network.
+
+## Multi-pod verification (recommended)
 
 ```bash
 python _scripts/run_multipod_docker.py
 ```
-
-This runs `docker compose down -v`, `up --build`, cross-pod checks, then tears down.
-
-Options:
 
 | Flag | Effect |
 | --- | --- |
@@ -31,16 +57,6 @@ Options:
 | `--skip-check` | Only start the stack (no seed/check) |
 | `--no-build` | Skip image rebuild |
 
-For catalog migration between instances, use `GET` / `POST` `/api/v1/seed` with `Seed:SeedApiEnabled: true` — see [Seed system](../docs/core/seed-system.md).
+## Production
 
-Pods listen on host ports **5062**, **5063**, and **5064**.
-
-## Multipod persistence layout
-
-Typical `multipod.yml` environment:
-
-| Role | Provider |
-| --- | --- |
-| `Configuration` (default) | MongoDB |
-| `RateLimiting` | Redis (`DatabaseIndex: 1`) |
-| `Rpm` | Redis (`DatabaseIndex: 2`) |
+Import [`observability/grafana/dashboards/clientmanager.json`](../observability/grafana/dashboards/clientmanager.json) into org Grafana. See [metrics catalog](../docs/metrics-catalog.md).

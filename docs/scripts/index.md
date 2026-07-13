@@ -33,7 +33,7 @@ Set `CLIENTMANAGER_STORAGE_DATA_DIR` to point the API at a custom persistence di
 | [seed_data.py](seed-data.md) | Yes | Seed catalog via API + optional historical usage files |
 | [traffic_generator.py](traffic-generator.md) | Yes | Continuous live traffic for demos |
 | [performance_baseline.py](performance-baseline.md) | Yes | Deterministic load profile + latency report |
-| [launch_observability_ui.py](launch-observability-ui.md) | No | Local Grafana, Prometheus, Jaeger stack |
+| [launch_observability_ui.py](launch-observability-ui.md) | No | Local Prometheus + Grafana (+ optional Tempo) |
 | [download_images.py](download-images.md) | No | Pull/build Docker images for deployment |
 
 ## Typical workflows

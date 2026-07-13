@@ -1,0 +1,27 @@
+# Synthetic access-check load for multipod demos.
+# Usage: docker compose --profile load up
+#
+# TRAFFIC_TARGETS  — comma-separated base URLs (default hits api-1/2/3)
+# TRAFFIC_WEIGHTS  — optional skew e.g. api-1:80,api-2:15,api-3:5
+# TRAFFIC_RPS      — target aggregate requests per second (default 20)
+# TRAFFIC_DURATION — seconds to run (0 = until stopped)
+
+services:
+  traffic-gen:
+    profiles: [load]
+    image: python:3.13-alpine
+    restart: unless-stopped
+    working_dir: /work
+    volumes:
+      - ..:/work:ro
+    environment:
+      TRAFFIC_TARGETS: ${TRAFFIC_TARGETS:-http://api-1:5062,http://api-2:5062,http://api-3:5062}
+      TRAFFIC_WEIGHTS: ${TRAFFIC_WEIGHTS:-}
+      TRAFFIC_RPS: ${TRAFFIC_RPS:-20}
+      TRAFFIC_DURATION: ${TRAFFIC_DURATION:-0}
+    command:
+      - python
+      - _scripts/compose_traffic_gen.py
+    depends_on:
+      api-1:
+        condition: service_started

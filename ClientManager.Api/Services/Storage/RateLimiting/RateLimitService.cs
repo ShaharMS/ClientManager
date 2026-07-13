@@ -190,8 +190,19 @@ public class RateLimitService : IRateLimitService
         return result;
     }
 
-    private static RateLimitResult CompleteGlobalDecision(RateLimitResult result, string clientId, string serviceId) =>
-        result.IsAllowed ? result : result with { IsGlobalLimitHit = true };
+    private RateLimitResult CompleteGlobalDecision(RateLimitResult result, string clientId, string serviceId)
+    {
+        if (!result.IsAllowed)
+        {
+            _metrics.GlobalRateLimitHits.Add(1, new TagList
+            {
+                { MetricTagKey.ServiceId.ToTagName(), serviceId }
+            });
+            return result with { IsGlobalLimitHit = true };
+        }
+
+        return result;
+    }
 
     private async Task<RateLimitResult?> EvaluateAsync(
         RateLimitPolicy? rateLimit,

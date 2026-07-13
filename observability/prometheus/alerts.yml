@@ -1,0 +1,46 @@
+groups:
+  - name: clientmanager
+    rules:
+      - alert: ClientManagerApiDown
+        expr: count(up{job="clientmanager-api"} == 1) == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: All ClientManager API scrape targets are down
+
+      - alert: ClientManagerHighHttpErrorRate
+        expr: |
+          (
+            sum(rate(clientmanager_http_requests_total{job="clientmanager-api",statusCode=~"5.."}[5m]))
+            /
+            sum(rate(clientmanager_http_requests_total{job="clientmanager-api"}[5m]))
+          ) > 0.01
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: HTTP 5xx rate above 1%
+
+      - alert: ClientManagerHighAccessDenialRate
+        expr: |
+          sum(rate(clientmanager_access_denied_total{job="clientmanager-api"}[5m]))
+          /
+          sum(rate(clientmanager_requests_total{job="clientmanager-api"}[5m])) > 0.25
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Access denial rate above 25%
+
+      - alert: ClientManagerHighHttpMedianLatency
+        expr: |
+          histogram_quantile(
+            0.50,
+            sum by (le) (rate(clientmanager_http_requests_duration_milliseconds_bucket{job="clientmanager-api"}[5m]))
+          ) > 500
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: HTTP median latency above 500ms

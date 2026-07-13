@@ -44,7 +44,7 @@ Full documentation: **[Scripts](scripts/index.md)**.
 | `seed_data.py` | POST demo catalog to the API |
 | `traffic_generator.py` | Continuous random access checks |
 | `performance_baseline.py` | Deterministic load profile + latency report |
-| `launch_observability_ui.py` | Local Grafana, Prometheus, Jaeger |
+| `launch_observability_ui.py` | Local Prometheus + Grafana (`--traces` for Tempo) |
 | `download_images.py` | Pull/build Docker images |
 
 All API-facing scripts accept `--base-url` (default `http://localhost:5062`).
@@ -52,10 +52,10 @@ All API-facing scripts accept `--base-url` (default `http://localhost:5062`).
 ### Observability stack
 
 ```powershell
-python _scripts/launch_observability_ui.py
+python _scripts/launch_observability_ui.py up
 ```
 
-Default UIs: Grafana http://localhost:3000, Prometheus http://localhost:9090, Jaeger http://localhost:16686.
+Default UIs: Grafana http://localhost:3000/d/clientmanager-observability, Prometheus http://localhost:9090. Add `--traces` for Tempo on port 3200.
 
 See the [Metrics integration guide](metrics-integration-guide.md) for scrape config and Grafana RPM query:
 

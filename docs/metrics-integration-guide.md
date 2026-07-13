@@ -1,6 +1,6 @@
 # Metrics integration guide
 
-This guide shows how to plug ClientManager into an external metrics stack — **Prometheus**, **Grafana**, **Jaeger**, or any collector that speaks Prometheus scrape or OTLP.
+This guide shows how to plug ClientManager into an external metrics stack — **Prometheus**, **Grafana**, **Tempo**, or any collector that speaks Prometheus scrape or OTLP.
 
 ## What you can monitor
 
@@ -19,17 +19,17 @@ flowchart LR
     api[ClientManager API]
     prom[Prometheus or compatible scraper]
     graf[Grafana / Alertmanager]
-    jaeger[Jaeger / Tempo / etc.]
+    tempo[Tempo / OTLP backend]
 
     api -->|scrape /prometheus/otel| prom
-    api -->|OTLP gRPC| jaeger
+    api -->|OTLP gRPC| tempo
     prom --> graf
-    jaeger --> graf
+    tempo --> graf
 ```
 
 ## Quick start (local stack)
 
-1. Start the API (default `http://localhost:5062`).
+1. Start the API (default `http://localhost:5062`) or multipod compose.
 2. Seed data and generate traffic:
 
    ```powershell
@@ -37,35 +37,42 @@ flowchart LR
    python _scripts/traffic_generator.py --base-url http://localhost:5062 --interval 2.0
    ```
 
-3. Launch the observability stack:
+3. Launch the checked-in observability stack:
 
    ```powershell
-   python _scripts/launch_observability_ui.py
+   python _scripts/launch_observability_ui.py up
+   python _scripts/launch_observability_ui.py up --traces   # optional Tempo
    ```
 
    | Service | URL |
    | --- | --- |
-   | Grafana | http://localhost:3000 |
+   | Grafana | http://localhost:3000/d/clientmanager-observability |
    | Prometheus | http://localhost:9090 |
-   | Jaeger | http://localhost:16686 |
+   | Tempo (`--traces`) | http://localhost:3200 |
 
-4. Confirm traces: `Observability:OtlpEndpoint` in `appsettings.Development.json` defaults to `http://localhost:4317`.
+4. With traces: set `Observability:OtlpEndpoint` to `http://localhost:4317` (or use multipod compose which points at `otel-collector`).
+
+See [Observability runbook](observability-runbook.md) and [Metrics catalog](metrics-catalog.md).
 
 ## Prometheus scrape configuration
 
-Scrape OpenTelemetry metrics from the API process:
+Checked-in config: [`observability/prometheus/prometheus.yml`](../observability/prometheus/prometheus.yml)
 
 ```yaml
 scrape_configs:
-  - job_name: clientmanager-runtime
-    scrape_interval: 15s
+  - job_name: clientmanager-api
+    scrape_interval: 5s
     metrics_path: /prometheus/otel
     static_configs:
       - targets:
-          - clientmanager-api:5062
+          - api-1:5062
+          - api-2:5062
+          - api-3:5062
+          - api:5062
+          - host.docker.internal:5062
 ```
 
-When the API runs on the host and Prometheus runs in Docker, use `host.docker.internal:5062` (Docker Desktop) or the host gateway IP.
+Unreachable targets stay `down` — normal when not running multipod.
 
 ### Kubernetes (generic pattern)
 
@@ -79,60 +86,41 @@ curl -sS http://localhost:5062/prometheus/otel | head
 
 You should see `# HELP` / `# TYPE` lines in Prometheus text exposition format.
 
-## Runtime metric catalog (`/prometheus/otel`)
+## Runtime metric catalog
 
-Instruments from `ClientManagerMetrics` and `StorageMetrics` plus ASP.NET Core instrumentation.
+Full reference: [Metrics catalog](metrics-catalog.md)
 
-### HTTP layer
+Import dashboard: [`observability/grafana/dashboards/clientmanager.json`](../observability/grafana/dashboards/clientmanager.json)
 
-| Metric | Type | Tags | Description |
-| --- | --- | --- | --- |
-| `clientmanager_requests_total` | Counter | `method`, `endpoint`, `statusCode` | Every HTTP request |
-| `clientmanager_requests_errors` | Counter | `method`, `endpoint`, `statusCode` | Responses with status ≥ 400 |
-| `clientmanager_requests_duration` | Histogram | `method`, `endpoint` | End-to-end request time (ms) |
+### HTTP layer (`ClientManagerMetrics`)
 
-ASP.NET Core instrumentation also contributes standard `http.server.*` metrics.
+| Prometheus name | Labels | Description |
+| --- | --- | --- |
+| `clientmanager_http_requests_total` | `method`, `endpoint`, `statusCode` | Every HTTP request |
+| `clientmanager_http_requests_errors_total` | `method`, `endpoint`, `statusCode` | Status ≥ 400 |
+| `clientmanager_http_requests_duration_milliseconds_*` | `method`, `endpoint` | Request time (ms) |
 
 ### Access control
 
-| Metric | Type | Tags | Description |
-| --- | --- | --- | --- |
-| `clientmanager_access_granted` | Counter | `clientId`, `serviceId` | Successful access checks |
-| `clientmanager_access_denied` | Counter | `clientId`, `serviceId`, `reason` | Failed access checks |
-| `clientmanager_storage_access_duration` | Histogram | — | Storage-side access-check time (ms) |
-
-**Access denial `reason` values:** `not_configured`, `client_disabled`, `service_disabled`, `not_allowed`, `global_rate_limited`, `rate_limited`.
-
-### Rate limiting
-
-| Metric | Type | Tags | Description |
-| --- | --- | --- | --- |
-| `clientmanager_ratelimit_allowed` | Counter | `clientId`, `serviceId` | Checks that passed |
-| `clientmanager_ratelimit_denied` | Counter | `clientId`, `serviceId` | Checks that failed |
-| `clientmanager_ratelimit_global_hits` | Counter | — | Global service limit denials |
-| `clientmanager_storage_ratelimit_strategy_duration` | Histogram | — | Strategy evaluation time (ms) |
-
-### Storage backend
-
-| Metric | Type | Description |
+| Prometheus name | Labels | Description |
 | --- | --- | --- |
-| `clientmanager_storage_document_store_duration` | Histogram | Per-operation document store latency (ms) |
-
-Resource-pool metrics (`clientmanager_resources_*`, `clientmanager_pool_*`) are no longer emitted — those features were removed.
+| `clientmanager_requests_total` | `service`, `client`, `outcome` | Access-check outcomes |
+| `clientmanager_access_denied_total` | `clientId`, `serviceId`, `reason` | Denied checks |
+| `clientmanager_storage_access_duration_milliseconds_*` | `clientId`, `serviceId`, `result`, `reason` | Access-check latency |
 
 ## Example PromQL queries
 
-**Global RPM (matches Admin UI dashboard):**
+**Granted RPM equivalent:**
 
 ```promql
-sum(rate(clientmanager_requests_total[5m])) * 60
+sum(rate(clientmanager_requests_total{outcome="granted"}[5m])) * 60
 ```
 
 **HTTP error rate (5m):**
 
 ```promql
-sum(rate(clientmanager_requests_errors_total[5m]))
-  / sum(rate(clientmanager_requests_total[5m]))
+sum(rate(clientmanager_http_requests_errors_total[5m]))
+  / sum(rate(clientmanager_http_requests_total[5m]))
 ```
 
 **Access denials by reason:**
@@ -146,38 +134,11 @@ sum by (reason) (rate(clientmanager_access_denied_total[5m]))
 ```promql
 histogram_quantile(
   0.95,
-  sum(rate(clientmanager_storage_access_duration_bucket[5m])) by (le)
+  sum by (le) (rate(clientmanager_storage_access_duration_milliseconds_bucket[5m]))
 )
 ```
 
-Adjust metric suffixes (`_total`, `_bucket`) to match your scrape output — OpenTelemetry's Prometheus exporter may append conventional suffixes.
-
-## Example alerts
-
-```yaml
-groups:
-  - name: clientmanager
-    rules:
-      - alert: ClientManagerHighDenialRate
-        expr: sum(rate(clientmanager_access_denied_total[5m])) > 10
-        for: 5m
-        labels:
-          severity: warning
-        annotations:
-          summary: Elevated access denials
-
-      - alert: ClientManagerHighLatency
-        expr: |
-          histogram_quantile(
-            0.99,
-            sum(rate(clientmanager_requests_duration_bucket[5m])) by (le)
-          ) > 500
-        for: 5m
-        labels:
-          severity: warning
-        annotations:
-          summary: p99 HTTP latency above 500ms
-```
+Example alert rules: [`observability/prometheus/alerts.yml`](../observability/prometheus/alerts.yml)
 
 ## Distributed traces (OTLP)
 
@@ -186,16 +147,18 @@ Traces are **not** scraped by Prometheus. Configure OTLP export on the API:
 ```json
 {
   "Observability": {
-    "OtlpEndpoint": "http://jaeger:4317"
+    "OtlpEndpoint": "http://localhost:4317"
   }
 }
 ```
 
-Environment variable: `Observability__OtlpEndpoint=http://jaeger:4317`.
+Environment variable: `Observability__OtlpEndpoint=http://localhost:4317`.
 
-When set, the API exports spans for ASP.NET Core requests and hot-path storage operations (`storage.access.check`, `storage.ratelimit.*`, …).
+When set, the API exports spans for ASP.NET Core requests and hot-path storage operations.
 
-Search by service name **`ClientManager.Api`** in Jaeger, Grafana Tempo, or any OTLP-compatible backend.
+With `--profile traces`, the **Traces** row at the bottom of the ClientManager dashboard lists recent `ClientManager.Api` spans — click a row for the waterfall. Explore → Tempo works too if you prefer.
+
+Production: use 1–2% head sampling via OTel Collector; 7-day retention is typical. See [Observability runbook](observability-runbook.md).
 
 ## Security
 
@@ -220,7 +183,8 @@ RPM in `statistics/overview` is cluster-accurate when all instances share the `R
 
 ## Related reading
 
-- [Development and operations](development-and-operations.md) — scripts, Docker, troubleshooting
+- [Observability runbook](observability-runbook.md)
+- [Metrics catalog](metrics-catalog.md)
 - [Configuration reference](configuration-reference.md) — `Observability:OtlpEndpoint`, `Rpm`, `StorageReadCache`
 - [API overview](api-overview.md) — statistics and metrics endpoints
 - [Usage and observability](core/usage-and-observability.md) — RPM pipeline

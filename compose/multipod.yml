@@ -3,6 +3,7 @@
 
 x-api-environment: &api-environment
   ASPNETCORE_ENVIRONMENT: Development
+  Observability__OtlpEndpoint: http://otel-collector:4317
   Persistence__DefaultProvider: MongoDb
   Persistence__DefaultMongoDb__ConnectionString: mongodb://mongo:27017/?replicaSet=rs0
   Persistence__DefaultMongoDb__DatabaseName: ClientManager

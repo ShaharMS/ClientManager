@@ -1,26 +1,29 @@
 # launch_observability_ui.py
 
-Starts a local Grafana, Prometheus, and Jaeger stack for ClientManager metrics and traces.
+Starts the **checked-in** Prometheus + Grafana stack from [`compose/observability.yml`](../compose/observability.yml).
 
 ## Default endpoints
 
 | Service | URL |
 | --- | --- |
-| Grafana | http://localhost:3000 |
+| Grafana | http://localhost:3000/d/clientmanager-observability |
 | Prometheus | http://localhost:9090 |
-| Jaeger | http://localhost:16686 |
+| Tempo (`--traces`) | http://localhost:3200 |
 
 ## Usage
 
 ```powershell
-python _scripts/launch_observability_ui.py
+python _scripts/launch_observability_ui.py up
+python _scripts/launch_observability_ui.py up --traces
+python _scripts/launch_observability_ui.py down
 ```
 
-Running without a subcommand starts the full stack. See `python _scripts/launch_observability_ui.py --help` for subcommands (configure hosts OTLP, stop stack, etc.).
+Running without a subcommand starts the metrics stack. See `python _scripts/launch_observability_ui.py --help`.
 
-Generated compose files live under `_scripts/.observability-stack/` (gitignored).
+Provisioning and dashboards live under [`observability/`](../observability/) (version controlled).
 
 ## Related
 
+- [Observability runbook](../observability-runbook.md)
+- [Metrics catalog](../metrics-catalog.md)
 - [Metrics integration guide](../metrics-integration-guide.md)
-- [Usage and observability](../core/usage-and-observability.md)
