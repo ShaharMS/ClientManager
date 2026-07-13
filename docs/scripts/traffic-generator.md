@@ -1,6 +1,6 @@
 # traffic_generator.py
 
-Generates semi-random live traffic against the public ClientManager API for dashboard and monitor demos.
+Generates semi-random live traffic against the public ClientManager API for dashboard demos.
 
 ## Prerequisites
 
@@ -10,12 +10,11 @@ Generates semi-random live traffic against the public ClientManager API for dash
 ## What it simulates
 
 - Access checks (most common)
-- Resource acquire / release cycles
-- Occasional statistics and list reads
+- Overview and catalog list reads
 - Varying request rates per client
 - Some intentionally failing requests
 
-Press **Ctrl+C** to stop. Stop the generator before shutting down the API so buffered usage can flush.
+Press **Ctrl+C** to stop. Stop the generator before shutting down the API so buffered RPM events can flush.
 
 ## Usage
 

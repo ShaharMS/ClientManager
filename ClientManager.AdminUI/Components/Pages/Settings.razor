@@ -48,78 +48,16 @@ else
                 <RadzenSwitch @bind-Value="_isDarkMode" Change="@OnThemeChanged" />
             </div>
         </div>
-
-        <div class="cm-settings__card">
-            <div class="cm-settings__card-header">
-                <RadzenIcon Icon="schedule" class="cm-settings__card-icon" />
-                <div>
-                    <h3 class="cm-settings__card-title">@L["Settings.DefaultTimeRange.Title"]</h3>
-                    <p class="cm-settings__card-desc">@L["Settings.DefaultTimeRange.Description"]</p>
-                </div>
-            </div>
-            <div class="cm-settings__card-control">
-                <RadzenDropDown TValue="string"
-                                Data="@_timeRangeOptions"
-                                TextProperty="Label"
-                                ValueProperty="Key"
-                                @bind-Value="_selectedTimeRange"
-                                Change="@(args => OnTimeRangeChanged((string)args))" />
-            </div>
-        </div>
-
-        <div class="cm-settings__card">
-            <div class="cm-settings__card-header">
-                <RadzenIcon Icon="update" class="cm-settings__card-icon" />
-                <div>
-                    <h3 class="cm-settings__card-title">@L["Settings.DefaultPollingInterval.Title"]</h3>
-                    <p class="cm-settings__card-desc">@L["Settings.DefaultPollingInterval.Description"]</p>
-                </div>
-            </div>
-            <div class="cm-settings__card-control">
-                <RadzenDropDown TValue="string"
-                                Data="@_pollingOptions"
-                                TextProperty="Label"
-                                ValueProperty="Key"
-                                @bind-Value="_selectedPollingInterval"
-                                Change="@(args => OnPollingIntervalChanged((string)args))" />
-            </div>
-        </div>
-
-        <div class="cm-settings__card">
-            <div class="cm-settings__card-header">
-                <RadzenIcon Icon="show_chart" class="cm-settings__card-icon" />
-                <div>
-                    <h3 class="cm-settings__card-title">@L["Settings.DefaultAxisScale.Title"]</h3>
-                    <p class="cm-settings__card-desc">@L["Settings.DefaultAxisScale.Description"]</p>
-                </div>
-            </div>
-            <div class="cm-settings__card-control">
-                <RadzenDropDown TValue="string"
-                                Data="@_axisScaleOptions"
-                                TextProperty="Label"
-                                ValueProperty="Value"
-                                @bind-Value="_selectedAxisScale"
-                                Change="@(args => OnAxisScaleChanged((string)args))" />
-            </div>
-        </div>
     </div>
 }
 
 @code {
     private bool _loading = true;
     private bool _isDarkMode;
-    private string _selectedTimeRange = "1h";
-    private string _selectedPollingInterval = "10s";
-    private string _selectedAxisScale = "Linear";
     private string _selectedCulture = SupportedCultures.Default;
-    private List<PresetOption> _timeRangeOptions = [];
-    private List<PresetOption> _pollingOptions = [];
-    private List<AxisScaleOption> _axisScaleOptions = [];
     private List<LanguageOption> _languageOptions = [];
     private IJSObjectReference? _preferencesJs;
 
-    private record AxisScaleOption(string Value, string Label);
-    private record PresetOption(string Key, string Label);
     private record LanguageOption(string Value, string Label);
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -129,23 +67,9 @@ else
             _languageOptions = SupportedCultures.Codes
                 .Select(c => new LanguageOption(c, L[$"LanguageOption.{c}"]))
                 .ToList();
-            _timeRangeOptions = TimeRangePreset.All
-                .Select(p => new PresetOption(p.Key, p.GetLocalizedLabel(L)))
-                .ToList();
-            _pollingOptions = PollingIntervalPreset.All
-                .Select(p => new PresetOption(p.Key, p.GetLocalizedLabel(L)))
-                .ToList();
-            _axisScaleOptions =
-            [
-                new("Linear", L["Common.Linear"]),
-                new("Logarithmic", L["Common.Logarithmic"])
-            ];
 
             var prefs = await PreferencesService.GetPreferencesAsync();
             _isDarkMode = prefs.Theme == "dark";
-            _selectedTimeRange = prefs.DefaultTimeRange;
-            _selectedPollingInterval = prefs.DefaultPollingInterval;
-            _selectedAxisScale = prefs.DefaultAxisScale;
             _selectedCulture = SupportedCultures.Normalize(prefs.Culture);
             _loading = false;
             StateHasChanged();
@@ -172,30 +96,6 @@ else
     {
         var prefs = await PreferencesService.GetPreferencesAsync();
         prefs.Theme = value ? "dark" : "light";
-        await PreferencesService.SavePreferencesAsync(prefs);
-    }
-
-    private async Task OnTimeRangeChanged(string key)
-    {
-        _selectedTimeRange = key;
-        var prefs = await PreferencesService.GetPreferencesAsync();
-        prefs.DefaultTimeRange = key;
-        await PreferencesService.SavePreferencesAsync(prefs);
-    }
-
-    private async Task OnPollingIntervalChanged(string key)
-    {
-        _selectedPollingInterval = key;
-        var prefs = await PreferencesService.GetPreferencesAsync();
-        prefs.DefaultPollingInterval = key;
-        await PreferencesService.SavePreferencesAsync(prefs);
-    }
-
-    private async Task OnAxisScaleChanged(string value)
-    {
-        _selectedAxisScale = value;
-        var prefs = await PreferencesService.GetPreferencesAsync();
-        prefs.DefaultAxisScale = value;
         await PreferencesService.SavePreferencesAsync(prefs);
     }
 }

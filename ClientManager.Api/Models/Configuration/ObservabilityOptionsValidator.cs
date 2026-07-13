@@ -21,9 +21,10 @@ public sealed class ObservabilityOptionsValidator : IValidateOptions<Observabili
             return ValidateOptionsResult.Success;
         }
 
-        return Uri.TryCreate(options.OtlpEndpoint, UriKind.Absolute, out _)
+        return Uri.TryCreate(options.OtlpEndpoint, UriKind.Absolute, out var endpoint)
+            && (endpoint.Scheme == Uri.UriSchemeHttp || endpoint.Scheme == Uri.UriSchemeHttps)
             ? ValidateOptionsResult.Success
             : ValidateOptionsResult.Fail(
-                $"{ObservabilityOptions.SectionName}:OtlpEndpoint must be an absolute URI when provided.");
+                $"{ObservabilityOptions.SectionName}:OtlpEndpoint must be an absolute HTTP(S) URI when provided.");
     }
 }

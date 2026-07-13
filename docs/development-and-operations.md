@@ -4,58 +4,48 @@ Day-to-day notes for running, observing, deploying, and debugging ClientManager.
 
 ## Security model
 
-**There is no built-in authentication or authorization** on the API or Admin UI today. `UseAuthorization()` is registered but no authentication scheme is configured.
-
-Implications:
+**There is no built-in authentication or authorization** on the API or Admin UI today.
 
 | Surface | Risk if exposed | Mitigation |
 | --- | --- | --- |
-| API catalog CRUD | Anyone can change clients, limits, pools | Network policy, private VPC, reverse-proxy auth |
-| Runtime gatekeeping | Anyone who can reach the API can check/acquire | Same — usually internal-only |
+| API catalog CRUD | Anyone can change clients and limits | Network policy, private VPC, reverse-proxy auth |
+| Runtime gatekeeping | Anyone who can reach the API can check access | Same — usually internal-only |
 | Admin UI | Full operational control | Do not expose publicly without a front door |
 | Swagger `/docs` | Schema and try-it-out access | Disable or protect in production |
+| Seed API | Bulk catalog wipe/import when `SeedApiEnabled` is true | Keep `Seed:SeedApiEnabled: false` in production |
 
-ClientManager identifies **callers** via `clientId` you supply — it does not validate end-user identity. Production integrations should derive `clientId` from trusted headers, API keys, or JWT claims at your edge layer, not from caller-editable query strings.
+ClientManager identifies **callers** via `clientId` you supply — it does not validate end-user identity.
 
 ## Local development tips
 
 ### Startup order
 
-1. `ClientManager.Api` (`:5062`)
+1. `ClientManager.Api` (`:5062`) — requires Redis (default) or configured MongoDB
 2. `ClientManager.AdminUI` (`:5100`)
 
-### Persistence location
-
-With default JsonFile settings, data files land in `./data` relative to the API process working directory. Docker Compose mounts repo `./data` → `/app/data`.
-
-If catalogs look empty after restart, run:
+### Seed catalog data
 
 ```powershell
 python _scripts/seed_data.py --base-url http://localhost:5062
 ```
 
-Or configure the `Seed` section with `DangerZone:EnableStartupSeeding` — see [Configuration reference](configuration-reference.md) and [Danger zone](danger-zone.md). To copy catalog from another running instance, use `GET` then `PUT`/`POST` `/api/v1/seed` (requires seed gates) — see [Seed system](core/seed-system.md).
-
-### Bulk catalog edits
-
-Use `PATCH /api/v1/{resource}` with a JSON array of `{ "id", …partial fields }` for surgical or bulk partial updates. Use seed import for full collection copy/mirror. See [API overview](api-overview.md).
+Or enable `Seed:SeedApiEnabled: true` and use `GET` / `POST` `/api/v1/seed` — see [Seed system](core/seed-system.md).
 
 ### Hot-path cache behavior
 
-Configuration reads on the access-check path use `IStorageReadCache` (default catalog TTL 30 seconds). After editing config in the Admin UI, changes propagate within TTL or immediately on write (cache invalidation). You do **not** need to restart the API for catalog edits.
+Configuration reads on the access-check path use `IStorageReadCache` (`StorageReadCache:CatalogTtl`, default 30s). Admin UI writes invalidate cache entries — no API restart needed.
 
 ## Python scripts (`_scripts/`)
 
-Full per-script documentation: **[Scripts](scripts/index.md)**.
+Full documentation: **[Scripts](scripts/index.md)**.
 
 | Script | Purpose |
 | --- | --- |
-| `seed_data.py` | POST demo catalog to the API; optional historical usage files |
-| `traffic_generator.py` | Continuous random access checks and acquisitions |
+| `seed_data.py` | POST demo catalog to the API |
+| `traffic_generator.py` | Continuous random access checks |
 | `performance_baseline.py` | Deterministic load profile + latency report |
 | `launch_observability_ui.py` | Local Grafana, Prometheus, Jaeger |
 | `download_images.py` | Pull/build Docker images |
-| `configuration.py` | Shared catalogs, URLs, paths |
 
 All API-facing scripts accept `--base-url` (default `http://localhost:5062`).
 
@@ -67,44 +57,36 @@ python _scripts/launch_observability_ui.py
 
 Default UIs: Grafana http://localhost:3000, Prometheus http://localhost:9090, Jaeger http://localhost:16686.
 
-For scrape targets, metric catalogs, PromQL examples, production wiring, and security notes, see the [Metrics integration guide](metrics-integration-guide.md).
+See the [Metrics integration guide](metrics-integration-guide.md) for scrape config and Grafana RPM query:
 
-### Performance baseline
-
-```powershell
-python _scripts/performance_baseline.py --base-url http://localhost:5062
+```promql
+sum(rate(clientmanager_requests_total[5m])) * 60
 ```
-
-Reports latency percentiles and JsonFile storage sizes under `data/` for regression comparisons.
 
 ## Validation
 
 | What | How |
 | --- | --- |
 | Solution build | `dotnet build ClientManager.slnx` |
-| Manual API checks | Swagger at `/docs`, or curl against gatekeeping endpoints |
+| Manual API checks | Swagger at `/docs`, or curl against `/api/v1/access/check` |
 | Dashboard validation | `seed_data.py` + `traffic_generator.py` |
-
-There is no automated test suite or CI workflow in the repository today. Validate locally before merging.
 
 ## Docker and Compose
 
-[`docker-compose.yml`](../docker-compose.yml) is the entry point for `docker compose up` (default: API + Admin UI with `./data`). See [`compose/README.md`](../compose/README.md) to switch stacks.
+[`docker-compose.yml`](../docker-compose.yml) is the entry point for `docker compose up`. See [`compose/README.md`](../compose/README.md).
 
-**Multi-pod verification** (MongoDB + Redis + three API replicas in Docker):
+**Multi-pod verification** (MongoDB + Redis + three API replicas):
 
 ```bash
 python _scripts/run_multipod_docker.py
 ```
 
-See [Multi-pod Docker verification](scripts/multipod-docker.md). Each run wipes volumes (`down -v`), seeds catalog only, and runs cross-pod statistics checks. For richer seed data, import NDJSON via the seed API manually.
-
 Production-oriented deployments should:
 
 - Set `Persistence` to MongoDB and/or Redis (see [Persistence overview](persistence/index.md))
-- Mount secrets via environment variables, not committed JSON
+- Mount secrets via environment variables
 - Place API and Admin UI behind TLS termination
-- Restrict network access to the API
+- Keep `Seed:SeedApiEnabled: false` unless migrating catalog
 
 Dockerfiles:
 
@@ -115,72 +97,41 @@ Dockerfiles:
 
 ## Logging
 
-Both hosts use **NLog** (`nlog.config`). API request tracking flows through `RequestTrackingMiddleware`; domain errors through `ErrorHandlingMiddleware` as `problem+json`.
-
-Every error body includes `traceId` (also in the `X-Trace-Id` header) — match it to:
-
-- NLog request logs
-- OpenTelemetry spans (`storage.access.check`, `storage.resource.acquire`, …)
-- Prometheus counters tagged by denial reason
-
-Optional Elasticsearch sink: `Logging:Elasticsearch:Uri` in API configuration.
-
-### Correlating slow dashboard load (airgapped K8s)
-
-After deploying builds with `RequestTrackingMiddleware` on Admin UI and API:
-
-| Symptom | Browser | Admin UI logs | API logs |
-| --- | --- | --- | --- |
-| ~30s tab spinner | DevTools → Network → `document` TTFB on `GET /` | Slow `GET /` line (250ms+ threshold) | N/A — HTML is served without API calls |
-| Skeleton cards ~30s | Parallel `api/v1/statistics/*` waterfall | Outbound HTTP log duration per stats call | `RequestTrackingMiddleware` + `counter_get_by_prefix` / `counter_get_many` slow ops |
-| Charts never load | `timeseries/search` pending | Same outbound stats calls | Heavy snapshot overlay on tail buckets |
-| WebSocket stuck `101` | WS `/_blazor` pending | SignalR connect attempts | N/A |
-
-**Ingress vs pod:** `kubectl port-forward svc/clientmanager-admin-ui 5100:5100` — if `GET /` is fast locally but slow through ingress, fix ingress/DNS (see [Kubernetes guides](kubernetes/index.md)), not Redis.
-
-**Redis:** run `SLOWLOG GET 20` during a slow refresh ([Redis tuning](kubernetes/redis-tuning-airgapped.md)).
+Both hosts use **NLog** (`nlog.config`). Every error body includes `traceId` (also in `X-Trace-Id`) — match it to NLog request logs and OpenTelemetry spans (`storage.access.check`, …).
 
 ## Multi-instance notes
 
 | Concern | Guidance |
 | --- | --- |
-| Shared rate-limit state | `RateLimiting`, `Allocations`, and `Statistics` roles must use Redis or MongoDB in production (startup fails on JsonFile/Lucene for those roles) |
-| Configuration | MongoDB recommended; JsonFile on NFS is possible but not ideal |
-| Cache | Each API instance has its own in-memory `StorageReadCache`; catalog reads may be stale on other pods until `DangerZone:StorageReadCache:CatalogTtl` expires (default 30s); global-limit rules on the hot path use `HotPathCatalogTtl` (default 1s). See [Danger zone](danger-zone.md). |
-| Usage buffers | Each instance buffers usage in memory (~1s); counts flush to shared atomic counters before rollup into snapshots |
-| Background workers | Rollup and allocation cleanup run on every pod; duplicate rollup work is acceptable and bounded by `UsageTracking:FlushInterval` |
+| Shared rate-limit state | `RateLimiting` and `Rpm` roles must use shared Redis or MongoDB |
+| Configuration | MongoDB recommended for durable catalog |
+| Cache | Each API instance has its own in-memory `StorageReadCache`; catalog reads may be stale on other pods until `CatalogTtl` expires |
+| RPM | `RpmAccountingService` buffers per replica; flushes to shared `Rpm` role storage |
 
 ## Troubleshooting
 
 ### Empty dashboard / no clients
 
-- Persistence directory is empty or wrong working directory.
-- Fix: seed via script or `Seed` config; confirm `./data` or configured `DataDirectory`.
+- Storage empty or API cannot reach Redis/MongoDB.
+- Fix: seed via script or seed API; confirm persistence connection strings.
 
 ### `503 Service Unavailable`
 
-- Storage backend unreachable (Redis down, Mongo connection failure, file permission error).
-- Check API startup logs for persistence binding lines.
+- Storage backend unreachable. Check API startup logs.
 
 ### Client gets `429` but limit looks fine in the UI
 
-- Check **global** rate limits on the service (aggregate exhaustion).
+- Check **global** rate limit for the service (`GlobalRateLimit` with `id` = `serviceId`).
 - Check client `exemptFromGlobalLimits` / `contributesToGlobalLimits` flags.
-- Remember: `GET /access/check` **consumes** quota — do not use it as a monitoring poll.
+- `GET /access/check` **consumes** quota — do not use it as a monitoring poll.
 
 ### `401` vs `403`
 
 - `401` — no `services[serviceId]` entry (not configured).
 - `403` — client disabled, service disabled, or `isAllowed: false`.
 
-### Slots not released after crash
-
-- `AllocationCleanupService` reclaims expired slots (~30 s interval) but does **not** emit `Released` usage events.
-- Integrators should release in `finally`; rely on TTL only as a safety net.
-
 ### Slow access checks (>250 ms logged)
 
-- Often storage latency or cache cold start.
 - Review persistence provider choice and hot-path metrics at `/prometheus/otel`.
 
 ### Admin UI cannot connect
@@ -188,9 +139,13 @@ After deploying builds with `RequestTrackingMiddleware` on Admin UI and API:
 - API not running, or `ApiBaseUrl` mismatch.
 - Docker: Admin UI must use `http://api:5062`, not `localhost`.
 
+### Seed endpoints return 404
+
+- Set `Seed:SeedApiEnabled: true` (Development default in `appsettings.Development.json`).
+
 ## License
 
-The project is licensed under **GNU GPL v3** (`LICENSE`). Relevant if you distribute modified versions or link proprietary services — not legal advice; read the license file.
+The project is licensed under **GNU GPL v3** (`LICENSE`).
 
 ## Related reading
 

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <root>
   <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
     <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
@@ -46,10 +46,18 @@
       </xsd:complexType>
     </xsd:element>
   </xsd:schema>
-  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
-  <resheader name="version"><value>2.0</value></resheader>
-  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
-  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
   <data name="Api.DeleteFailed" xml:space="preserve">
     <value>Delete failed: {0}</value>
   </data>
@@ -68,83 +76,17 @@
   <data name="Api.UnableToLoadData" xml:space="preserve">
     <value>Unable to load data: {0}</value>
   </data>
-  <data name="Charts.AccessCap" xml:space="preserve">
-    <value>Access Cap</value>
-  </data>
-  <data name="Charts.MaxSlots" xml:space="preserve">
-    <value>Max Slots</value>
-  </data>
-  <data name="Charts.NoUsageData" xml:space="preserve">
-    <value>No usage data available</value>
-  </data>
-  <data name="Charts.TimeRange.LastDay" xml:space="preserve">
-    <value>Last day</value>
-  </data>
-  <data name="Charts.TimeRange.LastDays" xml:space="preserve">
-    <value>Last {0} days</value>
-  </data>
-  <data name="Charts.TimeRange.LastHour" xml:space="preserve">
-    <value>Last hour</value>
-  </data>
-  <data name="Charts.TimeRange.LastHours" xml:space="preserve">
-    <value>Last {0} hours</value>
-  </data>
-  <data name="Charts.TimeRange.LastMinute" xml:space="preserve">
-    <value>Last minute</value>
-  </data>
-  <data name="Charts.TimeRange.LastMinutes" xml:space="preserve">
-    <value>Last {0} minutes</value>
-  </data>
-  <data name="Charts.TimeRange.LastSecond" xml:space="preserve">
-    <value>Last second</value>
-  </data>
-  <data name="Charts.TimeRange.LastSeconds" xml:space="preserve">
-    <value>Last {0} seconds</value>
-  </data>
-  <data name="Charts.Settings.AxisType" xml:space="preserve">
-    <value>Axis Type</value>
-  </data>
-  <data name="Charts.Settings.From" xml:space="preserve">
-    <value>From</value>
-  </data>
-  <data name="Charts.Settings.Last" xml:space="preserve">
-    <value>Last</value>
-  </data>
-  <data name="Charts.Settings.Or" xml:space="preserve">
-    <value>OR</value>
-  </data>
-  <data name="Charts.Settings.Refresh" xml:space="preserve">
-    <value>Refresh</value>
-  </data>
-  <data name="Charts.Settings.To" xml:space="preserve">
-    <value>To</value>
-  </data>
-  <data name="Charts.Settings.ShowDeniedBreakdown" xml:space="preserve">
-    <value>Show denied breakdown</value>
-  </data>
   <data name="Columns.Actions" xml:space="preserve">
     <value>Actions</value>
   </data>
   <data name="Columns.Active" xml:space="preserve">
     <value>Active</value>
   </data>
-  <data name="Columns.AllocationTtl" xml:space="preserve">
-    <value>Allocation TTL</value>
-  </data>
-  <data name="Columns.Available" xml:space="preserve">
-    <value>Available</value>
-  </data>
-  <data name="Columns.Cap" xml:space="preserve">
-    <value>Cap</value>
-  </data>
   <data name="Columns.Client" xml:space="preserve">
     <value>Client</value>
   </data>
   <data name="Columns.ClientId" xml:space="preserve">
     <value>Client ID</value>
-  </data>
-  <data name="Columns.Denied" xml:space="preserve">
-    <value>Denied</value>
   </data>
   <data name="Columns.Id" xml:space="preserve">
     <value>ID</value>
@@ -164,9 +106,6 @@
   <data name="Columns.Pool" xml:space="preserve">
     <value>Pool</value>
   </data>
-  <data name="Columns.Pools" xml:space="preserve">
-    <value>Pools</value>
-  </data>
   <data name="Columns.RateLimitCap" xml:space="preserve">
     <value>Rate Limit Cap</value>
   </data>
@@ -175,9 +114,6 @@
   </data>
   <data name="Columns.Requests" xml:space="preserve">
     <value>Requests</value>
-  </data>
-  <data name="Columns.ResourcePool" xml:space="preserve">
-    <value>Resource Pool</value>
   </data>
   <data name="Columns.Service" xml:space="preserve">
     <value>Service</value>
@@ -219,7 +155,7 @@
     <value>ClientManager</value>
   </data>
   <data name="Common.Back" xml:space="preserve">
-    <value>← Back</value>
+    <value>â† Back</value>
   </data>
   <data name="Common.Cancel" xml:space="preserve">
     <value>Cancel</value>
@@ -233,17 +169,11 @@
   <data name="Common.Enabled" xml:space="preserve">
     <value>Enabled</value>
   </data>
-  <data name="Common.Linear" xml:space="preserve">
-    <value>Linear</value>
-  </data>
-  <data name="Common.Logarithmic" xml:space="preserve">
-    <value>Logarithmic</value>
-  </data>
   <data name="Common.Others" xml:space="preserve">
     <value>Others</value>
   </data>
   <data name="Common.PageTitleSuffix" xml:space="preserve">
-    <value>ClientManager · {0}</value>
+    <value>ClientManager Â· {0}</value>
   </data>
   <data name="Common.Remove" xml:space="preserve">
     <value>Remove</value>
@@ -261,7 +191,7 @@
     <value>Delete failed: {0}</value>
   </data>
   <data name="Dialog.ConfirmDelete.Message" xml:space="preserve">
-    <value>Are you sure you want to delete {0} &quot;{1}&quot;? This cannot be undone.</value>
+    <value>Are you sure you want to delete {0} "{1}"? This cannot be undone.</value>
   </data>
   <data name="Dialog.ConfirmDelete.Ok" xml:space="preserve">
     <value>Delete</value>
@@ -270,31 +200,25 @@
     <value>Confirm delete</value>
   </data>
   <data name="Dialog.ConfirmDisable.DefaultMessage" xml:space="preserve">
-    <value>Disable {0} &quot;{1}&quot;? Requests from this client will be rejected until it is re-enabled.</value>
+    <value>Disable {0} "{1}"? Requests from this client will be rejected until it is re-enabled.</value>
   </data>
   <data name="Dialog.ConfirmDisable.Ok" xml:space="preserve">
     <value>Disable</value>
   </data>
-  <data name="Dialog.ConfirmDisable.ResourcePool" xml:space="preserve">
-    <value>Disable resource pool &quot;{0}&quot;? Slot acquisitions will be rejected until it is re-enabled.</value>
-  </data>
   <data name="Dialog.ConfirmDisable.Service" xml:space="preserve">
-    <value>Disable service &quot;{0}&quot;? Requests to this service will be rejected until it is re-enabled.</value>
+    <value>Disable service "{0}"? Requests to this service will be rejected until it is re-enabled.</value>
   </data>
   <data name="Dialog.ConfirmDisable.Title" xml:space="preserve">
     <value>Confirm disable</value>
   </data>
   <data name="Dialog.ConfirmEnable.DefaultMessage" xml:space="preserve">
-    <value>Enable {0} &quot;{1}&quot;? Requests will be allowed again, subject to access rules.</value>
+    <value>Enable {0} "{1}"? Requests will be allowed again, subject to access rules.</value>
   </data>
   <data name="Dialog.ConfirmEnable.Ok" xml:space="preserve">
     <value>Enable</value>
   </data>
-  <data name="Dialog.ConfirmEnable.ResourcePool" xml:space="preserve">
-    <value>Enable resource pool &quot;{0}&quot;? Slot acquisitions will be allowed again.</value>
-  </data>
   <data name="Dialog.ConfirmEnable.Service" xml:space="preserve">
-    <value>Enable service &quot;{0}&quot;? Requests will be allowed again, subject to access rules.</value>
+    <value>Enable service "{0}"? Requests will be allowed again, subject to access rules.</value>
   </data>
   <data name="Dialog.ConfirmEnable.Title" xml:space="preserve">
     <value>Confirm enable</value>
@@ -305,14 +229,8 @@
   <data name="Dialog.EntityLabel.Client" xml:space="preserve">
     <value>client</value>
   </data>
-  <data name="Dialog.EntityLabel.QuotaForResourcePool" xml:space="preserve">
-    <value>quota for resource pool</value>
-  </data>
   <data name="Dialog.EntityLabel.RateLimitForService" xml:space="preserve">
     <value>rate limit for service</value>
-  </data>
-  <data name="Dialog.EntityLabel.ResourcePool" xml:space="preserve">
-    <value>resource pool</value>
   </data>
   <data name="Dialog.EntityLabel.Service" xml:space="preserve">
     <value>service</value>
@@ -330,7 +248,7 @@
     <value>Seconds</value>
   </data>
   <data name="Editor.BackLink" xml:space="preserve">
-    <value>← Back</value>
+    <value>â† Back</value>
   </data>
   <data name="Editor.Cancel" xml:space="preserve">
     <value>Cancel</value>
@@ -428,9 +346,6 @@
   <data name="DataGrid.NoRecords" xml:space="preserve">
     <value>No records to display.</value>
   </data>
-  <data name="Nav.ActiveAllocations" xml:space="preserve">
-    <value>Active Allocations</value>
-  </data>
   <data name="Nav.BrandName" xml:space="preserve">
     <value>ClientManager</value>
   </data>
@@ -440,17 +355,8 @@
   <data name="Nav.Dashboard" xml:space="preserve">
     <value>Dashboard</value>
   </data>
-  <data name="Nav.Monitor" xml:space="preserve">
-    <value>Monitor</value>
-  </data>
-  <data name="Nav.Quotas" xml:space="preserve">
-    <value>Quotas</value>
-  </data>
   <data name="Nav.RateLimits" xml:space="preserve">
     <value>Rate Limits</value>
-  </data>
-  <data name="Nav.ResourcePools" xml:space="preserve">
-    <value>Resource Pools</value>
   </data>
   <data name="Nav.Services" xml:space="preserve">
     <value>Services</value>
@@ -458,50 +364,8 @@
   <data name="Nav.Settings" xml:space="preserve">
     <value>Settings</value>
   </data>
-  <data name="Pages.Allocations.AllResourcePools" xml:space="preserve">
-    <value>All Resource Pools</value>
-  </data>
-  <data name="Pages.Allocations.Chart.DefaultTitle" xml:space="preserve">
-    <value>All Pools - Active Allocations</value>
-  </data>
-  <data name="Pages.Allocations.Chart.NoAllocationData" xml:space="preserve">
-    <value>No allocation data available</value>
-  </data>
-  <data name="Pages.Allocations.ChartTitle" xml:space="preserve">
-    <value>{0} - {1}</value>
-  </data>
-  <data name="Pages.Allocations.ClientAccessDetailTitle" xml:space="preserve">
-    <value>Client Access Detail</value>
-  </data>
-  <data name="Pages.Allocations.ClientAccessDetailTitleWithPool" xml:space="preserve">
-    <value>{0} - Client Access Detail</value>
-  </data>
-  <data name="Pages.Allocations.ClientDetailTitle" xml:space="preserve">
-    <value>Client Allocation Detail</value>
-  </data>
-  <data name="Pages.Allocations.ClientDetailTitleWithPool" xml:space="preserve">
-    <value>{0} - Client Allocation Detail</value>
-  </data>
-  <data name="Pages.Allocations.LoadDataError" xml:space="preserve">
-    <value>Unable to load data: {0}</value>
-  </data>
-  <data name="Pages.Allocations.Metric.AccessRequests" xml:space="preserve">
-    <value>Access Requests</value>
-  </data>
-  <data name="Pages.Allocations.Metric.ActiveAllocations" xml:space="preserve">
-    <value>Active Allocations</value>
-  </data>
-  <data name="Pages.Allocations.Subtitle" xml:space="preserve">
-    <value>Resource pool utilization across all clients and pools.</value>
-  </data>
-  <data name="Pages.Allocations.Target.AllPools" xml:space="preserve">
-    <value>All Pools</value>
-  </data>
-  <data name="Pages.Allocations.Title" xml:space="preserve">
-    <value>Active Allocations</value>
-  </data>
   <data name="Pages.Clients.BackLink" xml:space="preserve">
-    <value>← Back to Clients</value>
+    <value>â† Back to Clients</value>
   </data>
   <data name="Pages.Clients.BasicConfig.ClientId" xml:space="preserve">
     <value>Client ID</value>
@@ -569,24 +433,6 @@
   <data name="Pages.Clients.NotFound" xml:space="preserve">
     <value>Client not found.</value>
   </data>
-  <data name="Pages.Clients.ResourcePools.AddPool" xml:space="preserve">
-    <value>Add Pool</value>
-  </data>
-  <data name="Pages.Clients.ResourcePools.Empty" xml:space="preserve">
-    <value>No resource pool entries configured.</value>
-  </data>
-  <data name="Pages.Clients.ResourcePools.MaxSlots" xml:space="preserve">
-    <value>Max Slots</value>
-  </data>
-  <data name="Pages.Clients.ResourcePools.NewPool" xml:space="preserve">
-    <value>New Pool</value>
-  </data>
-  <data name="Pages.Clients.ResourcePools.PoolId" xml:space="preserve">
-    <value>Pool ID</value>
-  </data>
-  <data name="Pages.Clients.ResourcePools.Title" xml:space="preserve">
-    <value>Resource Pools ({0})</value>
-  </data>
   <data name="Pages.Clients.SaveFailed" xml:space="preserve">
     <value>Save failed: {0}</value>
   </data>
@@ -620,20 +466,8 @@
   <data name="Pages.Clients.Title" xml:space="preserve">
     <value>Clients</value>
   </data>
-  <data name="Pages.Dashboard.Chart.NoUsageData" xml:space="preserve">
-    <value>No usage data available</value>
-  </data>
-  <data name="Pages.Dashboard.Chart.UsageOverTime" xml:space="preserve">
-    <value>{0} - Usage Over Time</value>
-  </data>
   <data name="Pages.Dashboard.ClientOverview" xml:space="preserve">
     <value>Client Overview</value>
-  </data>
-  <data name="Pages.Dashboard.FilterType.ResourcePool" xml:space="preserve">
-    <value>Resource Pool</value>
-  </data>
-  <data name="Pages.Dashboard.FilterType.Service" xml:space="preserve">
-    <value>Service</value>
   </data>
   <data name="Pages.Dashboard.SearchClients" xml:space="preserve">
     <value>Search clients...</value>
@@ -641,14 +475,8 @@
   <data name="Pages.Dashboard.Stats.Clients" xml:space="preserve">
     <value>Clients</value>
   </data>
-  <data name="Pages.Dashboard.Stats.PoolAcquisition" xml:space="preserve">
-    <value>Pool Acquisition</value>
-  </data>
   <data name="Pages.Dashboard.Stats.RequestsPerMin" xml:space="preserve">
     <value>Requests / min</value>
-  </data>
-  <data name="Pages.Dashboard.Stats.ResourcePools" xml:space="preserve">
-    <value>Resource Pools</value>
   </data>
   <data name="Pages.Dashboard.Stats.Services" xml:space="preserve">
     <value>Services</value>
@@ -656,89 +484,14 @@
   <data name="Pages.Dashboard.Subtitle" xml:space="preserve">
     <value>Your system's performance at a glance.</value>
   </data>
-  <data name="Pages.Dashboard.Target.AllResourcePools" xml:space="preserve">
-    <value>All Resource Pools</value>
-  </data>
-  <data name="Pages.Dashboard.Target.AllServices" xml:space="preserve">
-    <value>All Services</value>
-  </data>
   <data name="Pages.Dashboard.Title" xml:space="preserve">
     <value>Welcome</value>
-  </data>
-  <data name="Pages.Monitor.AllServicesGrid" xml:space="preserve">
-    <value>All Services</value>
-  </data>
-  <data name="Pages.Monitor.Chart.AllServices" xml:space="preserve">
-    <value>All Services</value>
-  </data>
-  <data name="Pages.Monitor.ClientBreakdown" xml:space="preserve">
-    <value>Client Breakdown</value>
-  </data>
-  <data name="Pages.Monitor.LoadDataError" xml:space="preserve">
-    <value>Unable to load data: {0}</value>
-  </data>
-  <data name="Pages.Monitor.Subtitle" xml:space="preserve">
-    <value>Real-time request analytics across services and clients.</value>
-  </data>
-  <data name="Pages.Monitor.Title" xml:space="preserve">
-    <value>Monitor</value>
-  </data>
-  <data name="Pages.Quotas.AlreadyHasQuota" xml:space="preserve">
-    <value>Already has a quota</value>
-  </data>
-  <data name="Pages.Quotas.BackLink" xml:space="preserve">
-    <value>← Back to Quotas</value>
-  </data>
-  <data name="Pages.Quotas.CreateButton" xml:space="preserve">
-    <value>Create Quota</value>
-  </data>
-  <data name="Pages.Quotas.CreateDescription" xml:space="preserve">
-    <value>Define a request quota for a resource pool.</value>
-  </data>
-  <data name="Pages.Quotas.CreateDisabledTooltip" xml:space="preserve">
-    <value>Every resource pool already has a quota.</value>
-  </data>
-  <data name="Pages.Quotas.CreateTitle" xml:space="preserve">
-    <value>Create Quota</value>
-  </data>
-  <data name="Pages.Quotas.CreateTooltip" xml:space="preserve">
-    <value>Create quota</value>
-  </data>
-  <data name="Pages.Quotas.DeleteTooltip" xml:space="preserve">
-    <value>Delete quota</value>
-  </data>
-  <data name="Pages.Quotas.EditDescription" xml:space="preserve">
-    <value>Update quota configuration.</value>
-  </data>
-  <data name="Pages.Quotas.EditTitle" xml:space="preserve">
-    <value>Edit Quota: {0}</value>
-  </data>
-  <data name="Pages.Quotas.EditTitlePrefix" xml:space="preserve">
-    <value>Edit Quota: </value>
-  </data>
-  <data name="Pages.Quotas.EditTooltip" xml:space="preserve">
-    <value>Edit quota</value>
-  </data>
-  <data name="Pages.Quotas.NotFound" xml:space="preserve">
-    <value>Quota not found.</value>
-  </data>
-  <data name="Pages.Quotas.SaveFailed" xml:space="preserve">
-    <value>Save failed: {0}</value>
-  </data>
-  <data name="Pages.Quotas.Search" xml:space="preserve">
-    <value>Search quotas...</value>
-  </data>
-  <data name="Pages.Quotas.Subtitle" xml:space="preserve">
-    <value>Manage request quotas applied to resource pools.</value>
-  </data>
-  <data name="Pages.Quotas.Title" xml:space="preserve">
-    <value>Quotas</value>
   </data>
   <data name="Pages.RateLimits.AlreadyHasRateLimit" xml:space="preserve">
     <value>Already has a rate limit</value>
   </data>
   <data name="Pages.RateLimits.BackLink" xml:space="preserve">
-    <value>← Back to Rate Limits</value>
+    <value>â† Back to Rate Limits</value>
   </data>
   <data name="Pages.RateLimits.CreateButton" xml:space="preserve">
     <value>Create Rate Limit</value>
@@ -785,71 +538,8 @@
   <data name="Pages.RateLimits.Title" xml:space="preserve">
     <value>Rate Limits</value>
   </data>
-  <data name="Pages.ResourcePools.AllocationTtl" xml:space="preserve">
-    <value>Allocation TTL</value>
-  </data>
-  <data name="Pages.ResourcePools.BackLink" xml:space="preserve">
-    <value>← Back to Resource Pools</value>
-  </data>
-  <data name="Pages.ResourcePools.CreateButton" xml:space="preserve">
-    <value>Create Resource Pool</value>
-  </data>
-  <data name="Pages.ResourcePools.CreateDescription" xml:space="preserve">
-    <value>Define a new resource pool.</value>
-  </data>
-  <data name="Pages.ResourcePools.CreateTitle" xml:space="preserve">
-    <value>Create Resource Pool</value>
-  </data>
-  <data name="Pages.ResourcePools.CreateTooltip" xml:space="preserve">
-    <value>Create resource pool</value>
-  </data>
-  <data name="Pages.ResourcePools.DeleteTooltip" xml:space="preserve">
-    <value>Delete resource pool</value>
-  </data>
-  <data name="Pages.ResourcePools.DisableTooltip" xml:space="preserve">
-    <value>Disable resource pool</value>
-  </data>
-  <data name="Pages.ResourcePools.EditDescription" xml:space="preserve">
-    <value>Update resource pool configuration.</value>
-  </data>
-  <data name="Pages.ResourcePools.EditTitlePrefix" xml:space="preserve">
-    <value>Edit Resource Pool: </value>
-  </data>
-  <data name="Pages.ResourcePools.EditTooltip" xml:space="preserve">
-    <value>Edit resource pool</value>
-  </data>
-  <data name="Pages.ResourcePools.EnableTooltip" xml:space="preserve">
-    <value>Enable resource pool</value>
-  </data>
-  <data name="Pages.ResourcePools.Enabled" xml:space="preserve">
-    <value>Enabled</value>
-  </data>
-  <data name="Pages.ResourcePools.MaxSlots" xml:space="preserve">
-    <value>Max Slots</value>
-  </data>
-  <data name="Pages.ResourcePools.Name" xml:space="preserve">
-    <value>Name</value>
-  </data>
-  <data name="Pages.ResourcePools.NotFound" xml:space="preserve">
-    <value>Resource pool not found.</value>
-  </data>
-  <data name="Pages.ResourcePools.PoolId" xml:space="preserve">
-    <value>Pool ID</value>
-  </data>
-  <data name="Pages.ResourcePools.SaveFailed" xml:space="preserve">
-    <value>Save failed: {0}</value>
-  </data>
-  <data name="Pages.ResourcePools.Search" xml:space="preserve">
-    <value>Search pools...</value>
-  </data>
-  <data name="Pages.ResourcePools.Subtitle" xml:space="preserve">
-    <value>Manage resource pool definitions, slot limits, and TTL settings.</value>
-  </data>
-  <data name="Pages.ResourcePools.Title" xml:space="preserve">
-    <value>Resource Pools</value>
-  </data>
   <data name="Pages.Services.BackLink" xml:space="preserve">
-    <value>← Back to Services</value>
+    <value>â† Back to Services</value>
   </data>
   <data name="Pages.Services.CreateButton" xml:space="preserve">
     <value>Create Service</value>
@@ -905,72 +595,6 @@
   <data name="Pages.Services.Title" xml:space="preserve">
     <value>Services</value>
   </data>
-  <data name="Presets.PollingInterval.10s.Label" xml:space="preserve">
-    <value>10 seconds</value>
-  </data>
-  <data name="Presets.PollingInterval.1m.Label" xml:space="preserve">
-    <value>1 minute</value>
-  </data>
-  <data name="Presets.PollingInterval.2m.Label" xml:space="preserve">
-    <value>2 minutes</value>
-  </data>
-  <data name="Presets.PollingInterval.2s.Label" xml:space="preserve">
-    <value>2 seconds</value>
-  </data>
-  <data name="Presets.PollingInterval.30s.Label" xml:space="preserve">
-    <value>30 seconds</value>
-  </data>
-  <data name="Presets.PollingInterval.5m.Label" xml:space="preserve">
-    <value>5 minutes</value>
-  </data>
-  <data name="Presets.PollingInterval.5s.Label" xml:space="preserve">
-    <value>5 seconds</value>
-  </data>
-  <data name="Presets.TimeRange.12h.Label" xml:space="preserve">
-    <value>Last 12 hours</value>
-  </data>
-  <data name="Presets.TimeRange.15m.Label" xml:space="preserve">
-    <value>Last 15 minutes</value>
-  </data>
-  <data name="Presets.TimeRange.1d.Label" xml:space="preserve">
-    <value>Last 24 hours</value>
-  </data>
-  <data name="Presets.TimeRange.1h.Label" xml:space="preserve">
-    <value>Last hour</value>
-  </data>
-  <data name="Presets.TimeRange.1m.Label" xml:space="preserve">
-    <value>Last minute</value>
-  </data>
-  <data name="Presets.TimeRange.30d.Label" xml:space="preserve">
-    <value>Last 30 days</value>
-  </data>
-  <data name="Presets.TimeRange.30m.Label" xml:space="preserve">
-    <value>Last 30 minutes</value>
-  </data>
-  <data name="Presets.TimeRange.3h.Label" xml:space="preserve">
-    <value>Last 3 hours</value>
-  </data>
-  <data name="Presets.TimeRange.5m.Label" xml:space="preserve">
-    <value>Last 5 minutes</value>
-  </data>
-  <data name="Presets.TimeRange.6h.Label" xml:space="preserve">
-    <value>Last 6 hours</value>
-  </data>
-  <data name="Presets.TimeRange.7d.Label" xml:space="preserve">
-    <value>Last 7 days</value>
-  </data>
-  <data name="Presets.TimeRange.90d.Label" xml:space="preserve">
-    <value>Last 90 days</value>
-  </data>
-  <data name="Presets.TimeRange.Group.Days" xml:space="preserve">
-    <value>Days</value>
-  </data>
-  <data name="Presets.TimeRange.Group.Hours" xml:space="preserve">
-    <value>Hours</value>
-  </data>
-  <data name="Presets.TimeRange.Group.Minutes" xml:space="preserve">
-    <value>Minutes</value>
-  </data>
   <data name="Reconnect.Failed" xml:space="preserve">
     <value>Failed to rejoin.</value>
   </data>
@@ -1010,24 +634,6 @@
   <data name="Settings.Appearance.Title" xml:space="preserve">
     <value>Appearance</value>
   </data>
-  <data name="Settings.DefaultAxisScale.Description" xml:space="preserve">
-    <value>Choose how chart Y-axes scale values. Logarithmic makes small values more visible.</value>
-  </data>
-  <data name="Settings.DefaultAxisScale.Title" xml:space="preserve">
-    <value>Default Axis Scale</value>
-  </data>
-  <data name="Settings.DefaultPollingInterval.Description" xml:space="preserve">
-    <value>How often monitoring pages refresh data.</value>
-  </data>
-  <data name="Settings.DefaultPollingInterval.Title" xml:space="preserve">
-    <value>Default Polling Interval</value>
-  </data>
-  <data name="Settings.DefaultTimeRange.Description" xml:space="preserve">
-    <value>Used by charts when no specific range is selected.</value>
-  </data>
-  <data name="Settings.DefaultTimeRange.Title" xml:space="preserve">
-    <value>Default Time Range</value>
-  </data>
   <data name="Settings.Language.Description" xml:space="preserve">
     <value>Choose your preferred display language.</value>
   </data>
@@ -1040,41 +646,6 @@
   <data name="Settings.Title" xml:space="preserve">
     <value>Settings</value>
   </data>
-  <data name="Terms.Cap.AccessCap" xml:space="preserve">
-    <value>Access Cap</value>
-  </data>
-  <data name="Terms.Cap.RateLimitCap" xml:space="preserve">
-    <value>Rate Limit Cap</value>
-  </data>
-  <data name="Terms.Denied.Blocked" xml:space="preserve">
-    <value>Access Blocked</value>
-  </data>
-  <data name="Terms.Denied.OutOfSlots" xml:space="preserve">
-    <value>Out of slots</value>
-  </data>
-  <data name="Terms.Denied.Throttled" xml:space="preserve">
-    <value>Throttled</value>
-  </data>
-  <data name="Terms.Denied.Tooltip" xml:space="preserve">
-    <value>Unauthenticated: {0}
-Blocked: {1}
-{2}: {3}</value>
-  </data>
-  <data name="Terms.Denied.Unauthenticated" xml:space="preserve">
-    <value>Unauthenticated</value>
-  </data>
-  <data name="Terms.Entity.MaxSlots" xml:space="preserve">
-    <value>Max Slots</value>
-  </data>
-  <data name="Terms.Entity.Quotas" xml:space="preserve">
-    <value>Quotas</value>
-  </data>
-  <data name="Terms.Entity.RateLimits" xml:space="preserve">
-    <value>Rate Limits</value>
-  </data>
-  <data name="Terms.State.Available" xml:space="preserve">
-    <value>Available</value>
-  </data>
   <data name="Units.RequestsPerMinute" xml:space="preserve">
     <value>{0} req/min</value>
   </data>
@@ -1086,8 +657,5 @@ Blocked: {1}
   </data>
   <data name="Units.Duration.SecondsCompact" xml:space="preserve">
     <value>{0}s</value>
-  </data>
-  <data name="Terms.State.NearLimit" xml:space="preserve">
-    <value>Near limit</value>
   </data>
 </root>

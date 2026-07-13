@@ -7,17 +7,14 @@ using Microsoft.Extensions.Primitives;
 namespace ClientManager.Api.Services.Storage;
 
 /// <summary>
-/// Owns storage-side cache entries and invalidation scopes for read-mostly queries.
+/// Owns storage-side catalog cache entries and invalidation scopes.
 /// </summary>
-/// <inheritdoc cref="IStorageReadCache"/>
 public sealed class StorageReadCache : IStorageReadCache, IDisposable
 {
     private readonly IMemoryCache _cache;
     private readonly StorageReadCacheOptions _options;
     private readonly object _sync = new();
     private CancellationTokenSource _catalogInvalidation = new();
-    private CancellationTokenSource _statisticsTailInvalidation = new();
-    private CancellationTokenSource _statisticsClosedInvalidation = new();
 
     public StorageReadCache(IMemoryCache cache, IOptions<StorageReadCacheOptions> options)
     {
@@ -34,67 +31,31 @@ public sealed class StorageReadCache : IStorageReadCache, IDisposable
         GetOrCreateAsync($"catalog:{key}", ttl ?? _options.CatalogTtl, _catalogInvalidation.Token, factory, cancellationToken);
 
     /// <inheritdoc />
-    public Task<T> GetOrCreateStatisticsTailAsync<T>(
-        string key,
-        Func<CancellationToken, Task<T>> factory,
-        CancellationToken cancellationToken) =>
-        GetOrCreateAsync($"statistics:tail:{key}", _options.StatisticsTtl, _statisticsTailInvalidation.Token, factory, cancellationToken);
-
-    /// <inheritdoc />
-    public Task<T> GetOrCreateStatisticsClosedAsync<T>(
-        string key,
-        Func<CancellationToken, Task<T>> factory,
-        CancellationToken cancellationToken) =>
-        GetOrCreateAsync($"statistics:closed:{key}", _options.StatisticsTtl, _statisticsClosedInvalidation.Token, factory, cancellationToken);
-
-    /// <inheritdoc />
-    public void InvalidateCatalog() => Rotate(ref _catalogInvalidation);
-
-    /// <inheritdoc />
-    public void InvalidateStatistics()
+    public void InvalidateCatalog()
     {
-        InvalidateStatisticsTail();
-        InvalidateStatisticsClosed();
+        CancellationTokenSource previous;
+        lock (_sync)
+        {
+            previous = _catalogInvalidation;
+            _catalogInvalidation = new CancellationTokenSource();
+        }
+
+        previous.Cancel();
+        previous.Dispose();
     }
 
-    /// <inheritdoc />
-    public void InvalidateStatisticsTail() => Rotate(ref _statisticsTailInvalidation);
-
-    /// <inheritdoc />
-    public void InvalidateStatisticsClosed() => Rotate(ref _statisticsClosedInvalidation);
-
-    public void Dispose()
-    {
-        _catalogInvalidation.Dispose();
-        _statisticsTailInvalidation.Dispose();
-        _statisticsClosedInvalidation.Dispose();
-    }
+    public void Dispose() => _catalogInvalidation.Dispose();
 
     private Task<T> GetOrCreateAsync<T>(
         string key,
         TimeSpan ttl,
         CancellationToken invalidationToken,
         Func<CancellationToken, Task<T>> factory,
-        CancellationToken cancellationToken)
-    {
-        return _cache.GetOrCreateAsync(key, async entry =>
+        CancellationToken cancellationToken) =>
+        _cache.GetOrCreateAsync(key, async entry =>
         {
             entry.AbsoluteExpirationRelativeToNow = ttl;
             entry.AddExpirationToken(new CancellationChangeToken(invalidationToken));
             return await factory(cancellationToken);
         })!;
-    }
-
-    private void Rotate(ref CancellationTokenSource source)
-    {
-        CancellationTokenSource previous;
-        lock (_sync)
-        {
-            previous = source;
-            source = new CancellationTokenSource();
-        }
-
-        previous.Cancel();
-        previous.Dispose();
-    }
 }

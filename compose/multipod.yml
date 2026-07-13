@@ -4,16 +4,16 @@
 x-api-environment: &api-environment
   ASPNETCORE_ENVIRONMENT: Development
   Persistence__DefaultProvider: MongoDb
-  Persistence__DefaultMongoDb__ConnectionString: mongodb://mongo:27017
+  Persistence__DefaultMongoDb__ConnectionString: mongodb://mongo:27017/?replicaSet=rs0
   Persistence__DefaultMongoDb__DatabaseName: ClientManager
   Persistence__Roles__RateLimiting__Provider: Redis
   Persistence__Roles__RateLimiting__Redis__Host: redis
   Persistence__Roles__RateLimiting__Redis__Port: "6379"
   Persistence__Roles__RateLimiting__Redis__DatabaseIndex: "1"
-  Persistence__Roles__Allocations__Provider: Redis
-  Persistence__Roles__Allocations__Redis__Host: redis
-  Persistence__Roles__Allocations__Redis__Port: "6379"
-  Persistence__Roles__Allocations__Redis__DatabaseIndex: "2"
+  Persistence__Roles__Rpm__Provider: Redis
+  Persistence__Roles__Rpm__Redis__Host: redis
+  Persistence__Roles__Rpm__Redis__Port: "6379"
+  Persistence__Roles__Rpm__Redis__DatabaseIndex: "2"
 
 x-api-service: &api-service
   image: clientmanager/api:local
@@ -30,16 +30,24 @@ services:
   mongo:
     image: mongo:7
     restart: unless-stopped
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
     ports:
       - "27017:27017"
     volumes:
       - mongo-data:/data/db
     healthcheck:
-      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
-      interval: 5s
-      timeout: 5s
-      retries: 12
-      start_period: 10s
+      test:
+        [
+          "CMD",
+          "mongosh",
+          "--quiet",
+          "--eval",
+          "try { rs.status().ok } catch(e) { rs.initiate({_id:'rs0',members:[{_id:0,host:'mongo:27017'}]}).ok }",
+        ]
+      interval: 3s
+      timeout: 10s
+      retries: 30
+      start_period: 5s
 
   redis:
     image: redis:7.4-alpine

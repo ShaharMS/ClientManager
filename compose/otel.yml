@@ -1,0 +1,16 @@
+# Jaeger all-in-one with OTLP gRPC on 4317 for local trace verification.
+#
+# Usage:
+#   docker compose -f compose/otel.yml up -d
+#
+# UI: http://localhost:16686
+
+services:
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    restart: unless-stopped
+    ports:
+      - "16686:16686"
+      - "4317:4317"
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"

@@ -30,9 +30,3 @@ public class ServiceEntryModel
     public double RateLimitWindowSeconds { get; set; } = 60;
     public int? RateLimitTokensPerRefill { get; set; }
 }
-
-public class PoolEntryModel
-{
-    public string PoolId { get; set; } = string.Empty;
-    public uint MaxSlots { get; set; } = 1;
-}

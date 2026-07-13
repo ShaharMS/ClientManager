@@ -1,5 +1,5 @@
 using ClientManager.Api.Models.Configuration;
-using ClientManager.DataAccess.Databases.Interfaces;
+using ClientManager.Api.Storage.Databases.Interfaces;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Api.Services.Interfaces;
 using ClientManager.Api.Services.Storage.Instrumentation;
@@ -30,7 +30,7 @@ public class FixedWindowStrategy : IRateLimitStrategy
     /// <inheritdoc />
     public async Task<RateLimitResult> EvaluateAsync(
         string key,
-        ClientRateLimit rateLimit,
+        RateLimitPolicy rateLimit,
         CancellationToken cancellationToken = default)
     {
         return await RateLimitStrategyInstrumentation.TraceAsync(
@@ -53,7 +53,7 @@ public class FixedWindowStrategy : IRateLimitStrategy
     /// <inheritdoc />
     public async Task<RateLimitResult> PeekAsync(
         string key,
-        ClientRateLimit rateLimit,
+        RateLimitPolicy rateLimit,
         CancellationToken cancellationToken = default)
     {
         return await RateLimitStrategyInstrumentation.TraceAsync(

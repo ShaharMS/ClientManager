@@ -8,13 +8,12 @@ Redis acts as both a **document store** (collections grouped by key naming) and 
 ## Good at
 
 - **`RateLimiting`** — atomic counters, expiry windows, very high write rates.
-- **`Allocations`** — allocation documents plus `alloc-count:*` counters on the hot acquire/release path.
+- **`Rpm`** — atomic shared second-bucket counters with expiry.
 - **Low-latency runtime state** — shared across API instances when all point at the same Redis.
 - **Role isolation** — same Redis server, different `DatabaseIndex` per role.
 
 ## Weak at
 
-- **Huge long-term statistics** — can store snapshots, but large historical analytics are usually better on MongoDB with proper indexing.
 - **Complex ad-hoc queries** — not a replacement for MongoDB on catalog search/reporting.
 - **Durability expectations** — tune persistence (AOF/RDB) explicitly; rate-limit state is often ephemeral by design.
 
@@ -23,9 +22,8 @@ Redis acts as both a **document store** (collections grouped by key naming) and 
 | Role | Redis? |
 | --- | --- |
 | `RateLimiting` | **Best fit** |
-| `Allocations` | **Strong fit** |
-| `Configuration` | Possible; MongoDB/JsonFile more typical |
-| `Statistics` | Possible; not the default recommendation |
+| `Rpm` | **Best fit** |
+| `Configuration` | Possible; MongoDB is more typical for durable catalogs |
 
 ## Configuration
 
@@ -52,7 +50,7 @@ Redis acts as both a **document store** (collections grouped by key naming) and 
     "Provider": "Redis",
     "Redis": { "Host": "redis", "Port": 6379, "DatabaseIndex": 1 }
   },
-  "Allocations": {
+  "Rpm": {
     "Provider": "Redis",
     "Redis": { "Host": "redis", "Port": 6379, "DatabaseIndex": 2 }
   }
@@ -75,5 +73,5 @@ Persistence__Roles__RateLimiting__Redis__DatabaseIndex=1
 
 ## See also
 
-- [MongoDB](mongodb.md) — durable catalog and statistics
+- [MongoDB](mongodb.md) — durable catalog
 - [Persistence overview](index.md#suggested-layouts)

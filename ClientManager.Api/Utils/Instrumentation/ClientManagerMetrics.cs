@@ -23,6 +23,7 @@ public class ClientManagerMetrics
     public ActivitySource ActivitySource { get; }
 
     public Counter<long> RequestsTotal { get; }
+    public Counter<long> HttpRequestsTotal { get; }
     public Counter<long> RequestErrors { get; }
     public Histogram<double> RequestDuration { get; }
 
@@ -31,9 +32,10 @@ public class ClientManagerMetrics
         _meter = meterFactory.Create(MeterName);
         ActivitySource = new(ActivitySourceName);
 
-        RequestsTotal = CreateCounter("clientmanager.requests.total", "Total HTTP requests received");
-        RequestErrors = CreateCounter("clientmanager.requests.errors", "Total HTTP request errors");
-        RequestDuration = CreateHistogram("clientmanager.requests.duration", "ms", "HTTP request duration in milliseconds");
+        RequestsTotal = CreateCounter("clientmanager.requests", "Granted access checks by service, client, and outcome.");
+        HttpRequestsTotal = CreateCounter("clientmanager.http.requests", "Total HTTP requests received.");
+        RequestErrors = CreateCounter("clientmanager.http.requests.errors", "Total HTTP request errors.");
+        RequestDuration = CreateHistogram("clientmanager.http.requests.duration", "ms", "HTTP request duration in milliseconds.");
     }
 
     private Counter<long> CreateCounter(string name, string description) =>
@@ -41,4 +43,12 @@ public class ClientManagerMetrics
 
     private Histogram<double> CreateHistogram(string name, string unit, string description) =>
         _meter.CreateHistogram<double>(name, unit: unit, description: description);
+
+    public void RecordAccessOutcome(string serviceId, string clientId, string outcome) =>
+        RequestsTotal.Add(1, new TagList
+        {
+            { "service", serviceId },
+            { "client", clientId },
+            { "outcome", outcome }
+        });
 }

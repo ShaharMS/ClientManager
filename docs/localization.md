@@ -72,9 +72,7 @@ Use this registry everywhere culture lists are needed (Settings dropdown, valida
 <p>@L["Api.UnableToLoadData", errorMessage]</p>
 ```
 
-For C# code (chart builders, formatters), inject or pass `IStringLocalizer<SharedResources>` and use the same keys. Shared terminology constants live in `Localization/TermKeys.cs` so denial badges and chart series use identical wording.
-
-Presets with display labels implement `GetLocalizedLabel(IStringLocalizer<SharedResources> L)` (see `TimeRangePreset`, `PollingIntervalPreset`).
+For C# code, inject or pass `IStringLocalizer<SharedResources>` and use the same keys.
 
 ## API error messages
 
@@ -124,61 +122,15 @@ Keep `{0}`, `{1}`, … placeholders identical across cultures; only the surround
 4. Audit RTL: if the culture is right-to-left, existing CSS should work via `IsRtl`; if not, no extra step.
 5. Test via **Settings → Language** and verify dates/numbers format as expected.
 
-## Canonical terminology
-
-These `Terms.*` keys must stay consistent wherever the concept appears (badges, charts, monitor, tooltips):
-
-| Key | English | Notes |
-| --- | --- | --- |
-| `Terms.Denied.Throttled` | Throttled | Rate-limit denial — not "Rate limited" |
-| `Terms.Denied.OutOfSlots` | Out of slots | Pool exhaustion — not "At capacity" |
-| `Terms.Entity.RateLimits` | Rate limits | Global service throughput limits |
-| `Terms.Entity.Quotas` | Quotas | Global pool acquisition limits |
-| `Terms.State.NearLimit` | Near limit | Pool status badge |
-| `Terms.State.Available` | Available | Pool status badge |
-
-Reference `TermKeys.cs` in code instead of duplicating string literals.
-
 ## Hebrew terminology (`he-IL`)
 
-Hebrew copy uses **natural operator phrasing** and a fixed product glossary. English resx keys are unchanged; only `SharedResources.he-IL.resx` values differ.
+Hebrew copy uses natural operator phrasing. Keep **מגבלת קצב** for rate
+limits, **שיטה** for an algorithm/strategy label, and imperative wording for
+action buttons. English resource keys remain unchanged; only
+`SharedResources.he-IL.resx` values differ.
 
-### Product glossary
-
-| English concept | Hebrew | Notes |
-| --- | --- | --- |
-| Resource pool / pool | **משאב** / **משאבים** | Not מאגר / מאגר משאבים |
-| Slot / max slots | **הקצאה** / **מקסימום הקצאות** | Not משבצות |
-| Pool acquisition | **הקצאות למשאב** | Stat cards, throughput to a resource |
-| Out of slots | **הקצאות למשאב מלאות** | Badge; use **המשאב מלא** only when space is tight |
-| Rate limit | **מגבלת קצב** / **מגבלות קצב** | Not הגבלת קצב; policy wording |
-| Throttled (denial) | **מגבלת קצב** | Short badge label |
-| Quota | **מכסה** / **מכסות** | Applies to a **משאב** |
-| Cap (policy) | **מגבלה** | Chart numeric ceiling may use **תקרה** when compact |
-| Strategy (algorithm) | **שיטה** / **שיטת הגבלה** | Dropdown vs column header |
-| Unauthenticated | **ללא אימות** | Security copy |
-| Save / Add / Remove (buttons) | **שמור / הוסף / הסר** | Imperative, not שמירה / הוספה |
-
-### `Terms.*` Hebrew equivalents
-
-| Key | English | Hebrew |
-| --- | --- | --- |
-| `Terms.Denied.Throttled` | Throttled | מגבלת קצב |
-| `Terms.Denied.OutOfSlots` | Out of slots | הקצאות למשאב מלאות |
-| `Terms.Denied.Blocked` | Blocked | חסום |
-| `Terms.Denied.Unauthenticated` | Unauthenticated | ללא אימות |
-| `Terms.Entity.RateLimits` | Rate limits | מגבלות קצב |
-| `Terms.Entity.Quotas` | Quotas | מכסות |
-| `Terms.Entity.MaxSlots` | Max Slots | מקסימום הקצאות |
-| `Terms.Cap.AccessCap` | Access Cap | מגבלת גישה |
-| `Terms.Cap.RateLimitCap` | Rate Limit Cap | מגבלת קצב |
-| `Terms.State.NearLimit` | Near limit | קרוב למגבלה |
-| `Terms.State.Available` | Available | זמין |
-
-When auditing Hebrew, check every string against this table and the product glossary above.
-
-
-Dates and numbers respect `CultureInfo.CurrentCulture` where explicitly wired (chart time ranges, preset labels). Invariant formatting is used only when a stable machine-readable value is required (e.g. API payloads, internal keys).
+Dates and numbers respect `CultureInfo.CurrentCulture` where explicitly wired.
+Invariant formatting is reserved for machine-readable values.
 
 ## Related code
 

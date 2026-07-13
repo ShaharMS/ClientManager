@@ -11,8 +11,6 @@ public static class MetricTagKeyExtensions
     {
         MetricTagKey.ClientId => "clientId",
         MetricTagKey.ServiceId => "serviceId",
-        MetricTagKey.ResourcePoolId => "resourcePoolId",
-        MetricTagKey.AllocationId => "allocationId",
         MetricTagKey.Reason => "reason",
         _ => key.ToString()
     };

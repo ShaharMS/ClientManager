@@ -116,8 +116,7 @@ else
     private string? _urlSortProperty;
     private SortOrder? _urlSortOrder;
     private DataGridSettings _gridSettings = new() { CurrentPage = 0 };
-    private IJSObjectReference? _tableJs;
-    private DotNetObjectReference<ServiceList>? _selfRef;
+    private ListPageTableInterop? _tableInterop;
     private List<object> _enabledOptions = [];
 
     private IEnumerable<Service> _filteredServices =>
@@ -160,30 +159,21 @@ else
     {
         if (firstRender)
         {
-            _tableJs = await JS.InvokeAsync<IJSObjectReference>("import", "./js/table.js");
-            _selfRef = DotNetObjectReference.Create(this);
-            await _tableJs.InvokeVoidAsync("register", _selfRef);
-            await RecalculatePageSizeAsync();
+            _tableInterop = new ListPageTableInterop(JS, async size =>
+            {
+                _pageSize = size;
+                await InvokeAsync(StateHasChanged);
+            });
+            await _tableInterop.InitializeAsync();
         }
-    }
-
-    [JSInvokable]
-    public async Task OnWindowResize() => await RecalculatePageSizeAsync();
-
-    private async Task RecalculatePageSizeAsync()
-    {
-        _pageSize = await _tableJs!.InvokeAsync<int>("getPageSize", 45);
-        StateHasChanged();
     }
 
     public async ValueTask DisposeAsync()
     {
-        if (_tableJs is not null)
+        if (_tableInterop is not null)
         {
-            await _tableJs.InvokeVoidAsync("unregister");
-            await _tableJs.DisposeAsync();
+            await _tableInterop.DisposeAsync();
         }
-        _selfRef?.Dispose();
         UrlQuery.Dispose();
     }
 

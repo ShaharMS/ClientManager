@@ -2,6 +2,8 @@ using System.Text.Json;
 using ClientManager.Api.Models.Exceptions;
 using ClientManager.Shared.Logging;
 using ClientManager.Shared.Models.Problems;
+using MongoDB.Driver;
+using StackExchange.Redis;
 
 namespace ClientManager.Api.Middlewares;
 
@@ -34,6 +36,12 @@ public class ErrorHandlingMiddleware(
         catch (HttpProblemException exception)
         {
             await HandleProblemAsync(context, exception);
+        }
+        catch (Exception exception) when (IsStorageUnavailable(exception))
+        {
+            await HandleProblemAsync(
+                context,
+                new ServiceUnavailableException("The storage service is temporarily unavailable.", exception));
         }
         catch (Exception exception)
         {
@@ -115,4 +123,13 @@ public class ErrorHandlingMiddleware(
     private static string SanitizeHeaderValue(string value) =>
         value.Replace("\r", " ", StringComparison.Ordinal)
             .Replace("\n", " ", StringComparison.Ordinal);
+
+    private static bool IsStorageUnavailable(Exception exception) =>
+        exception switch
+        {
+            RedisConnectionException or RedisTimeoutException or TimeoutException => true,
+            MongoConnectionException or MongoConnectionClosedException => true,
+            _ when exception.InnerException is not null => IsStorageUnavailable(exception.InnerException),
+            _ => false
+        };
 }

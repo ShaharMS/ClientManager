@@ -52,24 +52,26 @@ else
             Settings="@_gridSettings" SettingsChanged="OnGridSettingsChanged"
             PagerHorizontalAlign="HorizontalAlign.Center">
             <Columns>
-                <RadzenDataGridColumn TItem="GlobalRateLimit" Property="TargetId" Title="@L["Columns.Service"]"
+                <RadzenDataGridColumn TItem="GlobalRateLimit" Property="Id" Title="@L["Columns.Service"]"
                     CssClass="cm-col-label" HeaderCssClass="cm-col-label" />
-                <RadzenDataGridColumn TItem="GlobalRateLimit" Property="Strategy" Title="@L["Columns.Strategy"]"
+                <RadzenDataGridColumn TItem="GlobalRateLimit" Title="@L["Columns.Strategy"]"
                     CssClass="cm-col-strategy cm-rate-limit-grid__wide-only" HeaderCssClass="cm-col-strategy cm-rate-limit-grid__wide-only">
                     <Template Context="limit">
-                        <span class="@RateLimitStrategyBadge.GetCssClass(limit.Strategy)">@RateLimitStrategyLabels.GetLabel(limit.Strategy, L)</span>
+                        <span class="@RateLimitStrategyBadge.GetCssClass(limit.Policy.Strategy)">@RateLimitStrategyLabels.GetLabel(limit.Policy.Strategy, L)</span>
                     </Template>
                 </RadzenDataGridColumn>
-                <RadzenDataGridColumn TItem="GlobalRateLimit" Property="MaxRequests" Title="@L["Columns.MaxRequests"]"
-                    CssClass="cm-col-scalar-wide cm-rate-limit-grid__wide-only" HeaderCssClass="cm-col-scalar-wide cm-rate-limit-grid__wide-only" />
+                <RadzenDataGridColumn TItem="GlobalRateLimit" Title="@L["Columns.MaxRequests"]"
+                    CssClass="cm-col-scalar-wide cm-rate-limit-grid__wide-only" HeaderCssClass="cm-col-scalar-wide cm-rate-limit-grid__wide-only">
+                    <Template Context="limit">@limit.Policy.MaxRequests</Template>
+                </RadzenDataGridColumn>
                 <RadzenDataGridColumn TItem="GlobalRateLimit" Title="@L["Columns.Window"]"
                     CssClass="cm-col-scalar-narrow cm-rate-limit-grid__wide-only" HeaderCssClass="cm-col-scalar-narrow cm-rate-limit-grid__wide-only">
-                    <Template Context="limit">@TimeSpanFormatter.FormatCompact(limit.Window, L)</Template>
+                    <Template Context="limit">@TimeSpanFormatter.FormatCompact(limit.Policy.Window, L)</Template>
                 </RadzenDataGridColumn>
                 <RadzenDataGridColumn TItem="GlobalRateLimit" Title="@($"{L["Columns.MaxRequests"]} / {L["Columns.Window"]}")"
                     Sortable="false" CssClass="cm-col-scalar-wide cm-rate-limit-grid__narrow-only"
                     HeaderCssClass="cm-col-scalar-wide cm-rate-limit-grid__narrow-only">
-                    <Template Context="limit">@TimeSpanFormatter.FormatRequestsWindow(limit.MaxRequests, limit.Window, L)</Template>
+                    <Template Context="limit">@TimeSpanFormatter.FormatRequestsWindow(limit.Policy.MaxRequests, limit.Policy.Window, L)</Template>
                 </RadzenDataGridColumn>
                 <RadzenDataGridColumn TItem="GlobalRateLimit" Title="@L["Columns.Actions"]" Sortable="false"
                     CssClass="cm-col-actions" HeaderCssClass="cm-col-actions">
@@ -102,14 +104,12 @@ else
     private DataGridSettings _gridSettings = new() { CurrentPage = 0 };
     private bool _canCreateMore = true;
     private string? _createDisabledTooltip;
-    private IJSObjectReference? _tableJs;
-    private DotNetObjectReference<RateLimitList>? _selfRef;
+    private ListPageTableInterop? _tableInterop;
 
     private IEnumerable<GlobalRateLimit> _filteredLimits =>
         string.IsNullOrWhiteSpace(_search)
             ? _limits
-            : _limits.Where(l =>
-                l.TargetId.Contains(_search, StringComparison.OrdinalIgnoreCase));
+            : _limits.Where(l => l.Id.Contains(_search, StringComparison.OrdinalIgnoreCase));
 
     private ListPageUrlSupport.GridQueryState CurrentQueryState =>
         new(
@@ -137,30 +137,22 @@ else
     {
         if (firstRender)
         {
-            _tableJs = await JS.InvokeAsync<IJSObjectReference>("import", "./js/table.js");
-            _selfRef = DotNetObjectReference.Create(this);
-            await _tableJs.InvokeVoidAsync("register", _selfRef);
-            await RecalculatePageSizeAsync();
+            _tableInterop = new ListPageTableInterop(JS, async size =>
+            {
+                _pageSize = size;
+                ApplyGridSettingsFromUrl();
+                await InvokeAsync(StateHasChanged);
+            });
+            await _tableInterop.InitializeAsync();
         }
-    }
-
-    [JSInvokable]
-    public async Task OnWindowResize() => await RecalculatePageSizeAsync();
-
-    private async Task RecalculatePageSizeAsync()
-    {
-        _pageSize = await _tableJs!.InvokeAsync<int>("getPageSize", 45);
-        StateHasChanged();
     }
 
     public async ValueTask DisposeAsync()
     {
-        if (_tableJs is not null)
+        if (_tableInterop is not null)
         {
-            await _tableJs.InvokeVoidAsync("unregister");
-            await _tableJs.DisposeAsync();
+            await _tableInterop.DisposeAsync();
         }
-        _selfRef?.Dispose();
         UrlQuery.Dispose();
     }
 
@@ -202,8 +194,7 @@ else
     {
         try
         {
-            _limits = await RateLimitApi.GetByTargetTypeAsync(TargetType.Service);
-
+            _limits = await RateLimitApi.GetAllServiceLimitsAsync();
             await RefreshCreateAvailabilityAsync();
             _error = null;
         }
@@ -220,12 +211,11 @@ else
     private async Task RefreshCreateAvailabilityAsync()
     {
         var services = await ServiceApi.GetAllAsync();
-        var serviceLimits = await RateLimitApi.GetByTargetTypeAsync(TargetType.Service);
-        var limitedTargets = serviceLimits
-            .Select(l => l.TargetId)
+        var limitedServices = (await RateLimitApi.GetAllServiceLimitsAsync())
+            .Select(l => l.Id)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        _canCreateMore = services.Any(s => !limitedTargets.Contains(s.Id));
+        _canCreateMore = services.Any(s => !limitedServices.Contains(s.Id));
         _createDisabledTooltip = _canCreateMore ? null : L["Pages.RateLimits.CreateDisabledTooltip"].Value;
     }
 
@@ -235,10 +225,9 @@ else
             L,
             errors,
             L["Dialog.EntityLabel.RateLimitForService"],
-            limit.TargetId,
+            limit.Id,
             () => RateLimitApi.DeleteAsync(limit.Id),
             LoadAsync,
             message => _deleteError = message,
             StateHasChanged);
-
 }

@@ -1,8 +1,8 @@
 # ClientManager
 
-Layered .NET application for managing clients, service access, resource pools, allocations, rate limits, and usage statistics.
+Layered .NET application for managing clients, service access, global rate limits, and request RPM accounting.
 
-### Public API, admin UI, and pluggable persistence backends.
+### Public API, admin UI, and pluggable persistence backends (MongoDB and Redis).
 
 - [Structure](#structure)
 - [Architecture](#architecture)
@@ -17,9 +17,9 @@ Layered .NET application for managing clients, service access, resource pools, a
 ClientManager is organized around separate hosts and a single persistence owner:
 
 - `ClientManager.AdminUI` - Blazor administrative interface
-- `ClientManager.Api` - public application API and in-process persistence owner
-- `ClientManager.DataAccess` - repositories, databases, and document stores
+- `ClientManager.Api` - public application API with in-process persistence (`ClientManager.Api/Storage`)
 - `ClientManager.Shared` - shared models, configuration, logging, and helpers
+- `tests/ClientManager.Tests` - unit and integration regression suite
 
 This split keeps persistence logic behind the public API while still allowing the system to swap storage providers.
 
@@ -33,26 +33,27 @@ flowchart TD
         operator[Operator or browser]
         seed[seed_data.py]
         traffic[traffic_generator.py]
+        nginx[nginx auth_request]
     end
 
     operator --> ui[ClientManager.AdminUI<br/>:5100]
     ui --> api[ClientManager.Api<br/>:5062]
     seed --> api
     traffic --> api
-    api --> da[ClientManager.DataAccess]
+    nginx --> api
 
-    da --> provider{Persistence provider per storage role}
+    api --> storage[In-process Storage layer]
+    storage --> provider{Persistence provider per storage role}
     provider --> mongo[MongoDB]
     provider --> redis[Redis]
-    provider --> files[JsonFile on local disk or shared volume]
-    provider --> lucene[Lucene]
+    api --> otel[OpenTelemetry metrics and traces]
 ```
 
 Request flow:
 
 1. The Admin UI and helper scripts call `ClientManager.Api`.
-2. `ClientManager.Api` owns persistence in-process and talks directly to `ClientManager.DataAccess`.
-3. `ClientManager.DataAccess` routes each storage role to its configured backend.
+2. `ClientManager.Api` owns persistence in-process under `ClientManager.Api/Storage`.
+3. Each storage role (`Configuration`, `RateLimiting`, `Rpm`) routes to MongoDB or Redis per configuration.
 
 # Getting Started
 
@@ -104,14 +105,13 @@ Use `--list` to preview actions without running Docker.
 
 ## Storage roles
 
-Persistence is split into four logical roles:
+Persistence is split into three logical roles:
 
 | Role | Stores |
 | --- | --- |
-| `Configuration` | Client configurations, services, resource pools, and global rate limits |
+| `Configuration` | Client configurations, services, and global rate limits |
 | `RateLimiting` | Runtime rate-limit counters |
-| `Allocations` | Resource allocation documents and allocation counters |
-| `Statistics` | Usage snapshot time-series data |
+| `Rpm` | Global second-bucket request ring for dashboard RPM |
 
 This means the system routes storage by **role**, not by individual entity type or request.
 
@@ -127,14 +127,7 @@ Supported providers:
 | Provider | Best fit |
 | --- | --- |
 | `MongoDb` | Durable multi-instance shared state |
-| `Redis` | Hot runtime state and counter-heavy roles |
-| `JsonFile` | Local or shared-volume file-backed storage |
-| `Lucene` | File-backed indexed storage without an external database |
-
-Important distinction:
-
-- “NFS” is not a separate provider in this codebase
-- using NFS means a file-backed provider such as `JsonFile` or `Lucene` writes to a mounted shared directory
+| `Redis` | Hot runtime state and counter-heavy roles (default) |
 
 ## Quick configuration examples
 
@@ -168,7 +161,7 @@ All Redis:
 }
 ```
 
-Redis for hot runtime state, MongoDB for the rest:
+Redis for hot runtime state, MongoDB for configuration:
 
 ```json
 {
@@ -183,7 +176,7 @@ Redis for hot runtime state, MongoDB for the rest:
         "Provider": "Redis",
         "Redis": { "Host": "redis", "Port": 6379, "DatabaseIndex": 1, "useSsl": false }
       },
-      "Allocations": {
+      "Rpm": {
         "Provider": "Redis",
         "Redis": { "Host": "redis", "Port": 6379, "DatabaseIndex": 2, "useSsl": false }
       }
@@ -192,25 +185,22 @@ Redis for hot runtime state, MongoDB for the rest:
 }
 ```
 
-For certificate-backed TLS/mTLS, set `UseTls` to `true` (this also enables SSL and applies configured certificate settings). Use `useSsl` when you only need to toggle SSL on/off.
-
-Using different Redis `DatabaseIndex` values for different roles is supported. For a full explanation of what each backend actually stores, how all-Redis behaves, and how mixed Redis/Mongo or Redis/NFS splits behave, see [docs/persistence/index.md](docs/persistence/index.md).
+For certificate-backed TLS/mTLS, set `UseTls` to `true`. See [docs/persistence/index.md](docs/persistence/index.md).
 
 ## Deployment guidance
 
 - Prefer MongoDB or Redis for shared multi-instance deployments.
-- Treat `JsonFile` and `Lucene` as file-backed local or single-host oriented providers.
-- If you use a shared NFS volume, you are still using a file-backed provider, not a dedicated NFS database provider.
+- Start Redis for local development: `docker compose -f compose/redis.yml up -d`
 
 # Repository Layout
 
 ```text
 ClientManager.AdminUI/       Administrative UI
-ClientManager.Api/           Public API host and in-process persistence owner
-ClientManager.DataAccess/    Persistence layer
+ClientManager.Api/           Public API host and in-process storage
 ClientManager.Shared/        Shared contracts and utilities
+tests/ClientManager.Tests/   Regression tests
+compose/                     Docker Compose stack definitions
 _scripts/                    Local development scripts
-data/                        Local development data files
 docs/                        Project documentation
 ```
 
@@ -248,5 +238,4 @@ Mermaid and fonts are bundled for offline/airgapped doc serving (vendored `docs/
 - [Metrics integration guide](docs/metrics-integration-guide.md) — Prometheus, Grafana, Jaeger, OTLP scrape setup
 - [Integration guide](docs/integration-guide.md) — nginx example, client identification, propagating denials
 - [Persistence overview](docs/persistence/index.md)
-- [DataAccess notes](ClientManager.DataAccess/README.md)
 - [License](LICENSE)

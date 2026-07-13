@@ -8,12 +8,9 @@ public enum SeedCollections
 {
     None = 0,
     Services = 1,
-    ResourcePools = 2,
-    GlobalRateLimits = 4,
-    ClientConfigurations = 8,
-    UsageSnapshots = 16,
-    AllCatalog = Services | ResourcePools | GlobalRateLimits | ClientConfigurations,
-    All = AllCatalog
+    GlobalRateLimits = 2,
+    ClientConfigurations = 4,
+    All = Services | GlobalRateLimits | ClientConfigurations
 }
 
 /// <summary>
@@ -24,24 +21,12 @@ public static class SeedCollectionParser
     private static readonly Dictionary<string, SeedCollections> Aliases = new(StringComparer.OrdinalIgnoreCase)
     {
         ["services"] = SeedCollections.Services,
-        ["resourcePools"] = SeedCollections.ResourcePools,
-        ["resource-pools"] = SeedCollections.ResourcePools,
         ["globalRateLimits"] = SeedCollections.GlobalRateLimits,
         ["global-rate-limits"] = SeedCollections.GlobalRateLimits,
         ["clientConfigurations"] = SeedCollections.ClientConfigurations,
         ["client-configurations"] = SeedCollections.ClientConfigurations,
-        ["clients"] = SeedCollections.ClientConfigurations,
-        ["usageSnapshots"] = SeedCollections.UsageSnapshots,
-        ["usage-snapshots"] = SeedCollections.UsageSnapshots,
-        ["statistics"] = SeedCollections.UsageSnapshots
+        ["clients"] = SeedCollections.ClientConfigurations
     };
-
-    /// <summary>
-    /// Returns true when export/import should use NDJSON streaming instead of JSON <see cref="ClientManager.Shared.Configuration.Storage.SeedOptions"/>.
-    /// </summary>
-    public static bool UsesNdjson(SeedCollections collections, string? format) =>
-        collections.HasFlag(SeedCollections.UsageSnapshots) ||
-        string.Equals(format, "ndjson", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Parses a comma-separated include list. Returns <see cref="SeedCollections.All"/> when empty.

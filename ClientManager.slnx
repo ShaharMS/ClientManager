@@ -4,8 +4,10 @@
     <Project Path="ClientManager.Api/ClientManager.Api.csproj" />
   </Folder>
   <Folder Name="/Libraries/">
-    <Project Path="ClientManager.DataAccess/ClientManager.DataAccess.csproj" />
     <Project Path="ClientManager.Shared/ClientManager.Shared.csproj" />
+  </Folder>
+  <Folder Name="/Tests/">
+    <Project Path="tests/ClientManager.Tests/ClientManager.Tests.csproj" />
   </Folder>
   <Folder Name="/_Solution Items_/">
     <File Path=".gitignore" />
@@ -43,19 +45,13 @@
     </Folder>
     <Folder Name="/_Solution Items_/Documentation/Persistence/">
       <File Path="docs/persistence/index.md" />
-      <File Path="docs/persistence/json-file.md" />
-      <File Path="docs/persistence/sqlite.md" />
       <File Path="docs/persistence/mongodb.md" />
       <File Path="docs/persistence/redis.md" />
-      <File Path="docs/persistence/lucene.md" />
     </Folder>
     <Folder Name="/_Solution Items_/Documentation/Kubernetes/">
       <File Path="docs/kubernetes/index.md" />
       <File Path="docs/kubernetes/redis-tuning-airgapped.md" />
       <File Path="docs/kubernetes/admin-ui-ingress.example.yaml" />
-    </Folder>
-    <Folder Name="/_Solution Items_/Documentation/Migration/">
-      <File Path="docs/migration/storage-migration.md" />
     </Folder>
   </Folder>
   <Folder Name="/_Solution Items_/Quick Access/" />
@@ -76,6 +72,7 @@
     <File Path="compose/README.md" />
     <File Path="compose/default.yml" />
     <File Path="compose/dev.redis.yml" />
+    <File Path="compose/redis.yml" />
     <File Path="compose/multipod.yml" />
   </Folder>
   <Folder Name="/_Solution Items_/Scripts/">
@@ -89,5 +86,6 @@
     <File Path="_scripts/statistics_multipod_check.py" />
     <File Path="_scripts/statistics_multipod_stress.py" />
     <File Path="_scripts/traffic_generator.py" />
+    <File Path="_scripts/measure_production_loc.py" />
   </Folder>
 </Solution>

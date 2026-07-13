@@ -48,12 +48,6 @@ public partial class ClientEditor
             RateLimitWindowSeconds = kvp.Value.RateLimit?.Window.TotalSeconds ?? 60,
             RateLimitTokensPerRefill = kvp.Value.RateLimit?.TokensPerRefill
         }).ToList();
-
-        _poolEntries = config.ResourcePools.Select(kvp => new PoolEntryModel
-        {
-            PoolId = kvp.Key,
-            MaxSlots = kvp.Value.MaxSlots
-        }).ToList();
     }
 
     private ClientConfiguration BuildConfiguration() => new()
@@ -64,7 +58,7 @@ public partial class ClientEditor
         ContributesToGlobalLimits = _model.ContributesToGlobalLimits,
         ExemptFromGlobalLimits = _model.ExemptFromGlobalLimits,
         GlobalRateLimit = _hasGlobalRateLimit
-            ? new ClientRateLimit
+            ? new RateLimitPolicy
             {
                 Strategy = _globalRateLimit.Strategy,
                 MaxRequests = _globalRateLimit.MaxRequests,
@@ -81,7 +75,7 @@ public partial class ClientEditor
                 ContributesToGlobalLimit = e.ContributesToGlobalLimit,
                 ExemptFromGlobalLimit = e.ExemptFromGlobalLimit,
                 RateLimit = e.HasRateLimit
-                    ? new ClientRateLimit
+                    ? new RateLimitPolicy
                     {
                         Strategy = e.RateLimitStrategy,
                         MaxRequests = e.RateLimitMaxRequests,
@@ -90,9 +84,6 @@ public partial class ClientEditor
                             ? e.RateLimitTokensPerRefill : null
                     }
                     : null
-            }),
-        ResourcePools = _poolEntries.ToDictionary(
-            e => e.PoolId,
-            e => new ResourcePoolSettings { MaxSlots = e.MaxSlots })
+            })
     };
 }

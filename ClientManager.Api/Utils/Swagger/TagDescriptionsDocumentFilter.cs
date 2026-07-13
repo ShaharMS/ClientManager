@@ -13,14 +13,11 @@ public class TagDescriptionsDocumentFilter : IDocumentFilter
     private static readonly Dictionary<string, string> TagDescriptions = new()
     {
         ["Access Check"] = "Operational endpoints for checking client access to services.",
-        ["Client Configurations"] = "Manages client configuration documents and their nested sub-resources.",
-        ["Global Rate Limits"] = "Manages system-wide catch-all rate limits for services and resource pools.",
-        ["Metrics"] = "Exposes system metrics in multiple formats for different monitoring platforms.",
-        ["Resource Allocation"] = "Operational endpoints for acquiring and releasing resource pool slots.",
-        ["Resource Pools"] = "Manages system-wide resource pool definitions.",
+        ["Client Configurations"] = "Manages client configuration documents.",
+        ["Global Rate Limits"] = "Manages system-wide rate limits for services.",
         ["Services"] = "Manages system-wide service definitions.",
         ["Seeding"] = "Export and import catalog seed data for copying permissions between instances or generating appsettings Seed configuration.",
-        ["Statistics"] = "Provides human-readable statistics about system state, including client counts, service usage, and resource pool utilization."
+        ["Statistics"] = "Provides dashboard client counts, service counts, and current RPM."
     };
 
     public void Apply(OpenApiDocument swaggerDoc, DocumentFilterContext context)

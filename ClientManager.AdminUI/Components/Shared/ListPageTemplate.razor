@@ -67,8 +67,7 @@ else
     private string? _search;
     private List<TItem> _items = [];
     private int _pageSize = 10;
-    private IJSObjectReference? _tableJs;
-    private DotNetObjectReference<ListPageTemplate<TItem>>? _selfRef;
+    private ListPageTableInterop? _tableInterop;
 
     private IEnumerable<TItem> FilteredItems =>
         string.IsNullOrWhiteSpace(_search)
@@ -85,14 +84,13 @@ else
             return;
         }
 
-        _tableJs = await JS.InvokeAsync<IJSObjectReference>("import", "./js/table.js");
-        _selfRef = DotNetObjectReference.Create(this);
-        await _tableJs.InvokeVoidAsync("register", _selfRef);
-        await RecalculatePageSizeAsync();
+        _tableInterop = new ListPageTableInterop(JS, async size =>
+        {
+            _pageSize = size;
+            await InvokeAsync(StateHasChanged);
+        });
+        await _tableInterop.InitializeAsync();
     }
-
-    [JSInvokable]
-    public async Task OnWindowResize() => await RecalculatePageSizeAsync();
 
     public async Task ReloadAsync()
     {
@@ -114,20 +112,11 @@ else
         }
     }
 
-    private async Task RecalculatePageSizeAsync()
-    {
-        _pageSize = await _tableJs!.InvokeAsync<int>("getPageSize", 45);
-        StateHasChanged();
-    }
-
     public async ValueTask DisposeAsync()
     {
-        if (_tableJs is not null)
+        if (_tableInterop is not null)
         {
-            await _tableJs.InvokeVoidAsync("unregister");
-            await _tableJs.DisposeAsync();
+            await _tableInterop.DisposeAsync();
         }
-
-        _selfRef?.Dispose();
     }
 }

@@ -1,57 +1,40 @@
 namespace ClientManager.Api.Services.Interfaces;
 
 /// <summary>
-/// Coordinates authoritative storage-side caches for catalog and statistics reads.
+/// Coordinates the catalog read-through cache for hot management and access-check paths.
 /// </summary>
 /// <remarks>
-/// <para>Three independent invalidation scopes exist:</para>
-/// <list type="bullet">
-/// <item><description><strong>Catalog</strong> — clients, services, pools, global limits. Admin UI writes rotate this scope only.</description></item>
-/// <item><description><strong>Statistics closed</strong> — timeseries closed-base aggregates. Rotated on rollup/prune (slow persistence loop).</description></item>
-/// <item><description><strong>Statistics tail</strong> — legacy full-response tail entries; retained for API compatibility. Live timeseries freshness no longer depends on tail rotation.</description></item>
-/// </list>
 /// <para>
-/// Catalog invalidation does <em>not</em> cascade into statistics scopes. Statistics reads overlay
-/// live counters per request instead of busting cache on every usage flush.
+/// Catalog documents (clients, services, global limits) are read far more often than they are
+/// written. This cache wraps those reads with short TTLs and explicit invalidation so list pages
+/// stay responsive without serving stale data after Admin UI edits.
+/// </para>
+/// <para>
+/// Rate-limit enforcement and RPM accounting persist through dedicated storage counters with atomic
+/// semantics, separate from catalog cache entries.
+/// </para>
+/// <para>
+/// <see cref="InvalidateCatalog"/> rotates the catalog invalidation scope. Catalog writes call it
+/// after persistence succeeds so subsequent reads rebuild entries from authoritative storage.
 /// </para>
 /// </remarks>
 public interface IStorageReadCache
 {
     /// <summary>
-    /// Read-through cache for catalog documents (clients, services, pools, limits).
+    /// Read-through cache for catalog documents (clients, services, global limits).
     /// </summary>
+    /// <typeparam name="T">The cached value type.</typeparam>
+    /// <param name="key">Logical cache key within the catalog scope.</param>
+    /// <param name="factory">Factory that loads the value from storage on a cache miss.</param>
+    /// <param name="cancellationToken">Cancels the factory if the backing store is slow or shutting down.</param>
+    /// <param name="ttl">Optional entry TTL; uses the configured catalog default when omitted.</param>
+    /// <returns>The cached or freshly loaded value.</returns>
     Task<T> GetOrCreateCatalogAsync<T>(
         string key,
         Func<CancellationToken, Task<T>> factory,
         CancellationToken cancellationToken,
         TimeSpan? ttl = null);
 
-    /// <summary>
-    /// Read-through cache for legacy full timeseries responses that included the live tail in the cached payload.
-    /// </summary>
-    /// <remarks>Prefer <see cref="GetOrCreateStatisticsClosedAsync{T}"/> plus per-request overlay for new code paths.</remarks>
-    Task<T> GetOrCreateStatisticsTailAsync<T>(
-        string key,
-        Func<CancellationToken, Task<T>> factory,
-        CancellationToken cancellationToken);
-
-    /// <summary>
-    /// Read-through cache for timeseries closed-base aggregates (snapshots without live overlay).
-    /// </summary>
-    Task<T> GetOrCreateStatisticsClosedAsync<T>(
-        string key,
-        Func<CancellationToken, Task<T>> factory,
-        CancellationToken cancellationToken);
-
-    /// <summary>Rotates the catalog invalidation scope only.</summary>
+    /// <summary>Rotates the catalog invalidation scope so subsequent reads miss the cache.</summary>
     void InvalidateCatalog();
-
-    /// <summary>Rotates both statistics tail and closed invalidation scopes.</summary>
-    void InvalidateStatistics();
-
-    /// <summary>Rotates the statistics tail invalidation scope.</summary>
-    void InvalidateStatisticsTail();
-
-    /// <summary>Rotates the statistics closed invalidation scope (rollup/prune).</summary>
-    void InvalidateStatisticsClosed();
 }
