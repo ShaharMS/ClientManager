@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using System.Text;
-using ClientManager.DataAccess.Stores.Implementations;
-using ClientManager.DataAccess.Stores.Interfaces;
+using ClientManager.Api.Storage.Stores.Implementations;
+using ClientManager.Api.Storage.Stores.Interfaces;
 using ClientManager.Shared.Logging;
 using ClientManager.Shared.Models.Enums;
 using ClientManager.Shared.Models.Search;
@@ -281,9 +281,6 @@ public sealed class InstrumentedDocumentStore : IDocumentStore
         {
             RedisDocumentStore => PersistenceProvider.Redis,
             MongoDBDocumentStore => PersistenceProvider.MongoDb,
-            JsonFileDocumentStore => PersistenceProvider.JsonFile,
-            LuceneDocumentStore => PersistenceProvider.Lucene,
-            SqliteDocumentStore => PersistenceProvider.Sqlite,
             _ => configuredProvider
         };
     }

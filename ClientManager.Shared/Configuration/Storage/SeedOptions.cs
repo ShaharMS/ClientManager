@@ -3,34 +3,32 @@ using ClientManager.Shared.Models.Entities;
 namespace ClientManager.Shared.Configuration.Storage;
 
 /// <summary>
-/// Defines initial entities to populate when the API host starts.
+/// Seed export/import payload and API gate configuration.
 /// </summary>
 public class SeedOptions
 {
+    /// <summary>
+    /// The configuration section name.
+    /// </summary>
     public const string SectionName = "Seed";
 
     /// <summary>
-    /// Client configurations to create if they do not already exist.
+    /// When <c>false</c>, seed endpoints return HTTP 404.
+    /// </summary>
+    public bool SeedApiEnabled { get; set; }
+
+    /// <summary>
+    /// Client configurations included in export/import payloads.
     /// </summary>
     public List<ClientConfiguration> ClientConfigurations { get; set; } = [];
 
     /// <summary>
-    /// Service definitions to create if they do not already exist.
+    /// Service definitions included in export/import payloads.
     /// </summary>
     public List<Service> Services { get; set; } = [];
 
     /// <summary>
-    /// Resource pool definitions to create if they do not already exist.
-    /// </summary>
-    public List<ResourcePool> ResourcePools { get; set; } = [];
-
-    /// <summary>
-    /// Global rate-limit definitions to create if they do not already exist.
+    /// Global rate-limit definitions included in export/import payloads.
     /// </summary>
     public List<GlobalRateLimit> GlobalRateLimits { get; set; } = [];
-
-    /// <summary>
-    /// Usage snapshot documents (statistics history). Use NDJSON seed export for large volumes.
-    /// </summary>
-    public List<UsageSnapshot> UsageSnapshots { get; set; } = [];
 }

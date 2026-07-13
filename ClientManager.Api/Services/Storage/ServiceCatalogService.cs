@@ -1,4 +1,4 @@
-using ClientManager.DataAccess.Repositories.Interfaces;
+using ClientManager.Api.Storage.Repositories.Interfaces;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Api.Models.Exceptions;
 using ClientManager.Api.Services.Interfaces;

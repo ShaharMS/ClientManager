@@ -11,7 +11,7 @@ namespace ClientManager.Shared.Logging;
 /// <para>
 ///     Attaches the public properties of the <c>extraData</c> object to each log event
 ///     under the <c>ExtraData.</c> prefix using reflection, making them available as
-///     structured fields in NLog layouts and sinks (e.g. JSON file, Seq, Elasticsearch).
+///     structured fields in NLog layouts and sinks.
 /// </para>
 /// </summary>
 /// <typeparam name="T">The category type for the logger.</typeparam>

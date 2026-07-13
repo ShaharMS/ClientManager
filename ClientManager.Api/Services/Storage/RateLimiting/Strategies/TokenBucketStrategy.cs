@@ -1,5 +1,5 @@
 using ClientManager.Api.Models.Configuration;
-using ClientManager.DataAccess.Databases.Interfaces;
+using ClientManager.Api.Storage.Databases.Interfaces;
 using ClientManager.Shared.Models.Entities;
 using ClientManager.Api.Services.Interfaces;
 using ClientManager.Api.Services.Storage.Instrumentation;
@@ -30,7 +30,7 @@ public class TokenBucketStrategy : IRateLimitStrategy
     /// <inheritdoc />
     public async Task<RateLimitResult> EvaluateAsync(
         string key,
-        ClientRateLimit rateLimit,
+        RateLimitPolicy rateLimit,
         CancellationToken cancellationToken = default)
     {
         return await RateLimitStrategyInstrumentation.TraceAsync(
@@ -63,7 +63,7 @@ public class TokenBucketStrategy : IRateLimitStrategy
     /// <inheritdoc />
     public async Task<RateLimitResult> PeekAsync(
         string key,
-        ClientRateLimit rateLimit,
+        RateLimitPolicy rateLimit,
         CancellationToken cancellationToken = default)
     {
         return await RateLimitStrategyInstrumentation.TraceAsync(
@@ -193,7 +193,7 @@ public class TokenBucketStrategy : IRateLimitStrategy
             state.RefillIntervalSeconds,
             _windowAlignmentAnchor);
 
-    private static BucketStateContext CreateState(string key, ClientRateLimit rateLimit)
+    private static BucketStateContext CreateState(string key, RateLimitPolicy rateLimit)
     {
         var refillIntervalSeconds = (long)rateLimit.Window.TotalSeconds;
         var bucketCapacity = rateLimit.MaxRequests;

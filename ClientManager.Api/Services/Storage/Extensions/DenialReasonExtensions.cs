@@ -17,12 +17,4 @@ public static class DenialReasonExtensions
         ServiceAccessDenialReason.RateLimited => "rate_limited",
         _ => "unknown"
     };
-
-    public static string ToTagValue(this ResourceAllocationDenialReason reason) => reason switch
-    {
-        ResourceAllocationDenialReason.ClientCapReached => "client_cap_reached",
-        ResourceAllocationDenialReason.RateLimited => "rate_limited",
-        ResourceAllocationDenialReason.NoSlots => "no_slots",
-        _ => "unknown"
-    };
 }

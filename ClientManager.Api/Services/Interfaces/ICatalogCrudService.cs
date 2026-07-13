@@ -1,11 +1,10 @@
-using System.Text.Json;
 using ClientManager.Shared.Models.Responses;
 using ClientManager.Shared.Models.Search;
 
 namespace ClientManager.Api.Services.Interfaces;
 
 /// <summary>
-/// Standard catalog CRUD surface shared by service, resource-pool, and global-rate-limit catalogs.
+/// Standard catalog CRUD surface shared by service and global-rate-limit catalogs.
 /// </summary>
 /// <typeparam name="TEntity">The catalog entity type.</typeparam>
 public interface ICatalogCrudService<TEntity> where TEntity : class
@@ -19,8 +18,4 @@ public interface ICatalogCrudService<TEntity> where TEntity : class
     Task<TEntity> UpdateAsync(string id, TEntity entity, CancellationToken cancellationToken = default);
 
     Task DeleteAsync(string id, CancellationToken cancellationToken = default);
-
-    Task<IReadOnlyList<PatchItemResult<TEntity>>> PatchAsync(
-        IReadOnlyList<JsonElement> patches,
-        CancellationToken cancellationToken = default);
 }

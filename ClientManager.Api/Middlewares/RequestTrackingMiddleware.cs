@@ -8,8 +8,8 @@ namespace ClientManager.Api.Middlewares;
 /// Outermost custom middleware that captures request timing, logs request/response pairs,
 /// and records OpenTelemetry metrics for every HTTP request.
 /// <para>
-/// Emits three instruments: <c>clientmanager.requests.total</c> (counter),
-/// <c>clientmanager.requests.duration</c> (histogram), and <c>clientmanager.requests.errors</c>
+/// Emits three instruments: <c>clientmanager.http.requests</c> (counter),
+/// <c>clientmanager.http.requests.duration</c> (histogram), and <c>clientmanager.http.requests.errors</c>
 /// (counter for status codes &gt;= 400). All instruments are tagged with method, endpoint,
 /// and status code dimensions.
 /// </para>
@@ -39,7 +39,7 @@ public class RequestTrackingMiddleware(
             var statusCode = context.Response.StatusCode;
             var requestTags = CreateRequestTags(context, includeStatusCode: true);
 
-            metrics.RequestsTotal.Add(1, requestTags);
+            metrics.HttpRequestsTotal.Add(1, requestTags);
             metrics.RequestDuration.Record(stopwatch.Elapsed.TotalMilliseconds, CreateRequestTags(context));
 
             if (statusCode >= 400)

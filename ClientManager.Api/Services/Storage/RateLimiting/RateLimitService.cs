@@ -1,5 +1,5 @@
 using System.Diagnostics;
-using ClientManager.DataAccess.Databases.Interfaces;
+using ClientManager.Api.Storage.Databases.Interfaces;
 using ClientManager.Shared.Configuration.Storage;
 using ClientManager.Shared.Logging;
 using ClientManager.Shared.Models.Entities;
@@ -19,7 +19,6 @@ public class RateLimitService : IRateLimitService
     private const double SlowRateLimitThresholdMs = 250;
 
     private readonly IAppLogger<RateLimitService> _logger;
-    private readonly IClientConfigurationDatabase _clientConfigDatabase;
     private readonly IGlobalRateLimitDatabase _globalRateLimitDatabase;
     private readonly RateLimitStrategyResolver _strategyResolver;
     private readonly StorageMetrics _metrics;
@@ -28,7 +27,6 @@ public class RateLimitService : IRateLimitService
 
     public RateLimitService(
         IAppLogger<RateLimitService> logger,
-        IClientConfigurationDatabase clientConfigDatabase,
         IGlobalRateLimitDatabase globalRateLimitDatabase,
         RateLimitStrategyResolver strategyResolver,
         StorageMetrics metrics,
@@ -36,7 +34,6 @@ public class RateLimitService : IRateLimitService
         IOptions<StorageReadCacheOptions> cacheOptions)
     {
         _logger = logger;
-        _clientConfigDatabase = clientConfigDatabase;
         _globalRateLimitDatabase = globalRateLimitDatabase;
         _strategyResolver = strategyResolver;
         _metrics = metrics;
@@ -45,19 +42,17 @@ public class RateLimitService : IRateLimitService
     }
 
     /// <inheritdoc />
-    public async Task<RateLimitResult> CheckAndIncrementAsync(
+    public Task<RateLimitResult> CheckAndIncrementAsync(
         ClientConfiguration configuration,
         string serviceId,
-        CancellationToken cancellationToken = default)
-    {
-        return await TraceRateLimitAsync(
+        CancellationToken cancellationToken = default) =>
+        TraceRateLimitAsync(
             "storage.ratelimit.client_check",
             "client_check",
             activity =>
             {
                 activity?.SetTag("client.id", configuration.Id);
                 activity?.SetTag("service.id", serviceId);
-                activity?.SetTag("ratelimit.mode", "increment");
             },
             async () =>
             {
@@ -82,80 +77,65 @@ public class RateLimitService : IRateLimitService
                     $"{configuration.Id}:global",
                     increment: true,
                     cancellationToken);
-                var result = Combine(serviceResult, globalResult);
-                return CompleteClientDecision(result, configuration.Id, serviceId);
+
+                return CompleteClientDecision(Combine(serviceResult, globalResult), configuration.Id, serviceId);
             },
             cancellationToken);
-    }
 
     /// <inheritdoc />
-    public async Task<RateLimitResult> CheckGlobalServiceLimitAsync(
+    public Task<RateLimitResult> CheckGlobalServiceLimitAsync(
         ClientConfiguration configuration,
         string serviceId,
         CancellationToken cancellationToken = default)
     {
         var settings = configuration.Services.GetValueOrDefault(serviceId);
-
-        return await CheckGlobalLimitAsync(
+        return CheckGlobalLimitAsync(
             configuration,
             serviceId,
-            TargetType.Service,
             settings?.ContributesToGlobalLimit ?? configuration.ContributesToGlobalLimits,
             settings?.ExemptFromGlobalLimit ?? configuration.ExemptFromGlobalLimits,
             cancellationToken);
     }
 
-    /// <inheritdoc />
-    public async Task<RateLimitResult> CheckGlobalResourcePoolLimitAsync(
+    private async Task<RateLimitResult> CheckGlobalLimitAsync(
         ClientConfiguration configuration,
-        string resourcePoolId,
-        CancellationToken cancellationToken = default)
-    {
-        return await CheckGlobalLimitAsync(
-            configuration,
-            resourcePoolId,
-            TargetType.ResourcePool,
-            configuration.ContributesToGlobalLimits,
-            configuration.ExemptFromGlobalLimits,
-            cancellationToken);
-    }
-
-    /// <inheritdoc />
-    public async Task<RateLimitResult> CheckWithoutIncrementAsync(
-        string clientId,
         string serviceId,
-        CancellationToken cancellationToken = default)
+        bool contributesToGlobal,
+        bool exemptFromGlobal,
+        CancellationToken cancellationToken)
     {
         return await TraceRateLimitAsync(
-            "storage.ratelimit.client_peek",
-            "client_peek",
+            "storage.ratelimit.global_check",
+            "global_check",
             activity =>
             {
-                activity?.SetTag("client.id", clientId);
+                activity?.SetTag("client.id", configuration.Id);
                 activity?.SetTag("service.id", serviceId);
-                activity?.SetTag("ratelimit.mode", "peek");
             },
             async () =>
             {
-                var configuration = await _clientConfigDatabase.GetByIdAsync(clientId, cancellationToken);
-                if (configuration is null || !configuration.IsEnabled)
+                var globalLimit = await GetGlobalLimitAsync(serviceId, cancellationToken);
+                if (globalLimit is null)
                 {
                     return Allowed();
                 }
 
-                var serviceResult = await EvaluateAsync(
-                    configuration.Services.GetValueOrDefault(serviceId)?.RateLimit,
-                    $"{clientId}:{serviceId}",
-                    increment: false,
-                    cancellationToken);
+                var strategy = _strategyResolver.Resolve(globalLimit.Policy.Strategy);
+                var globalKey = $"global:service:{serviceId}";
 
-                var globalResult = await EvaluateAsync(
-                    configuration.GlobalRateLimit,
-                    $"{clientId}:global",
-                    increment: false,
-                    cancellationToken);
+                if (contributesToGlobal)
+                {
+                    var result = await strategy.EvaluateAsync(globalKey, globalLimit.Policy, cancellationToken);
+                    return exemptFromGlobal ? Allowed() : CompleteGlobalDecision(result, configuration.Id, serviceId);
+                }
 
-                return Combine(serviceResult, globalResult);
+                if (exemptFromGlobal)
+                {
+                    return Allowed();
+                }
+
+                var peekResult = await strategy.PeekAsync(globalKey, globalLimit.Policy, cancellationToken);
+                return CompleteGlobalDecision(peekResult, configuration.Id, serviceId);
             },
             cancellationToken);
     }
@@ -180,14 +160,6 @@ public class RateLimitService : IRateLimitService
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             stopwatch.Stop();
-            activity?.SetTag("ratelimit.result", "canceled");
-            activity?.SetTag("duration_ms", stopwatch.Elapsed.TotalMilliseconds);
-            _logger.Debug("Rate limit operation canceled", new
-            {
-                Operation = operation,
-                DurationMs = stopwatch.Elapsed.TotalMilliseconds,
-                Result = "canceled"
-            });
             throw;
         }
         catch (Exception exception)
@@ -195,200 +167,12 @@ public class RateLimitService : IRateLimitService
             stopwatch.Stop();
             activity?.SetTag("error.type", exception.GetType().Name);
             activity?.SetStatus(ActivityStatusCode.Error);
-            _logger.Error("Rate limit operation failed", new
-            {
-                Operation = operation,
-                DurationMs = stopwatch.Elapsed.TotalMilliseconds,
-                Result = "exception"
-            }, exception);
+            _logger.Error("Rate limit operation failed", new { Operation = operation }, exception);
             throw;
         }
     }
 
-    private async Task<RateLimitResult> CheckGlobalLimitAsync(
-        ClientConfiguration configuration,
-        string targetId,
-        TargetType targetType,
-        bool contributesToGlobal,
-        bool exemptFromGlobal,
-        CancellationToken cancellationToken)
-    {
-        return await TraceRateLimitAsync(
-            "storage.ratelimit.global_check",
-            "global_check",
-            activity =>
-            {
-                activity?.SetTag("client.id", configuration.Id);
-                activity?.SetTag("ratelimit.target_id", targetId);
-                activity?.SetTag("ratelimit.target_type", targetType.ToString());
-                activity?.SetTag("ratelimit.contributes_to_global", contributesToGlobal);
-                activity?.SetTag("ratelimit.exempt_from_global", exemptFromGlobal);
-            },
-            async () =>
-            {
-                var globalLimit = await GetGlobalLimitAsync(targetId, targetType, cancellationToken);
-                if (globalLimit is null)
-                {
-                    return Allowed();
-                }
-
-                var strategy = _strategyResolver.Resolve(globalLimit.Strategy);
-                var globalKey = targetType == TargetType.Service
-                    ? $"global:service:{targetId}"
-                    : $"global:pool:{targetId}";
-                var rateLimit = ToClientRateLimit(globalLimit);
-
-                if (contributesToGlobal)
-                {
-                    var result = await strategy.EvaluateAsync(globalKey, rateLimit, cancellationToken);
-                    return exemptFromGlobal ? Allowed() : CompleteGlobalDecision(result, configuration.Id, targetId, targetType);
-                }
-
-                if (exemptFromGlobal)
-                {
-                    return Allowed();
-                }
-
-                var peekResult = await strategy.PeekAsync(globalKey, rateLimit, cancellationToken);
-                return CompleteGlobalDecision(peekResult, configuration.Id, targetId, targetType);
-            },
-            cancellationToken);
-    }
-
-    private RateLimitResult CompleteClientDecision(
-        RateLimitResult result,
-        string clientId,
-        string serviceId)
-    {
-        RecordClientRateLimitDecision(result, clientId, serviceId);
-
-        _logger.Debug("Rate limit evaluated", new
-        {
-            ClientId = clientId,
-            ServiceId = serviceId,
-            result.IsAllowed,
-            result.RemainingRequests
-        });
-
-        return result;
-    }
-
-    private RateLimitResult CompleteGlobalDecision(
-        RateLimitResult result,
-        string clientId,
-        string targetId,
-        TargetType targetType)
-    {
-        if (result.IsAllowed)
-        {
-            return result;
-        }
-
-        RecordGlobalHit(clientId, targetId, targetType);
-        return result with { IsGlobalLimitHit = true };
-    }
-
-    private async Task<RateLimitResult?> EvaluateAsync(
-        ClientRateLimit? rateLimit,
-        string key,
-        bool increment,
-        CancellationToken cancellationToken)
-    {
-        using var activity = _metrics.ActivitySource.StartInternalActivity(
-            "storage.ratelimit.strategy_dispatch",
-            act =>
-            {
-                act?.SetTag("ratelimit.configured", rateLimit is not null);
-                act?.SetTag("ratelimit.mode", increment ? "increment" : "peek");
-            });
-
-        if (rateLimit is null)
-        {
-            activity?.SetTag("ratelimit.result", "not_configured");
-            return null;
-        }
-
-        activity?.SetTag("ratelimit.strategy", rateLimit.Strategy.ToString());
-        var strategy = _strategyResolver.Resolve(rateLimit.Strategy);
-        var result = increment
-            ? await strategy.EvaluateAsync(key, rateLimit, cancellationToken)
-            : await strategy.PeekAsync(key, rateLimit, cancellationToken);
-
-        activity?.SetTag("ratelimit.result", result.IsAllowed ? "allowed" : "denied");
-        return result;
-    }
-
-    private async Task<GlobalRateLimit?> GetGlobalLimitAsync(
-        string targetId,
-        TargetType targetType,
-        CancellationToken cancellationToken)
-    {
-        using var activity = _metrics.ActivitySource.StartInternalActivity(
-            "storage.ratelimit.global_limit_read",
-            act =>
-            {
-                act?.SetTag("ratelimit.target_id", targetId);
-                act?.SetTag("ratelimit.target_type", targetType.ToString());
-            });
-
-        var globalLimit = await _cache.GetOrCreateCatalogAsync(
-            $"global-limit:{targetId}:{targetType}",
-            token => _globalRateLimitDatabase.GetByTargetAsync(targetId, targetType, token),
-            cancellationToken,
-            _cacheOptions.HotPathCatalogTtl);
-        activity?.SetTag("ratelimit.global_limit_found", globalLimit is not null);
-        return globalLimit;
-    }
-
-    private void CompleteRateLimit(
-        Activity? activity,
-        string operation,
-        RateLimitResult result,
-        double durationMs)
-    {
-        var outcome = result.IsAllowed ? "allowed" : "denied";
-        activity?.SetTag("ratelimit.result", outcome);
-        activity?.SetTag("ratelimit.remaining_requests", result.RemainingRequests);
-        activity?.SetTag("ratelimit.retry_after_seconds", result.RetryAfterSeconds);
-        activity?.SetTag("duration_ms", durationMs);
-
-        LogRateLimitCompletion(operation, outcome, result, durationMs);
-    }
-
-    private void LogRateLimitCompletion(
-        string operation,
-        string outcome,
-        RateLimitResult result,
-        double durationMs)
-    {
-        var extraData = new
-        {
-            Operation = operation,
-            DurationMs = durationMs,
-            Result = outcome,
-            result.RemainingRequests,
-            result.RetryAfterSeconds
-        };
-
-        if (durationMs >= SlowRateLimitThresholdMs)
-        {
-            _logger.Warn("Rate limit operation completed slowly", extraData);
-            return;
-        }
-
-        if (outcome == "denied")
-        {
-            _logger.Info("Rate limit operation denied", extraData);
-            return;
-        }
-
-        _logger.Debug("Rate limit operation completed", extraData);
-    }
-
-    private void RecordClientRateLimitDecision(
-        RateLimitResult result,
-        string clientId,
-        string serviceId)
+    private RateLimitResult CompleteClientDecision(RateLimitResult result, string clientId, string serviceId)
     {
         var counter = result.IsAllowed ? _metrics.RateLimitAllowed : _metrics.RateLimitDenied;
         counter.Add(1, new TagList
@@ -396,47 +180,49 @@ public class RateLimitService : IRateLimitService
             { MetricTagKey.ClientId.ToTagName(), clientId },
             { MetricTagKey.ServiceId.ToTagName(), serviceId }
         });
+        return result;
     }
 
-    private void RecordGlobalHit(string clientId, string targetId, TargetType targetType)
+    private static RateLimitResult CompleteGlobalDecision(RateLimitResult result, string clientId, string serviceId) =>
+        result.IsAllowed ? result : result with { IsGlobalLimitHit = true };
+
+    private async Task<RateLimitResult?> EvaluateAsync(
+        RateLimitPolicy? rateLimit,
+        string key,
+        bool increment,
+        CancellationToken cancellationToken)
     {
-        var tags = new TagList { { MetricTagKey.ClientId.ToTagName(), clientId } };
-
-        if (targetType == TargetType.Service)
+        if (rateLimit is null)
         {
-            tags.Add(MetricTagKey.ServiceId.ToTagName(), targetId);
-        }
-        else
-        {
-            tags.Add(MetricTagKey.ResourcePoolId.ToTagName(), targetId);
+            return null;
         }
 
-        _metrics.GlobalRateLimitHits.Add(1, tags);
+        var strategy = _strategyResolver.Resolve(rateLimit.Strategy);
+        return increment
+            ? await strategy.EvaluateAsync(key, rateLimit, cancellationToken)
+            : await strategy.PeekAsync(key, rateLimit, cancellationToken);
     }
 
-    private static RateLimitResult Allowed() => new()
+    private async Task<GlobalRateLimit?> GetGlobalLimitAsync(string serviceId, CancellationToken cancellationToken) =>
+        await _cache.GetOrCreateCatalogAsync(
+            $"global-limit:{serviceId}",
+            token => _globalRateLimitDatabase.GetByServiceIdAsync(serviceId, token),
+            cancellationToken,
+            _cacheOptions.HotPathCatalogTtl);
+
+    private static void CompleteRateLimit(Activity? activity, string operation, RateLimitResult result, double durationMs)
     {
-        IsAllowed = true,
-        RemainingRequests = int.MaxValue
-    };
+        activity?.SetTag("ratelimit.result", result.IsAllowed ? "allowed" : "denied");
+        activity?.SetTag("duration_ms", durationMs);
+    }
+
+    private static RateLimitResult Allowed() => new() { IsAllowed = true, RemainingRequests = int.MaxValue };
 
     private static RateLimitResult Combine(RateLimitResult? first, RateLimitResult? second)
     {
-        if (first is null && second is null)
-        {
-            return Allowed();
-        }
-
-        if (first is null)
-        {
-            return second!;
-        }
-
-        if (second is null)
-        {
-            return first;
-        }
-
+        if (first is null && second is null) return Allowed();
+        if (first is null) return second!;
+        if (second is null) return first;
         if (!first.IsAllowed || !second.IsAllowed)
         {
             if (!first.IsAllowed && !second.IsAllowed)
@@ -449,12 +235,4 @@ public class RateLimitService : IRateLimitService
 
         return first.RemainingRequests <= second.RemainingRequests ? first : second;
     }
-
-    private static ClientRateLimit ToClientRateLimit(GlobalRateLimit limit) => new()
-    {
-        Strategy = limit.Strategy,
-        MaxRequests = limit.MaxRequests,
-        Window = limit.Window,
-        TokensPerRefill = limit.TokensPerRefill
-    };
 }

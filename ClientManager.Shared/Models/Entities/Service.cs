@@ -10,9 +10,9 @@ using ClientManager.Shared.Models.Enums;
 /// <para>
 ///     Access to a service is controlled per-client through
 ///     <see cref="ClientConfiguration.Services"/>. Rate limits can be applied per-client
-///     (<see cref="ClientRateLimit"/>), per-client-per-service
+///     (<see cref="ClientConfiguration.GlobalRateLimit"/>), per-client-per-service
 ///     (<see cref="ServiceAccessSettings.RateLimit"/>), and globally
-///     (<see cref="GlobalRateLimit"/> with <see cref="TargetType.Service"/>).
+///     (<see cref="GlobalRateLimit"/>).
 /// </para>
 /// </summary>
 public record Service

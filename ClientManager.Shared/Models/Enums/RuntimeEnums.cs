@@ -7,8 +7,6 @@ public enum MetricTagKey
 {
     ClientId,
     ServiceId,
-    ResourcePoolId,
-    AllocationId,
     Reason
 }
 
@@ -23,14 +21,4 @@ public enum ServiceAccessDenialReason
     NotAllowed,
     GlobalRateLimited,
     RateLimited
-}
-
-/// <summary>
-/// Reasons a resource acquisition can be denied.
-/// </summary>
-public enum ResourceAllocationDenialReason
-{
-    ClientCapReached,
-    RateLimited,
-    NoSlots
 }
