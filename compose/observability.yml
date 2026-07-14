@@ -21,7 +21,7 @@ services:
       - prometheus-data:/prometheus
 
   grafana:
-    image: grafana/grafana-oss:11.4.0
+    image: grafana/grafana-oss:11.2.6
     restart: unless-stopped
     depends_on:
       - prometheus

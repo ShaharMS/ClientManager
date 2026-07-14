@@ -29,4 +29,4 @@ Reports request counts, status counts, achieved rate, and latency percentiles.
 ## Related
 
 - [traffic_generator.py](traffic-generator.md) — non-deterministic demo traffic
-- [Metrics integration guide](../metrics-integration-guide.md)
+- [Observability guides](../observability/index.md)

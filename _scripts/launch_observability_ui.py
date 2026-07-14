@@ -110,7 +110,7 @@ def print_runbook() -> None:
     print("  Multipod + observability:  edit docker-compose.yml includes, then docker compose up")
     print("  + traces:                  docker compose --profile traces up")
     print("  + load (multipod demo):    docker compose --profile load up")
-    print("  Prod:                      import observability/grafana/dashboards/clientmanager.json")
+    print("  Prod:                      see docs/observability/existing-monitoring.md")
     print()
 
 

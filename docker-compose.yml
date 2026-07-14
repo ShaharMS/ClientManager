@@ -1,6 +1,6 @@
 # Entry point for `docker compose up`. Switch stacks by editing the include list.
 #
-# Multipod + observability + traffic-gen (full demo):
+# Multipod + observability + traffic-gen (full demo; Admin UI on :5100):
 include:
   - path: compose/multipod.yml
   - path: compose/observability.yml

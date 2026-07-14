@@ -33,7 +33,7 @@ The seed endpoint imports only clients, services, and global rate limits. It acc
 
 | Item | Notes |
 | --- | --- |
-| Docker build context | Root [`.dockerignore`](../.dockerignore) excludes local build output |
+| Docker build context | Root `.dockerignore` excludes local build output |
 | Docker prune | `docker system prune -a --volumes` and `docker builder prune -a` when images pile up |
 | `act-*` volumes | Leftover from local GitHub Actions (`act`); safe to remove |
 
@@ -41,6 +41,6 @@ The seed endpoint imports only clients, services, and global rate limits. It acc
 
 | Script | Purpose |
 | --- | --- |
-| [`run_multipod_docker.py`](../../_scripts/run_multipod_docker.py) | Full fresh multipod cycle |
+| `_scripts/run_multipod_docker.py` | Full fresh multipod cycle |
 
-See also [`compose/README.md`](../../compose/README.md).
+See also `compose/README.md` in the repository.

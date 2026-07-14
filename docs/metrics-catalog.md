@@ -16,6 +16,7 @@ OpenTelemetry instrument names use dots; Prometheus export uses underscores, `_t
 | `clientmanager_ratelimit_allowed_total` | `clientmanager.ratelimit.allowed` | `clientId`, `serviceId` | Rate-limit pass |
 | `clientmanager_ratelimit_denied_total` | `clientmanager.ratelimit.denied` | `clientId`, `serviceId` | Rate-limit fail |
 | `clientmanager_ratelimit_global_hits_total` | `clientmanager.ratelimit.global_hits` | `serviceId` | Service-global limit denials |
+| `clientmanager_storage_catalog_cache_total` | `clientmanager.storage.catalog_cache` | `result` (`hit`, `miss`) | In-memory catalog read-cache lookups |
 
 ### `outcome` values (`clientmanager_requests_total`)
 
@@ -23,9 +24,14 @@ OpenTelemetry instrument names use dots; Prometheus export uses underscores, `_t
 
 ## Histograms (milliseconds)
 
+Explicit bucket boundaries (upper bounds, ms):  
+`0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000`  
+Configured in `Program.cs` for all `*.duration` instruments on the ClientManager meters. Without sub-ms buckets, cache-hit medians flatten to ~2.5ms in Grafana.
+
 | Prometheus prefix | Labels | Description |
 | --- | --- | --- |
 | `clientmanager_http_requests_duration_milliseconds_*` | `method`, `endpoint` | HTTP middleware timing |
+| `clientmanager_storage_catalog_cache_duration_milliseconds_*` | `result` (`hit`, `miss`) | Catalog read-cache lookup time |
 | `clientmanager_storage_access_duration_milliseconds_*` | `clientId`, `serviceId`, `result`, `reason` | Access-check path |
 | `clientmanager_storage_ratelimit_strategy_duration_milliseconds_*` | `strategy`, `mode`, `counter_key_count`, `result` | Strategy evaluation |
 | `clientmanager_storage_document_store_duration_milliseconds_*` | `collection`, `operation`, `role`, `provider`, `result` | Document store ops |
@@ -50,19 +56,19 @@ Example: 50 services × 200 clients × 9 outcomes ≈ **90k** series for `client
 
 | Signal | Source |
 | --- | --- |
-| Admin UI RPM card | `GET /api/v1/statistics/overview` (shared Redis ring) |
+| Admin UI RPM card | `GET /api/v2/statistics/overview` (shared Redis ring) |
 
 Dashboard RPM equivalent uses `sum(rate(clientmanager_requests_total{outcome="granted"}[5m])) * 60` from per-pod counters.
 
 ## Prod scrape checklist
 
 1. Scrape `/prometheus/otel` — not admin or statistics JSON routes.
-2. Prefer per-pod targets; avoid round-robin single URL.
+2. Prefer per-pod targets; avoid round-robin single URL. See [Pod discovery](observability/pod-discovery.md).
 3. Sticky single target: OK for SLO ratios; global volume panels are partial.
 4. Restrict scrape network — endpoint has no auth.
 
 ## Dashboard import
 
-File: [`observability/grafana/dashboards/clientmanager.json`](../observability/grafana/dashboards/clientmanager.json)
+File: `observability/grafana/dashboards/clientmanager.json`
 
-Variables: `datasource`, `pod`, `service`, `client`. Only the **Pod** zone reacts to `$pod`.
+Step-by-step: [Existing Grafana & Prometheus — import the dashboard](observability/existing-monitoring.md#step-3-import-the-dashboard)

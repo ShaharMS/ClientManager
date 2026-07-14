@@ -1,6 +1,6 @@
 # access_load_check.py
 
-Sustained load test against `GET /api/v1/access/check` to verify rate-limit storage keeps up at high RPM.
+Sustained load test against `GET /api/v2/access/check` to verify rate-limit storage keeps up at high RPM.
 
 ## Defaults
 

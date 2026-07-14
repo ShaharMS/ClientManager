@@ -7,6 +7,7 @@
   "graphTooltip": 1,
   "id": null,
   "links": [],
+  "liveNow": false,
   "panels": [
     {
       "id": 1,
@@ -20,12 +21,12 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "### ClientManager observability\n\n- **Global zone**: sums all API pods \u2014 unaffected by the pod picker below.\n- **Pod zone**: all panels filter `instance=\"$pod\"`.\n- **Storage zone**: per-role subsections \u2014 ops/s and latency side by side; **Storage pod** = *All* or one pod.\n- **Traces** (bottom): trace table from Tempo when `--profile traces` is running.\n- Replicas: `${replicas}` (API pods only).\n"
+        "content": "### ClientManager observability\n\n- **Global zone**: sums all API pods - unaffected by the pod picker below.\n- **Pod zone**: all panels filter `instance=\"$pod\"`.\n- **Storage zone**: per-role subsections - ops/s and Median Latency (catalog cache on Configuration); **Storage pod** = *All* or one pod.\n- **Traces** (bottom): click Duration / Start time / Name on a trace row; waterfall loads in the panel on the right. Requires `--profile traces`.\n- Replicas: `${replicas}` (API pods only).\n"
       }
     },
     {
       "type": "row",
-      "title": "Global \u2014 all replicas",
+      "title": "Global - all replicas",
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -338,7 +339,7 @@
     {
       "id": 9,
       "type": "timeseries",
-      "title": "Global HTTP latency",
+      "title": "Global HTTP Median Latency",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -388,7 +389,7 @@
     {
       "id": 10,
       "type": "timeseries",
-      "title": "HTTP client responses (4xx/s)",
+      "title": "HTTP client responses (access 200 + 4xx/s)",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -408,6 +409,15 @@
           "expr": "sum by (endpoint, statusCode) (rate(clientmanager_http_requests_total{job=\"clientmanager-api\", statusCode=~\"4..\"}[$__rate_interval]))",
           "legendFormat": "{{statusCode}} {{endpoint}}",
           "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum by (endpoint, statusCode) (rate(clientmanager_http_requests_total{job=\"clientmanager-api\", statusCode=\"200\", endpoint=\"/api/v2/access/check\"}[$__rate_interval]))",
+          "legendFormat": "{{statusCode}} {{endpoint}}",
+          "refId": "B"
         }
       ],
       "fieldConfig": {
@@ -747,7 +757,7 @@
     {
       "id": 17,
       "type": "timeseries",
-      "title": "Global rate-limit strategy median",
+      "title": "Global rate-limit strategy Median Latency",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -765,7 +775,7 @@
             "uid": "${datasource}"
           },
           "expr": "histogram_quantile(0.50, sum by (le, strategy) (rate(clientmanager_storage_ratelimit_strategy_duration_milliseconds_bucket{job=\"clientmanager-api\", serviceId=~\"$service\", clientId=~\"$client\"}[$__rate_interval])))",
-          "legendFormat": "median {{strategy}}",
+          "legendFormat": "{{strategy}}",
           "refId": "A"
         }
       ],
@@ -797,7 +807,7 @@
     {
       "id": 18,
       "type": "timeseries",
-      "title": "Global access-check latency",
+      "title": "Service access attempts - Latency",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -817,6 +827,24 @@
           "expr": "histogram_quantile(0.50, sum by (le) (rate(clientmanager_storage_access_duration_milliseconds_bucket{job=\"clientmanager-api\", serviceId=~\"$service\", clientId=~\"$client\"}[$__rate_interval])))",
           "legendFormat": "median",
           "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(clientmanager_storage_access_duration_milliseconds_bucket{job=\"clientmanager-api\", serviceId=~\"$service\", clientId=~\"$client\"}[$__rate_interval])))",
+          "legendFormat": "p95",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(clientmanager_storage_access_duration_milliseconds_bucket{job=\"clientmanager-api\", serviceId=~\"$service\", clientId=~\"$client\"}[$__rate_interval])))",
+          "legendFormat": "p99",
+          "refId": "C"
         }
       ],
       "fieldConfig": {
@@ -846,7 +874,7 @@
     },
     {
       "type": "row",
-      "title": "Storage \u2014 document store by role ($storage_pod)",
+      "title": "Storage - document store by role ($storage_pod)",
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -859,7 +887,7 @@
     },
     {
       "type": "row",
-      "title": "Storage \u2014 Configuration",
+      "title": "Storage - Configuration",
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -873,7 +901,7 @@
     {
       "id": 21,
       "type": "timeseries",
-      "title": "Configuration \u2014 ops/s",
+      "title": "Configuration - ops/s",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -893,6 +921,15 @@
           "expr": "sum by (operation) (rate(clientmanager_storage_document_store_duration_milliseconds_count{job=\"clientmanager-api\", instance=~\"$storage_pod\", role=\"Configuration\"}[$__rate_interval]))",
           "legendFormat": "{{operation}}",
           "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(rate(clientmanager_storage_catalog_cache_total{job=\"clientmanager-api\", instance=~\"$storage_pod\", result=\"hit\"}[$__rate_interval]))",
+          "legendFormat": "cache hit",
+          "refId": "B"
         }
       ],
       "fieldConfig": {
@@ -923,7 +960,7 @@
     {
       "id": 22,
       "type": "timeseries",
-      "title": "Configuration \u2014 latency",
+      "title": "Configuration - Median Latency",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -941,8 +978,17 @@
             "uid": "${datasource}"
           },
           "expr": "histogram_quantile(0.50, sum by (le, operation) (rate(clientmanager_storage_document_store_duration_milliseconds_bucket{job=\"clientmanager-api\", instance=~\"$storage_pod\", role=\"Configuration\"}[$__rate_interval])))",
-          "legendFormat": "median {{operation}}",
+          "legendFormat": "{{operation}}",
           "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(clientmanager_storage_catalog_cache_duration_milliseconds_bucket{job=\"clientmanager-api\", instance=~\"$storage_pod\", result=\"hit\"}[$__rate_interval])))",
+          "legendFormat": "cache hit",
+          "refId": "B"
         }
       ],
       "fieldConfig": {
@@ -972,7 +1018,7 @@
     },
     {
       "type": "row",
-      "title": "Storage \u2014 RateLimiting",
+      "title": "Storage - RateLimiting",
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -986,7 +1032,7 @@
     {
       "id": 24,
       "type": "timeseries",
-      "title": "RateLimiting \u2014 ops/s",
+      "title": "RateLimiting - ops/s",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -1036,7 +1082,7 @@
     {
       "id": 25,
       "type": "timeseries",
-      "title": "RateLimiting \u2014 latency",
+      "title": "RateLimiting - Median Latency",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -1054,7 +1100,7 @@
             "uid": "${datasource}"
           },
           "expr": "histogram_quantile(0.50, sum by (le, operation) (rate(clientmanager_storage_document_store_duration_milliseconds_bucket{job=\"clientmanager-api\", instance=~\"$storage_pod\", role=\"RateLimiting\"}[$__rate_interval])))",
-          "legendFormat": "median {{operation}}",
+          "legendFormat": "{{operation}}",
           "refId": "A"
         }
       ],
@@ -1085,7 +1131,7 @@
     },
     {
       "type": "row",
-      "title": "Storage \u2014 Rpm",
+      "title": "Storage - Rpm",
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -1099,7 +1145,7 @@
     {
       "id": 27,
       "type": "timeseries",
-      "title": "Rpm \u2014 ops/s",
+      "title": "Rpm - ops/s",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -1149,7 +1195,7 @@
     {
       "id": 28,
       "type": "timeseries",
-      "title": "Rpm \u2014 latency",
+      "title": "Rpm - Median Latency",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -1167,7 +1213,7 @@
             "uid": "${datasource}"
           },
           "expr": "histogram_quantile(0.50, sum by (le, operation) (rate(clientmanager_storage_document_store_duration_milliseconds_bucket{job=\"clientmanager-api\", instance=~\"$storage_pod\", role=\"Rpm\"}[$__rate_interval])))",
-          "legendFormat": "median {{operation}}",
+          "legendFormat": "{{operation}}",
           "refId": "A"
         }
       ],
@@ -1198,7 +1244,7 @@
     },
     {
       "type": "row",
-      "title": "Storage \u2014 all roles",
+      "title": "Storage - all roles",
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -1212,7 +1258,7 @@
     {
       "id": 30,
       "type": "timeseries",
-      "title": "All roles \u2014 ops/s",
+      "title": "All roles - ops/s",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -1232,6 +1278,15 @@
           "expr": "sum by (operation) (rate(clientmanager_storage_document_store_duration_milliseconds_count{job=\"clientmanager-api\", instance=~\"$storage_pod\"}[$__rate_interval]))",
           "legendFormat": "{{operation}}",
           "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(rate(clientmanager_storage_catalog_cache_total{job=\"clientmanager-api\", instance=~\"$storage_pod\", result=\"hit\"}[$__rate_interval]))",
+          "legendFormat": "cache hit",
+          "refId": "B"
         }
       ],
       "fieldConfig": {
@@ -1262,7 +1317,7 @@
     {
       "id": 31,
       "type": "timeseries",
-      "title": "All roles \u2014 latency",
+      "title": "All roles - Median Latency",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -1280,8 +1335,17 @@
             "uid": "${datasource}"
           },
           "expr": "histogram_quantile(0.50, sum by (le, operation) (rate(clientmanager_storage_document_store_duration_milliseconds_bucket{job=\"clientmanager-api\", instance=~\"$storage_pod\"}[$__rate_interval])))",
-          "legendFormat": "median {{operation}}",
+          "legendFormat": "{{operation}}",
           "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(clientmanager_storage_catalog_cache_duration_milliseconds_bucket{job=\"clientmanager-api\", instance=~\"$storage_pod\", result=\"hit\"}[$__rate_interval])))",
+          "legendFormat": "cache hit",
+          "refId": "B"
         }
       ],
       "fieldConfig": {
@@ -1311,7 +1375,7 @@
     },
     {
       "type": "row",
-      "title": "Pod \u2014 $pod",
+      "title": "Pod - $pod",
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -1525,7 +1589,7 @@
     {
       "id": 37,
       "type": "timeseries",
-      "title": "Pod HTTP latency",
+      "title": "Pod HTTP Median Latency",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -1575,7 +1639,7 @@
     {
       "id": 38,
       "type": "timeseries",
-      "title": "Pod HTTP client responses (4xx/s)",
+      "title": "Pod HTTP client responses (access 200 + 4xx/s)",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -1595,6 +1659,15 @@
           "expr": "sum by (endpoint, statusCode) (rate(clientmanager_http_requests_total{job=\"clientmanager-api\", instance=\"$pod\", statusCode=~\"4..\"}[$__rate_interval]))",
           "legendFormat": "{{statusCode}} {{endpoint}}",
           "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum by (endpoint, statusCode) (rate(clientmanager_http_requests_total{job=\"clientmanager-api\", instance=\"$pod\", statusCode=\"200\", endpoint=\"/api/v2/access/check\"}[$__rate_interval]))",
+          "legendFormat": "{{statusCode}} {{endpoint}}",
+          "refId": "B"
         }
       ],
       "fieldConfig": {
@@ -1833,7 +1906,7 @@
     },
     {
       "type": "row",
-      "title": "Traces \u2014 ClientManager.Api",
+      "title": "Traces - ClientManager.Api",
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -1847,18 +1920,19 @@
     {
       "id": 44,
       "type": "table",
-      "title": "Recent traces \u2014 ClientManager.Api",
-      "description": "Click a Trace ID to open the waterfall. Requires stack started with --profile traces.",
+      "title": "Recent traces",
+      "description": "Click Duration, Start time, or Name to load the waterfall on the right. Expand (>) to list spans in the table.",
       "datasource": {
         "type": "tempo",
         "uid": "clientmanager-tempo"
       },
       "gridPos": {
-        "h": 12,
-        "w": 24,
+        "h": 16,
+        "w": 10,
         "x": 0,
         "y": 135
       },
+      "interval": "",
       "targets": [
         {
           "datasource": {
@@ -1868,8 +1942,9 @@
           "queryType": "traceql",
           "query": "{ resource.service.name = \"ClientManager.Api\" }",
           "refId": "A",
-          "limit": 30,
-          "tableType": "traces"
+          "limit": 15,
+          "tableType": "traces",
+          "spanLimit": 100
         }
       ],
       "options": {
@@ -1882,15 +1957,130 @@
         ],
         "footer": {
           "show": false
-        }
+        },
+        "cellHeight": "sm"
       },
       "fieldConfig": {
-        "defaults": {},
-        "overrides": []
+        "defaults": {
+          "custom": {
+            "filterable": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Duration"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Show timeline",
+                    "url": "/d/clientmanager-observability?${__url_time_range}&var-traceId=${__data.fields.traceID}",
+                    "oneClick": true
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Start time"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Show timeline",
+                    "url": "/d/clientmanager-observability?${__url_time_range}&var-traceId=${__data.fields.traceID}",
+                    "oneClick": true
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Name"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Show timeline",
+                    "url": "/d/clientmanager-observability?${__url_time_range}&var-traceId=${__data.fields.traceID}",
+                    "oneClick": true
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^(traceID|Trace ID)$/"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Show timeline",
+                    "url": "/d/clientmanager-observability?${__url_time_range}&var-traceId=${__value.raw}",
+                    "oneClick": true
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 45,
+      "type": "traces",
+      "title": "Trace timeline",
+      "description": "Span waterfall for the trace selected in the table on the left.",
+      "datasource": {
+        "type": "tempo",
+        "uid": "clientmanager-tempo"
+      },
+      "gridPos": {
+        "h": 16,
+        "w": 14,
+        "x": 10,
+        "y": 135
+      },
+      "interval": "",
+      "targets": [
+        {
+          "datasource": {
+            "type": "tempo",
+            "uid": "clientmanager-tempo"
+          },
+          "queryType": "traceql",
+          "query": "${traceId}",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showTraceId": true,
+        "spanFilters": {
+          "criticalPathOnly": false,
+          "matchesOnly": false,
+          "serviceNameOperator": "=",
+          "spanNameOperator": "=",
+          "tags": []
+        }
       }
     }
   ],
-  "refresh": "10s",
   "schemaVersion": 39,
   "tags": [
     "clientmanager",
@@ -1965,6 +2155,17 @@
         "label": "Client"
       },
       {
+        "name": "traceId",
+        "type": "textbox",
+        "label": "Trace",
+        "hide": 0,
+        "current": {
+          "selected": true,
+          "text": "280a31aea25c897941a88d56d72945e",
+          "value": "280a31aea25c897941a88d56d72945e"
+        }
+      },
+      {
         "name": "replicas",
         "type": "query",
         "datasource": {
@@ -1985,5 +2186,5 @@
   "timezone": "browser",
   "title": "ClientManager Observability",
   "uid": "clientmanager-observability",
-  "version": 4
+  "version": 16
 }

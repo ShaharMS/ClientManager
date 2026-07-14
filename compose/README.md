@@ -1,6 +1,6 @@
 # Docker Compose stacks
 
-Stack definitions live in this folder. Use the repo-root [`docker-compose.yml`](../docker-compose.yml) for `docker compose up` (default: single API + Admin UI).
+Stack definitions live in this folder. Use the repo-root [`docker-compose.yml`](../docker-compose.yml) for `docker compose up` (default: multipod + observability + traffic-gen).
 
 | File | Purpose |
 | --- | --- |
@@ -10,42 +10,16 @@ Stack definitions live in this folder. Use the repo-root [`docker-compose.yml`](
 | [`dev.mongo.yml`](dev.mongo.yml) | Standalone MongoDB replica set for integration tests |
 | [`observability.yml`](observability.yml) | Prometheus + Grafana; `--profile traces` adds Tempo + OTel Collector |
 | [`traffic-gen.yml`](traffic-gen.yml) | `--profile load` synthetic access-check traffic (multipod) |
-| [`multipod.yml`](multipod.yml) | Three API replicas + MongoDB replica set + Redis |
+| [`multipod.yml`](multipod.yml) | Three API replicas + MongoDB + Redis + Admin UI |
 | [`otel.yml`](otel.yml) | Deprecated pointer — use `observability.yml --profile traces` |
 
 Persistence uses **MongoDB** and **Redis** only. Storage roles: `Configuration`, `RateLimiting`, `Rpm`.
 
-## Observability (local)
+## Switching stacks
 
-```powershell
-# Metrics only (2 containers)
-python _scripts/launch_observability_ui.py up
+Edit `docker-compose.yml` `include:` list. Observability walkthroughs: [docs/observability/local.md](../docs/observability/local.md).
 
-# With traces
-python _scripts/launch_observability_ui.py up --traces
-```
-
-Full runbook: [docs/observability-runbook.md](../docs/observability-runbook.md)
-
-## Multipod + dashboard
-
-Edit `docker-compose.yml`:
-
-```yaml
-include:
-  - path: compose/multipod.yml
-  - path: compose/observability.yml
-  - path: compose/traffic-gen.yml   # optional
-```
-
-```powershell
-docker compose up --build
-docker compose --profile load up    # skewed demo traffic
-```
-
-Pods: host ports **5062**, **5063**, **5064**. Prometheus scrapes each pod on the Docker network.
-
-## Multi-pod verification (recommended)
+## Multi-pod verification
 
 ```bash
 python _scripts/run_multipod_docker.py
@@ -57,6 +31,6 @@ python _scripts/run_multipod_docker.py
 | `--skip-check` | Only start the stack (no seed/check) |
 | `--no-build` | Skip image rebuild |
 
-## Production
+## Production monitoring
 
-Import [`observability/grafana/dashboards/clientmanager.json`](../observability/grafana/dashboards/clientmanager.json) into org Grafana. See [metrics catalog](../docs/metrics-catalog.md).
+Import the dashboard and configure scrape targets — see [docs/observability/](../docs/observability/index.md).

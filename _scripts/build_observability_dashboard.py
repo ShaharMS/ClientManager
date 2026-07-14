@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import json
+import urllib.error
+import urllib.request
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -16,6 +18,7 @@ RATE = "$__rate_interval"
 
 TEMPO_DS = {"type": "tempo", "uid": "clientmanager-tempo"}
 STORAGE_ROLES = ("Configuration", "RateLimiting", "Rpm")
+ACCESS_CHECK_ENDPOINT = "/api/v2/access/check"
 
 
 def prom(expr: str, legend: str = "", ref: str = "A") -> dict:
@@ -58,6 +61,10 @@ def storage_scope_filter(extra: str = "") -> str:
     return base + "}"
 
 
+def cache_scope_filter(result: str) -> str:
+    return f'{{{JOB}, instance=~"$storage_pod", result="{result}"}}'
+
+
 def http_global_filter(extra: str = "") -> str:
     base = f"{{{JOB}"
     if extra:
@@ -70,6 +77,21 @@ def http_pod_filter(extra: str = "") -> str:
     if extra:
         base += f", {extra}"
     return base + "}"
+
+
+def http_client_response_targets(filter_fn) -> list[dict]:
+    return [
+        prom(
+            f"sum by (endpoint, statusCode) (rate(clientmanager_http_requests_total{filter_fn('statusCode=~\"4..\"')}[{RATE}]))",
+            "{{statusCode}} {{endpoint}}",
+            "A",
+        ),
+        prom(
+            f"sum by (endpoint, statusCode) (rate(clientmanager_http_requests_total{filter_fn(f'statusCode=\"200\", endpoint=\"{ACCESS_CHECK_ENDPOINT}\"')}[{RATE}]))",
+            "{{statusCode}} {{endpoint}}",
+            "B",
+        ),
+    ]
 
 
 def gf_outcome_granted() -> str:
@@ -172,6 +194,26 @@ def latency_median_targets(bucket_metric: str, scope: str) -> list[dict]:
     ]
 
 
+def latency_median_p95_p99_targets(bucket_metric: str, scope: str) -> list[dict]:
+    return [
+        prom(
+            f"histogram_quantile(0.50, sum by (le) (rate({bucket_metric}{scope}[{RATE}])))",
+            "median",
+            "A",
+        ),
+        prom(
+            f"histogram_quantile(0.95, sum by (le) (rate({bucket_metric}{scope}[{RATE}])))",
+            "p95",
+            "B",
+        ),
+        prom(
+            f"histogram_quantile(0.99, sum by (le) (rate({bucket_metric}{scope}[{RATE}])))",
+            "p99",
+            "C",
+        ),
+    ]
+
+
 def text_panel(panel_id: int, content: str, y: int, h: int = 7) -> dict:
     return {
         "id": panel_id,
@@ -183,17 +225,37 @@ def text_panel(panel_id: int, content: str, y: int, h: int = 7) -> dict:
 
 
 def storage_role_ops_panel(
-    panel_id: int, role: str | None, title: str, y: int, x: int, w: int = 12, h: int = 8
+    panel_id: int,
+    role: str | None,
+    title: str,
+    y: int,
+    x: int,
+    w: int = 12,
+    h: int = 8,
+    *,
+    include_cache: bool = False,
 ) -> dict:
     scope = storage_scope_filter(f'role="{role}"') if role else storage_scope_filter()
-    return timeseries_panel(
-        panel_id,
-        f"{title} — ops/s",
-        [prom(
+    targets = [
+        prom(
             f"sum by (operation) (rate("
             f"clientmanager_storage_document_store_duration_milliseconds_count{scope}[{RATE}]))",
             "{{operation}}",
-        )],
+            "A",
+        ),
+    ]
+    if include_cache:
+        targets.append(
+            prom(
+                f"sum(rate(clientmanager_storage_catalog_cache_total{cache_scope_filter('hit')}[{RATE}]))",
+                "cache hit",
+                "B",
+            ),
+        )
+    return timeseries_panel(
+        panel_id,
+        f"{title} - ops/s",
+        targets,
         y,
         x,
         w,
@@ -203,20 +265,38 @@ def storage_role_ops_panel(
 
 
 def storage_role_latency_panel(
-    panel_id: int, role: str | None, title: str, y: int, x: int, w: int = 12, h: int = 8
+    panel_id: int,
+    role: str | None,
+    title: str,
+    y: int,
+    x: int,
+    w: int = 12,
+    h: int = 8,
+    *,
+    include_cache: bool = False,
 ) -> dict:
     scope = storage_scope_filter(f'role="{role}"') if role else storage_scope_filter()
     bucket = "clientmanager_storage_document_store_duration_milliseconds_bucket"
+    targets = [
+        prom(
+            f"histogram_quantile(0.50, sum by (le, operation) (rate({bucket}{scope}[{RATE}])))",
+            "{{operation}}",
+            "A",
+        ),
+    ]
+    if include_cache:
+        cache_bucket = "clientmanager_storage_catalog_cache_duration_milliseconds_bucket"
+        targets.append(
+            prom(
+                f"histogram_quantile(0.50, sum by (le) (rate({cache_bucket}{cache_scope_filter('hit')}[{RATE}])))",
+                "cache hit",
+                "B",
+            ),
+        )
     return timeseries_panel(
         panel_id,
-        f"{title} — latency",
-        [
-            prom(
-                f"histogram_quantile(0.50, sum by (le, operation) (rate({bucket}{scope}[{RATE}])))",
-                "median {{operation}}",
-                "A",
-            ),
-        ],
+        f"{title} - Median Latency",
+        targets,
         y,
         x,
         w,
@@ -225,35 +305,129 @@ def storage_role_latency_panel(
     )
 
 
-def traces_table_panel(panel_id: int, y: int) -> dict:
-    # ponytail: Grafana "traces" panel only renders one trace ID; table + traceql lists recent traces.
+DASHBOARD_UID = "clientmanager-observability"
+TEMPO_SEARCH_URL = "http://localhost:3200/api/search?q=%7B%7D&limit=1"
+TRACE_DASHBOARD_URL = (
+    f"/d/{DASHBOARD_UID}?${{__url_time_range}}&var-traceId=${{__data.fields.traceID}}"
+)
+TRACE_ID_URL = f"/d/{DASHBOARD_UID}?${{__url_time_range}}&var-traceId=${{__value.raw}}"
+TRACE_VIEW_LINK = {
+    "title": "Show timeline",
+    "url": TRACE_DASHBOARD_URL,
+    "oneClick": True,
+}
+TRACE_ID_LINK = {
+    "title": "Show timeline",
+    "url": TRACE_ID_URL,
+    "oneClick": True,
+}
+TRACE_LINK_FIELDS = (
+    {
+        "matcher": {"id": "byName", "options": "Duration"},
+        "properties": [{"id": "links", "value": [TRACE_VIEW_LINK]}],
+    },
+    {
+        "matcher": {"id": "byName", "options": "Start time"},
+        "properties": [{"id": "links", "value": [TRACE_VIEW_LINK]}],
+    },
+    {
+        "matcher": {"id": "byName", "options": "Name"},
+        "properties": [{"id": "links", "value": [TRACE_VIEW_LINK]}],
+    },
+    {
+        "matcher": {"id": "byRegexp", "options": "/^(traceID|Trace ID)$/"},
+        "properties": [{"id": "links", "value": [TRACE_ID_LINK]}],
+    },
+)
+
+
+def traces_picker_table_panel(panel_id: int, y: int) -> dict:
     return {
         "id": panel_id,
         "type": "table",
-        "title": "Recent traces — ClientManager.Api",
-        "description": "Click a Trace ID to open the waterfall. Requires stack started with --profile traces.",
+        "title": "Recent traces",
+        "description": "Click Duration, Start time, or Name to load the waterfall on the right. Expand (>) to list spans in the table.",
         "datasource": TEMPO_DS,
-        "gridPos": {"h": 12, "w": 24, "x": 0, "y": y},
+        "gridPos": {"h": 16, "w": 10, "x": 0, "y": y},
+        "interval": "",
         "targets": [
             {
                 "datasource": TEMPO_DS,
                 "queryType": "traceql",
                 "query": '{ resource.service.name = "ClientManager.Api" }',
                 "refId": "A",
-                "limit": 30,
+                "limit": 15,
                 "tableType": "traces",
+                "spanLimit": 100,
             }
         ],
         "options": {
             "showHeader": True,
             "sortBy": [{"displayName": "Start time", "desc": True}],
             "footer": {"show": False},
+            "cellHeight": "sm",
         },
-        "fieldConfig": {"defaults": {}, "overrides": []},
+        "fieldConfig": {
+            "defaults": {"custom": {"filterable": False}},
+            "overrides": list(TRACE_LINK_FIELDS),
+        },
+    }
+
+
+def fetch_default_trace_id() -> str | None:
+    # ponytail: best-effort at build time; avoids empty/invalid traceId panel queries.
+    try:
+        with urllib.request.urlopen(TEMPO_SEARCH_URL, timeout=3) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+        traces = payload.get("traces") or []
+        if traces:
+            return str(traces[0]["traceID"])
+    except (OSError, TimeoutError, urllib.error.URLError, KeyError, TypeError, ValueError):
+        pass
+    return None
+
+
+def traces_timeline_panel(panel_id: int, y: int, default_trace_id: str | None) -> dict:
+    if not default_trace_id:
+        panel = text_panel(
+            panel_id,
+            "Click **Duration**, **Start time**, or **Name** on a trace row to load its waterfall here.",
+            y,
+            h=16,
+        )
+        panel["gridPos"] = {"h": 16, "w": 14, "x": 10, "y": y}
+        return panel
+    return {
+        "id": panel_id,
+        "type": "traces",
+        "title": "Trace timeline",
+        "description": "Span waterfall for the trace selected in the table on the left.",
+        "datasource": TEMPO_DS,
+        "gridPos": {"h": 16, "w": 14, "x": 10, "y": y},
+        "interval": "",
+        "targets": [
+            {
+                "datasource": TEMPO_DS,
+                "queryType": "traceql",
+                "query": "${traceId}",
+                "refId": "A",
+            }
+        ],
+        "options": {
+            "showTraceId": True,
+            "spanFilters": {
+                "criticalPathOnly": False,
+                "matchesOnly": False,
+                "serviceNameOperator": "=",
+                "spanNameOperator": "=",
+                "tags": [],
+            },
+        },
     }
 
 
 def build() -> dict:
+    default_trace_id = fetch_default_trace_id()
     gf = global_filter
     pf = pod_filter
     hgf = http_global_filter
@@ -267,10 +441,10 @@ def build() -> dict:
             pid,
             """### ClientManager observability
 
-- **Global zone**: sums all API pods — unaffected by the pod picker below.
+- **Global zone**: sums all API pods - unaffected by the pod picker below.
 - **Pod zone**: all panels filter `instance="$pod"`.
-- **Storage zone**: per-role subsections — ops/s and latency side by side; **Storage pod** = *All* or one pod.
-- **Traces** (bottom): trace table from Tempo when `--profile traces` is running.
+- **Storage zone**: per-role subsections - ops/s and Median Latency (catalog cache on Configuration); **Storage pod** = *All* or one pod.
+- **Traces** (bottom): click Duration / Start time / Name on a trace row; waterfall loads in the panel on the right. Requires `--profile traces`.
 - Replicas: `${replicas}` (API pods only).
 """,
             y,
@@ -280,7 +454,7 @@ def build() -> dict:
     pid += 1
     y += 7
 
-    panels.append(row_panel("Global — all replicas", y, pid))
+    panels.append(row_panel("Global - all replicas", y, pid))
     pid += 1
     y += 1
 
@@ -330,7 +504,7 @@ def build() -> dict:
     panels.append(
         timeseries_panel(
             pid,
-            "Global HTTP latency",
+            "Global HTTP Median Latency",
             latency_median_targets(
                 "clientmanager_http_requests_duration_milliseconds_bucket",
                 hgf(),
@@ -344,11 +518,8 @@ def build() -> dict:
     panels.append(
         timeseries_panel(
             pid,
-            "HTTP client responses (4xx/s)",
-            [prom(
-                f"sum by (endpoint, statusCode) (rate(clientmanager_http_requests_total{hgf('statusCode=~\"4..\"')}[{RATE}]))",
-                "{{statusCode}} {{endpoint}}",
-            )],
+            "HTTP client responses (access 200 + 4xx/s)",
+            http_client_response_targets(hgf),
             y, 0, 12, unit="reqps",
         )
     )
@@ -438,12 +609,12 @@ def build() -> dict:
     panels.append(
         timeseries_panel(
             pid + 1,
-            "Global rate-limit strategy median",
+            "Global rate-limit strategy Median Latency",
             [prom(
                 f"histogram_quantile(0.50, sum by (le, strategy) (rate("
                 f"clientmanager_storage_ratelimit_strategy_duration_milliseconds_bucket"
                 f"{global_filter(storage=True)}[{RATE}])))",
-                "median {{strategy}}",
+                "{{strategy}}",
             )],
             y, 12, 12, unit="ms",
         )
@@ -454,8 +625,8 @@ def build() -> dict:
     panels.append(
         timeseries_panel(
             pid,
-            "Global access-check latency",
-            latency_median_targets(
+            "Service access attempts - Latency",
+            latency_median_p95_p99_targets(
                 "clientmanager_storage_access_duration_milliseconds_bucket",
                 global_filter(storage=True),
             ),
@@ -466,29 +637,30 @@ def build() -> dict:
     y += 8
 
     # --- Storage by role ---
-    panels.append(row_panel("Storage — document store by role ($storage_pod)", y, pid))
+    panels.append(row_panel("Storage - document store by role ($storage_pod)", y, pid))
     pid += 1
     y += 1
 
     for role in STORAGE_ROLES:
-        panels.append(row_panel(f"Storage — {role}", y, pid))
+        panels.append(row_panel(f"Storage - {role}", y, pid))
         pid += 1
         y += 1
-        panels.append(storage_role_ops_panel(pid, role, role, y, 0))
-        panels.append(storage_role_latency_panel(pid + 1, role, role, y, 12))
+        include_cache = role == "Configuration"
+        panels.append(storage_role_ops_panel(pid, role, role, y, 0, include_cache=include_cache))
+        panels.append(storage_role_latency_panel(pid + 1, role, role, y, 12, include_cache=include_cache))
         pid += 2
         y += 8
 
-    panels.append(row_panel("Storage — all roles", y, pid))
+    panels.append(row_panel("Storage - all roles", y, pid))
     pid += 1
     y += 1
-    panels.append(storage_role_ops_panel(pid, None, "All roles", y, 0))
-    panels.append(storage_role_latency_panel(pid + 1, None, "All roles", y, 12))
+    panels.append(storage_role_ops_panel(pid, None, "All roles", y, 0, include_cache=True))
+    panels.append(storage_role_latency_panel(pid + 1, None, "All roles", y, 12, include_cache=True))
     pid += 2
     y += 8
 
     # --- Per-pod zone ---
-    panels.append(row_panel("Pod — $pod", y, pid))
+    panels.append(row_panel("Pod - $pod", y, pid))
     pid += 1
     y += 1
 
@@ -526,7 +698,7 @@ def build() -> dict:
     panels.append(
         timeseries_panel(
             pid,
-            "Pod HTTP latency",
+            "Pod HTTP Median Latency",
             latency_median_targets(
                 "clientmanager_http_requests_duration_milliseconds_bucket",
                 hpf(),
@@ -540,11 +712,8 @@ def build() -> dict:
     panels.append(
         timeseries_panel(
             pid,
-            "Pod HTTP client responses (4xx/s)",
-            [prom(
-                f"sum by (endpoint, statusCode) (rate(clientmanager_http_requests_total{hpf('statusCode=~\"4..\"')}[{RATE}]))",
-                "{{statusCode}} {{endpoint}}",
-            )],
+            "Pod HTTP client responses (access 200 + 4xx/s)",
+            http_client_response_targets(hpf),
             y, 0, 12, unit="reqps",
         )
     )
@@ -607,11 +776,14 @@ def build() -> dict:
     y += 8
 
     # --- Traces ---
-    panels.append(row_panel("Traces — ClientManager.Api", y, pid))
+    panels.append(row_panel("Traces - ClientManager.Api", y, pid))
     pid += 1
     y += 1
-    panels.append(traces_table_panel(pid, y))
+    panels.append(traces_picker_table_panel(pid, y))
     pid += 1
+    panels.append(traces_timeline_panel(pid, y, default_trace_id))
+    pid += 1
+    y += 16
 
     return {
         "annotations": {"list": []},
@@ -620,8 +792,8 @@ def build() -> dict:
         "graphTooltip": 1,
         "id": None,
         "links": [],
+        "liveNow": False,
         "panels": panels,
-        "refresh": "10s",
         "schemaVersion": 39,
         "tags": ["clientmanager", "observability"],
         "templating": {
@@ -681,6 +853,17 @@ def build() -> dict:
                     "label": "Client",
                 },
                 {
+                    "name": "traceId",
+                    "type": "textbox",
+                    "label": "Trace",
+                    "hide": 0,
+                    "current": {
+                        "selected": True,
+                        "text": default_trace_id or "",
+                        "value": default_trace_id or "",
+                    },
+                },
+                {
                     "name": "replicas",
                     "type": "query",
                     "datasource": DS,
@@ -694,8 +877,8 @@ def build() -> dict:
         "timepicker": {},
         "timezone": "browser",
         "title": "ClientManager Observability",
-        "uid": "clientmanager-observability",
-        "version": 4,
+        "uid": DASHBOARD_UID,
+        "version": 16,
     }
 
 

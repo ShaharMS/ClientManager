@@ -90,6 +90,21 @@ services:
     ports:
       - "5064:5062"
 
+  adminui:
+    image: clientmanager/adminui:local
+    build:
+      context: ..
+      dockerfile: ClientManager.AdminUI/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      api-1:
+        condition: service_started
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ApiBaseUrl: http://api-1:5062
+    ports:
+      - "5100:5100"
+
 volumes:
   mongo-data:
   redis-data:
