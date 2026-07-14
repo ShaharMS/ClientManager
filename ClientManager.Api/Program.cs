@@ -36,14 +36,38 @@ try
     var otlpEndpoint = builder.Configuration.GetSection(ObservabilityOptions.SectionName).Get<ObservabilityOptions>()?.OtlpEndpoint;
     builder.Services.AddOpenTelemetry()
         .ConfigureResource(r => r.AddService("ClientManager.Api"))
-        .WithMetrics(m => { m.AddAspNetCoreInstrumentation(); m.AddMeter(ClientManagerMetrics.MeterName); m.AddMeter(StorageMetrics.MeterName); m.AddPrometheusExporter(); })
+        .WithMetrics(m =>
+        {
+            m.AddAspNetCoreInstrumentation();
+            m.AddMeter(ClientManagerMetrics.MeterName);
+            m.AddMeter(StorageMetrics.MeterName);
+            m.AddView(instrument =>
+            {
+                if (instrument.Unit != "ms" || !instrument.Name.EndsWith(".duration", StringComparison.Ordinal))
+                {
+                    return null;
+                }
+
+                var meterName = instrument.Meter.Name;
+                if (meterName != ClientManagerMetrics.MeterName && meterName != StorageMetrics.MeterName)
+                {
+                    return null;
+                }
+
+                return new ExplicitBucketHistogramConfiguration
+                {
+                    Boundaries = DurationHistogramBuckets.Milliseconds,
+                };
+            });
+            m.AddPrometheusExporter();
+        })
         .WithTracing(t => { t.AddAspNetCoreInstrumentation(); t.AddHttpClientInstrumentation(); t.AddSource(ClientManagerMetrics.ActivitySourceName); t.AddSource(StorageMetrics.ActivitySourceName); if (Uri.TryCreate(otlpEndpoint, UriKind.Absolute, out var ep)) t.AddOtlpExporter(o => o.Endpoint = ep); });
-    builder.Services.AddSwaggerGen(o => { o.SwaggerDoc("v1", new OpenApiInfo { Title = "ClientManager API", Version = "v1" }); o.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, $"{Assembly.GetExecutingAssembly().GetName().Name}.xml")); o.DocumentFilter<TagDescriptionsDocumentFilter>(); });
+    builder.Services.AddSwaggerGen(o => { o.SwaggerDoc("v2", new OpenApiInfo { Title = "ClientManager API", Version = "v2" }); o.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, $"{Assembly.GetExecutingAssembly().GetName().Name}.xml")); o.DocumentFilter<TagDescriptionsDocumentFilter>(); });
     var app = builder.Build();
     app.UseMiddleware<RequestTrackingMiddleware>();
     app.UseMiddleware<ErrorHandlingMiddleware>();
     app.UseSwagger();
-    app.UseSwaggerUI(o => { o.SwaggerEndpoint("/swagger/v1/swagger.json", "ClientManager API v1"); o.RoutePrefix = "docs"; });
+    app.UseSwaggerUI(o => { o.SwaggerEndpoint("/swagger/v2/swagger.json", "ClientManager API v2"); o.RoutePrefix = "docs"; });
     app.UseHttpsRedirection();
     app.UseAuthorization();
     app.MapControllers();

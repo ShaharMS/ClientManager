@@ -42,7 +42,7 @@ public sealed class StorageReadCacheOptions
     /// <para>Default: 1 second.</para>
     /// <para>
     /// This TTL directly affects how quickly rate-limit rule changes propagate on
-    /// <c>GET /api/v1/access/check</c> in multi-pod deployments. Keep short in production unless
+    /// <c>GET /api/v2/access/check</c> in multi-pod deployments. Keep short in production unless
     /// storage load dominates.
     /// </para>
     /// </remarks>
