@@ -52,13 +52,13 @@ The Admin UI is a **thin HTTP client** built with Blazor Server and Radzen compo
 It never opens document stores directly. If the API is down, the UI cannot manage configuration or show live statistics.
 
 !!! tip "Same API for operators and integrators"
-    Integrators call the same REST surface the Admin UI uses for catalog and statistics. Runtime gatekeeping (`GET /api/v1/access/check`) is intended for your edge layer — see the [Integration guide](../integration-guide.md).
+    Integrators call the same REST surface the Admin UI uses for catalog and statistics. Runtime gatekeeping (`GET /api/v2/access/check`) is intended for your edge layer — see the [Integration guide](../integration-guide.md).
 
 ## Internal layering inside the API
 
 | Layer | Examples | Purpose |
 | --- | --- | --- |
-| **Controllers** | `AccessCheckController`, `ServicesController` | HTTP routing (`api/v1/...`), request/response mapping |
+| **Controllers** | `AccessCheckController`, `ServicesController` | HTTP routing (`api/v2/...`), request/response mapping |
 | **Runtime services** | `AccessControlService`, `RateLimitService`, `RpmAccountingService` | Hot-path evaluation on every access check |
 | **Catalog services** | `ServiceCatalogService`, `ClientConfigurationCatalogService` | CRUD with cache invalidation |
 | **Read models** | `StatisticsService` | Dashboard overview (counts + RPM) |
@@ -89,11 +89,11 @@ Catalog services invalidate `IStorageReadCache` after writes so hot-path reads s
 | --- | --- |
 | `/docs` | Swagger UI |
 | `/prometheus/otel` | OpenTelemetry runtime metrics (Prometheus scrape) |
-| `/api/v1/statistics/overview` | Client count, service count, current RPM |
+| `/api/v2/statistics/overview` | Client count, service count, current RPM |
 
 Hot-path operations (`storage.access.check`) emit trace spans tagged with `client.id` and `service.id`.
 
-For Prometheus, Grafana, Jaeger, and OTLP setup, see the [Metrics integration guide](../metrics-integration-guide.md).
+For Prometheus, Grafana, and OTLP setup, see the [Observability guides](../observability/index.md).
 
 ## Related reading
 

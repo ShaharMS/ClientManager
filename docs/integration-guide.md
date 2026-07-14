@@ -8,7 +8,7 @@ ClientManager sits beside your services and answers one gatekeeping question ove
 
 | Question | Endpoint | Success | Typical denials |
 | --- | --- | --- | --- |
-| May this client use this service? | `GET /api/v1/access/check` | `200` | `400`, `401`, `403`, `404`, `429`, `503` |
+| May this client use this service? | `GET /api/v2/access/check` | `200` | `400`, `401`, `403`, `404`, `429`, `503` |
 
 The endpoint accepts parameters as **query strings** (not a JSON body), so reverse proxies and `auth_request` can call it without custom scripting.
 
@@ -16,7 +16,7 @@ The endpoint accepts parameters as **query strings** (not a JSON body), so rever
 
 | Endpoint | Parameters | Example |
 | --- | --- | --- |
-| Access check | `clientId`, `serviceId` | `/api/v1/access/check?clientId=mobile-app&serviceId=pdf-render` |
+| Access check | `clientId`, `serviceId` | `/api/v2/access/check?clientId=mobile-app&serviceId=pdf-render` |
 
 On success:
 
@@ -53,9 +53,6 @@ Rate-limited responses also include `Retry-After` when computable (`$upstream_ht
 !!! tip "Deny by default"
     A client must have an explicit `isAllowed: true` entry for a service. Missing configuration is `401 Unauthorized`; disabled clients, disabled services, or disallowed relationships are `403 Forbidden`.
 
-!!! note "Removed: resource pools"
-    `GET /api/v1/resources/acquire` and `GET /api/v1/resources/release` were removed in the lean refactor. Concurrency caps via resource pools are no longer supported — use rate limits only.
-
 ## End-to-end flow
 
 ```mermaid
@@ -66,7 +63,7 @@ sequenceDiagram
     participant App as Backend
 
     User->>Nginx: GET /render?clientId=mobile-app
-    Nginx->>CM: GET /api/v1/access/check
+    Nginx->>CM: GET /api/v2/access/check
     alt access granted
         CM-->>Nginx: 200 OK
         Nginx->>App: proxy original request
@@ -126,7 +123,7 @@ http {
             internal;
             proxy_pass_request_body off;
             proxy_set_header Content-Length "";
-            proxy_pass https://clientmanager.apps.example.com/api/v1/access/check?clientId=$cm_client_id&serviceId=$cm_service_id;
+            proxy_pass https://clientmanager.apps.example.com/api/v2/access/check?clientId=$cm_client_id&serviceId=$cm_service_id;
             proxy_ssl_server_name on;
         }
 
@@ -180,7 +177,7 @@ curl -i "https://api.example.com/render?clientId=unknown-tenant"
 ## Calling the API directly
 
 ```bash
-curl -sS "http://localhost:5062/api/v1/access/check?clientId=mobile-app&serviceId=pdf-render"
+curl -sS "http://localhost:5062/api/v2/access/check?clientId=mobile-app&serviceId=pdf-render"
 ```
 
 ### Application middleware example (ASP.NET)
@@ -190,7 +187,7 @@ var clientId = context.Request.Headers["X-Client-Id"].FirstOrDefault();
 var serviceId = "pdf-render";
 
 var response = await httpClient.GetAsync(
-    $"/api/v1/access/check?clientId={Uri.EscapeDataString(clientId)}&serviceId={Uri.EscapeDataString(serviceId)}",
+    $"/api/v2/access/check?clientId={Uri.EscapeDataString(clientId)}&serviceId={Uri.EscapeDataString(serviceId)}",
     context.RequestAborted);
 
 if (!response.IsSuccessStatusCode)
@@ -223,7 +220,7 @@ Always log ClientManager's `traceId` from error bodies or `X-Trace-Id` when open
 1. **Register services** in ClientManager that mirror the capabilities you protect.
 2. **Create a client configuration** per tenant with explicit `isAllowed` entries and optional rate limits.
 3. **Choose a stable `clientId` source** (header or token mapping in production).
-4. **Call `GET /api/v1/access/check`** before backend work (nginx `auth_request`, middleware, or API gateway).
+4. **Call `GET /api/v2/access/check`** before backend work (nginx `auth_request`, middleware, or API gateway).
 5. **Forward non-`200` responses** — status, `problem+json` body, and `Retry-After` when present.
 6. **Monitor** via Prometheus (`/prometheus/otel`) — do not poll access checks for monitoring.
 
@@ -231,5 +228,5 @@ Always log ClientManager's `traceId` from error bodies or `X-Trace-Id` when open
 
 - [Domain model](core/domain-model.md) — clients, services, and rate-limit configuration
 - [Request flow](core/request-flow.md) — access check pipeline
-- [Metrics integration guide](metrics-integration-guide.md) — Prometheus and Grafana
+- [Observability guides](observability/index.md) — Prometheus and Grafana
 - [Persistence overview](persistence/index.md) — MongoDB/Redis for multi-instance deployments

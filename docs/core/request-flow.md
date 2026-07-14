@@ -6,19 +6,16 @@ This page walks through what ClientManager does on the hot path — the code you
 
 | Operation | Method | Path | Side effects |
 | --- | --- | --- | --- |
-| Check access | `GET` | `/api/v1/access/check` | Increments rate limits; records RPM; emits OTel metrics |
+| Check access | `GET` | `/api/v2/access/check` | Increments rate limits; records RPM; emits OTel metrics |
 
 All failures return [RFC 7807](https://datatracker.ietf.org/doc/html/rfc7807) `application/problem+json` with a `traceId`. The same payload is echoed in `X-Problem-*` response headers for edge proxies — see the [Integration guide](../integration-guide.md).
 
-!!! note "Removed endpoints"
-    Resource pool acquire/release, read-only accessibility reports (`GET /access/{clientId}`), and timeseries statistics were removed in the lean refactor. Integrate via access check only.
-
 ## Service access check
 
-`GET /api/v1/access/check` accepts query parameters `clientId` and `serviceId`:
+`GET /api/v2/access/check` accepts query parameters `clientId` and `serviceId`:
 
 ```
-GET /api/v1/access/check?clientId=mobile-app&serviceId=pdf-render
+GET /api/v2/access/check?clientId=mobile-app&serviceId=pdf-render
 ```
 
 On success:

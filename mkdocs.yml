@@ -9,6 +9,7 @@ plugins:
 
 markdown_extensions:
   - admonition
+  - attr_list
   - pymdownx.details
   - pymdownx.superfences:
       custom_fences:
@@ -50,7 +51,13 @@ nav:
     - Usage and observability: core/usage-and-observability.md
     - Seed system: core/seed-system.md
   - Integration guide: integration-guide.md
-  - Metrics integration guide: metrics-integration-guide.md
+  - Observability:
+    - Overview: observability/index.md
+    - Local development: observability/local.md
+    - On-prem stack: observability/on-prem-stack.md
+    - Existing Grafana & Prometheus: observability/existing-monitoring.md
+    - Pod discovery: observability/pod-discovery.md
+  - Metrics catalog: metrics-catalog.md
   - Persistence:
     - Overview: persistence/index.md
     - MongoDB: persistence/mongodb.md

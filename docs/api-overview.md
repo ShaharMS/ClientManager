@@ -1,6 +1,6 @@
 # API overview
 
-All routes use URL versioning: `/api/v1/...`.
+All routes use URL versioning: `/api/v2/...`.
 
 **Interactive reference:** [http://localhost:5062/docs](http://localhost:5062/docs) (Swagger UI).
 
@@ -12,12 +12,9 @@ Designed for reverse proxies (`auth_request`), application middleware, and worke
 
 | Method | Path | Query parameters | Side effects |
 | --- | --- | --- | --- |
-| `GET` | `/api/v1/access/check` | `clientId`, `serviceId` | Increments rate limits; records RPM; emits OTel metrics |
+| `GET` | `/api/v2/access/check` | `clientId`, `serviceId` | Increments rate limits; records RPM; emits OTel metrics |
 
 See [Request flow](core/request-flow.md) and [Integration guide](integration-guide.md) for pipeline order, status codes, and nginx examples.
-
-!!! note "Removed runtime routes"
-    `GET /api/v1/access/{clientId}`, `GET /api/v1/resources/acquire`, and `GET /api/v1/resources/release` were removed.
 
 ## Catalog CRUD
 
@@ -31,35 +28,28 @@ Catalog controllers share a common pattern:
 | `PUT` | `/{id}` | Entity | Full document replace |
 | `DELETE` | `/{id}` | — | Delete |
 
-`PATCH` and bulk partial updates were removed.
-
 ### Top-level resources
 
 | Base path | Entity | Tag |
 | --- | --- | --- |
-| `/api/v1/clients` | `ClientConfiguration` | Client Configurations |
-| `/api/v1/services` | `Service` | Services |
-| `/api/v1/global-rate-limits` | `GlobalRateLimit` | Global Rate Limits |
+| `/api/v2/clients` | `ClientConfiguration` | Client Configurations |
+| `/api/v2/services` | `Service` | Services |
+| `/api/v2/global-rate-limits` | `GlobalRateLimit` | Global Rate Limits |
 
 `GlobalRateLimit.id` is the service ID; rate-limit fields live in nested `policy`.
 
-### Removed catalog routes
-
-- `/api/v1/resource-pools`
-- Nested `/api/v1/clients/{id}/services/...`, `resource-pools/...`, `global-rate-limit`
-
-Edit per-client service access through the full `ClientConfiguration` document (`PUT /api/v1/clients/{id}`).
+Per-client service access is edited through the full `ClientConfiguration` document (`PUT /api/v2/clients/{id}`).
 
 ## Seeding
 
-Base path: `/api/v1/seed`. Gated by `Seed:SeedApiEnabled` (HTTP 404 when `false`).
+Base path: `/api/v2/seed`. Gated by `Seed:SeedApiEnabled` (HTTP 404 when `false`).
 
 | Method | Path | Query | Body | Purpose |
 | --- | --- | --- | --- | --- |
-| `GET` | `/api/v1/seed` | `include` | — | Export JSON `SeedOptions` |
-| `DELETE` | `/api/v1/seed` | `include` | — | Wipe included collections |
-| `POST` | `/api/v1/seed` | `include` | JSON | Import into empty collections |
-| `PUT` | `/api/v1/seed` | `include`, `strategy=skip\|replace` | JSON | Merge into existing data |
+| `GET` | `/api/v2/seed` | `include` | — | Export JSON `SeedOptions` |
+| `DELETE` | `/api/v2/seed` | `include` | — | Wipe included collections |
+| `POST` | `/api/v2/seed` | `include` | JSON | Import into empty collections |
+| `PUT` | `/api/v2/seed` | `include`, `strategy=skip\|replace` | JSON | Merge into existing data |
 
 | Status | When |
 | --- | --- |
@@ -73,7 +63,7 @@ Base path: `/api/v1/seed`. Gated by `Seed:SeedApiEnabled` (HTTP 404 when `false`
 
 | Method | Path | Description |
 | --- | --- | --- |
-| `GET` | `/api/v1/statistics/overview` | Client count, service count, current RPM |
+| `GET` | `/api/v2/statistics/overview` | Client count, service count, current RPM |
 
 ## Metrics export
 
@@ -81,16 +71,16 @@ Base path: `/api/v1/seed`. Gated by `Seed:SeedApiEnabled` (HTTP 404 when `false`
 | --- | --- | --- |
 | `GET` | `/prometheus/otel` | Prometheus text — OpenTelemetry runtime metrics |
 
-See the [Metrics integration guide](metrics-integration-guide.md).
+See [Observability guides](observability/index.md).
 
 ## Infrastructure endpoints
 
 | Path | Purpose |
 | --- | --- |
 | `/docs` | Swagger UI |
-| `/swagger/v1/swagger.json` | OpenAPI document |
+| `/swagger/v2/swagger.json` | OpenAPI document |
 
-There is **no** dedicated `/health` endpoint. Common choices: probe `/api/v1/statistics/overview` or add a health check later.
+There is **no** dedicated `/health` endpoint. Common choices: probe `/api/v2/statistics/overview` or add a health check later.
 
 ## Search queries
 

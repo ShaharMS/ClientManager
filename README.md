@@ -96,7 +96,7 @@ The repository includes a script for downloading dependency images and building 
 
 ```powershell
 python _scripts/download_images.py --download-dependencies
-python _scripts/download_images.py --build-projects --build-version 1.0.1-alpha
+python _scripts/download_images.py --build-projects --build-version 2.0.0
 ```
 
 Use `--list` to preview actions without running Docker.
@@ -235,7 +235,7 @@ Mermaid and fonts are bundled for offline/airgapped doc serving (vendored `docs/
 - [Admin UI guide](docs/admin-ui-guide.md) — operator screens and workflows
 - [API overview](docs/api-overview.md) — catalog, statistics, and runtime endpoints
 - [Development and operations](docs/development-and-operations.md) — scripts, security, troubleshooting
-- [Metrics integration guide](docs/metrics-integration-guide.md) — Prometheus, Grafana, Jaeger, OTLP scrape setup
+- [Observability guides](docs/observability/index.md) — local stack, on-prem deploy, org Grafana/Prometheus
 - [Integration guide](docs/integration-guide.md) — nginx example, client identification, propagating denials
 - [Persistence overview](docs/persistence/index.md)
 - [License](LICENSE)

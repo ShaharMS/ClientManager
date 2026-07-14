@@ -6,15 +6,15 @@ Catalog seed data is the **permissions and configuration** layer: services, glob
 
 | Path | When to use |
 | --- | --- |
-| **Runtime seed API** (`GET` / `DELETE` / `POST` / `PUT` `/api/v1/seed`) | Copy catalog between instances — **gated by `Seed:SeedApiEnabled`** |
+| **Runtime seed API** (`GET` / `DELETE` / `POST` / `PUT` `/api/v2/seed`) | Copy catalog between instances — **gated by `Seed:SeedApiEnabled`** |
 | **`seed_data.py`** | POST demo catalog to a running API |
 
 ```mermaid
 flowchart TD
-  export["GET /api/v1/seed"]
-  delete["DELETE /api/v1/seed"]
-  post["POST /api/v1/seed"]
-  put["PUT /api/v1/seed"]
+  export["GET /api/v2/seed"]
+  delete["DELETE /api/v2/seed"]
+  post["POST /api/v2/seed"]
+  put["PUT /api/v2/seed"]
   script["seed_data.py"]
 
   export -->|"JSON SeedOptions"| put
@@ -24,7 +24,7 @@ flowchart TD
 
 ## Seed API
 
-Base path: `/api/v1/seed` (Swagger tag: **Seeding**).
+Base path: `/api/v2/seed` (Swagger tag: **Seeding**).
 
 When `Seed:SeedApiEnabled` is `false`, all seed endpoints return **HTTP 404**.
 
@@ -50,7 +50,7 @@ Comma-separated collection names. Omitted = all three catalog collections.
 Example:
 
 ```http
-GET /api/v1/seed?include=services,clients
+GET /api/v2/seed?include=services,clients
 ```
 
 ### POST vs DELETE vs PUT
@@ -86,10 +86,10 @@ Import responses return counts: `created`, `updated`, `skipped`, `deleted`, `pro
 
 ### Instance-to-instance copy
 
-1. On source: `GET /api/v1/seed` (optionally narrow with `?include=`).
+1. On source: `GET /api/v2/seed` (optionally narrow with `?include=`).
 2. On target with `Seed:SeedApiEnabled: true`:
-   - **Replace:** `DELETE /api/v1/seed?include=...` then `POST` with export body.
-   - **Merge:** `PUT /api/v1/seed?strategy=skip` or `replace`.
+   - **Replace:** `DELETE /api/v2/seed?include=...` then `POST` with export body.
+   - **Merge:** `PUT /api/v2/seed?strategy=skip` or `replace`.
 
 ## Catalog CRUD vs seed
 
@@ -97,8 +97,6 @@ Import responses return counts: `created`, `updated`, `skipped`, `deleted`, `pro
 | --- | --- |
 | Catalog `POST` / `PUT` / `DELETE` | Surgical edits to individual entities |
 | Seed export/import | Bulk copy or migrate entire collections |
-
-`PATCH` and nested client settings routes were removed.
 
 ## Related
 

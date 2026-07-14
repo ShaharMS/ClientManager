@@ -101,14 +101,14 @@ Binds to `SeedOptions`.
 
 | Property | Type | Description |
 | --- | --- | --- |
-| `SeedApiEnabled` | `bool` | When `false`, all `/api/v1/seed` endpoints return HTTP 404 |
+| `SeedApiEnabled` | `bool` | When `false`, all `/api/v2/seed` endpoints return HTTP 404 |
 | `ClientConfigurations` | `ClientConfiguration[]` | Optional payload shape for export/import (not auto-applied at startup) |
 | `Services` | `Service[]` | Service catalog entries |
 | `GlobalRateLimits` | `GlobalRateLimit[]` | Global limit rules (`id` = service ID, nested `policy`) |
 
-**Generate from a running instance:** `GET /api/v1/seed` with `SeedApiEnabled: true`. Paste JSON into import requests or keep as reference.
+**Generate from a running instance:** `GET /api/v2/seed` with `SeedApiEnabled: true`. Paste JSON into import requests or keep as reference.
 
-**Runtime import:** `POST` or `PUT /api/v1/seed` — requires `SeedApiEnabled: true`. See [Seed system](core/seed-system.md).
+**Runtime import:** `POST` or `PUT /api/v2/seed` — requires `SeedApiEnabled: true`. See [Seed system](core/seed-system.md).
 
 ### `Rpm`
 
@@ -123,7 +123,7 @@ Configures the global RPM second-bucket ring and per-replica flush batching.
 
 RPM is always computed over a fixed **five-minute window** (`RpmOptions.RpmWindow`).
 
-### `StorageReadCache`
+### `StorageReadCache` {#storagereadcache}
 
 In-memory catalog read-cache TTLs.
 
@@ -144,7 +144,7 @@ In-memory catalog read-cache TTLs.
 | --- | --- | --- |
 | `OtlpEndpoint` | — | Absolute URI for OTLP trace export (e.g. `http://localhost:4317`) |
 
-`appsettings.Development.json` sets `OtlpEndpoint` to `http://localhost:4317`. For Prometheus, see the [Metrics integration guide](metrics-integration-guide.md).
+`appsettings.Development.json` sets `OtlpEndpoint` to `http://localhost:4317`. For Prometheus, see [Observability guides](observability/index.md).
 
 ### `Logging`
 

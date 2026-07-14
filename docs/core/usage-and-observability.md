@@ -21,7 +21,7 @@ flowchart LR
 
 ## Statistics API
 
-`GET /api/v1/statistics/overview` returns:
+`GET /api/v2/statistics/overview` returns:
 
 - Total client count (catalog)
 - Total service count (catalog)
@@ -56,7 +56,7 @@ Do not poll access checks for monitoring — use `/prometheus/otel` instead.
 
 Hot-path spans use operation names like `storage.access.check`, tagged with `client.id` and `service.id`.
 
-**For Prometheus scrape config, Grafana RPM queries, Jaeger, and example alerts**, see the [Metrics integration guide](../metrics-integration-guide.md).
+**For Prometheus scrape config, Grafana, and example alerts**, see the [Observability guides](../observability/index.md).
 
 ## Admin UI surfaces
 
@@ -80,7 +80,7 @@ python _scripts/traffic_generator.py --base-url http://localhost:5062 --interval
 
 ## Related reading
 
-- [Metrics integration guide](../metrics-integration-guide.md) — Prometheus, Grafana, Jaeger, OTLP
+- [Observability guides](../observability/index.md) — local stack, on-prem deploy, org Grafana/Prometheus
 - [Request flow](request-flow.md) — when RPM and metrics are emitted
 - [Domain model](domain-model.md) — limits that shape traffic
 - [Architecture overview](architecture.md) — observability endpoints

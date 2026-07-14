@@ -38,7 +38,7 @@ Deny-by-default: a client reaches a service only when an explicit `isAllowed: tr
 1. **Services** — ensure the capability exists and `isEnabled` is true.
 2. **Clients** → **Create** — set `clientId`, name, enable the client.
 3. **Service access** card — add the service with `isAllowed: true`; optionally set a per-service rate limit.
-4. Integrator edge layer — pass the same `clientId` on `GET /api/v1/access/check`.
+4. Integrator edge layer — pass the same `clientId` on `GET /api/v2/access/check`.
 
 ### Cap aggregate load on a service
 
@@ -54,7 +54,7 @@ Deny-by-default: a client reaches a service only when an explicit `isAllowed: tr
 
 ## Dashboard
 
-The dashboard calls `GET /api/v1/statistics/overview` and polls every 10 seconds. It shows:
+The dashboard calls `GET /api/v2/statistics/overview` and polls every 10 seconds. It shows:
 
 - Total clients (links to `/clients`)
 - Total services (links to `/services`)

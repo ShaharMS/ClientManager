@@ -16,6 +16,19 @@ Day-to-day notes for running, observing, deploying, and debugging ClientManager.
 
 ClientManager identifies **callers** via `clientId` you supply — it does not validate end-user identity.
 
+## Danger zone {#danger-zone}
+
+Settings and APIs that can **wipe or reshape production data** or change hot-path behavior. Opt in deliberately.
+
+| Gate | Risk | Production default |
+| --- | --- | --- |
+| `Seed:SeedApiEnabled` | `POST`/`PUT`/`DELETE` `/api/v2/seed` can replace or clear the catalog | `false` |
+| `DELETE /api/v2/seed` | Removes catalog documents | Disabled when seed API is off |
+| `StorageReadCache:CatalogTtl` / `HotPathCatalogTtl` | Lower TTL = more storage reads; very high TTL = stale limits after Admin UI edits | See [Configuration reference](configuration-reference.md#storagereadcache) |
+| `docker compose down -v` | Destroys MongoDB/Redis volumes in multipod compose | Dev/test only |
+
+Details: [Seed system](core/seed-system.md), [Configuration reference](configuration-reference.md).
+
 ## Local development tips
 
 ### Startup order
@@ -29,7 +42,7 @@ ClientManager identifies **callers** via `clientId` you supply — it does not v
 python _scripts/seed_data.py --base-url http://localhost:5062
 ```
 
-Or enable `Seed:SeedApiEnabled: true` and use `GET` / `POST` `/api/v1/seed` — see [Seed system](core/seed-system.md).
+Or enable `Seed:SeedApiEnabled: true` and use `GET` / `POST` `/api/v2/seed` — see [Seed system](core/seed-system.md).
 
 ### Hot-path cache behavior
 
@@ -57,7 +70,7 @@ python _scripts/launch_observability_ui.py up
 
 Default UIs: Grafana http://localhost:3000/d/clientmanager-observability, Prometheus http://localhost:9090. Add `--traces` for Tempo on port 3200.
 
-See the [Metrics integration guide](metrics-integration-guide.md) for scrape config and Grafana RPM query:
+See [Observability guides](observability/index.md) for scrape config. Example Grafana RPM query:
 
 ```promql
 sum(rate(clientmanager_requests_total[5m])) * 60
@@ -68,12 +81,12 @@ sum(rate(clientmanager_requests_total[5m])) * 60
 | What | How |
 | --- | --- |
 | Solution build | `dotnet build ClientManager.slnx` |
-| Manual API checks | Swagger at `/docs`, or curl against `/api/v1/access/check` |
+| Manual API checks | Swagger at `/docs`, or curl against `/api/v2/access/check` |
 | Dashboard validation | `seed_data.py` + `traffic_generator.py` |
 
 ## Docker and Compose
 
-[`docker-compose.yml`](../docker-compose.yml) is the entry point for `docker compose up`. See [`compose/README.md`](../compose/README.md).
+Repo-root `docker-compose.yml` is the entry point for `docker compose up`. Stack definitions live in `compose/` (see `compose/README.md` in the repository).
 
 **Multi-pod verification** (MongoDB + Redis + three API replicas):
 

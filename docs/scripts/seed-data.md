@@ -2,7 +2,7 @@
 
 Seeds the public ClientManager API with demo **catalog** data (services, global rate limits, clients).
 
-For instance copy / migration, prefer the seed API — see [Seed system](../core/seed-system.md) (`GET` / `POST` / `PUT` `/api/v1/seed`).
+For instance copy / migration, prefer the seed API — see [Seed system](../core/seed-system.md) (`GET` / `POST` / `PUT` `/api/v2/seed`).
 
 ## Prerequisites
 
@@ -16,7 +16,7 @@ For instance copy / migration, prefer the seed API — see [Seed system](../core
 | Client configurations | 5 |
 | Global rate limits | One per service |
 
-Catalog definitions live in [`configuration.py`](../../_scripts/configuration.py).
+Catalog definitions live in `_scripts/configuration.py`.
 
 ## Usage
 

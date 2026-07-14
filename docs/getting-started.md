@@ -32,11 +32,11 @@ The active solution (`ClientManager.slnx`) contains:
 | `docs/` | MkDocs documentation (this site) |
 | `_scripts/` | Python helpers for seeding, traffic, observability, performance baselines |
 | `data/` | Legacy local dev artifacts; not used when Redis/Mongo is configured |
-| [`docker-compose.yml`](docker-compose.yml) | Entry point for `docker compose up` — edit `include` to switch stacks |
-| [`compose/default.yml`](compose/default.yml) | API + Admin UI containers with `./data` mounted |
-| [`compose/dev.redis.yml`](compose/dev.redis.yml) | Redis overlay (combine with `default.yml`) |
-| [`compose/redis.yml`](compose/redis.yml) | Standalone Redis for local dev and integration tests |
-| [`compose/multipod.yml`](compose/multipod.yml) | Three API replicas + MongoDB + Redis for multi-pod testing |
+| `docker-compose.yml` | Entry point for `docker compose up` — edit `include` to switch stacks |
+| `compose/default.yml` | API + Admin UI containers with `./data` mounted |
+| `compose/dev.redis.yml` | Redis overlay (combine with `default.yml`) |
+| `compose/redis.yml` | Standalone Redis for local dev and integration tests |
+| `compose/multipod.yml` | Three API replicas + MongoDB + Redis for multi-pod testing |
 | `site/` | Built MkDocs output (`mkdocs build`); safe to regenerate |
 
 ## Requirements
@@ -47,7 +47,7 @@ The active solution (`ClientManager.slnx`) contains:
 
 Optional for full local observability:
 
-- **Docker** for [`compose/`](compose/README.md) stacks, `download_images.py`, and `launch_observability_ui.py`
+- **Docker** for `compose/` stacks, `download_images.py`, and `launch_observability_ui.py`
 
 ## Build
 
@@ -89,7 +89,7 @@ python _scripts/seed_data.py --base-url http://localhost:5062
 
 The seed script mirrors the catalogs defined in `_scripts/configuration.py` (services, global limits, and several client profiles).
 
-For **catalog-only** seeding without the script, use the seed API (`GET` / `POST` / `PUT` `/api/v1/seed`) or the appsettings `Seed` section — see [Seed system](core/seed-system.md).
+For **catalog-only** seeding without the script, use the seed API (`GET` / `POST` / `PUT` `/api/v2/seed`) or the appsettings `Seed` section — see [Seed system](core/seed-system.md).
 
 Generate live traffic for dashboard testing:
 
@@ -105,7 +105,7 @@ Stop the traffic generator before stopping the API so buffered usage events can 
 docker compose up --build
 ```
 
-Switch stacks by editing `include` in [`docker-compose.yml`](docker-compose.yml) (see [`compose/README.md`](compose/README.md)).
+Switch stacks by editing `include` in repo-root `docker-compose.yml` (see `compose/README.md` in the repository).
 
 - API: `http://localhost:5062`
 - Admin UI: `http://localhost:5100`
@@ -114,7 +114,7 @@ Switch stacks by editing `include` in [`docker-compose.yml`](docker-compose.yml)
 Build project images manually:
 
 ```powershell
-python _scripts/download_images.py --build-projects --build-version 1.0.1-alpha
+python _scripts/download_images.py --build-projects --build-version 2.0.0
 ```
 
 Use `--list` to preview without running Docker.
@@ -126,17 +126,17 @@ Read in this order if you are new:
 | Order | Guide | Why |
 | --- | --- | --- |
 | 1 | [Architecture overview](core/architecture.md) | Hosts, layering, background workers |
-| 2 | [Domain model](core/domain-model.md) | Clients, services, pools, limits |
+| 2 | [Domain model](core/domain-model.md) | Clients, services, and rate limits |
 | 3 | [Request flow](core/request-flow.md) | Hot-path behavior and HTTP statuses |
 | 4 | [Integration guide](integration-guide.md) | Wire ClientManager in front of your services |
 | 5 | [Configuration reference](configuration-reference.md) | Every `appsettings` section and default |
 | 6 | [Admin UI guide](admin-ui-guide.md) | Operator screens and typical workflows |
-| 7 | [API overview](api-overview.md) | Endpoint groups beyond the four gatekeeping calls |
-| 8 | [Metrics integration guide](metrics-integration-guide.md) | Prometheus, Grafana, Jaeger, OTLP |
+| 7 | [API overview](api-overview.md) | Catalog, statistics, seed, and metrics endpoints |
+| 8 | [Observability guides](observability/index.md) | Local stack, on-prem deploy, org Grafana/Prometheus |
 | 9 | [Development and operations](development-and-operations.md) | Scripts, security, troubleshooting |
 | 10 | [Persistence overview](persistence/index.md) | Storage roles, provider comparison, and topologies |
 
-The root [README.md](../README.md) duplicates quick-start commands and links back here.
+The repository root `README.md` duplicates quick-start commands and links back here.
 
 ## Build the doc site
 

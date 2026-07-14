@@ -173,7 +173,7 @@
     <value>Others</value>
   </data>
   <data name="Common.PageTitleSuffix" xml:space="preserve">
-    <value>ClientManager Â· {0}</value>
+    <value>ClientManager &#x00B7; {0}</value>
   </data>
   <data name="Common.Remove" xml:space="preserve">
     <value>Remove</value>

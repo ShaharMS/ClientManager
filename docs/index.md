@@ -12,12 +12,12 @@ These guides explain how ClientManager works internally, how to wire it into you
 | --- | --- |
 | [Getting started](getting-started.md) | Solution layout, first run, Docker, seed data, and where to read next |
 | [Configuration reference](configuration-reference.md) | Every `appsettings` section, defaults, and environment-variable overrides |
-| [Danger zone](danger-zone.md) | Gates for seed, pruning, and cache TTL tuning — what is destructive and how to opt in |
+| [Danger zone](development-and-operations.md#danger-zone) | Gates for seed API, cache TTL tuning, and destructive compose operations |
 | [Admin UI guide](admin-ui-guide.md) | Operator screens, routes, and typical workflows |
 | [Localization](localization.md) | Admin UI languages, `.resx` workflow, RTL, and adding cultures |
 | [API overview](api-overview.md) | Catalog CRUD, statistics, metrics, and runtime endpoints |
 | [Development and operations](development-and-operations.md) | Scripts, security model, deployment notes, troubleshooting |
-| [Metrics integration guide](metrics-integration-guide.md) | Prometheus, Grafana, Jaeger, OTLP — scrape targets, metric catalog, alerts |
+| [Observability guides](observability/index.md) | Local stack, on-prem deploy, org Grafana/Prometheus, pod discovery |
 
 ### Core concepts
 
@@ -34,7 +34,7 @@ These guides explain how ClientManager works internally, how to wire it into you
 | Guide | What you will learn |
 | --- | --- |
 | [Integration guide](integration-guide.md) | Put ClientManager in front of your services with nginx, identify callers, and surface denials (401, 403, 429, …) to end users |
-| [Metrics integration guide](metrics-integration-guide.md) | Plug into Prometheus, Grafana, or OTLP collectors for metrics and traces |
+| [Observability guides](observability/index.md) | Local stack, on-prem deploy, org Grafana/Prometheus |
 | [Persistence overview](persistence/index.md) | How storage roles map to MongoDB and Redis |
 
 ## Quick mental model
@@ -59,6 +59,7 @@ Every denial is an HTTP error with an [RFC 7807](https://datatracker.ietf.org/do
 This site is built with [MkDocs](https://www.mkdocs.org/). A few rules govern what you see in the browser:
 
 - Markdown files live under `docs/`. A file at `docs/core/domain-model.md` is published at `/core/domain-model/` on the built site.
+- **Links only work between pages under `docs/`.** Repo paths (`compose/…`, `_scripts/…`, `observability/…`) are shown as inline `` `code` `` — open them in the repository, not via the doc site.
 - The **sidebar** order and section nesting come from the `nav` block in `mkdocs.yml` at the repository root — not from the folder tree alone.
 - A page can exist without a `nav` entry (it still builds), but it will only be reachable via direct URL or links from other pages.
 
@@ -83,16 +84,17 @@ The output lands in `site/` at the repository root.
 
 Mermaid (`docs/javascripts/mermaid.min.js`) is vendored for offline use.
 
-## API surface (v1)
+## API surface (v2)
 
 | Operation | Method | Path |
 | --- | --- | --- |
-| Check access | `GET` | `/api/v1/access/check?clientId=…&serviceId=…` |
-| Client accessibility report | `GET` | `/api/v1/access/{clientId}` |
-| Acquire resource slot | `GET` | `/api/v1/resources/acquire?clientId=…&resourcePoolId=…` |
-| Release resource slot | `GET` | `/api/v1/resources/release?allocationId=…` |
+| Check access | `GET` | `/api/v2/access/check?clientId=…&serviceId=…` |
+| Catalog CRUD | `POST` / `GET` / `PUT` / `DELETE` | `/api/v2/clients`, `/api/v2/services`, `/api/v2/global-rate-limits` |
+| Statistics | `GET` | `/api/v2/statistics/overview` |
+| Seed export/import | `GET` / `POST` / `PUT` / `DELETE` | `/api/v2/seed` |
+| Metrics | `GET` | `/prometheus/otel` |
 
-Interactive OpenAPI documentation is available from the running API host (Swagger UI in development).
+Full reference: [API overview](api-overview.md) and Swagger UI at `/docs` on the running API host.
 
 ## Related repository docs
 

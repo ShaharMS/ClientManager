@@ -1,22 +1,22 @@
 # Scripts overview
 
-Python helpers in [`_scripts/`](../../_scripts/) support local development, demos, UI stress testing, observability, and performance baselines. They share catalogs, URLs, and paths through [`configuration.py`](../../_scripts/configuration.py).
+Python helpers in `_scripts/` support local development, demos, UI stress testing, observability, and performance baselines. They share catalogs, URLs, and paths through `_scripts/configuration.py`.
 
 ## Prerequisites
 
 - Python 3.10+ (stdlib only for most scripts)
-- [`ClientManager.Api`](../../ClientManager.Api/) running when a script calls the public API (default `http://localhost:5062`)
+- `ClientManager.Api` running when a script calls the public API (default `http://localhost:5062`)
 - Run scripts from the repository root or `_scripts/` directory
 
 ## Shared configuration
 
-[`configuration.py`](../../_scripts/configuration.py) defines:
+`_scripts/configuration.py` defines:
 
 | Area | Purpose |
 | --- | --- |
 | `global.api` | Base URL and API prefix |
 | `global.data` | Default data directories and collection file names |
-| `global.catalogs` | Demo clients, services, pools used by seed and traffic scripts |
+| `global.catalogs` | Demo clients, services, and rate limits used by seed and traffic scripts |
 | `scripts.*` | Per-script defaults (intervals, presets, probabilities) |
 
 Override the API URL with `--base-url` on scripts that support it.
@@ -30,7 +30,7 @@ Set `CLIENTMANAGER_STORAGE_DATA_DIR` to point the API at a custom persistence di
 | [run_multipod_docker.py](multipod-docker.md) | Yes (starts it) | Fresh Docker multi-pod stack + overview verification |
 | [multipod_overview_check.py](multipod-docker.md) | Yes | Cross-pod overview latency/consistency check |
 | [access_load_check.py](access-load-check.md) | Yes | Sustained 18k-RPM access-check load test |
-| [seed_data.py](seed-data.md) | Yes | Seed catalog via API + optional historical usage files |
+| [seed_data.py](seed-data.md) | Yes | Seed catalog via API |
 | [traffic_generator.py](traffic-generator.md) | Yes | Continuous live traffic for demos |
 | [performance_baseline.py](performance-baseline.md) | Yes | Deterministic load profile + latency report |
 | [launch_observability_ui.py](launch-observability-ui.md) | No | Local Prometheus + Grafana (+ optional Tempo) |

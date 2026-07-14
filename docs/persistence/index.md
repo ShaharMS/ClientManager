@@ -76,7 +76,7 @@ Environment variables use `Section__SubSection__Property` (double underscore). S
 | --- | --- | --- |
 | All | `Redis` | Default in `appsettings.json`; single Redis instance with default DB index |
 
-Seed via `seed_data.py` or `GET`/`POST /api/v1/seed` with `Seed:SeedApiEnabled: true`.
+Seed via `seed_data.py` or `GET`/`POST /api/v2/seed` with `Seed:SeedApiEnabled: true`.
 
 ### Production — balanced (recommended)
 
