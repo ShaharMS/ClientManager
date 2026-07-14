@@ -23,7 +23,7 @@ namespace ClientManager.Api.Controllers;
 /// </para>
 /// </remarks>
 [ApiController]
-[Route("api/v1/access")]
+[Route("api/v2/access")]
 [Tags("Access Check")]
 public class AccessCheckController(IAccessControlService accessControlService) : ControllerBase
 {

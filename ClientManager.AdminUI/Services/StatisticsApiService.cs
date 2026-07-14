@@ -7,5 +7,5 @@ public class StatisticsApiService(IHttpClientFactory httpClientFactory)
     private readonly HttpClient _httpClient = httpClientFactory.CreateClient("ClientManagerApi");
 
     public Task<DashboardOverview?> GetOverviewAsync() =>
-        ApiResponseHandler.GetFromJsonAsync<DashboardOverview>(_httpClient, "api/v1/statistics/overview");
+        ApiResponseHandler.GetFromJsonAsync<DashboardOverview>(_httpClient, "api/v2/statistics/overview");
 }

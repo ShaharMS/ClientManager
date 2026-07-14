@@ -103,7 +103,7 @@ def main() -> int:
     failures: list[str] = []
 
     print(f"Waiting for API {api_url} and Admin UI {admin_url}")
-    wait_for_url(f"{api_url}/api/v1/statistics/overview")
+    wait_for_url(f"{api_url}/api/v2/statistics/overview")
     wait_for_url(admin_url)
 
     with sync_playwright() as playwright:
@@ -145,7 +145,7 @@ def main() -> int:
             page.get_by_role("button", name="Save").click()
             page.wait_for_url("**/services", timeout=20_000)
             page.wait_for_selector("text=E2E Service Updated", timeout=20_000)
-            status, updated = api_get_json(api_url, f"api/v1/services/{service_id}")
+            status, updated = api_get_json(api_url, f"api/v2/services/{service_id}")
             if status != 200 or updated is None or updated.get("name") != "E2E Service Updated":
                 failures.append("UI service edit was not persisted through the API")
 
@@ -155,7 +155,7 @@ def main() -> int:
             row.locator('button[title*="Delete"]').click()
             page.get_by_role("button", name="Delete").last.click()
             row.wait_for(state="detached", timeout=20_000)
-            status, _ = api_get_json(api_url, f"api/v1/services/{service_id}")
+            status, _ = api_get_json(api_url, f"api/v2/services/{service_id}")
             if status != 404:
                 failures.append(f"UI service delete returned API status {status}")
 
@@ -182,7 +182,7 @@ def main() -> int:
         finally:
             browser.close()
 
-    api_delete(api_url, f"api/v1/services/{service_id}")
+    api_delete(api_url, f"api/v2/services/{service_id}")
 
     if failures:
         print("\nFAILED:")

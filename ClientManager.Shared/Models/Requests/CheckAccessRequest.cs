@@ -4,7 +4,7 @@ namespace ClientManager.Shared.Models.Requests;
 /// Query parameters for checking if a client has access to a service.
 /// </summary>
 /// <remarks>
-/// Bound from <c>GET /api/v1/access/check</c>. Both identifiers are required.
+/// Bound from <c>GET /api/v2/access/check</c>. Both identifiers are required.
 /// </remarks>
 /// <param name="ClientId">The unique identifier of the client.</param>
 /// <param name="ServiceId">The unique identifier of the service.</param>

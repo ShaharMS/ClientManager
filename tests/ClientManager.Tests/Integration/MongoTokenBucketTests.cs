@@ -40,7 +40,7 @@ public sealed class MongoTokenBucketTests : IAsyncLifetime
                 }));
 
         var tasks = Enumerable.Range(0, 25)
-            .Select(_ => _client.GetAsync($"api/v1/access/check?clientId={clientId}&serviceId={serviceId}"))
+            .Select(_ => _client.GetAsync($"api/v2/access/check?clientId={clientId}&serviceId={serviceId}"))
             .ToArray();
 
         var responses = await Task.WhenAll(tasks);

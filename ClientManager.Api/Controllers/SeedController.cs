@@ -38,7 +38,7 @@ namespace ClientManager.Api.Controllers;
 /// </para>
 /// </remarks>
 [ApiController]
-[Route("api/v1/seed")]
+[Route("api/v2/seed")]
 [Tags("Seeding")]
 [ServiceFilter(typeof(SeedEndpointGateFilter))]
 public class SeedController(

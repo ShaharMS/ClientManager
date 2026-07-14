@@ -1,7 +1,7 @@
 """
 Sustained access-check load test for rate-limit storage throughput.
 
-Default target is 18,000 RPM (300 RPS) for 60 seconds against GET /api/v1/access/check.
+Default target is 18,000 RPM (300 RPS) for 60 seconds against GET /api/v2/access/check.
 """
 
 from __future__ import annotations

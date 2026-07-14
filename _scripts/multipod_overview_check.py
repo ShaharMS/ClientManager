@@ -1,7 +1,7 @@
 """
 Cross-pod overview consistency check for the lean multipod compose stack.
 
-Seeds catalog data against pod :5062, then polls GET /api/v1/statistics/overview on
+Seeds catalog data against pod :5062, then polls GET /api/v2/statistics/overview on
 each API replica and verifies HTTP 200 plus stable client/service counts.
 """
 

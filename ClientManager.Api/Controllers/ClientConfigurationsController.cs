@@ -19,6 +19,6 @@ namespace ClientManager.Api.Controllers;
 /// </para>
 /// </remarks>
 [ApiController]
-[Route("api/v1/clients")]
+[Route("api/v2/clients")]
 [Tags("Client Configurations")]
 public class ClientConfigurationsController(IClientConfigurationCatalogService catalog) : CatalogCrudControllerBase<ClientConfiguration>(catalog);

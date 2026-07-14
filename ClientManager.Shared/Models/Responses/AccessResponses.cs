@@ -4,7 +4,7 @@ namespace ClientManager.Shared.Models.Responses;
 /// Response returned when a client is granted access to a service.
 /// </summary>
 /// <remarks>
-/// Returned by <c>GET /api/v1/access/check</c> with HTTP 200. Gateways may forward
+/// Returned by <c>GET /api/v2/access/check</c> with HTTP 200. Gateways may forward
 /// <see cref="RemainingRequests"/> to callers as a hint about remaining per-client capacity.
 /// </remarks>
 public record AccessCheckResponse

@@ -19,29 +19,29 @@ public sealed class CatalogCrudTests(ClientManagerApiFactory factory)
         var client = factory.CreateClientWithBaseAddress();
         var service = TestCatalogFactory.CreateService("svc-crud", "CRUD Service");
 
-        var create = await client.PostAsJsonAsync("api/v1/services", service, JsonOptions);
+        var create = await client.PostAsJsonAsync("api/v2/services", service, JsonOptions);
         Assert.Equal(HttpStatusCode.Created, create.StatusCode);
 
-        var get = await client.GetAsync("api/v1/services/svc-crud");
+        var get = await client.GetAsync("api/v2/services/svc-crud");
         get.EnsureSuccessStatusCode();
         var fetched = await get.Content.ReadFromJsonAsync<Service>(JsonOptions);
         Assert.NotNull(fetched);
         Assert.Equal("svc-crud", fetched.Id);
 
         service = service with { Name = "Updated Service" };
-        var update = await client.PutAsJsonAsync("api/v1/services/svc-crud", service, JsonOptions);
+        var update = await client.PutAsJsonAsync("api/v2/services/svc-crud", service, JsonOptions);
         update.EnsureSuccessStatusCode();
 
-        var search = await client.PostAsJsonAsync("api/v1/services/search", DocumentQuery.All, JsonOptions);
+        var search = await client.PostAsJsonAsync("api/v2/services/search", DocumentQuery.All, JsonOptions);
         search.EnsureSuccessStatusCode();
         var results = await search.Content.ReadFromJsonAsync<PagedResponse<Service>>(JsonOptions);
         Assert.NotNull(results);
         Assert.Contains(results.Items, item => item.Id == "svc-crud" && item.Name == "Updated Service");
 
-        var delete = await client.DeleteAsync("api/v1/services/svc-crud");
+        var delete = await client.DeleteAsync("api/v2/services/svc-crud");
         Assert.Equal(HttpStatusCode.NoContent, delete.StatusCode);
 
-        var missing = await client.GetAsync("api/v1/services/svc-crud");
+        var missing = await client.GetAsync("api/v2/services/svc-crud");
         Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
     }
 
@@ -56,17 +56,17 @@ public sealed class CatalogCrudTests(ClientManagerApiFactory factory)
             Services = []
         };
 
-        var create = await client.PostAsJsonAsync("api/v1/clients", configuration, JsonOptions);
+        var create = await client.PostAsJsonAsync("api/v2/clients", configuration, JsonOptions);
         Assert.Equal(HttpStatusCode.Created, create.StatusCode);
 
-        var get = await client.GetAsync("api/v1/clients/client-crud");
+        var get = await client.GetAsync("api/v2/clients/client-crud");
         get.EnsureSuccessStatusCode();
 
         configuration = configuration with { Name = "Updated Client" };
-        var update = await client.PutAsJsonAsync("api/v1/clients/client-crud", configuration, JsonOptions);
+        var update = await client.PutAsJsonAsync("api/v2/clients/client-crud", configuration, JsonOptions);
         update.EnsureSuccessStatusCode();
 
-        var delete = await client.DeleteAsync("api/v1/clients/client-crud");
+        var delete = await client.DeleteAsync("api/v2/clients/client-crud");
         Assert.Equal(HttpStatusCode.NoContent, delete.StatusCode);
     }
 }

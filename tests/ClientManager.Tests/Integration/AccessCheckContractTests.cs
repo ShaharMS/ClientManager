@@ -19,7 +19,7 @@ public sealed class AccessCheckContractTests(ClientManagerApiFactory factory)
         var client = factory.CreateClientWithBaseAddress();
         await SeedAsync(client);
 
-        var response = await client.GetAsync($"api/v1/access/check?clientId={ClientId}&serviceId={ServiceId}");
+        var response = await client.GetAsync($"api/v2/access/check?clientId={ClientId}&serviceId={ServiceId}");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
@@ -30,7 +30,7 @@ public sealed class AccessCheckContractTests(ClientManagerApiFactory factory)
         var client = factory.CreateClientWithBaseAddress();
         await TestCatalogFactory.SeedServiceAsync(client, TestCatalogFactory.CreateService(ServiceId));
 
-        var response = await client.GetAsync($"api/v1/access/check?clientId=missing&serviceId={ServiceId}");
+        var response = await client.GetAsync($"api/v2/access/check?clientId=missing&serviceId={ServiceId}");
 
         await ProblemResponseAssertions.AssertProblemAsync(response, StatusCodes.Status400BadRequest);
     }
@@ -47,7 +47,7 @@ public sealed class AccessCheckContractTests(ClientManagerApiFactory factory)
             Services = []
         });
 
-        var response = await client.GetAsync($"api/v1/access/check?clientId={ClientId}&serviceId={ServiceId}");
+        var response = await client.GetAsync($"api/v2/access/check?clientId={ClientId}&serviceId={ServiceId}");
 
         await ProblemResponseAssertions.AssertProblemAsync(response, StatusCodes.Status401Unauthorized);
     }
@@ -59,7 +59,7 @@ public sealed class AccessCheckContractTests(ClientManagerApiFactory factory)
         await TestCatalogFactory.SeedServiceAsync(client, TestCatalogFactory.CreateService(ServiceId));
         await TestCatalogFactory.SeedClientAsync(client, TestCatalogFactory.CreateClient(ClientId, ServiceId, isEnabled: false));
 
-        var response = await client.GetAsync($"api/v1/access/check?clientId={ClientId}&serviceId={ServiceId}");
+        var response = await client.GetAsync($"api/v2/access/check?clientId={ClientId}&serviceId={ServiceId}");
 
         await ProblemResponseAssertions.AssertProblemAsync(response, StatusCodes.Status403Forbidden);
     }
@@ -70,7 +70,7 @@ public sealed class AccessCheckContractTests(ClientManagerApiFactory factory)
         var client = factory.CreateClientWithBaseAddress();
         await TestCatalogFactory.SeedClientAsync(client, TestCatalogFactory.CreateClient(ClientId, ServiceId));
 
-        var response = await client.GetAsync($"api/v1/access/check?clientId={ClientId}&serviceId=missing-service");
+        var response = await client.GetAsync($"api/v2/access/check?clientId={ClientId}&serviceId=missing-service");
 
         await ProblemResponseAssertions.AssertProblemAsync(response, StatusCodes.Status404NotFound);
     }
@@ -86,9 +86,9 @@ public sealed class AccessCheckContractTests(ClientManagerApiFactory factory)
             Window = TimeSpan.FromMinutes(1)
         });
 
-        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"api/v1/access/check?clientId={ClientId}&serviceId={ServiceId}")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"api/v2/access/check?clientId={ClientId}&serviceId={ServiceId}")).StatusCode);
 
-        var response = await client.GetAsync($"api/v1/access/check?clientId={ClientId}&serviceId={ServiceId}");
+        var response = await client.GetAsync($"api/v2/access/check?clientId={ClientId}&serviceId={ServiceId}");
 
         await ProblemResponseAssertions.AssertProblemAsync(response, StatusCodes.Status429TooManyRequests, expectRetryAfter: true);
     }

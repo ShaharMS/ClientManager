@@ -18,6 +18,6 @@ namespace ClientManager.Api.Controllers;
 /// </para>
 /// </remarks>
 [ApiController]
-[Route("api/v1/global-rate-limits")]
+[Route("api/v2/global-rate-limits")]
 [Tags("Global Rate Limits")]
 public class GlobalRateLimitsController(IGlobalRateLimitCatalogService catalog) : CatalogCrudControllerBase<GlobalRateLimit>(catalog);

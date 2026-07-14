@@ -14,7 +14,7 @@ public sealed class OtlpExportTests : IAsyncLifetime
     {
         Assert.NotNull(_client);
         var startedAtUnixMicroseconds = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() * 1000;
-        var response = await _client.GetAsync("api/v1/statistics/overview");
+        var response = await _client.GetAsync("api/v2/statistics/overview");
         response.EnsureSuccessStatusCode();
 
         using var jaeger = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };

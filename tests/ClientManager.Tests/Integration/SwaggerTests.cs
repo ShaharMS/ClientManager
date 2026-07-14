@@ -11,7 +11,7 @@ public sealed class SwaggerTests(ClientManagerApiFactory factory)
     {
         var client = factory.CreateClientWithBaseAddress();
 
-        var response = await client.GetAsync("swagger/v1/swagger.json");
+        var response = await client.GetAsync("swagger/v2/swagger.json");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains("application/json", response.Content.Headers.ContentType?.MediaType);

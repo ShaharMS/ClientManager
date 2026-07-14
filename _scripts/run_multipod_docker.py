@@ -12,7 +12,7 @@ from configuration import REPO_ROOT
 
 COMPOSE_FILE = "compose/multipod.yml"
 POD_PORTS = (5062, 5063, 5064)
-OVERVIEW_PATH = "/api/v1/statistics/overview"
+OVERVIEW_PATH = "/api/v2/statistics/overview"
 
 
 def run_compose(*args: str, check: bool = False) -> subprocess.CompletedProcess[str]:

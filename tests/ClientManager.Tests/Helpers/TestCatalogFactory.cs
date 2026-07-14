@@ -35,10 +35,10 @@ public static class TestCatalogFactory
 
     public static async Task SeedServiceAsync(HttpClient client, Service service)
     {
-        var response = await client.PostAsJsonAsync("api/v1/services", service, JsonOptions);
+        var response = await client.PostAsJsonAsync("api/v2/services", service, JsonOptions);
         if (response.StatusCode == System.Net.HttpStatusCode.Conflict)
         {
-            response = await client.PutAsJsonAsync($"api/v1/services/{service.Id}", service, JsonOptions);
+            response = await client.PutAsJsonAsync($"api/v2/services/{service.Id}", service, JsonOptions);
         }
 
         response.EnsureSuccessStatusCode();
@@ -46,10 +46,10 @@ public static class TestCatalogFactory
 
     public static async Task SeedClientAsync(HttpClient client, ClientConfiguration configuration)
     {
-        var response = await client.PostAsJsonAsync("api/v1/clients", configuration, JsonOptions);
+        var response = await client.PostAsJsonAsync("api/v2/clients", configuration, JsonOptions);
         if (response.StatusCode == System.Net.HttpStatusCode.Conflict)
         {
-            response = await client.PutAsJsonAsync($"api/v1/clients/{configuration.Id}", configuration, JsonOptions);
+            response = await client.PutAsJsonAsync($"api/v2/clients/{configuration.Id}", configuration, JsonOptions);
         }
 
         response.EnsureSuccessStatusCode();

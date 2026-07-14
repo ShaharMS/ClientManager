@@ -111,8 +111,8 @@ CLIENT_SERVICE_MAP = {
 GLOBAL_SETTINGS = {
     "api": {
         "base_url": "http://localhost:5062",
-        "prefix": "api/v1",
-        "prefix_with_leading_slash": "/api/v1",
+        "prefix": "api/v2",
+        "prefix_with_leading_slash": "/api/v2",
     },
     "local_runtime": {
         "docker_host": "host.docker.internal",

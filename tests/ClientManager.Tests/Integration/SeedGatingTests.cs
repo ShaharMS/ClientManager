@@ -11,7 +11,7 @@ public sealed class SeedGatingTests
         await using var api = new ClientManagerApiFactory();
         var client = api.CreateClientWithBaseAddress();
 
-        var response = await client.GetAsync("api/v1/seed");
+        var response = await client.GetAsync("api/v2/seed");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -22,7 +22,7 @@ public sealed class SeedGatingTests
         await using var api = new ClientManagerApiFactory();
         var client = api.CreateClientWithBaseAddress();
 
-        var response = await client.PostAsync("api/v1/seed", null);
+        var response = await client.PostAsync("api/v2/seed", null);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -36,7 +36,7 @@ public sealed class SeedGatingTests
         });
         var client = api.CreateClientWithBaseAddress();
 
-        var response = await client.GetAsync("api/v1/seed");
+        var response = await client.GetAsync("api/v2/seed");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }

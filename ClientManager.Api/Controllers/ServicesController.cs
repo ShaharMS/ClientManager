@@ -18,6 +18,6 @@ namespace ClientManager.Api.Controllers;
 /// </para>
 /// </remarks>
 [ApiController]
-[Route("api/v1/services")]
+[Route("api/v2/services")]
 [Tags("Services")]
 public class ServicesController(IServiceCatalogService catalog) : CatalogCrudControllerBase<Service>(catalog);

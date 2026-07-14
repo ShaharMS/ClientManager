@@ -166,8 +166,8 @@ public sealed class SeedCatalogService(
         {
             throw new ConflictException(
                 $"{collectionName} is not empty ({count} documents). " +
-                $"Use DELETE /api/v1/seed?include={collectionName} to wipe, " +
-                $"or PUT /api/v1/seed?include={collectionName}&strategy=skip to merge.");
+                $"Use DELETE /api/v2/seed?include={collectionName} to wipe, " +
+                $"or PUT /api/v2/seed?include={collectionName}&strategy=skip to merge.");
         }
     }
 

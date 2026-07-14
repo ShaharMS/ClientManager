@@ -15,10 +15,10 @@ public sealed class StatisticsOverviewTests
         await TestCatalogFactory.SeedServiceAsync(client, TestCatalogFactory.CreateService("svc-stats", "Stats Service"));
         await TestCatalogFactory.SeedClientAsync(client, TestCatalogFactory.CreateClient("client-stats", "svc-stats"));
 
-        (await client.GetAsync("api/v1/services/svc-stats")).EnsureSuccessStatusCode();
-        (await client.GetAsync("api/v1/clients/client-stats")).EnsureSuccessStatusCode();
+        (await client.GetAsync("api/v2/services/svc-stats")).EnsureSuccessStatusCode();
+        (await client.GetAsync("api/v2/clients/client-stats")).EnsureSuccessStatusCode();
 
-        var response = await client.GetAsync("api/v1/statistics/overview");
+        var response = await client.GetAsync("api/v2/statistics/overview");
         response.EnsureSuccessStatusCode();
 
         var overview = await response.Content.ReadFromJsonAsync<SystemOverviewResponse>();

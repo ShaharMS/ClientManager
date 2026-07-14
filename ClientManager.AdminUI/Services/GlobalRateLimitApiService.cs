@@ -7,7 +7,7 @@ namespace ClientManager.AdminUI.Services;
 /// API client for global per-service rate limits. Each limit's <see cref="GlobalRateLimit.Id"/> is the service ID.
 /// </summary>
 public class GlobalRateLimitApiService(IHttpClientFactory httpClientFactory)
-    : GenericApiService<GlobalRateLimit>(httpClientFactory, "api/v1/global-rate-limits")
+    : GenericApiService<GlobalRateLimit>(httpClientFactory, "api/v2/global-rate-limits")
 {
     private (List<GlobalRateLimit> Data, DateTime At)? _cached;
 

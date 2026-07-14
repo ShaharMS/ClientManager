@@ -19,7 +19,7 @@ namespace ClientManager.Api.Controllers;
 /// </para>
 /// </remarks>
 [ApiController]
-[Route("api/v1/statistics")]
+[Route("api/v2/statistics")]
 [Tags("Statistics")]
 public class StatisticsOverviewController(IStatisticsService statisticsService) : ControllerBase
 {
