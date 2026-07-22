@@ -15,14 +15,14 @@ public sealed class RpmBucketRingTests
         Assert.Equal(TimeSpan.FromMinutes(10), options.Retention);
         Assert.Equal(100, options.FlushEventCount);
         Assert.Equal(TimeSpan.FromSeconds(1), options.FlushInterval);
-        Assert.Equal(TimeSpan.FromMinutes(5), RpmOptions.RpmWindow);
+        Assert.Equal(TimeSpan.FromSeconds(60), RpmOptions.RpmWindow);
     }
 
     [Theory]
     [InlineData(1)]
     [InlineData(5)]
     [InlineData(60)]
-    public void BucketSizeSeconds_divides_five_minute_window(int bucketSizeSeconds)
+    public void BucketSizeSeconds_divides_sixty_second_window(int bucketSizeSeconds)
     {
         var windowSeconds = (int)RpmOptions.RpmWindow.TotalSeconds;
         Assert.Equal(0, windowSeconds % bucketSizeSeconds);
@@ -32,7 +32,7 @@ public sealed class RpmBucketRingTests
     public void RpmOptionsValidator_rejects_retention_shorter_than_window()
     {
         var validator = new ClientManager.Api.Services.Storage.RpmOptionsValidator();
-        var result = validator.Validate(null, new RpmOptions { Retention = TimeSpan.FromMinutes(1) });
+        var result = validator.Validate(null, new RpmOptions { Retention = TimeSpan.FromSeconds(30) });
         Assert.False(result.Succeeded);
     }
 }

@@ -19,12 +19,12 @@ public sealed class RpmOptionsValidator : IValidateOptions<RpmOptions>
         var windowSeconds = (int)RpmOptions.RpmWindow.TotalSeconds;
         if (windowSeconds % options.BucketSizeSeconds != 0)
         {
-            return ValidateOptionsResult.Fail($"{RpmOptions.SectionName}:BucketSizeSeconds must divide the five-minute RPM window evenly.");
+            return ValidateOptionsResult.Fail($"{RpmOptions.SectionName}:BucketSizeSeconds must divide the RPM window evenly.");
         }
 
         if (options.Retention < RpmOptions.RpmWindow)
         {
-            return ValidateOptionsResult.Fail($"{RpmOptions.SectionName}:Retention must be at least five minutes.");
+            return ValidateOptionsResult.Fail($"{RpmOptions.SectionName}:Retention must be at least the RPM window.");
         }
 
         if (options.FlushEventCount < 1)

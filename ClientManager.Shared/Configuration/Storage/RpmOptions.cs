@@ -6,8 +6,7 @@ namespace ClientManager.Shared.Configuration.Storage;
 /// <remarks>
 /// <para>
 /// Each granted access check increments a UTC second bucket. Buckets are retained for
-/// <see cref="Retention"/> and aggregated into a five-minute requests-per-minute average for the
-/// dashboard via <see cref="RpmWindow"/>.
+/// <see cref="Retention"/> and summed over <see cref="RpmWindow"/> for the dashboard.
 /// </para>
 /// <para>
 /// Per-replica buffering reduces storage writes on the hot path. Setting
@@ -22,12 +21,12 @@ public sealed class RpmOptions
     public const string SectionName = "Rpm";
 
     /// <summary>
-    /// Width of each RPM bucket in seconds. Must divide evenly into the fixed five-minute RPM window.
+    /// Width of each RPM bucket in seconds. Must divide evenly into <see cref="RpmWindow"/>.
     /// </summary>
     public int BucketSizeSeconds { get; init; } = 1;
 
     /// <summary>
-    /// How long RPM buckets are retained in storage. Must be at least five minutes.
+    /// How long RPM buckets are retained in storage. Must be at least <see cref="RpmWindow"/>.
     /// </summary>
     public TimeSpan Retention { get; init; } = TimeSpan.FromMinutes(10);
 
@@ -44,5 +43,5 @@ public sealed class RpmOptions
     /// <summary>
     /// Fixed RPM calculation window used by dashboard statistics.
     /// </summary>
-    public static readonly TimeSpan RpmWindow = TimeSpan.FromMinutes(5);
+    public static readonly TimeSpan RpmWindow = TimeSpan.FromSeconds(60);
 }

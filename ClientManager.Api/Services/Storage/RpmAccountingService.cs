@@ -14,7 +14,7 @@ namespace ClientManager.Api.Services.Storage;
 /// <see cref="IRpmRingDatabase"/>.
 /// </para>
 /// <para>
-/// Dashboard RPM reads aggregate the retained buckets into a fixed five-minute average.
+/// Dashboard RPM reads sum request counts over the last 60 seconds.
 /// </para>
 /// </remarks>
 public sealed class RpmAccountingService : IDisposable
@@ -54,7 +54,7 @@ public sealed class RpmAccountingService : IDisposable
     }
 
     /// <summary>
-    /// Returns requests per minute over the fixed five-minute window.
+    /// Returns the request count summed over the last 60 seconds.
     /// </summary>
     public async Task<double> GetRequestsPerMinuteAsync(CancellationToken cancellationToken = default)
     {
@@ -66,7 +66,7 @@ public sealed class RpmAccountingService : IDisposable
         var total = buckets
             .Where(pair => long.TryParse(StripBucketKey(pair.Key), out var bucket) && bucket >= firstOverlappingBucket && bucket <= now)
             .Sum(pair => pair.Value);
-        return total / RpmOptions.RpmWindow.TotalMinutes;
+        return total;
     }
 
     /// <inheritdoc />
