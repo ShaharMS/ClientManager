@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using ClientManager.Shared.Models.Entities;
+using ClientManager.Shared.Models.Responses;
 using Microsoft.AspNetCore.Http;
 using ClientManager.Shared.Models.Enums;
 using ClientManager.Tests.Helpers;
@@ -22,6 +23,41 @@ public sealed class AccessCheckContractTests(ClientManagerApiFactory factory)
         var response = await client.GetAsync($"api/v2/access/check?clientId={ClientId}&serviceId={ServiceId}");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Granted_access_without_rate_limit_omits_remaining_requests()
+    {
+        var client = factory.CreateClientWithBaseAddress();
+        await SeedAsync(client);
+
+        var response = await client.GetAsync($"api/v2/access/check?clientId={ClientId}&serviceId={ServiceId}");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<AccessCheckResponse>();
+        Assert.NotNull(body);
+        Assert.Null(body.RemainingRequests);
+    }
+
+    [Fact]
+    public async Task Granted_access_with_rate_limit_returns_remaining_requests()
+    {
+        const string clientId = "client-access-rate-remaining";
+        const string serviceId = "svc-access-rate-remaining";
+        var client = factory.CreateClientWithBaseAddress();
+        await SeedAsync(client, clientId, serviceId, new RateLimitPolicy
+        {
+            Strategy = RateLimitStrategy.FixedWindow,
+            MaxRequests = 5,
+            Window = TimeSpan.FromMinutes(1)
+        });
+
+        var response = await client.GetAsync($"api/v2/access/check?clientId={clientId}&serviceId={serviceId}");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<AccessCheckResponse>();
+        Assert.NotNull(body);
+        Assert.Equal(4, body.RemainingRequests);
     }
 
     [Fact]
@@ -78,29 +114,30 @@ public sealed class AccessCheckContractTests(ClientManagerApiFactory factory)
     [Fact]
     public async Task Rate_limited_client_returns_429_with_retry_after_and_problem_headers()
     {
+        const string clientId = "client-access-rate-429";
+        const string serviceId = "svc-access-rate-429";
         var client = factory.CreateClientWithBaseAddress();
-        await SeedAsync(client, new RateLimitPolicy
+        await SeedAsync(client, clientId, serviceId, new RateLimitPolicy
         {
             Strategy = RateLimitStrategy.FixedWindow,
             MaxRequests = 1,
             Window = TimeSpan.FromMinutes(1)
         });
 
-        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"api/v2/access/check?clientId={ClientId}&serviceId={ServiceId}")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"api/v2/access/check?clientId={clientId}&serviceId={serviceId}")).StatusCode);
 
-        var response = await client.GetAsync($"api/v2/access/check?clientId={ClientId}&serviceId={ServiceId}");
+        var response = await client.GetAsync($"api/v2/access/check?clientId={clientId}&serviceId={serviceId}");
 
         await ProblemResponseAssertions.AssertProblemAsync(response, StatusCodes.Status429TooManyRequests, expectRetryAfter: true);
     }
 
-    private static Task SeedAsync(HttpClient client, RateLimitPolicy? rateLimit = null)
+    private static async Task SeedAsync(
+        HttpClient client,
+        string clientId = ClientId,
+        string serviceId = ServiceId,
+        RateLimitPolicy? rateLimit = null)
     {
-        return SeedAsync(client, TestCatalogFactory.CreateClient(ClientId, ServiceId, rateLimit: rateLimit));
-    }
-
-    private static async Task SeedAsync(HttpClient client, ClientConfiguration configuration)
-    {
-        await TestCatalogFactory.SeedServiceAsync(client, TestCatalogFactory.CreateService(ServiceId));
-        await TestCatalogFactory.SeedClientAsync(client, configuration);
+        await TestCatalogFactory.SeedServiceAsync(client, TestCatalogFactory.CreateService(serviceId));
+        await TestCatalogFactory.SeedClientAsync(client, TestCatalogFactory.CreateClient(clientId, serviceId, rateLimit: rateLimit));
     }
 }

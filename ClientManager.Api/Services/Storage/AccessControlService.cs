@@ -105,11 +105,12 @@ public class AccessControlService : IAccessControlService
                 _clientMetrics.RecordAccessOutcome(service.Id, clientId, "granted");
                 completion.SetOutcome("granted", "Allowed");
 
+                var hasRateLimit = serviceSettings.RateLimit is not null || configuration.GlobalRateLimit is not null;
                 return new AccessCheckResponse
                 {
                     ClientId = clientId,
                     ServiceId = service.Id,
-                    RemainingRequests = rateLimitResult.RemainingRequests
+                    RemainingRequests = hasRateLimit ? rateLimitResult.RemainingRequests : null
                 };
             },
             completion => RecordAccessCheckCompletion(clientId, serviceId, completion),
