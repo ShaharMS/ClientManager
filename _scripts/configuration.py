@@ -248,7 +248,7 @@ SCRIPT_SETTINGS = {
             "images": {
                 "jaeger": "jaegertracing/all-in-one:latest",
                 "prometheus": "prom/prometheus:latest",
-                "grafana": "grafana/grafana-oss:latest",
+                "grafana": "grafana/grafana-oss:13.0.2",
             },
             "image_overrides": {
                 "jaeger": None,
